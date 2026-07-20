@@ -17,12 +17,12 @@
         </relativePath>
     </parent>
     <artifactId>
-        common-core
+        common-api
     </artifactId>
     <packaging>
         jar
     </packaging>
     <name>
-        common-core
+        common-api
     </name>
 </project>
