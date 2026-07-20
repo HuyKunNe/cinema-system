@@ -81,7 +81,6 @@
     <dependencyManagement>
         <dependencies>
 
-
             <!-- =========================== -->
             <!-- Spring Boot BOM -->
             <!-- =========================== -->
@@ -189,9 +188,7 @@
                 <artifactId>jakarta.el</artifactId>
                 <version>${jakarta.el.version}</version>
             </dependency>
-
         </dependencies>
-
     </dependencyManagement>
 
     <build>
