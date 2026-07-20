@@ -1,0 +1,36 @@
+cinema-booking-system
+│
+├── .github
+│   └── workflows
+│
+├── docker
+│   ├── mysql
+│   ├── redis
+│   ├── kafka
+│   ├── elasticsearch
+│   ├── minio
+│   ├── monitoring
+│   └── docker-compose.yml
+│
+├── docs
+│   ├── architecture
+│   ├── api
+│   ├── database
+│   ├── sequence-diagrams
+│   ├── deployment
+│   └── adr
+│
+├── common
+│
+├── infrastructure
+│
+├── services
+│
+├── pom.xml
+├── README.md
+├── .gitignore
+├── .editorconfig
+├── .gitattributes
+├── mvnw
+├── mvnw.cmd
+└── .mvn

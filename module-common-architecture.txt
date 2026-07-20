@@ -1,0 +1,20 @@
+common
+│
+├── common-core
+├── common-api
+├── common-response
+├── common-exception
+├── common-validation
+├── common-security
+├── common-jackson
+├── common-kafka
+├── common-outbox
+├── common-lock
+├── common-logging
+├── common-openapi
+├── common-search
+├── common-storage
+├── common-tracing
+├── common-mapper
+├── common-util
+└── common-test
