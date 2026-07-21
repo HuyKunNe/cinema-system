@@ -2,27 +2,56 @@
 
 <project xmlns="https://maven.apache.org/POM/4.0.0"
     xmlns:xsi="https://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    xsi:schemaLocation="
+            https://maven.apache.org/POM/4.0.0
+            https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>com.cinema</groupId>
-        <artifactId>
-            cinema-booking-system
-        </artifactId>
-        <version>
-            1.0.0-SNAPSHOT
-        </version>
-        <relativePath>
-            ../../pom.xml
-        </relativePath>
+        <artifactId>cinema-booking-system</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
-    <artifactId>
-        common-api
-    </artifactId>
-    <packaging>
-        jar
-    </packaging>
-    <name>
-        common-api
-    </name>
+
+    <artifactId>common-api</artifactId>
+
+    <dependencies>
+
+        <!-- Spring MVC -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Response contract -->
+        <dependency>
+            <groupId>com.cinema</groupId>
+            <artifactId>common-response</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Business Exception -->
+        <dependency>
+            <groupId>com.cinema</groupId>
+            <artifactId>common-exception</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Validation -->
+        <dependency>
+            <groupId>com.cinema</groupId>
+            <artifactId>common-validation</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+
+    </dependencies>
+
 </project>
