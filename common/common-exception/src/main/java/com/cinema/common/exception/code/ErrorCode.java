@@ -2,8 +2,10 @@ package com.cinema.common.exception.code;
 
 public interface ErrorCode {
 
-    String getCode();
+    String code();
 
-    String getMessage();
+    String message();
+
+    ErrorCategory category();
 
 }
