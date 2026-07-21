@@ -19,6 +19,7 @@
         <module>common/common-core</module>
         <module>common/common-exception</module>
         <module>common/common-jackson</module>
+        <module>common/common-jpa</module>
         <module>common/common-kafka</module>
         <module>common/common-lock</module>
         <module>common/common-logging</module>
