@@ -18,13 +18,9 @@ class JacksonTest {
 
         ObjectMapper mapper = new ObjectMapper();
 
-        mapper.registerModule(
-                new JavaTimeModule());
+        mapper.registerModule(new JavaTimeModule());
 
-        String json = mapper.writeValueAsString(
-                new TestDto(
-                        UUID.randomUUID(),
-                        OffsetDateTime.now()));
+        String json = mapper.writeValueAsString(new TestDto(UUID.randomUUID(), OffsetDateTime.now()));
 
         assertNotNull(json);
 

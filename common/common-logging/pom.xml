@@ -1,28 +1,52 @@
-<?xml version="1.0" encoding="UTF-8"?>
-
 <project xmlns="https://maven.apache.org/POM/4.0.0"
     xmlns:xsi="https://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    xsi:schemaLocation="https://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>com.cinema</groupId>
-        <artifactId>
-            cinema-booking-system
-        </artifactId>
-        <version>
-            1.0.0-SNAPSHOT
-        </version>
-        <relativePath>
-            ../../pom.xml
-        </relativePath>
+        <artifactId>cinema-booking-system</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
-    <artifactId>
-        common-logging
-    </artifactId>
-    <packaging>
-        jar
-    </packaging>
-    <name>
-        common-logging
-    </name>
+
+    <artifactId>common-logging</artifactId>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>com.cinema</groupId>
+            <artifactId>common-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-aop</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+    </dependencies>
+
 </project>

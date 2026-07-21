@@ -49,8 +49,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <spring.boot.version>4.0.7</spring.boot.version>
-        <spring.cloud.version>2025.1.2</spring.cloud.version>
+        <spring.boot.version>3.5.4</spring.boot.version>
+        <spring.cloud.version>2025.0.2</spring.cloud.version>
         <mysql.version>8.4.0</mysql.version>
         <flyway.version>12.0.0</flyway.version>
         <kafka.version>4.0.0</kafka.version>
@@ -70,7 +70,7 @@
         <maven.compiler.plugin.version>3.14.0</maven.compiler.plugin.version>
         <maven.surefire.plugin.version>3.5.3</maven.surefire.plugin.version>
         <maven.failsafe.plugin.version>3.5.3</maven.failsafe.plugin.version>
-        <spring.boot.maven.plugin.version>4.0.7</spring.boot.maven.plugin.version>
+        <spring.boot.maven.plugin.version>3.5.4</spring.boot.maven.plugin.version>
         <!-- Code Quality -->
         <spotless.version>2.46.1</spotless.version>
         <checkstyle.version>10.21.4</checkstyle.version>
