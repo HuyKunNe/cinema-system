@@ -1,53 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<project xmlns="https://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="https://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="https://maven.apache.org/POM/4.0.0">
+
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>com.cinema</groupId>
-        <artifactId>
-            cinema-booking-system
-        </artifactId>
-        <version>
-            1.0.0-SNAPSHOT
-        </version>
-        <relativePath>
-            ../../pom.xml
-        </relativePath>
+        <artifactId>cinema-booking-system</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
-    <artifactId>
-        common-response
-    </artifactId>
-    <packaging>
-        jar
-    </packaging>
-    <name>
-        common-response
-    </name>
+
+    <artifactId>common-response</artifactId>
 
     <dependencies>
+
         <dependency>
             <groupId>com.cinema</groupId>
             <artifactId>common-core</artifactId>
             <version>${project.version}</version>
         </dependency>
+
         <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-web</artifactId>
+            <groupId>com.cinema</groupId>
+            <artifactId>common-exception</artifactId>
+            <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId> org.springframework.data </groupId>
-            <artifactId> spring-data-commons </artifactId>
-        </dependency>
+
     </dependencies>
+
 </project>
