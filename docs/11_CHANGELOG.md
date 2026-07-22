@@ -4,7 +4,7 @@ Version 0.1
 
 Current Progress
 
-R18
+R19
 
 ---
 
@@ -151,6 +151,7 @@ Kafka Publisher
 Outbox Infrastructure
 
 ---
+
 ## R15
 
 common-search
@@ -204,6 +205,7 @@ JSON test utilities
 Reusable integration test base classes
 
 ---
+
 ## R18
 
 common-tracing
@@ -225,10 +227,35 @@ Error recording
 Tracing auto-configuration
 
 ---
+
+## R19
+
+common-storage
+
+Object storage abstraction
+
+MinIO client integration
+
+File upload and download
+
+Object metadata
+
+Object existence checking
+
+Object deletion
+
+Presigned download URLs
+
+Automatic bucket initialization
+
+Storage auto-configuration
+
+---
+
 # Next Release
 
-Version 0.2
+Version 0.3
 
 Target
 
-R19
+R20-R22 Infrastructure Services
