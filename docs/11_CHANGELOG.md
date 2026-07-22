@@ -4,7 +4,7 @@ Version 0.1
 
 Current Progress
 
-R20
+R21
 
 ---
 
@@ -251,6 +251,7 @@ Automatic bucket initialization
 Storage auto-configuration
 
 ---
+
 ## R20
 
 Config Server
@@ -272,10 +273,35 @@ Config Server integration tests
 Centralized configuration foundation
 
 ---
+
+## R21 — In Progress
+
+Discovery Service
+
+Spring Cloud Netflix Eureka Server
+
+Central service registry
+
+Eureka Dashboard
+
+Config Server integration
+
+Actuator health endpoints
+
+Tracing integration
+
+Native and Docker-ready configuration
+
+Discovery Server context tests
+
+Eureka Dashboard endpoint tests
+
+---
+
 # Next Release
 
 Version 0.3
 
 Target
 
-R21-R22 Infrastructure Services
+R22 Infrastructure Services
