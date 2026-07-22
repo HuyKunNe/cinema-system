@@ -4,7 +4,7 @@ Version 0.1
 
 Current Progress
 
-R16
+R17
 
 ---
 
@@ -185,10 +185,30 @@ OpenAPI auto-configuration
 
 ---
 
+## R17
+
+common-test
+
+JUnit 5 shared configuration
+
+Unit and integration test annotations
+
+MySQL Testcontainers support
+
+Kafka Testcontainers support
+
+Redis Testcontainers support
+
+JSON test utilities
+
+Reusable integration test base classes
+
+---
+
 # Next Release
 
 Version 0.2
 
 Target
 
-R17-R19
+R18-R19

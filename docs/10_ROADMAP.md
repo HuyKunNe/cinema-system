@@ -1,6 +1,6 @@
 # Project Roadmap
 
-Version: R16
+Version: R17
 
 ---
 
@@ -40,9 +40,9 @@ Version: R16
 
 ✅ R15 common-search
 
-🚧 R16 common-openapi
+✅ R16 common-openapi
 
-⏳ R17 common-test
+✅ R17 common-test
 
 ⏳ R18 common-tracing
 
