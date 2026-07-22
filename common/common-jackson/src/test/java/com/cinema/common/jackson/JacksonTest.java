@@ -1,36 +1,22 @@
 package com.cinema.common.jackson;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import org.junit.jupiter.api.Test;
 
-import java.time.OffsetDateTime;
-import java.util.UUID;
+import com.cinema.common.jackson.config.JacksonConfiguration;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-
-class JacksonTest {
+class JacksonConfigurationTest {
 
     @Test
-    void shouldSerializeUuidAndDateTime()
-            throws Exception {
+    void shouldCreateObjectMapper() {
 
-        ObjectMapper mapper = new ObjectMapper();
 
-        mapper.registerModule(new JavaTimeModule());
+        JacksonConfiguration configuration = new JacksonConfiguration();
 
-        String json = mapper.writeValueAsString(new TestDto(UUID.randomUUID(), OffsetDateTime.now()));
+        ObjectMapper mapper = configuration.objectMapper();
 
-        assertNotNull(json);
-
-        System.out.println(json);
-
-    }
-
-    record TestDto(
-            UUID id,
-            OffsetDateTime createdAt) {
+        assertNotNull(mapper);
 
     }
 
