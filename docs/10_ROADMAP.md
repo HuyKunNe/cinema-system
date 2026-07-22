@@ -1,6 +1,6 @@
 # Project Roadmap
 
-Version: R21
+Version: R22
 
 ---
 
@@ -56,7 +56,7 @@ Version: R21
 
 ✅ R21 Discovery Server
 
-⏳ R22 API Gateway
+✅ R22 API Gateway
 
 ---
 
