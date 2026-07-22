@@ -66,6 +66,7 @@
         <jakarta.el.version>4.0.2</jakarta.el.version>
         <jjwt.version>0.12.6</jjwt.version>
         <redisson.version>3.35.0</redisson.version>
+        <spring-kafka.version>3.3.7</spring-kafka.version>
         <!-- ================= -->
         <!-- Maven Plugins -->
         <!-- ================= -->

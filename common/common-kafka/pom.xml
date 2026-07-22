@@ -25,4 +25,40 @@
     <name>
         common-kafka
     </name>
+
+    <dependencies>
+
+
+        <!-- Spring Kafka -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
+
+        <!-- Jackson -->
+        <dependency>
+            <groupId>com.cinema</groupId>
+            <artifactId>common-jackson</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+
+        <!-- Core -->
+        <dependency>
+            <groupId>com.cinema</groupId>
+            <artifactId>common-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+
+        <!-- Exception -->
+        <dependency>
+            <groupId>com.cinema</groupId>
+            <artifactId>common-exception</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+
+    </dependencies>
 </project>
