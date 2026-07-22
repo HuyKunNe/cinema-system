@@ -64,6 +64,7 @@
         <testcontainers.version>1.21.3</testcontainers.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <jakarta.el.version>4.0.2</jakarta.el.version>
+        <jjwt.version>0.12.6</jjwt.version>
         <!-- ================= -->
         <!-- Maven Plugins -->
         <!-- ================= -->
