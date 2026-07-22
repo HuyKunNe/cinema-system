@@ -4,34 +4,40 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 
-import com.cinema.common.logging.annotation.LogExecutionTime;
-
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Aspect
-@Slf4j
 public class LoggingAspect {
 
-    @Around("@annotation(logExecutionTime)")
-    public Object logExecutionTime(
-            ProceedingJoinPoint joinPoint,
-            LogExecutionTime logExecutionTime)
+    private static final Logger LOGGER = LoggerFactory.getLogger(LoggingAspect.class);
+
+    @Around("execution(* com.cinema..service..*(..))")
+    public Object logExecution(
+            ProceedingJoinPoint joinPoint)
             throws Throwable {
 
         long start = System.currentTimeMillis();
 
         try {
 
-            return joinPoint.proceed();
+            Object result = joinPoint.proceed();
 
-        } finally {
-
-            long executionTime = System.currentTimeMillis() - start;
-
-            log.info(
+            LOGGER.info(
                     "{} executed in {} ms",
-                    joinPoint.getSignature().toShortString(),
-                    executionTime);
+                    joinPoint.getSignature(),
+                    System.currentTimeMillis() - start);
+
+            return result;
+
+        } catch (Throwable ex) {
+
+            LOGGER.error(
+                    "Exception in {}",
+                    joinPoint.getSignature(),
+                    ex);
+
+            throw ex;
 
         }
 

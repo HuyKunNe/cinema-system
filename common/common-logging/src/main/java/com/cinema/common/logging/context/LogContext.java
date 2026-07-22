@@ -1,18 +1,15 @@
-package com.cinema.common.logging.mdc;
+package com.cinema.common.logging.context;
 
 import org.slf4j.MDC;
 
-public final class MdcUtils {
+public final class LogContext {
 
-    private MdcUtils() {
+    private LogContext() {
+        throw new UnsupportedOperationException("Utility class");
     }
 
     public static void put(String key, String value) {
-
-        if (value != null && !value.isBlank()) {
-            MDC.put(key, value);
-        }
-
+        MDC.put(key, value);
     }
 
     public static String get(String key) {

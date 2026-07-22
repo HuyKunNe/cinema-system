@@ -8,11 +8,5 @@ import com.cinema.common.logging.aspect.LoggingAspect;
 
 @Configuration
 @EnableAspectJAutoProxy
-public class LoggingAutoConfiguration {
-
-    @Bean
-    public LoggingAspect loggingAspect() {
-        return new LoggingAspect();
-    }
-
+public class LoggingConfiguration {
 }
