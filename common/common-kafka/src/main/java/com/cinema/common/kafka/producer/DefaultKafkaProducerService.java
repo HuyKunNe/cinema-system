@@ -1,10 +1,12 @@
 package com.cinema.common.kafka.producer;
 
-import com.cinema.common.kafka.event.BaseEvent;
-import com.cinema.common.kafka.serializer.KafkaEventSerializer;
+import java.util.concurrent.CompletableFuture;
 
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+
+import com.cinema.common.kafka.event.BaseEvent;
+import com.cinema.common.kafka.serializer.KafkaEventSerializer;
 
 @Service
 public class DefaultKafkaProducerService
@@ -19,20 +21,22 @@ public class DefaultKafkaProducerService
             KafkaEventSerializer serializer) {
 
         this.kafkaTemplate = kafkaTemplate;
-
         this.serializer = serializer;
 
     }
 
     @Override
-    public void send(
+    public CompletableFuture<Void> send(
             String topic,
             BaseEvent event) {
 
-        kafkaTemplate.send(
+        return kafkaTemplate.send(
                 topic,
                 event.eventId().toString(),
-                serializer.serialize(event));
+                serializer.serialize(event)
+
+        ).thenApply(
+                result -> null);
 
     }
 
