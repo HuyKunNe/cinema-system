@@ -1,0 +1,48 @@
+cinema:
+    platform:
+        name: Cinema Booking System
+
+spring:
+    jackson:
+        serialization:
+            write-dates-as-timestamps: false
+
+    jpa:
+        open-in-view: false
+
+    kafka:
+        producer:
+            properties:
+                spring.json.add.type.headers: false
+
+        consumer:
+            auto-offset-reset: earliest
+
+management:
+    endpoints:
+        web:
+            exposure:
+                include:
+                    - health
+                    - info
+                    - metrics
+                    - prometheus
+
+    endpoint:
+        health:
+            show-details: when-authorized
+
+    tracing:
+        sampling:
+            probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+
+        export:
+            otlp:
+                enabled: ${OTEL_EXPORTER_ENABLED:false}
+
+logging:
+    pattern:
+        correlation: >-
+            [${spring.application.name:cinema-service},
+            %X{traceId:-},
+            %X{spanId:-}]

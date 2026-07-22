@@ -1,0 +1,9 @@
+server:
+    port: ${MOVIE_SERVICE_PORT:8081}
+
+cinema:
+    storage:
+        enabled: ${MOVIE_STORAGE_ENABLED:false}
+
+    search:
+        enabled: ${MOVIE_SEARCH_ENABLED:false}

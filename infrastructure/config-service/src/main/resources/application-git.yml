@@ -1,0 +1,25 @@
+spring:
+    cloud:
+        config:
+            server:
+                git:
+                    uri: ${CONFIG_GIT_URI}
+                    default-label: ${CONFIG_GIT_DEFAULT_LABEL:main}
+                    clone-on-start: true
+                    force-pull: true
+                    delete-untracked-branches: true
+                    timeout: ${CONFIG_GIT_TIMEOUT:10}
+                    refresh-rate: ${CONFIG_GIT_REFRESH_RATE:30}
+                    basedir: ${CONFIG_GIT_BASEDIR:${java.io.tmpdir}/cinema-config-repo}
+
+                    username: ${CONFIG_GIT_USERNAME:}
+                    password: ${CONFIG_GIT_PASSWORD:}
+
+                    search-paths:
+                        - "{application}"
+                        - shared
+
+management:
+    tracing:
+        sampling:
+            probability: ${TRACING_SAMPLING_PROBABILITY:0.1}

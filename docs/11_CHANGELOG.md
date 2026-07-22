@@ -4,7 +4,7 @@ Version 0.1
 
 Current Progress
 
-R19
+R20
 
 ---
 
@@ -251,11 +251,31 @@ Automatic bucket initialization
 Storage auto-configuration
 
 ---
+## R20
 
+Config Server
+
+Spring Cloud Config Server
+
+Native configuration repository
+
+Git configuration repository support
+
+Shared service configuration
+
+Environment-specific configuration
+
+Actuator health endpoints
+
+Config Server integration tests
+
+Centralized configuration foundation
+
+---
 # Next Release
 
 Version 0.3
 
 Target
 
-R20-R22 Infrastructure Services
+R21-R22 Infrastructure Services

@@ -1,0 +1,6 @@
+server:
+    port: ${BOOKING_SERVICE_PORT:8084}
+
+cinema:
+    booking:
+        reservation-expiration: 10m

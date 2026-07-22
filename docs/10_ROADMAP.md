@@ -1,6 +1,6 @@
 # Project Roadmap
 
-Version: R19
+Version: R20
 
 ---
 
@@ -52,7 +52,7 @@ Version: R19
 
 # Infrastructure Services
 
-⏳ R20 Config Server
+✅ R20 Config Server
 
 ⏳ R21 Discovery Server
 
