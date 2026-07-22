@@ -1,6 +1,6 @@
 # Project Roadmap
 
-Version: R17
+Version: R18
 
 ---
 
@@ -44,7 +44,7 @@ Version: R17
 
 ✅ R17 common-test
 
-⏳ R18 common-tracing
+✅ R18 common-tracing
 
 ⏳ R19 common-storage
 

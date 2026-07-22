@@ -4,7 +4,7 @@ Version 0.1
 
 Current Progress
 
-R17
+R18
 
 ---
 
@@ -204,11 +204,31 @@ JSON test utilities
 Reusable integration test base classes
 
 ---
+## R18
 
+common-tracing
+
+Micrometer Tracing abstraction
+
+OpenTelemetry bridge
+
+OTLP trace exporter support
+
+Current trace and span context access
+
+Reusable custom span service
+
+Span tags and events
+
+Error recording
+
+Tracing auto-configuration
+
+---
 # Next Release
 
 Version 0.2
 
 Target
 
-R18-R19
+R19
