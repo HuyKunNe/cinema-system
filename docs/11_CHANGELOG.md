@@ -4,7 +4,7 @@ Version 0.1
 
 Current Progress
 
-R14
+R16
 
 ---
 
@@ -151,6 +151,39 @@ Kafka Publisher
 Outbox Infrastructure
 
 ---
+## R15
+
+common-search
+
+Search abstraction
+
+Elasticsearch client
+
+Full-text search
+
+Pagination and sorting
+
+Document indexing
+
+Search auto-configuration
+
+---
+
+## R16
+
+common-openapi
+
+OpenAPI metadata
+
+Swagger UI integration
+
+JWT bearer security scheme
+
+Service-specific properties
+
+OpenAPI auto-configuration
+
+---
 
 # Next Release
 
@@ -158,4 +191,4 @@ Version 0.2
 
 Target
 
-R15-R19
+R17-R19

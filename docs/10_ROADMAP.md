@@ -1,6 +1,6 @@
 # Project Roadmap
 
-Version: R14
+Version: R16
 
 ---
 
@@ -38,49 +38,41 @@ Version: R14
 
 ✅ R14 common-outbox
 
----
+✅ R15 common-search
 
-# Remaining
+🚧 R16 common-openapi
 
-⏳ R15 common-search
+⏳ R17 common-test
 
-⏳ R16 common-storage
+⏳ R18 common-tracing
 
-⏳ R17 common-tracing
-
-⏳ R18 common-openapi
-
-⏳ R19 common-test
+⏳ R19 common-storage
 
 ---
 
 # Infrastructure Services
 
-⏳ R20
+⏳ R20 Config Server
 
-Config Server
+⏳ R21 Discovery Server
 
-Discovery Server
-
-Gateway
+⏳ R22 API Gateway
 
 ---
 
 # Business Services
 
-⏳ R21
+⏳ R23 Movie Service
 
-Booking Service
+⏳ R24 User Service
 
-Inventory Service
+⏳ R25 Inventory Service
 
-Payment Service
+⏳ R26 Booking Service
 
-Movie Service
+⏳ R27 Payment Service
 
-Notification Service
-
-User Service
+⏳ R28 Notification Service
 
 ---
 
@@ -103,4 +95,3 @@ OpenTelemetry
 Performance Test
 
 Chaos Testing
-
