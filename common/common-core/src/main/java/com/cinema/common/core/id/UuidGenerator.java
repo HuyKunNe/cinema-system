@@ -10,7 +10,7 @@ public final class UuidGenerator {
     }
 
     public static UUID next() {
-        return UuidCreator.getTimeOrdered();
+        return UuidCreator.getTimeOrderedEpoch();
     }
 
 }

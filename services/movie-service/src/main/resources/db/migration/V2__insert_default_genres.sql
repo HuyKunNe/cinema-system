@@ -1,0 +1,2 @@
+-- Reserved for initial genre seed data.
+-- Genre data will be created through the API.
