@@ -1,12 +1,13 @@
 # Cinema Booking System
 
-Version: 0.1 (R14)
+Version: 0.2 (R23 Stabilization)
 
 ---
 
 # Project Overview
 
-Cinema Booking System là hệ thống đặt vé xem phim theo kiến trúc Microservices hướng Enterprise.
+Cinema Booking System là hệ thống đặt vé xem phim theo kiến trúc
+Microservices hướng Enterprise.
 
 Mục tiêu:
 
@@ -18,7 +19,7 @@ Mục tiêu:
 - DDD Friendly
 - Easy Horizontal Scaling
 
-Hệ thống được thiết kế để phục vụ các chuỗi rạp như:
+Hệ thống được thiết kế để mô phỏng nền tảng của các chuỗi rạp như:
 
 - CGV
 - Galaxy Cinema
@@ -29,41 +30,95 @@ Hệ thống được thiết kế để phục vụ các chuỗi rạp như:
 
 # Current Progress
 
-Completed
+## Completed
 
-✅ R1 Parent Project
+- ✅ R1 — Parent Project
+- ✅ R2 — common-core
+- ✅ R3 — common-jpa
+- ✅ R4 — common-exception
+- ✅ R5 — common-response
+- ✅ R6 — common-api
+- ✅ R7 — common-validation
+- ✅ R8 — common-jackson
+- ✅ R9 — common-logging
+- ✅ R10 — common-mapper
+- ✅ R11 — common-security
+- ✅ R12 — common-lock
+- ✅ R13 — common-kafka
+- ✅ R14 — common-outbox
+- ✅ R15 — common-search
+- ✅ R16 — common-openapi
+- ✅ R17 — common-test
+- ✅ R18 — common-tracing
+- ✅ R19 — common-storage
+- ✅ R20 — Config Server
+- ✅ R21 — Discovery Server
+- ✅ R22 — API Gateway
 
-✅ R2 common-core
+## In Progress
 
-✅ R3 common-jpa
+- 🚧 R23 — Movie Service Stabilization
 
-✅ R4 common-exception
+Movie Service functional implementation has been completed and includes:
 
-✅ R5 common-response
+- Movie CRUD
+- Genre CRUD
+- Movie–Genre relationship
+- Flyway database migrations
+- UUID v7 identifiers
+- JPA auditing
+- Bean Validation
+- Global exception handling
+- Standard `ApiResponse`
+- MapStruct mapping
+- Config Server integration
+- Eureka registration
+- Actuator
+- OpenAPI and Swagger
 
-✅ R6 common-api
+Remaining stabilization work:
 
-✅ R7 common-validation
+- Remove hard-coded database credentials
+- Complete unit tests
+- Complete controller tests
+- Complete mapper and utility tests
+- Add MySQL Testcontainers integration tests
+- Run the full Maven verification
+- Pass security scanning
+- Synchronize project documentation
 
-✅ R8 common-jackson
+## Not Started
 
-✅ R9 common-logging
-
-✅ R10 common-mapper
-
-✅ R11 common-security
-
-✅ R12 common-lock
-
-✅ R13 common-kafka
-
-✅ R14 common-outbox
+- R24 — User Service
+- R25 — Inventory Service
+- R26 — Booking Service
+- R27 — Payment Service
+- R28 — Notification Service
 
 ---
 
-Current Target
+# Current Target
 
-R15 common-search
+Current milestone:
+
+> **R23 — Movie Service Stabilization**
+
+R23 is complete only when:
+
+- No hard-coded credential remains
+- Unit tests pass
+- Controller tests pass
+- Integration tests pass
+- Flyway migrations pass
+- `mvn clean verify` passes
+- Security scanning passes
+- Documentation is synchronized
+
+After R23 has been verified, continue with:
+
+> **R24 — User Service**
+
+Do not start R24 before R23 stabilization is complete.
 
 ---
 
@@ -72,48 +127,272 @@ R15 common-search
 The project focuses on:
 
 - Clean Architecture
-- Domain Driven Design
-- Event Driven Architecture
-- Saga Pattern (Choreography)
+- Domain-Driven Design
+- Event-Driven Architecture
+- Saga Pattern using Choreography
 - Transactional Outbox
 - Idempotent Consumer
 - Distributed Lock
+- Database per Service
+- Eventual Consistency
 - Observability
-- Production Ready Deployment
+- Production-Ready Deployment
 
 ---
 
 # Architecture Style
 
-Microservices
+```mermaid
+flowchart TD
+    Client[Client] --> Gateway[API Gateway]
 
-↓
+    Gateway --> Movie[Movie Service]
+    Gateway --> User[User Service]
+    Gateway --> Booking[Booking Service]
 
-Spring Cloud
+    Booking --> Kafka[Kafka]
+    Kafka --> Inventory[Inventory Service]
+    Kafka --> Payment[Payment Service]
+    Kafka --> Notification[Notification Service]
 
-↓
+    Inventory --> Kafka
+    Payment --> Kafka
+```
 
-Kafka Event Driven
+The system follows:
 
-↓
-
-Saga Pattern
-
-↓
-
-MySQL
-
-↓
-
-Redis
-
-↓
-
-Docker
+- Microservices Architecture
+- Spring Cloud infrastructure
+- Event-Driven Architecture
+- Kafka asynchronous communication
+- Saga Pattern using Choreography
+- Transactional Outbox Pattern
+- Idempotent Consumer Pattern
+- Database per Service
+- Eventual consistency between services
 
 ---
 
-# Principles
+# Service Database Ownership
+
+Every microservice exclusively owns its database and domain data.
+
+A service must not:
+
+- Connect to another service's database
+- Query another service's tables
+- Update another service's tables
+- Reuse another service's repository
+- Create physical foreign keys across service databases
+
+Cross-service coordination must use:
+
+- Synchronous APIs when an immediate response is required
+- Kafka events for asynchronous workflows
+- Transactional Outbox for reliable event publication
+- Idempotent Consumer for safe event processing
+
+Ownership summary:
+
+| Service | Owned data |
+|---|---|
+| Movie Service | Movies, genres and movie metadata |
+| User Service | Users, roles, permissions and refresh tokens |
+| Inventory Service | Show-seat availability and reservation state |
+| Booking Service | Booking lifecycle and requested seat snapshots |
+| Payment Service | Payments and payment transactions |
+| Notification Service | Notification and delivery history |
+
+---
+
+# Seat Inventory Ownership
+
+The `show_seats` table belongs exclusively to Inventory Service.
+
+Inventory Service is responsible for:
+
+- Creating show-seat inventory
+- Reading current seat availability
+- Reserving seats
+- Releasing seats
+- Marking seats as sold
+- Managing Redis seat locks
+- Publishing seat reservation result events
+
+Booking Service must not:
+
+- Query `show_seats`
+- Update `show_seats`
+- Use a `ShowSeatRepository`
+- Connect to the Inventory Service database
+- Acquire Redis locks for seats
+- Create a cross-database foreign key to `show_seats`
+
+Booking Service may store a seat snapshot containing fields such as:
+
+- `inventorySeatId`
+- `showtimeId`
+- `seatNumber`
+- `seatType`
+- `price`
+
+`inventorySeatId` is an external reference only. It is not a physical
+foreign key to the Inventory Service database.
+
+---
+
+# Seat Reservation Flow
+
+The previous design in which Booking Service directly locked and updated
+`show_seats` is no longer valid.
+
+The standardized flow is:
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Booking as Booking Service
+    participant Kafka
+    participant Inventory as Inventory Service
+
+    Client->>Booking: Create booking
+    Booking->>Booking: Save PENDING booking
+    Booking->>Booking: Save seat snapshot
+    Booking->>Booking: Save outbox event
+    Booking-->>Client: Booking accepted
+
+    Booking->>Kafka: seat-reservation-requested
+    Kafka->>Inventory: Consume request
+
+    Inventory->>Inventory: Check idempotency
+    Inventory->>Inventory: Acquire Redis lock
+    Inventory->>Inventory: Validate show_seats
+
+    alt Seats available
+        Inventory->>Inventory: Mark seats RESERVED
+        Inventory->>Kafka: seat-reserved
+        Kafka->>Booking: Consume success
+        Booking->>Booking: PENDING to RESERVED
+        Booking->>Kafka: payment-requested
+    else Seats unavailable
+        Inventory->>Kafka: seat-reservation-rejected
+        Kafka->>Booking: Consume rejection
+        Booking->>Booking: PENDING to REJECTED
+    end
+```
+
+## Booking Service Local Transaction
+
+Booking Service performs only the following operations when creating a
+booking:
+
+1. Create a booking with status `PENDING`.
+2. Store the requested seat snapshot.
+3. Store a `SEAT_RESERVATION_REQUESTED` outbox event.
+4. Commit the local database transaction.
+
+Booking Service then publishes:
+
+```text
+seat-reservation-requested
+```
+
+## Inventory Service Local Transaction
+
+Inventory Service processes the reservation request:
+
+1. Check event idempotency using `eventId`.
+2. Acquire Redis distributed locks for the requested seats.
+3. Query Inventory-owned `show_seats`.
+4. Verify all requested seats are `AVAILABLE`.
+5. Change available seats to `RESERVED`.
+6. Store the result in the Inventory outbox table.
+7. Commit the local database transaction.
+8. Release the Redis locks.
+
+Inventory Service publishes one of:
+
+```text
+seat-reserved
+seat-reservation-rejected
+```
+
+## Booking Service Result Handling
+
+When Booking Service receives `seat-reserved`:
+
+```text
+PENDING → RESERVED
+```
+
+Booking Service then creates:
+
+```text
+payment-requested
+```
+
+When Booking Service receives `seat-reservation-rejected`:
+
+```text
+PENDING → REJECTED
+```
+
+No payment request is created.
+
+## Seat Release
+
+When a booking expires, is cancelled, or its payment fails:
+
+```text
+Booking Service
+    ↓
+seat-release-requested
+    ↓
+Inventory Service
+    ↓
+show_seats: RESERVED → AVAILABLE
+    ↓
+seat-released
+```
+
+Inventory Service remains the only service allowed to update
+`show_seats`.
+
+---
+
+# Security and Configuration Rules
+
+Credentials must not be committed to Git.
+
+Database credentials must use environment variables:
+
+```yaml
+spring:
+  datasource:
+    username: ${MOVIE_DB_USERNAME}
+    password: ${MOVIE_DB_PASSWORD}
+```
+
+Rules:
+
+- Do not hard-code passwords in YAML or properties files.
+- Do not commit real `.env` files.
+- Do not provide default values for passwords.
+- Use Testcontainers-generated credentials in integration tests.
+- Keep `.env.example` limited to placeholder values.
+- Rotate any credential previously committed to Git history.
+
+Example placeholders:
+
+```dotenv
+MYSQL_ROOT_PASSWORD=change-me
+MOVIE_DB_USERNAME=cinema_movie
+MOVIE_DB_PASSWORD=change-me
+```
+
+---
+
+# Architecture Principles
 
 The project follows:
 
@@ -121,58 +400,131 @@ The project follows:
 - DRY
 - KISS
 - Clean Code
-- Hexagonal Friendly
-- CQRS Ready
-- Event Driven
+- Domain-Driven Design
+- Hexagonal-Friendly Design
+- Event-Driven Architecture
+- Database per Service
+- Loose Coupling
+- High Cohesion
+- Eventual Consistency
+- Idempotent Processing
+
+---
+
+# Locked Technical Decisions
+
+The following decisions are fixed unless the user explicitly requests a
+change:
+
+- Java 21
+- Spring Boot 3.5.4
+- Maven Multi Module
+- MySQL 8
+- Flyway
+- Redis and Redisson
+- Apache Kafka
+- UUID Version 7
+- Saga Pattern using Choreography
+- Transactional Outbox Pattern
+- Idempotent Consumer Pattern
+- Database per Service
+- MapStruct
+- Jackson ISO-8601
+- Standard `ApiResponse`
+- `BusinessException` hierarchy
+- No Lombok in common modules
+- JUnit 5
+- Testcontainers
+- Docker Compose
+
+Do not extend or replace these technologies without an explicit request.
 
 ---
 
 # Project Structure
 
-common/
-
-infrastructure/
-
-services/
-
-docs/
+```text
+cinema-system
+├── common
+│   ├── common-api
+│   ├── common-core
+│   ├── common-exception
+│   ├── common-jackson
+│   ├── common-jpa
+│   ├── common-kafka
+│   ├── common-lock
+│   ├── common-logging
+│   ├── common-mapper
+│   ├── common-openapi
+│   ├── common-outbox
+│   ├── common-response
+│   ├── common-search
+│   ├── common-security
+│   ├── common-storage
+│   ├── common-test
+│   ├── common-tracing
+│   └── common-validation
+├── infrastructure
+│   ├── config-service
+│   ├── discovery-service
+│   └── gateway-service
+├── services
+│   ├── movie-service
+│   ├── user-service
+│   ├── inventory-service
+│   ├── booking-service
+│   ├── payment-service
+│   └── notification-service
+├── docs
+├── docker
+└── pom.xml
+```
 
 ---
 
 # Development Strategy
 
-The project is developed incrementally.
+The project is developed incrementally through numbered rounds.
 
-Progress is divided into:
-
-R1
-
-↓
-
-R2
-
-↓
-
-...
-
-↓
-
-R21
+```text
+R1 → R2 → ... → R22 → R23 → R24 → ...
+```
 
 Each round must pass:
 
-- Unit Test
+- Unit tests
+- Controller tests where applicable
+- Integration tests where applicable
+- Flyway validation
+- Maven build
+- Security checks
+- Documentation synchronization
 
-- Maven Build
-
-- Integration
-
-before moving to the next round.
+A round must not be marked complete solely because its functional
+implementation has been merged.
 
 ---
 
 # Documentation
 
-The docs directory is the single source of truth.
+The `docs` directory is the single source of truth.
 
-Chat history should never be treated as project documentation.
+Chat history must never be treated as project documentation.
+
+When implementation and documentation conflict:
+
+1. Inspect the current implementation.
+2. Inspect the relevant architecture decision.
+3. Correct the outdated documentation or implementation.
+4. Keep database ownership boundaries intact.
+5. Record material architecture changes in the changelog.
+
+Relevant documents:
+
+- `00_PROJECT_CONTEXT.md`
+- `01_AI_CONTEXT.md`
+- `02_ARCHITECTURE.md`
+- `06_DATABASE_DESIGN.md`
+- `07_EVENT_CATALOG.md`
+- `10_ROADMAP.md`
+- `11_CHANGELOG.md`

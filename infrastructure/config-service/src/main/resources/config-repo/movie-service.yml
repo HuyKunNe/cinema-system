@@ -5,9 +5,8 @@ spring:
     datasource:
         url: >-
             ${MOVIE_DB_URL:jdbc:mysql://localhost:3306/cinema_movie_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-
-        username: ${MOVIE_DB_USERNAME:root}
-        password: ${MOVIE_DB_PASSWORD:huykun17}
+            username: ${MOVIE_DB_USERNAME:root}
+            password: ${MOVIE_DB_PASSWORD}
 
         hikari:
             pool-name: MovieServiceHikariPool
