@@ -43,7 +43,7 @@ public class MovieController {
 
     @GetMapping("/{id}")
     public ResponseEntity<MovieResponse> findById(
-            @PathVariable UUID id) {
+            @PathVariable("id") UUID id) {
         return ResponseEntity.ok(movieService.findById(id));
     }
 
@@ -54,7 +54,7 @@ public class MovieController {
 
     @PutMapping("/{id}")
     public ResponseEntity<MovieResponse> update(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @Valid @RequestBody UpdateMovieRequest request) {
         return ResponseEntity.ok(
                 movieService.update(id, request));
@@ -62,7 +62,7 @@ public class MovieController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
-            @PathVariable UUID id) {
+            @PathVariable("id") UUID id) {
         movieService.delete(id);
 
         return ResponseEntity.noContent().build();

@@ -37,7 +37,7 @@ public class GenreServiceImpl implements GenreService {
         String normalizedName = request.name().trim();
 
         if (genreRepository.existsByNameIgnoreCase(normalizedName)) {
-            throw new ConflictException(MovieErrorCode.GENRE_NOT_FOUND);
+            throw new ConflictException(MovieErrorCode.GENRE_ALREADY_EXISTS);
         }
 
         Genre genre = genreMapper.toEntity(request);

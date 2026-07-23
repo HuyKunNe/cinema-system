@@ -119,7 +119,7 @@ public class MovieServiceImpl implements MovieService {
         missingIds.removeAll(foundIds);
 
         if (!missingIds.isEmpty()) {
-            throw new NotFoundException(MovieErrorCode.MOVIE_NOT_FOUND);
+            throw new NotFoundException(MovieErrorCode.GENRE_NOT_FOUND);
         }
 
         return new HashSet<>(genres);
