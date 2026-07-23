@@ -1,0 +1,64 @@
+server:
+    port: 8083
+
+spring:
+    application:
+        name: movie-service
+
+    config:
+        import: "optional:configserver:http://localhost:8888"
+
+    datasource:
+        url: jdbc:mysql://localhost:3306/cinema_movie_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+        username: root
+        password: root
+        driver-class-name: com.mysql.cj.jdbc.Driver
+
+    jpa:
+        open-in-view: false
+        hibernate:
+            ddl-auto: validate
+        properties:
+            hibernate:
+                format_sql: true
+                jdbc:
+                    time_zone: UTC
+
+    flyway:
+        enabled: true
+        locations: classpath:db/migration
+        validate-on-migrate: true
+
+springdoc:
+    api-docs:
+        enabled: true
+        path: /v3/api-docs
+
+    swagger-ui:
+        enabled: true
+        path: /swagger-ui.html
+        disable-swagger-default-url: true
+
+eureka:
+    client:
+        service-url:
+            defaultZone: http://localhost:8761/eureka/
+
+    instance:
+        prefer-ip-address: true
+        instance-id: ${spring.application.name}:${server.port}
+
+management:
+    endpoints:
+        web:
+            exposure:
+                include: health,info
+
+    endpoint:
+        health:
+            show-details: always
+
+logging:
+    level:
+        com.netflix.discovery: INFO
+        org.hibernate.SQL: DEBUG
