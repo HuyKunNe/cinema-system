@@ -1,8 +1,8 @@
 # Changelog
 
-Version: 0.3
-Current baseline: R23 stabilization
-Last reviewed: 2026-07-24
+**Version:** 0.4
+**Current baseline:** R24 Inventory Service implementation
+**Last reviewed:** 2026-07-24
 
 ---
 
@@ -25,53 +25,177 @@ the roadmap.
 | Status | Meaning |
 |---|---|
 | Completed | The round was accepted as the repository baseline |
+| Implementation | The round is the active implementation target |
 | Stabilization | Main implementation exists, but the round has open exit criteria |
 | Documentation | Architecture or operating rules were aligned without claiming new runtime behavior |
 
 Current status:
 
 ```text
-R1-R22   Completed
-R23      Stabilization
-R24-R28  Planned; not part of this changelog
+R1-R23   Completed
+R24      Inventory Service implementation
+R25-R28  Planned
 ```
 
 ---
 
-# Unreleased Documentation Alignment
+# Unreleased
 
 ## 2026-07-24
 
+### Added
+
+- Started R24 Inventory Service as the active business-service round.
+- Defined Inventory Service ownership of cinemas, rooms, physical seats,
+  showtimes, `show_seats`, seat availability, and reservation state.
+- Defined the initial Inventory domain model:
+
+  ```text
+  Cinema
+      ↓
+  Room
+      ↓
+  Seat
+      ↓
+  Showtime
+      ↓
+  ShowSeat
+  ```
+
+- Defined fixed physical Seat data separately from per-showtime ShowSeat data.
+- Defined the initial Inventory status models for Cinema, Room, Seat, Showtime,
+  and ShowSeat.
+- Defined `AVAILABLE`, `HELD`, `BOOKED`, and `UNAVAILABLE` as the initial
+  ShowSeat business states.
+- Defined the initial ShowSeat transition baseline and concurrency requirements.
+- Added R24 Inventory Service scope, business invariants, and exit criteria to
+  `docs/10_ROADMAP.md`.
+
 ### Changed
 
-- Expanded `docs/09_OUTBOX.md` from a short overview into the implementation
-  contract for Transactional Outbox and Idempotent Consumer behavior.
-- Documented the current outbox state flow as
-  `PENDING -> PROCESSING -> SENT | FAILED`.
-- Recorded the current batch size, scheduler delay, retry limit, Kafka
-  acknowledgement boundary, ordering rules, security requirements, observability,
-  failure scenarios, and test matrix.
-- Explicitly documented current outbox gaps instead of representing them as
-  implemented features. These include safe multi-instance claiming, processing
-  leases and recovery, `next_retry_at`, retry backoff, `last_error`, cleanup,
-  manual replay controls, DLT handling, and `common-outbox` tests.
-- Expanded `docs/10_ROADMAP.md` with round status definitions, shared Definition
-  of Done, dependencies, quality gates, R23 exit criteria, and the approved scope
-  for R24-R28.
-- Confirmed that R23 remains in stabilization and that R24 must not be marked as
-  started until the R23 exit criteria are satisfied.
+- Marked R23 Movie Service as completed.
+- Changed the active target from R23 Movie Service stabilization to R24
+  Inventory Service implementation.
+- Moved Inventory Service from R25 to R24.
+- Moved User Service from R24 to R25.
+- Reordered the business-service milestones to:
+
+  ```text
+  R23 Movie Service
+  R24 Inventory Service
+  R25 User Service
+  R26 Booking Service
+  R27 Payment Service
+  R28 Notification Service
+  ```
+
+- Confirmed that physical seat layouts must not be hard-coded in Java source.
+- Confirmed that `showtimes.movie_id` is an external Movie Service UUID
+  reference and must not have a cross-service database foreign key.
+- Confirmed that Inventory Service is the only service allowed to modify
+  `show_seats`.
+- Confirmed that Redis locks are a technical coordination mechanism and that
+  `HELD` is the corresponding temporary business reservation state.
+- Updated `docs/10_ROADMAP.md` to version R24.
+
+### Documentation
+
+- Synchronized the roadmap and changelog with the current implementation
+  sequence.
+- Preserved the database-per-service boundary.
+- Preserved Movie Service ownership of movies and genres.
+- Preserved Inventory Service ownership of cinema, room, seat, showtime, and
+  ShowSeat data.
+- Documented that R24 is started but not completed.
 
 ### Verification
 
-- Documentation changes were checked with `git diff --check`.
-- Maven verification was not required for documentation-only changes.
+- This entry records documentation alignment and the accepted current project
+  status.
+- It does not claim that R24 implementation tests or the R24 root Maven quality
+  gate have passed.
+- R24 completion remains subject to the exit criteria in
+  `docs/10_ROADMAP.md`.
+
+---
+
+# R24 - Inventory Service
+
+**Status:** Implementation
+**Started:** 2026-07-24
+
+### Approved Ownership
+
+Inventory Service owns:
+
+- cinemas;
+- rooms or auditoriums;
+- fixed physical seats;
+- room seat layouts;
+- showtimes;
+- `show_seats`;
+- seat availability and reservation state;
+- Inventory Outbox records;
+- Inventory consumer-processing records where required.
+
+### Approved Initial Scope
+
+- Inventory Service Maven module.
+- Spring Boot application entry point.
+- Inventory database and Flyway migrations.
+- Cinema management.
+- Room management.
+- Fixed seat-layout management.
+- Showtime management.
+- ShowSeat generation.
+- Atomic ShowSeat state transitions.
+- Shared exception and response integration.
+- Bean Validation and business validation.
+- MapStruct mapping.
+- JPA auditing.
+- Config Server and Eureka integration.
+- OpenAPI documentation.
+- Unit and integration tests.
+- Concurrency verification where seat state transitions matter.
+
+### Architecture
+
+- A Cinema contains one or more Rooms.
+- A Room owns a fixed physical seat layout.
+- A Seat is a permanent physical position inside a Room.
+- A Showtime schedules one external Movie Service movie in one Room.
+- A ShowSeat represents one Seat for one Showtime.
+- Creating a Showtime generates one ShowSeat for each active Seat in its Room.
+- Booking Service accesses Inventory only through approved APIs, commands, and
+  events.
+- Booking Service must not read or update the Inventory database directly.
+- Cross-service database foreign keys are prohibited.
+- `showtimes.movie_id` stores only the Movie Service UUID reference.
+
+### Business-State Baseline
+
+```text
+AVAILABLE
+HELD
+BOOKED
+UNAVAILABLE
+```
+
+Redis locks are not represented as a `LOCKED` business state.
+
+### Current State
+
+R24 is the active implementation round. Its implementation and verification
+evidence must be recorded in future changelog updates as each accepted increment
+is completed.
 
 ---
 
 # R23 - Movie Service
 
-Status: Stabilization
-Implemented: 2026-07-23
+**Status:** Completed
+**Implemented:** 2026-07-23
+**Completed:** 2026-07-24
 
 ### Added
 
@@ -85,44 +209,54 @@ Implemented: 2026-07-23
 - MapStruct mappers and Movie Service mapper configuration.
 - Movie-specific error codes.
 - Slug generation utility.
+- Pagination and filtering support.
 - Flyway migration for movie and genre tables.
 - Flyway seed migration for default genres.
 - Config Server configuration for Movie Service.
 - Integration with Eureka, OpenAPI, validation, shared error handling, JPA, and
   the existing common modules.
+- Swagger/OpenAPI documentation and manual endpoint verification.
 
 ### Changed
 
 - Updated shared UUID generation and its tests.
 - Updated JPA auditing and base entity behavior required by Movie Service.
 - Updated logging auto-configuration integration.
-- Extended `GlobalExceptionHandler` for the error handling required by the
-  service.
+- Extended `GlobalExceptionHandler` for Movie Service request and validation
+  errors.
+- Added consistent handling for malformed request bodies and invalid UUID path
+  values.
 - Removed hard-coded active Movie Service database credentials and replaced
   them with environment-based configuration.
 - Aligned documentation so Movie Service owns movie catalog data and Inventory
   Service exclusively owns and updates `show_seats`.
+- Confirmed that Movie Service does not own cinemas, rooms, seats, showtimes, or
+  ShowSeats.
 
-### Known Remaining Work
+### Verified Functional Scope
 
-- Restore and complete Movie Service unit tests.
-- Add controller security and validation tests.
-- Add repository and Flyway integration tests.
-- Verify pagination, filtering, slug uniqueness, duplicate handling, and update
-  behavior.
-- Verify authentication, authorization, and administrative access rules.
-- Run the complete `mvn clean verify` quality gate.
-- Resolve every remaining R23 exit criterion in `docs/10_ROADMAP.md`.
+- Movie and Genre create, update, read, list, and lifecycle behavior.
+- Request validation and business validation.
+- Duplicate and slug-related behavior.
+- Pagination and filtering behavior.
+- Shared API response and error contracts.
+- Flyway schema and default genre initialization.
+- JPA auditing behavior.
+- OpenAPI endpoint visibility and request execution.
 
-The Movie Service feature implementation was merged, but removal of its initial
-test skeletons means R23 is not complete.
+### Outcome
+
+Movie Service is the authoritative owner of movies, genres, movie lifecycle
+state, and movie catalog metadata.
+
+R23 is accepted as completed and R24 Inventory Service is now the active round.
 
 ---
 
 # R22 - API Gateway
 
-Status: Completed
-Implemented: 2026-07-22
+**Status:** Completed
+**Implemented:** 2026-07-22
 
 ### Added
 
@@ -143,8 +277,8 @@ Implemented: 2026-07-22
 
 # R21 - Discovery Service
 
-Status: Completed
-Implemented: 2026-07-22
+**Status:** Completed
+**Implemented:** 2026-07-22
 
 ### Added
 
@@ -161,8 +295,8 @@ Implemented: 2026-07-22
 
 # R20 - Config Server
 
-Status: Completed
-Implemented: 2026-07-22
+**Status:** Completed
+**Implemented:** 2026-07-22
 
 ### Added
 
@@ -178,8 +312,8 @@ Implemented: 2026-07-22
 
 # R19 - common-storage
 
-Status: Completed
-Implemented: 2026-07-22
+**Status:** Completed
+**Implemented:** 2026-07-22
 
 ### Added
 
@@ -196,8 +330,8 @@ Implemented: 2026-07-22
 
 # R18 - common-tracing
 
-Status: Completed
-Implemented: 2026-07-22
+**Status:** Completed
+**Implemented:** 2026-07-22
 
 ### Added
 
@@ -214,8 +348,8 @@ Implemented: 2026-07-22
 
 # R17 - common-test
 
-Status: Completed
-Implemented: 2026-07-22
+**Status:** Completed
+**Implemented:** 2026-07-22
 
 ### Added
 
@@ -231,8 +365,8 @@ Implemented: 2026-07-22
 
 # R16 - common-openapi
 
-Status: Completed
-Implemented: 2026-07-22
+**Status:** Completed
+**Implemented:** 2026-07-22
 
 ### Added
 
@@ -247,8 +381,8 @@ Implemented: 2026-07-22
 
 # R15 - common-search
 
-Status: Completed
-Stabilized: 2026-07-22
+**Status:** Completed
+**Stabilized:** 2026-07-22
 
 ### Added
 
@@ -268,8 +402,8 @@ Stabilized: 2026-07-22
 
 # R14 - common-outbox
 
-Status: Completed baseline
-Stabilized: 2026-07-22
+**Status:** Completed baseline
+**Stabilized:** 2026-07-22
 
 ### Added
 
@@ -299,8 +433,8 @@ claimed as completed here.
 
 # R13 - common-kafka
 
-Status: Completed
-Stabilized: 2026-07-22
+**Status:** Completed
+**Stabilized:** 2026-07-22
 
 ### Added
 
@@ -322,8 +456,8 @@ Stabilized: 2026-07-22
 
 # R12 - common-lock
 
-Status: Completed
-Stabilized: 2026-07-22
+**Status:** Completed
+**Stabilized:** 2026-07-22
 
 ### Added
 
@@ -340,8 +474,8 @@ Stabilized: 2026-07-22
 
 # R11 - common-security
 
-Status: Completed baseline
-Stabilized: 2026-07-22
+**Status:** Completed baseline
+**Stabilized:** 2026-07-22
 
 ### Added
 
@@ -366,8 +500,8 @@ deployment configuration.
 
 # R10 - common-mapper
 
-Status: Completed
-Stabilized: 2026-07-22
+**Status:** Completed
+**Stabilized:** 2026-07-22
 
 ### Added
 
@@ -386,8 +520,8 @@ Stabilized: 2026-07-22
 
 # R9 - common-logging
 
-Status: Completed
-Completed: 2026-07-22
+**Status:** Completed
+**Completed:** 2026-07-22
 
 ### Added
 
@@ -405,8 +539,8 @@ Completed: 2026-07-22
 
 # R8 - common-jackson
 
-Status: Completed
-Stabilized: 2026-07-22
+**Status:** Completed
+**Stabilized:** 2026-07-22
 
 ### Added
 
@@ -428,8 +562,8 @@ Stabilized: 2026-07-22
 
 # R7 - common-validation
 
-Status: Completed
-Stabilized: 2026-07-22
+**Status:** Completed
+**Stabilized:** 2026-07-22
 
 ### Added
 
@@ -447,8 +581,8 @@ Stabilized: 2026-07-22
 
 # R6 - common-api
 
-Status: Completed
-Stabilized: 2026-07-21
+**Status:** Completed
+**Stabilized:** 2026-07-21
 
 ### Added
 
@@ -461,8 +595,8 @@ Stabilized: 2026-07-21
 
 # R5 - common-response
 
-Status: Completed
-Stabilized: 2026-07-21
+**Status:** Completed
+**Stabilized:** 2026-07-21
 
 ### Added
 
@@ -476,8 +610,8 @@ Stabilized: 2026-07-21
 
 # R4 - common-exception
 
-Status: Completed
-Stabilized: 2026-07-21
+**Status:** Completed
+**Stabilized:** 2026-07-21
 
 ### Added
 
@@ -496,8 +630,8 @@ Stabilized: 2026-07-21
 
 # R3 - common-jpa
 
-Status: Completed
-Stabilized: 2026-07-21
+**Status:** Completed
+**Stabilized:** 2026-07-21
 
 ### Added
 
@@ -514,8 +648,8 @@ Stabilized: 2026-07-21
 
 # R2 - common-core
 
-Status: Completed
-Stabilized: 2026-07-21
+**Status:** Completed
+**Stabilized:** 2026-07-21
 
 ### Added
 
@@ -529,8 +663,8 @@ Stabilized: 2026-07-21
 
 # R1 - Parent Project
 
-Status: Completed
-Stabilized: 2026-07-21
+**Status:** Completed
+**Stabilized:** 2026-07-21
 
 ### Added
 
@@ -549,6 +683,35 @@ Stabilized: 2026-07-21
 ---
 
 # Cross-Round Architecture Corrections
+
+## 2026-07-24 - Inventory Round Ordering and Domain Model
+
+### Roadmap
+
+- Accepted R23 Movie Service as completed.
+- Selected R24 Inventory Service as the active round.
+- Moved User Service to R25.
+- Preserved Booking, Payment, and Notification as R26, R27, and R28.
+
+### Inventory Ownership
+
+- Confirmed that Inventory Service owns Cinema, Room, Seat, Showtime, and
+  ShowSeat data.
+- Confirmed that Seat is fixed physical room inventory.
+- Confirmed that ShowSeat is generated per Showtime.
+- Confirmed that Inventory Service exclusively modifies `show_seats`.
+- Confirmed that Booking Service coordinates through service boundaries instead
+  of direct database access.
+
+### Cross-Service References
+
+- Confirmed that Inventory stores Movie IDs as external UUID references.
+- Prohibited cross-service database foreign keys.
+
+### Seat State
+
+- Defined `HELD` as the temporary business reservation state.
+- Kept Redis locking as an implementation concern rather than a domain status.
 
 ## 2026-07-23 - Credentials and Service Ownership
 
