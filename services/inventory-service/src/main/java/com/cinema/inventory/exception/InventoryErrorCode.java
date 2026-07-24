@@ -1,0 +1,110 @@
+package com.cinema.inventory.exception;
+
+import com.cinema.common.exception.code.ErrorCategory;
+import com.cinema.common.exception.code.ErrorCode;
+
+public final class InventoryErrorCode implements ErrorCode {
+
+    public static final InventoryErrorCode CINEMA_NOT_FOUND = new InventoryErrorCode(
+            ErrorCategory.RESOURCE,
+            "INVENTORY_CINEMA_NOT_FOUND",
+            "Cinema not found");
+
+    public static final InventoryErrorCode ROOM_NOT_FOUND = new InventoryErrorCode(
+            ErrorCategory.RESOURCE,
+            "INVENTORY_ROOM_NOT_FOUND",
+            "Room not found");
+
+    public static final InventoryErrorCode SEAT_NOT_FOUND = new InventoryErrorCode(
+            ErrorCategory.RESOURCE,
+            "INVENTORY_SEAT_NOT_FOUND",
+            "Seat not found");
+
+    public static final InventoryErrorCode SHOWTIME_NOT_FOUND = new InventoryErrorCode(
+            ErrorCategory.RESOURCE,
+            "INVENTORY_SHOWTIME_NOT_FOUND",
+            "Showtime not found");
+
+    public static final InventoryErrorCode SHOW_SEAT_NOT_FOUND = new InventoryErrorCode(
+            ErrorCategory.RESOURCE,
+            "INVENTORY_SHOW_SEAT_NOT_FOUND",
+            "Show seat not found");
+
+    public static final InventoryErrorCode ROOM_NAME_ALREADY_EXISTS = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_ROOM_NAME_ALREADY_EXISTS",
+            "Room name already exists in this cinema");
+
+    public static final InventoryErrorCode SEAT_NUMBER_ALREADY_EXISTS = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_SEAT_NUMBER_ALREADY_EXISTS",
+            "Seat number already exists in this room");
+
+    public static final InventoryErrorCode SHOWTIME_OVERLAP = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_SHOWTIME_OVERLAP",
+            "Showtime overlaps with another showtime in this room");
+
+    public static final InventoryErrorCode SHOW_SEATS_ALREADY_GENERATED = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_SHOW_SEATS_ALREADY_GENERATED",
+            "Show seats have already been generated");
+
+    public static final InventoryErrorCode CINEMA_INACTIVE = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_CINEMA_INACTIVE",
+            "Cinema is inactive");
+
+    public static final InventoryErrorCode ROOM_INACTIVE = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_ROOM_INACTIVE",
+            "Room is inactive");
+
+    public static final InventoryErrorCode SHOWTIME_NOT_EDITABLE = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_SHOWTIME_NOT_EDITABLE",
+            "Showtime cannot be edited in its current status");
+
+    public static final InventoryErrorCode NO_ACTIVE_SEATS = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_NO_ACTIVE_SEATS",
+            "Room has no active seats");
+
+    public static final InventoryErrorCode INVALID_SHOWTIME_PERIOD = new InventoryErrorCode(
+            ErrorCategory.VALIDATION,
+            "INVENTORY_INVALID_SHOWTIME_PERIOD",
+            "Showtime end time must be after start time");
+
+    public static final InventoryErrorCode INVALID_INVENTORY_STATE = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_INVALID_STATE",
+            "Inventory resource is in an invalid state");
+
+    private final String code;
+    private final String message;
+    private final ErrorCategory category;
+
+    private InventoryErrorCode(
+            ErrorCategory category,
+            String code,
+            String message) {
+        this.category = category;
+        this.code = code;
+        this.message = message;
+    }
+
+    @Override
+    public String code() {
+        return code;
+    }
+
+    @Override
+    public String message() {
+        return message;
+    }
+
+    @Override
+    public ErrorCategory category() {
+        return category;
+    }
+}

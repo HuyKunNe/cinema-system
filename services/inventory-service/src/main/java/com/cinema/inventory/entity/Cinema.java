@@ -44,6 +44,19 @@ public class Cinema extends BaseEntity {
         this.active = true;
     }
 
+    public void update(
+            String name,
+            String address,
+            String city) {
+        this.name = name;
+        this.address = address;
+        this.city = city;
+    }
+
+    public void changeActive(boolean active) {
+        this.active = active;
+    }
+
     public String getName() {
         return name;
     }
