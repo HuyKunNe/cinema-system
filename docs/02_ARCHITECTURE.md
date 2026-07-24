@@ -193,7 +193,7 @@ Responsibilities:
 - Reading seat availability
 - Reserving seats
 - Releasing seats
-- Marking seats as sold
+- Confirming held seats as booked
 - Managing seat reservation expiration
 - Acquiring Redis distributed locks for seats
 - Publishing seat reservation result events
@@ -629,7 +629,7 @@ sequenceDiagram
     Inventory->>Inventory: Validate seat states
 
     alt All seats are AVAILABLE
-        Inventory->>Inventory: Change seats to RESERVED
+        Inventory->>Inventory: Change seats from AVAILABLE to HELD
         Inventory->>Inventory: Insert success outbox event
         Inventory->>Kafka: seat-reserved
         Kafka->>Booking: Deliver reservation success
@@ -688,10 +688,10 @@ When Inventory Service consumes `seat-reservation-requested`, it performs:
 3. Query Inventory-owned `show_seats`.
 4. Verify that every requested seat exists.
 5. Verify that every requested seat is `AVAILABLE`.
-6. Change the seat state to `RESERVED`.
-7. Associate the reservation with the booking external reference where
+6. Atomically change every requested seat from `AVAILABLE` to `HELD`.
+7. Associate the hold with the external booking reference where
    required.
-8. Set reservation expiration.
+8. Set the hold expiration time.
 9. Insert the processed event record.
 10. Insert a `SEAT_RESERVED` outbox event.
 11. Commit the Inventory database transaction.
@@ -751,37 +751,58 @@ remains the source of truth.
 
 # Seat State Model
 
-A show seat may use states such as:
+The approved Inventory seat states are:
 
 ```text
 AVAILABLE
-RESERVED
-SOLD
+HELD
+BOOKED
+UNAVAILABLE
 ```
 
-Typical transitions:
+Normal booking transitions:
 
 ```mermaid
 stateDiagram-v2
     [*] --> AVAILABLE
-    AVAILABLE --> RESERVED: Reservation succeeds
-    RESERVED --> AVAILABLE: Expired, cancelled, or payment failed
-    RESERVED --> SOLD: Payment succeeds
+    AVAILABLE --> HELD: Reservation accepted
+    HELD --> AVAILABLE: Released or expired
+    HELD --> BOOKED: Booking confirmed
+    AVAILABLE --> UNAVAILABLE: Operational block
+    HELD --> UNAVAILABLE: Administrative intervention
+    UNAVAILABLE --> AVAILABLE: Re-enabled
+```
+
+The normal booking path is:
+
+```text
+AVAILABLE → HELD → BOOKED
+```
+
+The normal release path is:
+
+```text
+HELD → AVAILABLE
 ```
 
 Only Inventory Service may perform these transitions.
+
+Inventory status `HELD` is separate from Booking status `RESERVED`.
 
 Invalid transitions must be rejected or safely ignored according to
 idempotency and domain rules.
 
 Examples:
 
-- `AVAILABLE → SOLD` without a valid reservation is invalid.
-- `SOLD → AVAILABLE` is invalid under the normal booking flow.
-- Repeating `RESERVED → RESERVED` for the same booking may be treated as an
-  idempotent success.
-- A release request for a seat reserved by another booking must not release
-  that seat.
+- `AVAILABLE → BOOKED` without a valid hold is invalid.
+- `BOOKED → AVAILABLE` is invalid under the normal booking flow.
+- Reprocessing the same successful hold request for the same booking may be
+  treated as an idempotent success.
+- A release request must not release a seat held by another booking.
+- An expired or released hold must not later transition to `BOOKED`.
+
+Redis provides coordination only. Database conditional updates or database
+locking provide the final consistency guarantee against double booking.
 
 ---
 
@@ -846,12 +867,12 @@ sequenceDiagram
         Payment->>Kafka: payment-succeeded
         Kafka->>Booking: Confirm booking
         Booking->>Kafka: booking-confirmed
-        Kafka->>Inventory: Mark seats SOLD
+        Kafka->>Inventory: Change held seats to BOOKED
     else Payment fails
         Payment->>Kafka: payment-failed
         Kafka->>Booking: Mark payment failure
         Booking->>Kafka: seat-release-requested
-        Kafka->>Inventory: Release reserved seats
+        Kafka->>Inventory: Release held seats
     end
 ```
 
@@ -886,7 +907,7 @@ Inventory Service may consume the appropriate confirmation event and change
 the owned seat state:
 
 ```text
-RESERVED → SOLD
+HELD → BOOKED
 ```
 
 The exact topic and contract must match the event catalog.
@@ -906,7 +927,7 @@ When Booking Service consumes `payment-failed`:
 Inventory Service then performs the compensating action:
 
 ```text
-RESERVED → AVAILABLE
+HELD → AVAILABLE
 ```
 
 Only seats reserved for the corresponding booking may be released.
@@ -933,12 +954,12 @@ sequenceDiagram
     Inventory->>Inventory: Check idempotency
     Inventory->>Inventory: Acquire seat locks
     Inventory->>Inventory: Verify booking reservation ownership
-    Inventory->>Inventory: RESERVED to AVAILABLE
+    Inventory->>Inventory: HELD to AVAILABLE
     Inventory->>Inventory: Save outbox event
     Inventory->>Kafka: seat-released
 ```
 
-Inventory Service must verify that the seats are currently reserved for the
+Inventory Service must verify that the seats are currently held for the
 same booking before releasing them.
 
 A delayed release event must never release seats owned by a newer
@@ -1464,7 +1485,7 @@ Inventory Service
 Inventory Service local transaction
     ↓
 processed_events
-show_seats: AVAILABLE → RESERVED
+show_seats: AVAILABLE → HELD
 outbox_events: SEAT_RESERVED
 ```
 

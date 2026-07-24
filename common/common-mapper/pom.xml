@@ -17,13 +17,13 @@
         </relativePath>
     </parent>
     <artifactId>
-        common-mapping
+        common-mapper
     </artifactId>
     <packaging>
         jar
     </packaging>
     <name>
-        common-mapping
+        common-mapper
     </name>
     <dependencies>
 

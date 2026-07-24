@@ -315,47 +315,39 @@ Inventory Service remains the only service allowed to change
 - [x] R20 — Config Server
 - [x] R21 — Discovery Server
 - [x] R22 — API Gateway
+- [x] R23 — Movie Service
 
 ## In progress
 
-- [ ] R23 — Movie Service stabilization
+- [ ] R24 — Inventory Service
 
-Movie Service functional implementation includes:
+Current R24 scope:
 
-- Movie CRUD
-- Genre CRUD
-- Movie–Genre relationship
-- Flyway migrations
-- Config Server integration
-- Eureka registration
-- OpenAPI integration
-
-Remaining R23 stabilization work:
-
-- Remove hard-coded credentials
-- Complete service unit tests
-- Complete mapper and utility tests
-- Complete controller tests
-- Add MySQL Testcontainers integration tests
-- Run the full Maven verification
-- Pass security scanning
-- Synchronize documentation
+- Cinema management
+- Room management
+- Fixed physical seat layouts
+- Showtime management
+- ShowSeat generation
+- Atomic ShowSeat state transitions
+- Redis-based seat coordination
+- Inventory Outbox
+- Idempotent event processing
+- Unit, integration and concurrency tests
 
 ## Not started
 
-- [ ] R24 — User Service
-- [ ] R25 — Inventory Service
+- [ ] R25 — User Service
 - [ ] R26 — Booking Service
 - [ ] R27 — Payment Service
 - [ ] R28 — Notification Service
 
 Current milestone:
 
-> **R23 — Movie Service Stabilization**
+> **R24 — Inventory Service Implementation**
 
-Next milestone after R23 verification:
+Next milestone after R24 verification:
 
-> **R24 — User Service**
+> **R25 — User Service**
 
 ---
 
@@ -445,16 +437,15 @@ Business Services
 - Config Server
 - Discovery Server
 - API Gateway
-- Movie Service functional implementation
+- Movie Service
 
 ## In progress
 
-- Movie Service stabilization and test completion
+- Inventory Service implementation
 
 ## Next
 
 - User Service
-- Inventory Service
 - Booking Service
 - Payment Service
 - Notification Service

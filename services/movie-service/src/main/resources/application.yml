@@ -9,9 +9,9 @@ spring:
         import: "optional:configserver:http://localhost:8888"
 
     datasource:
-        url: jdbc:mysql://localhost:3306/cinema_movie_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-        username: root
-        password: root
+        url: ${MOVIE_DB_URL:jdbc:mysql://localhost:3306/cinema_movie_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+        username: ${MOVIE_DB_USERNAME}
+        password: ${MOVIE_DB_PASSWORD}
         driver-class-name: com.mysql.cj.jdbc.Driver
 
     jpa:

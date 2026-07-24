@@ -1,6 +1,6 @@
 # Cinema Booking System
 
-Version: 0.2 (R23 Stabilization)
+Version: 0.2 (R24 Inventory Service Implementation)
 
 ---
 
@@ -54,43 +54,42 @@ Hệ thống được thiết kế để mô phỏng nền tảng của các chu
 - ✅ R20 — Config Server
 - ✅ R21 — Discovery Server
 - ✅ R22 — API Gateway
+- ✅ R23 — Movie Service
 
 ## In Progress
 
-- 🚧 R23 — Movie Service Stabilization
+- 🚧 R24 — Inventory Service Implementation
 
-Movie Service functional implementation has been completed and includes:
+Inventory Service owns:
 
-- Movie CRUD
-- Genre CRUD
-- Movie–Genre relationship
-- Flyway database migrations
-- UUID v7 identifiers
-- JPA auditing
-- Bean Validation
-- Global exception handling
-- Standard `ApiResponse`
-- MapStruct mapping
-- Config Server integration
-- Eureka registration
-- Actuator
-- OpenAPI and Swagger
+- Cinemas
+- Rooms
+- Fixed physical seats
+- Room seat layouts
+- Showtimes
+- `show_seats`
+- Seat availability and reservation state
+- Redis seat locks
+- Inventory Outbox records
+- Inventory consumer-processing records
 
-Remaining stabilization work:
+R24 implementation scope:
 
-- Remove hard-coded database credentials
-- Complete unit tests
-- Complete controller tests
-- Complete mapper and utility tests
-- Add MySQL Testcontainers integration tests
-- Run the full Maven verification
-- Pass security scanning
-- Synchronize project documentation
+- Bootstrap the Spring Boot application
+- Create the Inventory database and Flyway migrations
+- Implement Cinema management
+- Implement Room management
+- Implement fixed Seat layouts
+- Implement Showtime management and overlap validation
+- Generate ShowSeat records for each Showtime
+- Implement atomic ShowSeat state transitions
+- Integrate shared exception, response, validation and mapping modules
+- Add unit, integration and concurrency tests
+- Complete security and documentation verification
 
 ## Not Started
 
-- R24 — User Service
-- R25 — Inventory Service
+- R25 — User Service
 - R26 — Booking Service
 - R27 — Payment Service
 - R28 — Notification Service
@@ -101,24 +100,28 @@ Remaining stabilization work:
 
 Current milestone:
 
-> **R23 — Movie Service Stabilization**
+> **R24 — Inventory Service Implementation**
 
-R23 is complete only when:
+R24 is complete only when:
 
-- No hard-coded credential remains
-- Unit tests pass
-- Controller tests pass
-- Integration tests pass
+- Inventory Service owns all approved inventory-domain data
 - Flyway migrations pass
-- `mvn clean verify` passes
-- Security scanning passes
+- Cinema, Room, Seat, Showtime and ShowSeat behavior is implemented
+- Showtime overlap validation is covered
+- ShowSeat generation is verified
+- Seat-state transitions are atomic
+- Duplicate event processing is idempotent
+- Unit and integration tests pass
+- Concurrency tests pass
+- Security requirements pass
+- `mvn clean verify` passes from the repository root
 - Documentation is synchronized
 
-After R23 has been verified, continue with:
+After R24 has been verified, continue with:
 
-> **R24 — User Service**
+> **R25 — User Service**
 
-Do not start R24 before R23 stabilization is complete.
+Do not start R25 before R24 passes its exit criteria.
 
 ---
 

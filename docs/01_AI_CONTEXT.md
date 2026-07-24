@@ -16,32 +16,62 @@ The `docs` directory is the project's source of truth.
 - R20 — Config Server
 - R21 — Discovery Server
 - R22 — API Gateway
-- R23 — Movie Service functional implementation
+- R23 — Movie Service
 
 ## Current Round
 
-> **R23 — Movie Service Stabilization**
+> **R24 — Inventory Service Implementation**
 
-Movie Service functionality has been implemented, but R23 must not be
-marked complete until stabilization is finished.
+Inventory Service is the active business-service round.
 
-Remaining work:
+Approved domain model:
 
-1. Remove all hard-coded database credentials.
-2. Complete Movie Service unit tests.
-3. Complete controller tests.
-4. Complete mapper and utility tests.
-5. Add MySQL Testcontainers integration tests.
-6. Verify Flyway migrations.
-7. Run `mvn clean verify`.
-8. Pass security scanning.
-9. Synchronize project documentation.
+```text
+Cinema
+    ↓
+Room
+    ↓
+Seat
+
+Room + external Movie ID
+    ↓
+Showtime
+    ↓
+ShowSeat
+```
+
+Inventory Service owns:
+
+- Cinemas
+- Rooms
+- Fixed physical seats
+- Room seat layouts
+- Showtimes
+- `show_seats`
+- Seat availability and reservation state
+- Redis seat locks
+- Inventory Outbox records
+- Inventory consumer-processing records
+
+Required implementation order:
+
+1. Bootstrap Inventory Service.
+2. Implement Cinema.
+3. Implement Room.
+4. Implement fixed Seat layouts.
+5. Implement Showtime and overlap validation.
+6. Generate ShowSeat records.
+7. Implement atomic ShowSeat state transitions.
+8. Add idempotent event processing.
+9. Add unit, integration and concurrency tests.
+10. Complete security, Maven and documentation verification.
 
 ## Next Round
 
-> **R24 — User Service**
+> **R25 — User Service**
 
-Do not start R24 before R23 stabilization has passed all required checks.
+Do not start R25 before R24 passes all exit criteria defined in
+`docs/10_ROADMAP.md`.
 
 ---
 
@@ -145,7 +175,7 @@ Service ownership:
 | -------------------- | ---------------------------------------------- |
 | Movie Service        | Movies, genres and movie metadata              |
 | User Service         | Users, roles, permissions and refresh tokens   |
-| Inventory Service    | Show-seat availability and reservation state   |
+| Inventory Service    | Cinemas, rooms, seats, showtimes and show seats |
 | Booking Service      | Booking lifecycle and requested seat snapshots |
 | Payment Service      | Payment transactions                           |
 | Notification Service | Notifications and delivery history             |
@@ -156,6 +186,11 @@ Service ownership:
 
 Inventory Service exclusively owns:
 
+- Cinemas
+- Rooms
+- Fixed physical seats
+- Room seat layouts
+- Showtimes
 - `show_seats`
 - Seat availability state
 - Seat reservation state
@@ -190,6 +225,17 @@ price
 `inventory_seat_id` is an external reference, not a cross-database foreign
 key.
 
+Approved `ShowSeatStatus` transitions:
+
+```text
+AVAILABLE → HELD → BOOKED
+     ↑        ↓
+     └────────┘
+```
+
+Redis provides coordination only. Database conditional updates or locking
+are the final consistency guarantee against double booking.
+
 ---
 
 # Standard Seat Reservation Flow
@@ -217,7 +263,7 @@ sequenceDiagram
     Inventory->>Inventory: Validate show_seats
 
     alt Seats available
-        Inventory->>Inventory: Set seats RESERVED
+        Inventory->>Inventory: Set seats HELD
         Inventory->>Kafka: seat-reserved
         Kafka->>Booking: Consume success
         Booking->>Booking: Set booking RESERVED
@@ -276,7 +322,7 @@ When Inventory Service receives a reservation request, it performs:
 2. Acquire Redis distributed locks.
 3. Query Inventory-owned `show_seats`.
 4. Verify that all requested seats are `AVAILABLE`.
-5. Change available seats to `RESERVED`.
+5. Atomically change available seats to `HELD`.
 6. Store the result event in its outbox table.
 7. Commit the Inventory database transaction.
 8. Release the Redis locks.
@@ -363,13 +409,14 @@ seat-release-requested
     ↓
 Inventory Service
     ↓
-show_seats: RESERVED → AVAILABLE
+show_seats: HELD → AVAILABLE
     ↓
 seat-released
 ```
 
 Inventory Service remains the only service allowed to change the state of
-`show_seats`.
+`show_seats`. A successful payment changes the held seats from `HELD` to
+`BOOKED`.
 
 ---
 
@@ -464,17 +511,17 @@ explicitly requested.
 
 # Business Service Status
 
-| Round | Service              | Status        |
-| ----- | -------------------- | ------------- |
-| R23   | Movie Service        | STABILIZATION |
-| R24   | User Service         | NOT STARTED   |
-| R25   | Inventory Service    | NOT STARTED   |
-| R26   | Booking Service      | NOT STARTED   |
-| R27   | Payment Service      | NOT STARTED   |
-| R28   | Notification Service | NOT STARTED   |
+| Round | Service              | Status      |
+| ----- | -------------------- | ----------- |
+| R23   | Movie Service        | DONE        |
+| R24   | Inventory Service    | IN PROGRESS |
+| R25   | User Service         | NOT STARTED |
+| R26   | Booking Service      | NOT STARTED |
+| R27   | Payment Service      | NOT STARTED |
+| R28   | Notification Service | NOT STARTED |
 
-Movie Service functional code has been implemented and merged, but R23
-remains open until testing and verification are complete.
+Movie Service has completed its implementation, testing and verification
+requirements. Inventory Service is the active business-service round.
 
 ---
 
@@ -576,29 +623,21 @@ For a business service, verify at least:
 - Duplicate constraint behavior
 - Full Maven verification
 
-R23 Movie Service should include:
+R24 Inventory Service must additionally verify:
 
-- `MovieServiceImplTest`
-- `GenreServiceImplTest`
-- `MovieControllerTest`
-- `GenreControllerTest`
-- `MovieMapperTest`
-- `GenreMapperTest` when applicable
-- `SlugUtilsTest`
-- MySQL Testcontainers integration tests
-
-Important Movie Service cases:
-
-- Create movie successfully
-- Reject duplicate movie title or slug
-- Get movie by ID
-- Update movie
-- Delete movie
-- Create genre successfully
-- Reject duplicate genre name
-- Delete unused genre
-- Reject deletion of a genre currently used by a movie
-- Validate Flyway schema against Hibernate mappings
+- Cinema service behavior
+- Room service behavior
+- Fixed physical Seat layout behavior
+- Showtime overlap rejection
+- ShowSeat generation
+- Atomic `AVAILABLE → HELD` transitions
+- Atomic `HELD → BOOKED` transitions
+- Atomic `HELD → AVAILABLE` transitions
+- Duplicate event idempotency
+- Concurrent reservation of the same seat
+- Flyway schema validation
+- MySQL Testcontainers integration
+- Redis Testcontainers integration where required
 
 ---
 
@@ -621,14 +660,19 @@ A merged pull request alone does not mean the round is complete.
 
 # Current Next Step
 
-Continue R23 Movie Service Stabilization in this order:
+Continue R24 Inventory Service in this order:
 
-1. Remove hard-coded credentials.
-2. Verify no additional secrets remain.
-3. Add missing service tests.
-4. Add mapper and utility tests.
-5. Add controller tests.
-6. Add MySQL Testcontainers integration tests.
-7. Run `mvn clean verify`.
-8. Update R23 status in the roadmap and changelog.
-9. Start R24 User Service only after all R23 checks pass.
+1. Bootstrap Inventory Service.
+2. Configure the Inventory database and Flyway.
+3. Implement Cinema.
+4. Implement Room.
+5. Implement fixed physical Seat layouts.
+6. Implement Showtime and overlap validation.
+7. Generate ShowSeat records.
+8. Implement atomic ShowSeat state transitions.
+9. Implement idempotent event processing.
+10. Add unit, integration and concurrency tests.
+11. Run `mvn clean verify`.
+12. Synchronize documentation.
+
+Do not start R25 User Service before all R24 exit criteria pass.
