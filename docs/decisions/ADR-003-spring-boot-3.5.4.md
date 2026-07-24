@@ -8,7 +8,7 @@ Accepted
 
 ## Decision
 
-Spring Boot 3.5.4
+Spring Boot 3.5.16
 
 ---
 

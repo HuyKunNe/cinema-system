@@ -8,7 +8,7 @@ Built with **Java 21**, **Spring Boot**, **Microservices**, **Kafka**,
 **Saga Pattern**, and **Transactional Outbox**
 
 ![Java](https://img.shields.io/badge/Java-21-orange)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.4-brightgreen)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.16-brightgreen)
 ![Maven](https://img.shields.io/badge/Maven-Multi--Module-blue)
 ![Kafka](https://img.shields.io/badge/Kafka-Event--Driven-black)
 ![Redis](https://img.shields.io/badge/Redis-Distributed%20Lock-red)
@@ -148,7 +148,7 @@ Important seat ownership rules:
 | Category          | Technology                           |
 | ----------------- | ------------------------------------ |
 | Language          | Java 21                              |
-| Framework         | Spring Boot 3.5.4                    |
+| Framework         | Spring Boot 3.5.16                    |
 | Build             | Maven Multi Module                   |
 | Cloud             | Spring Cloud                         |
 | Database          | MySQL 8                              |
@@ -470,7 +470,7 @@ The project follows Architecture Decision Records.
 Important decisions include:
 
 - Java 21
-- Spring Boot 3.5.4
+- Spring Boot 3.5.16
 - UUID Version 7
 - Event-Driven Architecture
 - Saga Pattern using Choreography

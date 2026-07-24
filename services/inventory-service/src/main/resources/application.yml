@@ -1,17 +1,17 @@
 server:
-    port: ${MOVIE_SERVICE_PORT:8081}
+    port: ${INVENTORY_SERVICE_PORT:8083}
 
 spring:
     application:
-        name: movie-service
+        name: inventory-service
 
     config:
-        import: "optional:configserver:http://localhost:8888"
+        import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
 
     datasource:
-        url: ${MOVIE_DB_URL:jdbc:mysql://localhost:3306/cinema_movie_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-        username: ${MOVIE_DB_USERNAME}
-        password: ${MOVIE_DB_PASSWORD}
+        url: ${INVENTORY_DB_URL:jdbc:mysql://localhost:3306/cinema_inventory_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+        username: ${INVENTORY_DB_USERNAME}
+        password: ${INVENTORY_DB_PASSWORD}
         driver-class-name: com.mysql.cj.jdbc.Driver
 
     jpa:
@@ -42,7 +42,7 @@ springdoc:
 eureka:
     client:
         service-url:
-            defaultZone: http://localhost:8761/eureka/
+            defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
 
     instance:
         prefer-ip-address: true
@@ -60,5 +60,6 @@ management:
 
 logging:
     level:
+        com.cinema.inventory: INFO
         com.netflix.discovery: INFO
         org.hibernate.SQL: DEBUG

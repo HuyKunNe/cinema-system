@@ -420,7 +420,7 @@ The following decisions are fixed unless the user explicitly requests a
 change:
 
 - Java 21
-- Spring Boot 3.5.4
+- Spring Boot 3.5.16
 - Maven Multi Module
 - MySQL 8
 - Flyway

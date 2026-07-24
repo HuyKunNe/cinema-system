@@ -53,7 +53,7 @@ time unless the roadmap is explicitly revised.
 All rounds must preserve the approved project baseline:
 
 - Java 21
-- Spring Boot 3.5.4
+- Spring Boot 3.5.16
 - Maven Multi Module
 - Spring Data JPA
 - Hibernate 6
@@ -216,7 +216,7 @@ Documentation must distinguish current implementation from future requirements.
 - root Maven aggregator;
 - module hierarchy;
 - Java 21 compiler configuration;
-- Spring Boot 3.5.4 dependency management;
+- Spring Boot 3.5.16 dependency management;
 - shared plugin and dependency versions;
 - repository-wide build conventions.
 

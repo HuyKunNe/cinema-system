@@ -1,14 +1,14 @@
-mvn spring-boot:run -pl infrastructure/config-service
-mvn spring-boot:run -pl infrastructure/discovery-service
-mvn spring-boot:run -pl services/movie-service
-mvn spring-boot:run -pl services/inventory-service
-
 $env:MOVIE_DB_URL="jdbc:mysql://localhost:3306/cinema_movie_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
 $env:MOVIE_DB_USERNAME="root"
 $env:MOVIE_DB_PASSWORD="huykun17"
+
+$env:INVENTORY_DB_URL="jdbc:mysql://localhost:3306/cinema_inventory_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+$env:INVENTORY_DB_USERNAME="root"
+$env:INVENTORY_DB_PASSWORD="huykun17"
 
 mvn -pl infrastructure/config-service spring-boot:run
 mvn -pl infrastructure/discovery-service spring-boot:run
 mvn -pl infrastructure/gateway-service spring-boot:run
 mvn -pl services/movie-service spring-boot:run
+mvn -pl services/inventory-service spring-boot:run
 

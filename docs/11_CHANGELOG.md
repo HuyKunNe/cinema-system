@@ -671,7 +671,7 @@ deployment configuration.
 - Maven multi-module parent project.
 - `common`, `infrastructure`, and `services` module groups.
 - Java 21 compiler baseline.
-- Spring Boot 3.5.4 dependency baseline.
+- Spring Boot 3.5.16 dependency baseline.
 - Central dependency and plugin management.
 - Initial repository documentation and module structure.
 
