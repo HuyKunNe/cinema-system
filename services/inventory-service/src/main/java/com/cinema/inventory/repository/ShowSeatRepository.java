@@ -17,52 +17,54 @@ import com.cinema.inventory.enums.ShowSeatStatus;
 import jakarta.persistence.LockModeType;
 
 public interface ShowSeatRepository
-        extends JpaRepository<ShowSeat, UUID> {
+                extends JpaRepository<ShowSeat, UUID> {
 
-    List<ShowSeat> findAllByShowtime_IdOrderBySeatNumberAsc(
-            UUID showtimeId);
+        boolean existsByShowtime_Id(UUID showtimeId);
 
-    List<ShowSeat> findAllByShowtime_IdAndStatusOrderBySeatNumberAsc(
-            UUID showtimeId,
-            ShowSeatStatus status);
+        List<ShowSeat> findAllByShowtime_IdOrderBySeatNumberAsc(
+                        UUID showtimeId);
 
-    Optional<ShowSeat> findByShowtime_IdAndSeatNumberIgnoreCase(
-            UUID showtimeId,
-            String seatNumber);
+        List<ShowSeat> findAllByShowtime_IdAndStatusOrderBySeatNumberAsc(
+                        UUID showtimeId,
+                        ShowSeatStatus status);
 
-    boolean existsByShowtime_IdAndSeat_Id(
-            UUID showtimeId,
-            UUID seatId);
+        Optional<ShowSeat> findByShowtime_IdAndSeatNumberIgnoreCase(
+                        UUID showtimeId,
+                        String seatNumber);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
-            select showSeat
-            from ShowSeat showSeat
-            where showSeat.showtime.id = :showtimeId
-              and showSeat.seatNumber in :seatNumbers
-            order by showSeat.seatNumber asc
-            """)
-    List<ShowSeat> findAllByShowtimeIdAndSeatNumbersForUpdate(
-            @Param("showtimeId") UUID showtimeId,
-            @Param("seatNumbers") Collection<String> seatNumbers);
+        boolean existsByShowtime_IdAndSeat_Id(
+                        UUID showtimeId,
+                        UUID seatId);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
-            select showSeat
-            from ShowSeat showSeat
-            where showSeat.id = :showSeatId
-            """)
-    Optional<ShowSeat> findByIdForUpdate(
-            @Param("showSeatId") UUID showSeatId);
+        @Lock(LockModeType.PESSIMISTIC_WRITE)
+        @Query("""
+                        select showSeat
+                        from ShowSeat showSeat
+                        where showSeat.showtime.id = :showtimeId
+                          and showSeat.seatNumber in :seatNumbers
+                        order by showSeat.seatNumber asc
+                        """)
+        List<ShowSeat> findAllByShowtimeIdAndSeatNumbersForUpdate(
+                        @Param("showtimeId") UUID showtimeId,
+                        @Param("seatNumbers") Collection<String> seatNumbers);
 
-    @Query("""
-            select showSeat
-            from ShowSeat showSeat
-            where showSeat.status = :status
-              and showSeat.holdExpiresAt <= :now
-            order by showSeat.holdExpiresAt asc
-            """)
-    List<ShowSeat> findExpiredHolds(
-            @Param("status") ShowSeatStatus status,
-            @Param("now") OffsetDateTime now);
+        @Lock(LockModeType.PESSIMISTIC_WRITE)
+        @Query("""
+                        select showSeat
+                        from ShowSeat showSeat
+                        where showSeat.id = :showSeatId
+                        """)
+        Optional<ShowSeat> findByIdForUpdate(
+                        @Param("showSeatId") UUID showSeatId);
+
+        @Query("""
+                        select showSeat
+                        from ShowSeat showSeat
+                        where showSeat.status = :status
+                          and showSeat.holdExpiresAt <= :now
+                        order by showSeat.holdExpiresAt asc
+                        """)
+        List<ShowSeat> findExpiredHolds(
+                        @Param("status") ShowSeatStatus status,
+                        @Param("now") OffsetDateTime now);
 }
