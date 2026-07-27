@@ -52,7 +52,7 @@ public class CinemaController {
 
   @GetMapping
   public ResponseEntity<List<CinemaResponse>> getActiveCinemas(
-      @RequestParam(required = false) String city) {
+      @RequestParam(name = "city", required = false) String city) {
 
     return ResponseEntity.ok(
         cinemaService.getActiveCinemas(city));

@@ -33,7 +33,7 @@ public class SeatController {
 
   @PostMapping
   public ResponseEntity<SeatResponse> create(
-      @RequestParam UUID roomId,
+      @RequestParam("roomId") UUID roomId,
       @Valid @RequestBody CreateSeatRequest request) {
 
     SeatResponse response = seatService.create(roomId, request);
@@ -54,7 +54,7 @@ public class SeatController {
 
   @GetMapping
   public ResponseEntity<List<SeatResponse>> getActiveSeats(
-      @RequestParam UUID roomId) {
+      @RequestParam("roomId") UUID roomId) {
 
     return ResponseEntity.ok(
         seatService.getActiveSeats(roomId));

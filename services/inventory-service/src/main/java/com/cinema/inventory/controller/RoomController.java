@@ -33,7 +33,7 @@ public class RoomController {
 
   @PostMapping
   public ResponseEntity<RoomResponse> create(
-      @RequestParam UUID cinemaId,
+      @RequestParam("cinemaId") UUID cinemaId,
       @Valid @RequestBody CreateRoomRequest request) {
 
     RoomResponse response = roomService.create(cinemaId, request);
@@ -53,7 +53,7 @@ public class RoomController {
 
   @GetMapping
   public ResponseEntity<List<RoomResponse>> getActiveRooms(
-      @RequestParam UUID cinemaId) {
+      @RequestParam("cinemaId") UUID cinemaId) {
 
     return ResponseEntity.ok(
         roomService.getActiveRooms(cinemaId));

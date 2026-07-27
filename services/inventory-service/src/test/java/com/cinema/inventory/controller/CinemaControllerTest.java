@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -23,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.cinema.inventory.dto.request.CreateCinemaRequest;
+import com.cinema.inventory.dto.request.UpdateCinemaRequest;
 import com.cinema.inventory.dto.response.CinemaResponse;
 import com.cinema.inventory.service.CinemaService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,98 +32,239 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @ExtendWith(MockitoExtension.class)
 class CinemaControllerTest {
 
-  @Mock
-  private CinemaService cinemaService;
+    private static final OffsetDateTime CREATED_AT = OffsetDateTime.parse("2026-07-27T03:00:00Z");
 
-  private MockMvc mockMvc;
-  private ObjectMapper objectMapper;
+    private static final OffsetDateTime UPDATED_AT = OffsetDateTime.parse("2026-07-27T04:00:00Z");
 
-  @BeforeEach
-  void setUp() {
-    objectMapper = new ObjectMapper().findAndRegisterModules();
+    @Mock
+    private CinemaService cinemaService;
 
-    mockMvc = MockMvcBuilders
-        .standaloneSetup(new CinemaController(cinemaService))
-        .build();
-  }
+    private MockMvc mockMvc;
+    private ObjectMapper objectMapper;
 
-  @Test
-  void createShouldReturnCreatedCinema() throws Exception {
-    UUID cinemaId = UUID.randomUUID();
+    @BeforeEach
+    void setUp() {
+        objectMapper = new ObjectMapper()
+                .findAndRegisterModules();
 
-    CreateCinemaRequest request = new CreateCinemaRequest(
-        "CGV Vincom",
-        "72 Le Thanh Ton",
-        "Ho Chi Minh");
+        mockMvc = MockMvcBuilders
+                .standaloneSetup(
+                        new CinemaController(cinemaService))
+                .build();
+    }
 
-    CinemaResponse response = new CinemaResponse(
-        cinemaId,
-        request.name(),
-        request.address(),
-        request.city(),
-        true,
-        OffsetDateTime.now(),
-        OffsetDateTime.now());
+    @Test
+    void createShouldReturnCreatedCinema() throws Exception {
+        UUID cinemaId = UUID.randomUUID();
 
-    when(cinemaService.create(request)).thenReturn(response);
+        CreateCinemaRequest request = new CreateCinemaRequest(
+                "CGV Vincom",
+                "72 Le Thanh Ton",
+                "Ho Chi Minh");
 
-    mockMvc.perform(post("/api/v1/cinemas")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(request)))
-        .andExpect(status().isCreated())
-        .andExpect(header().string(
-            "Location",
-            "/api/v1/cinemas/" + cinemaId))
-        .andExpect(jsonPath("$.id")
-            .value(cinemaId.toString()))
-        .andExpect(jsonPath("$.name")
-            .value("CGV Vincom"))
-        .andExpect(jsonPath("$.active")
-            .value(true));
+        CinemaResponse response = response(
+                cinemaId,
+                request.name(),
+                request.address(),
+                request.city(),
+                true);
 
-    verify(cinemaService).create(request);
-  }
+        when(cinemaService.create(request))
+                .thenReturn(response);
 
-  @Test
-  void createShouldReturnBadRequestWhenNameIsBlank()
-      throws Exception {
+        mockMvc.perform(post("/api/v1/cinemas")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(header().string(
+                        "Location",
+                        "/api/v1/cinemas/" + cinemaId))
+                .andExpect(jsonPath("$.id")
+                        .value(cinemaId.toString()))
+                .andExpect(jsonPath("$.name")
+                        .value("CGV Vincom"))
+                .andExpect(jsonPath("$.address")
+                        .value("72 Le Thanh Ton"))
+                .andExpect(jsonPath("$.city")
+                        .value("Ho Chi Minh"))
+                .andExpect(jsonPath("$.active")
+                        .value(true));
 
-    CreateCinemaRequest request = new CreateCinemaRequest(
-        "",
-        "72 Le Thanh Ton",
-        "Ho Chi Minh");
+        verify(cinemaService).create(request);
+    }
 
-    mockMvc.perform(post("/api/v1/cinemas")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(request)))
-        .andExpect(status().isBadRequest());
+    @Test
+    void createShouldReturnBadRequestWhenNameIsBlank()
+            throws Exception {
 
-    verifyNoInteractions(cinemaService);
-  }
+        CreateCinemaRequest request = new CreateCinemaRequest(
+                "",
+                "72 Le Thanh Ton",
+                "Ho Chi Minh");
 
-  @Test
-  void getActiveCinemasShouldPassCityToService()
-      throws Exception {
+        mockMvc.perform(post("/api/v1/cinemas")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
 
-    CinemaResponse response = new CinemaResponse(
-        UUID.randomUUID(),
-        "CGV Vincom",
-        "72 Le Thanh Ton",
-        "Ho Chi Minh",
-        true,
-        OffsetDateTime.now(),
-        OffsetDateTime.now());
+        verifyNoInteractions(cinemaService);
+    }
 
-    when(cinemaService.getActiveCinemas("Ho Chi Minh"))
-        .thenReturn(List.of(response));
+    @Test
+    void getByIdShouldReturnCinema() throws Exception {
+        UUID cinemaId = UUID.randomUUID();
 
-    mockMvc.perform(get("/api/v1/cinemas")
-        .param("city", "Ho Chi Minh"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].name")
-            .value("CGV Vincom"));
+        CinemaResponse response = response(
+                cinemaId,
+                "CGV Vincom",
+                "72 Le Thanh Ton",
+                "Ho Chi Minh",
+                true);
 
-    verify(cinemaService)
-        .getActiveCinemas("Ho Chi Minh");
-  }
+        when(cinemaService.getById(cinemaId))
+                .thenReturn(response);
+
+        mockMvc.perform(get(
+                "/api/v1/cinemas/{cinemaId}",
+                cinemaId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id")
+                        .value(cinemaId.toString()))
+                .andExpect(jsonPath("$.name")
+                        .value("CGV Vincom"))
+                .andExpect(jsonPath("$.city")
+                        .value("Ho Chi Minh"))
+                .andExpect(jsonPath("$.active")
+                        .value(true));
+
+        verify(cinemaService).getById(cinemaId);
+    }
+
+    @Test
+    void getActiveCinemasShouldFilterByCity()
+            throws Exception {
+
+        String city = "Ho Chi Minh";
+        UUID cinemaId = UUID.randomUUID();
+
+        CinemaResponse response = response(
+                cinemaId,
+                "CGV Vincom",
+                "72 Le Thanh Ton",
+                city,
+                true);
+
+        when(cinemaService.getActiveCinemas(city))
+                .thenReturn(List.of(response));
+
+        mockMvc.perform(get("/api/v1/cinemas")
+                .param("city", city))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()")
+                        .value(1))
+                .andExpect(jsonPath("$[0].id")
+                        .value(cinemaId.toString()))
+                .andExpect(jsonPath("$[0].city")
+                        .value(city))
+                .andExpect(jsonPath("$[0].active")
+                        .value(true));
+
+        verify(cinemaService).getActiveCinemas(city);
+    }
+
+    @Test
+    void getActiveCinemasShouldAcceptMissingCity()
+            throws Exception {
+
+        when(cinemaService.getActiveCinemas(null))
+                .thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/cinemas"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
+
+        verify(cinemaService).getActiveCinemas(null);
+    }
+
+    @Test
+    void updateShouldReturnUpdatedCinema()
+            throws Exception {
+
+        UUID cinemaId = UUID.randomUUID();
+
+        UpdateCinemaRequest request = new UpdateCinemaRequest(
+                "CGV Vincom Center",
+                "72A Le Thanh Ton",
+                "Ho Chi Minh",
+                false);
+
+        CinemaResponse response = response(
+                cinemaId,
+                request.name(),
+                request.address(),
+                request.city(),
+                request.active());
+
+        when(cinemaService.update(cinemaId, request))
+                .thenReturn(response);
+
+        mockMvc.perform(put(
+                "/api/v1/cinemas/{cinemaId}",
+                cinemaId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id")
+                        .value(cinemaId.toString()))
+                .andExpect(jsonPath("$.name")
+                        .value("CGV Vincom Center"))
+                .andExpect(jsonPath("$.address")
+                        .value("72A Le Thanh Ton"))
+                .andExpect(jsonPath("$.active")
+                        .value(false));
+
+        verify(cinemaService)
+                .update(cinemaId, request);
+    }
+
+    @Test
+    void updateShouldReturnBadRequestWhenActiveIsNull()
+            throws Exception {
+
+        UUID cinemaId = UUID.randomUUID();
+
+        UpdateCinemaRequest request = new UpdateCinemaRequest(
+                "CGV Vincom",
+                "72 Le Thanh Ton",
+                "Ho Chi Minh",
+                null);
+
+        mockMvc.perform(put(
+                "/api/v1/cinemas/{cinemaId}",
+                cinemaId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(cinemaService);
+    }
+
+    private CinemaResponse response(
+            UUID id,
+            String name,
+            String address,
+            String city,
+            boolean active) {
+
+        return new CinemaResponse(
+                id,
+                name,
+                address,
+                city,
+                active,
+                CREATED_AT,
+                UPDATED_AT);
+    }
 }

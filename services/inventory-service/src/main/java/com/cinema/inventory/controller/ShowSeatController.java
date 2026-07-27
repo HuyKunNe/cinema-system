@@ -32,7 +32,7 @@ public class ShowSeatController {
 
   @PostMapping
   public ResponseEntity<List<ShowSeatResponse>> generate(
-      @RequestParam UUID showtimeId,
+      @RequestParam("showtimeId") UUID showtimeId,
       @Valid @RequestBody GenerateShowSeatsRequest request) {
 
     List<ShowSeatResponse> response = showSeatService.generate(showtimeId, request);
@@ -55,7 +55,7 @@ public class ShowSeatController {
   @GetMapping
   public ResponseEntity<List<ShowSeatResponse>> getByShowtimeId(
       @RequestParam UUID showtimeId,
-      @RequestParam(defaultValue = "false") boolean availableOnly) {
+      @RequestParam(name = "availableOnly", defaultValue = "false") boolean availableOnly) {
 
     if (availableOnly) {
       return ResponseEntity.ok(
