@@ -14,13 +14,10 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-import com.cinema.inventory.InventoryServiceApplication;
+import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
 import com.cinema.inventory.entity.Cinema;
 import com.cinema.inventory.entity.Room;
 import com.cinema.inventory.entity.Seat;
@@ -32,11 +29,9 @@ import com.cinema.inventory.enums.ShowtimeStatus;
 
 import jakarta.persistence.EntityManager;
 
-@ActiveProfiles("test")
-@SpringBootTest(
-        classes = InventoryServiceApplication.class)
 @Transactional
-class InventoryRepositoryIntegrationTest {
+class InventoryRepositoryIntegrationTest
+        extends AbstractMySqlIntegrationTest {
 
     private static final OffsetDateTime START = OffsetDateTime.of(
             2026,
