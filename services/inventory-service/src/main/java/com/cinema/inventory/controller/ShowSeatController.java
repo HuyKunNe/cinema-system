@@ -54,7 +54,7 @@ public class ShowSeatController {
 
   @GetMapping
   public ResponseEntity<List<ShowSeatResponse>> getByShowtimeId(
-      @RequestParam UUID showtimeId,
+      @RequestParam("showtimeId") UUID showtimeId,
       @RequestParam(name = "availableOnly", defaultValue = "false") boolean availableOnly) {
 
     if (availableOnly) {
