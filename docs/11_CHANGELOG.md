@@ -45,58 +45,33 @@ R25-R28  Planned
 
 ### Added
 
-- Started R24 Inventory Service as the active business-service round.
-- Defined Inventory Service ownership of cinemas, rooms, physical seats,
-  showtimes, `show_seats`, seat availability, and reservation state.
-- Defined the initial Inventory domain model:
-
-  ```text
-  Cinema
-      ↓
-  Room
-      ↓
-  Seat
-      ↓
-  Showtime
-      ↓
-  ShowSeat
-  ```
-
-- Defined fixed physical Seat data separately from per-showtime ShowSeat data.
-- Defined the initial Inventory status models for Cinema, Room, Seat, Showtime,
-  and ShowSeat.
-- Defined `AVAILABLE`, `HELD`, `BOOKED`, and `UNAVAILABLE` as the initial
-  ShowSeat business states.
-- Defined the initial ShowSeat transition baseline and concurrency requirements.
-- Added R24 Inventory Service scope, business invariants, and exit criteria to
-  `docs/10_ROADMAP.md`.
+- Completed transactional ShowSeat booking transitions:
+  - `AVAILABLE → HELD`;
+  - `HELD → BOOKED`;
+  - `HELD → AVAILABLE`.
+- Completed administrative availability transitions:
+  - `AVAILABLE → UNAVAILABLE`;
+  - `HELD → UNAVAILABLE`;
+  - `UNAVAILABLE → AVAILABLE`.
+- Added ShowSeat hold ownership and expiration validation.
+- Added administrative ShowSeat availability endpoints.
+- Added Inventory-specific error codes for invalid availability transitions.
+- Added entity, service and controller coverage for ShowSeat transitions.
+- Added a MySQL concurrency integration test proving that only one of two
+  competing hold requests can succeed.
 
 ### Changed
 
-- Marked R23 Movie Service as completed.
-- Changed the active target from R23 Movie Service stabilization to R24
-  Inventory Service implementation.
-- Moved Inventory Service from R25 to R24.
-- Moved User Service from R24 to R25.
-- Reordered the business-service milestones to:
-
-  ```text
-  R23 Movie Service
-  R24 Inventory Service
-  R25 User Service
-  R26 Booking Service
-  R27 Payment Service
-  R28 Notification Service
-  ```
-
-- Confirmed that physical seat layouts must not be hard-coded in Java source.
-- Confirmed that `showtimes.movie_id` is an external Movie Service UUID
-  reference and must not have a cross-service database foreign key.
-- Confirmed that Inventory Service is the only service allowed to modify
-  `show_seats`.
-- Confirmed that Redis locks are a technical coordination mechanism and that
-  `HELD` is the corresponding temporary business reservation state.
-- Updated `docs/10_ROADMAP.md` to version R24.
+- ShowSeat transition services now load current state using
+  `findByIdForUpdate(...)`.
+- ShowSeat transitions execute inside Spring-managed transactions.
+- Added the missing transactional boundary to the ShowSeat release operation.
+- `HELD → UNAVAILABLE` now clears `heldByBookingId` and `holdExpiresAt`.
+- Invalid administrative transitions now use the shared `ConflictException` and
+  `InventoryErrorCode` contract.
+- Database transaction and `PESSIMISTIC_WRITE` row locking are the current
+  correctness mechanism for single-row ShowSeat transitions.
+- Redis locking was not added as a redundant second lock for these operations.
 
 ### Documentation
 
@@ -108,15 +83,31 @@ R25-R28  Planned
   ShowSeat data.
 - Documented that R24 is started but not completed.
 
-### Verification
+### Verified
 
-- This entry records documentation alignment and the accepted current project
-  status.
-- It does not claim that R24 implementation tests or the R24 root Maven quality
-  gate have passed.
-- R24 completion remains subject to the exit criteria in
-  `docs/10_ROADMAP.md`.
+- ShowSeat entity tests pass.
+- ShowSeat transition service tests pass.
+- ShowSeat controller tests pass.
+- MySQL concurrency integration testing verifies one successful hold and one
+  conflict for two concurrent requests targeting the same ShowSeat.
+- R24.4.13.6 and R24.4.13.7 are accepted as completed checkpoints.
 
+### In Progress
+
+- Started R24.4.13.8 — ShowSeat endpoint authorization.
+- The active authorization work covers:
+  - public ShowSeat query operations;
+  - `inventory:manage` for generation and administrative availability changes;
+  - `SERVICE` for hold, book and release operations;
+  - applicable `401`, `403` and successful authorization tests.
+
+### Remaining
+
+- R24 as a whole remains in implementation.
+- R24.4.13.8 security verification is not yet complete.
+- The root Maven verification and remaining R24 exit criteria must pass before
+  R24 can be marked completed.
+- R25 has not started.
 ---
 
 # R24 - Inventory Service

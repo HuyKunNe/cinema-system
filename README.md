@@ -329,10 +329,37 @@ Current R24 scope:
 - Showtime management
 - ShowSeat generation
 - Atomic ShowSeat state transitions
-- Redis-based seat coordination
+- Database-backed atomic ShowSeat transitions
+- Redis coordination only for operations where it is explicitly required
 - Inventory Outbox
 - Idempotent event processing
 - Unit, integration and concurrency tests
+
+Current accepted progress:
+
+- Cinema, Room, Seat and Showtime management
+- Fixed physical seat layouts
+- Showtime overlap validation
+- ShowSeat generation
+- Transactional booking transitions:
+  - `AVAILABLE → HELD`
+  - `HELD → BOOKED`
+  - `HELD → AVAILABLE`
+- Administrative transitions:
+  - `AVAILABLE → UNAVAILABLE`
+  - `HELD → UNAVAILABLE`
+  - `UNAVAILABLE → AVAILABLE`
+- `PESSIMISTIC_WRITE` concurrency control
+- MySQL concurrent-hold integration testing
+- Shared validation, response and exception contracts
+
+Current implementation target:
+
+- R24.4.13.8 — ShowSeat endpoint authorization
+- Public access policy for ShowSeat queries
+- `inventory:manage` authorization for administrative operations
+- `SERVICE` authorization for booking transitions
+- Security tests for `401`, `403` and successful access
 
 ## Not started
 

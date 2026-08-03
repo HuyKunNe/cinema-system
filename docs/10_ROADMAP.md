@@ -1,8 +1,8 @@
 # Project Roadmap
 
 **Version:** R24
-**Current target:** R24 Inventory Service implementation
-**Last updated:** 2026-07-24
+**Current target:** R24.4.13.8 — Inventory ShowSeat endpoint authorization
+**Last updated:** 2026-08-03
 
 ---
 
@@ -35,13 +35,13 @@ satisfied.
 
 # Status Legend
 
-| Symbol | Status | Meaning |
-|---|---|---|
-| ✅ | Completed | Scope is implemented and accepted for the completed round |
-| 🚧 | Implementation | The round is the active implementation target |
-| 🧪 | Stabilization | Main implementation exists, but one or more exit criteria remain |
-| ⏳ | Planned | Approved future work; implementation has not started |
-| ⛔ | Blocked | Work cannot continue until a named dependency or decision is resolved |
+| Symbol | Status         | Meaning                                                               |
+| ------ | -------------- | --------------------------------------------------------------------- |
+| ✅     | Completed      | Scope is implemented and accepted for the completed round             |
+| 🚧     | Implementation | The round is the active implementation target                         |
+| 🧪     | Stabilization  | Main implementation exists, but one or more exit criteria remain      |
+| ⏳     | Planned        | Approved future work; implementation has not started                  |
+| ⛔     | Blocked        | Work cannot continue until a named dependency or decision is resolved |
 
 Only one business-service round should be the active implementation target at a
 time unless the roadmap is explicitly revised.
@@ -829,6 +829,67 @@ Correctness requires:
 The final seat reservation operation must succeed for at most one competing
 request when only one saleable seat remains.
 
+### Current implementation checkpoint
+
+#### Completed
+
+- ✅ R24.1–R24.3 — Inventory Service foundation and initial domain implementation.
+- ✅ R24.4.1–R24.4.12 — Cinema, Room, Seat, Showtime and ShowSeat implementation increments.
+- ✅ R24.4.13.1–R24.4.13.5 — ShowSeat API and transition preparation.
+- ✅ R24.4.13.6 — Transactional booking ShowSeat transitions.
+- ✅ R24.4.13.7 — Administrative ShowSeat availability transitions.
+
+#### In progress
+
+- 🚧 R24.4.13.8 — ShowSeat endpoint authorization.
+
+#### Completed ShowSeat behavior
+
+The following booking transitions are implemented:
+
+````text
+AVAILABLE → HELD
+HELD      → BOOKED
+HELD      → AVAILABLE
+
+The following administrative transitions are implemented:
+
+AVAILABLE   → UNAVAILABLE
+HELD        → UNAVAILABLE
+UNAVAILABLE → AVAILABLE
+
+Implemented guarantees:
+
+- state transitions use the latest persisted state;
+- transition services load ShowSeat rows with PESSIMISTIC_WRITE;
+- transition operations execute inside transactions;
+- a held seat can only be booked or released by its owning bookingId;
+- expired holds cannot be booked;
+- HELD → UNAVAILABLE clears hold metadata;
+- booked ShowSeats cannot be changed through availability administration;
+- invalid transitions use the shared exception and error-code contract;
+- concurrent attempts to hold one ShowSeat allow at most one successful request;
+- entity, service, controller and MySQL concurrency tests cover the implemented behavior.
+
+Database row locking is the correctness mechanism for current single-row ShowSeat transitions. Redis distributed locking remains part of the approved technical baseline but is not added as a redundant second lock for these transitions.
+
+Active authorization scope
+
+R24.4.13.8 must establish the following endpoint policy:
+
+| Endpoint group                | Required access                             |
+| ----------------------------- | ------------------------------------------- |
+| ShowSeat query endpoints      | Public according to the approved API policy |
+| ShowSeat generation           | `inventory:manage`                          |
+| Mark available or unavailable | `inventory:manage`                          |
+| Hold, book or release         | `SERVICE`                                   |
+
+
+R24.4.13.8 remains incomplete until applicable unauthenticated, forbidden and
+successful authorization cases are verified.
+
+R25 must not start before all remaining R24 exit criteria pass.
+
 ### R24 exit criteria
 
 R24 may be marked complete only when:
@@ -1083,7 +1144,7 @@ At minimum, a round-closing review must run:
 ```bash
 git diff --check
 mvn clean verify
-```
+````
 
 When the Maven wrapper is the approved repository entry point:
 
@@ -1132,21 +1193,25 @@ Do not:
 
 # Current Snapshot
 
-| Phase | Rounds | Status |
-|---|---|---|
-| Foundation Layer | R1–R10 | ✅ Completed |
-| Common Infrastructure | R11–R19 | ✅ Completed rounds; documented hardening gaps remain where stated |
-| Infrastructure Services | R20–R22 | ✅ Completed |
-| Movie Service | R23 | ✅ Completed |
-| Inventory Service | R24 | 🚧 Active implementation |
-| User Service | R25 | ⏳ Planned |
-| Booking Service | R26 | ⏳ Planned |
-| Payment Service | R27 | ⏳ Planned |
-| Notification Service | R28 | ⏳ Planned |
-| Production Readiness | To be assigned | ⏳ Planned |
+| Phase                   | Rounds         | Status                                                             |
+| ----------------------- | -------------- | ------------------------------------------------------------------ |
+| Foundation Layer        | R1–R10         | ✅ Completed                                                       |
+| Common Infrastructure   | R11–R19        | ✅ Completed rounds; documented hardening gaps remain where stated |
+| Infrastructure Services | R20–R22        | ✅ Completed                                                       |
+| Movie Service           | R23            | ✅ Completed                                                       |
+| Inventory Service       | R24            | 🚧 Active implementation                                           |
+| User Service            | R25            | ⏳ Planned                                                         |
+| Booking Service         | R26            | ⏳ Planned                                                         |
+| Payment Service         | R27            | ⏳ Planned                                                         |
+| Notification Service    | R28            | ⏳ Planned                                                         |
+| Production Readiness    | To be assigned | ⏳ Planned                                                         |
 
 The active target is:
 
 ```text
-R24 Inventory Service implementation
+R24.4.13.8 — Inventory ShowSeat endpoint authorization
+
+The latest accepted checkpoint is:
+
+R24.4.13.7 — Administrative ShowSeat availability transitions
 ```

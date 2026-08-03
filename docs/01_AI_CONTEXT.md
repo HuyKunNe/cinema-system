@@ -55,16 +55,38 @@ Inventory Service owns:
 
 Required implementation order:
 
-1. Bootstrap Inventory Service.
-2. Implement Cinema.
-3. Implement Room.
-4. Implement fixed Seat layouts.
-5. Implement Showtime and overlap validation.
-6. Generate ShowSeat records.
-7. Implement atomic ShowSeat state transitions.
-8. Add idempotent event processing.
-9. Add unit, integration and concurrency tests.
-10. Complete security, Maven and documentation verification.
+Current implementation state:
+
+1. Inventory Service bootstrap — completed.
+2. Cinema implementation — completed.
+3. Room implementation — completed.
+4. Fixed Seat layout implementation — completed.
+5. Showtime and overlap validation — completed.
+6. ShowSeat generation — completed.
+7. Transactional booking ShowSeat transitions — completed.
+8. Administrative availability transitions — completed.
+9. ShowSeat endpoint authorization — in progress.
+10. Remaining event, Outbox, idempotency and round-closing verification — pending
+    according to the R24 roadmap.
+
+Latest accepted checkpoint:
+
+> **R24.4.13.7 — Administrative ShowSeat availability transitions**
+
+Active target:
+
+> **R24.4.13.8 — ShowSeat endpoint authorization**
+
+ShowSeat transition rules:
+
+- use `@Transactional`;
+- load mutable ShowSeat state through `findByIdForUpdate(...)`;
+- preserve `PESSIMISTIC_WRITE` until the transaction finishes;
+- do not add Redis locking to current single-row transitions;
+- do not allow booked ShowSeats to return to an availability state;
+- use shared public exceptions and Inventory error codes;
+- do not trust client-supplied role or identity headers;
+- do not start R25 before every R24 exit criterion passes.
 
 ## Next Round
 

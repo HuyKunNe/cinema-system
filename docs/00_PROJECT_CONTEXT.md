@@ -69,7 +69,8 @@ Inventory Service owns:
 - Showtimes
 - `show_seats`
 - Seat availability and reservation state
-- Redis seat locks
+- Database-backed ShowSeat concurrency control
+- Redis coordination where explicitly required by a later operation
 - Inventory Outbox records
 - Inventory consumer-processing records
 
@@ -101,6 +102,36 @@ R24 implementation scope:
 Current milestone:
 
 > **R24 — Inventory Service Implementation**
+
+Current checkpoint:
+
+- ✅ R24.4.13.6 — Transactional booking ShowSeat transitions
+- ✅ R24.4.13.7 — Administrative ShowSeat availability transitions
+- 🚧 R24.4.13.8 — ShowSeat endpoint authorization
+
+Implemented ShowSeat transitions:
+
+```text
+AVAILABLE   → HELD
+HELD        → BOOKED
+HELD        → AVAILABLE
+AVAILABLE   → UNAVAILABLE
+HELD        → UNAVAILABLE
+UNAVAILABLE → AVAILABLE
+
+Current concurrency model:
+
+every transition executes inside a database transaction;
+current ShowSeat state is loaded using PESSIMISTIC_WRITE;
+concurrent holds for one ShowSeat allow at most one success;
+Redis locking is not duplicated for current single-row transitions.
+
+Current security target:
+
+ShowSeat queries follow the approved public-access policy;
+generation and availability administration require inventory:manage;
+hold, book and release require SERVICE;
+authorization behavior must be verified through 401, 403 and success tests.
 
 R24 is complete only when:
 
