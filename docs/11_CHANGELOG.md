@@ -22,12 +22,12 @@ the roadmap.
 
 # Status
 
-| Status | Meaning |
-|---|---|
-| Completed | The round was accepted as the repository baseline |
-| Implementation | The round is the active implementation target |
-| Stabilization | Main implementation exists, but the round has open exit criteria |
-| Documentation | Architecture or operating rules were aligned without claiming new runtime behavior |
+| Status         | Meaning                                                                            |
+| -------------- | ---------------------------------------------------------------------------------- |
+| Completed      | The round was accepted as the repository baseline                                  |
+| Implementation | The round is the active implementation target                                      |
+| Stabilization  | Main implementation exists, but the round has open exit criteria                   |
+| Documentation  | Architecture or operating rules were aligned without claiming new runtime behavior |
 
 Current status:
 
@@ -41,18 +41,18 @@ R25-R28  Planned
 
 # Unreleased
 
-## 2026-07-24
+## 2026-08-03
 
 ### Added
 
 - Completed transactional ShowSeat booking transitions:
-  - `AVAILABLE → HELD`;
-  - `HELD → BOOKED`;
-  - `HELD → AVAILABLE`.
+    - `AVAILABLE → HELD`;
+    - `HELD → BOOKED`;
+    - `HELD → AVAILABLE`.
 - Completed administrative availability transitions:
-  - `AVAILABLE → UNAVAILABLE`;
-  - `HELD → UNAVAILABLE`;
-  - `UNAVAILABLE → AVAILABLE`.
+    - `AVAILABLE → UNAVAILABLE`;
+    - `HELD → UNAVAILABLE`;
+    - `UNAVAILABLE → AVAILABLE`.
 - Added ShowSeat hold ownership and expiration validation.
 - Added administrative ShowSeat availability endpoints.
 - Added Inventory-specific error codes for invalid availability transitions.
@@ -96,10 +96,10 @@ R25-R28  Planned
 
 - Started R24.4.13.8 — ShowSeat endpoint authorization.
 - The active authorization work covers:
-  - public ShowSeat query operations;
-  - `inventory:manage` for generation and administrative availability changes;
-  - `SERVICE` for hold, book and release operations;
-  - applicable `401`, `403` and successful authorization tests.
+    - public ShowSeat query operations;
+    - `inventory:manage` for generation and administrative availability changes;
+    - `SERVICE` for hold, book and release operations;
+    - applicable `401`, `403` and successful authorization tests.
 
 ### Remaining
 
@@ -108,6 +108,7 @@ R25-R28  Planned
 - The root Maven verification and remaining R24 exit criteria must pass before
   R24 can be marked completed.
 - R25 has not started.
+
 ---
 
 # R24 - Inventory Service

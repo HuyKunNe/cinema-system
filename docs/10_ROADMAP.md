@@ -847,25 +847,28 @@ request when only one saleable seat remains.
 
 The following booking transitions are implemented:
 
-````text
+```text
 AVAILABLE → HELD
 HELD      → BOOKED
 HELD      → AVAILABLE
+```
 
 The following administrative transitions are implemented:
 
+```text
 AVAILABLE   → UNAVAILABLE
 HELD        → UNAVAILABLE
 UNAVAILABLE → AVAILABLE
+```
 
 Implemented guarantees:
 
 - state transitions use the latest persisted state;
-- transition services load ShowSeat rows with PESSIMISTIC_WRITE;
+- transition services load ShowSeat rows with `PESSIMISTIC_WRITE`;
 - transition operations execute inside transactions;
-- a held seat can only be booked or released by its owning bookingId;
+- a held seat can only be booked or released by its owning `bookingId`;
 - expired holds cannot be booked;
-- HELD → UNAVAILABLE clears hold metadata;
+- `HELD → UNAVAILABLE` clears hold metadata;
 - booked ShowSeats cannot be changed through availability administration;
 - invalid transitions use the shared exception and error-code contract;
 - concurrent attempts to hold one ShowSeat allow at most one successful request;
@@ -873,7 +876,7 @@ Implemented guarantees:
 
 Database row locking is the correctness mechanism for current single-row ShowSeat transitions. Redis distributed locking remains part of the approved technical baseline but is not added as a redundant second lock for these transitions.
 
-Active authorization scope
+#### Active authorization scope
 
 R24.4.13.8 must establish the following endpoint policy:
 
@@ -883,7 +886,6 @@ R24.4.13.8 must establish the following endpoint policy:
 | ShowSeat generation           | `inventory:manage`                          |
 | Mark available or unavailable | `inventory:manage`                          |
 | Hold, book or release         | `SERVICE`                                   |
-
 
 R24.4.13.8 remains incomplete until applicable unauthenticated, forbidden and
 successful authorization cases are verified.
@@ -1144,7 +1146,7 @@ At minimum, a round-closing review must run:
 ```bash
 git diff --check
 mvn clean verify
-````
+```
 
 When the Maven wrapper is the approved repository entry point:
 
@@ -1210,8 +1212,10 @@ The active target is:
 
 ```text
 R24.4.13.8 — Inventory ShowSeat endpoint authorization
+```
 
 The latest accepted checkpoint is:
 
+```text
 R24.4.13.7 — Administrative ShowSeat availability transitions
 ```

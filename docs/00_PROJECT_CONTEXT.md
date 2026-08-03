@@ -118,20 +118,21 @@ HELD        → AVAILABLE
 AVAILABLE   → UNAVAILABLE
 HELD        → UNAVAILABLE
 UNAVAILABLE → AVAILABLE
+```
 
 Current concurrency model:
 
-every transition executes inside a database transaction;
-current ShowSeat state is loaded using PESSIMISTIC_WRITE;
-concurrent holds for one ShowSeat allow at most one success;
-Redis locking is not duplicated for current single-row transitions.
+- every transition executes inside a database transaction;
+- current ShowSeat state is loaded using `PESSIMISTIC_WRITE`;
+- concurrent holds for one ShowSeat allow at most one success;
+- Redis locking is not duplicated for current single-row transitions.
 
 Current security target:
 
-ShowSeat queries follow the approved public-access policy;
-generation and availability administration require inventory:manage;
-hold, book and release require SERVICE;
-authorization behavior must be verified through 401, 403 and success tests.
+- ShowSeat queries follow the approved public-access policy;
+- generation and availability administration require `inventory:manage`;
+- hold, book and release require `SERVICE`;
+- authorization behavior must be verified through `401`, `403` and successful-access tests.
 
 R24 is complete only when:
 
@@ -228,14 +229,14 @@ Cross-service coordination must use:
 
 Ownership summary:
 
-| Service | Owned data |
-|---|---|
-| Movie Service | Movies, genres and movie metadata |
-| User Service | Users, roles, permissions and refresh tokens |
-| Inventory Service | Show-seat availability and reservation state |
-| Booking Service | Booking lifecycle and requested seat snapshots |
-| Payment Service | Payments and payment transactions |
-| Notification Service | Notification and delivery history |
+| Service              | Owned data                                     |
+| -------------------- | ---------------------------------------------- |
+| Movie Service        | Movies, genres and movie metadata              |
+| User Service         | Users, roles, permissions and refresh tokens   |
+| Inventory Service    | Show-seat availability and reservation state   |
+| Booking Service      | Booking lifecycle and requested seat snapshots |
+| Payment Service      | Payments and payment transactions              |
+| Notification Service | Notification and delivery history              |
 
 ---
 
@@ -402,9 +403,9 @@ Database credentials must use environment variables:
 
 ```yaml
 spring:
-  datasource:
-    username: ${MOVIE_DB_USERNAME}
-    password: ${MOVIE_DB_PASSWORD}
+    datasource:
+        username: ${MOVIE_DB_USERNAME}
+        password: ${MOVIE_DB_PASSWORD}
 ```
 
 Rules:

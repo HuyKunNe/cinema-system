@@ -49,11 +49,10 @@ Inventory Service owns:
 - Showtimes
 - `show_seats`
 - Seat availability and reservation state
-- Redis seat locks
+- Database-backed ShowSeat concurrency control
+- Redis coordination for later operations where explicitly required
 - Inventory Outbox records
 - Inventory consumer-processing records
-
-Required implementation order:
 
 Current implementation state:
 
@@ -217,7 +216,8 @@ Inventory Service exclusively owns:
 - Seat availability state
 - Seat reservation state
 - Seat release operations
-- Redis distributed locks for seats
+- Database-backed ShowSeat concurrency control
+- Redis coordination for future operations where explicitly required
 - Inventory reservation result events
 
 Booking Service must not:
@@ -263,6 +263,11 @@ are the final consistency guarantee against double booking.
 # Standard Seat Reservation Flow
 
 The following is the authoritative seat reservation flow:
+
+> The following is the approved future event-driven multi-seat reservation flow.
+> Its event, Outbox, idempotency and Redis-coordination portions remain planned.
+> Current single-row ShowSeat transitions use database transactions and
+> `PESSIMISTIC_WRITE`.
 
 ```mermaid
 sequenceDiagram
@@ -682,19 +687,15 @@ A merged pull request alone does not mean the round is complete.
 
 # Current Next Step
 
-Continue R24 Inventory Service in this order:
+Continue with:
 
-1. Bootstrap Inventory Service.
-2. Configure the Inventory database and Flyway.
-3. Implement Cinema.
-4. Implement Room.
-5. Implement fixed physical Seat layouts.
-6. Implement Showtime and overlap validation.
-7. Generate ShowSeat records.
-8. Implement atomic ShowSeat state transitions.
-9. Implement idempotent event processing.
-10. Add unit, integration and concurrency tests.
-11. Run `mvn clean verify`.
-12. Synchronize documentation.
+1. Complete R24.4.13.8 — ShowSeat endpoint authorization.
+2. Verify public ShowSeat query access.
+3. Require `inventory:manage` for generation and availability administration.
+4. Require `SERVICE` for hold, book and release.
+5. Add unauthenticated, forbidden and successful-access security tests.
+6. Continue the remaining event, Outbox and idempotency work defined by R24.
+7. Run the complete R24 verification.
+8. Synchronize documentation.
 
-Do not start R25 User Service before all R24 exit criteria pass.
+Do not start R25 before every R24 exit criterion passes.

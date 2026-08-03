@@ -67,7 +67,8 @@ Current and planned platform capabilities:
 - Movie and genre management
 - Showtime management
 - Seat inventory management
-- Distributed seat locking using Redis and Redisson
+- Database-backed atomic ShowSeat transitions
+- Redis coordination for operations where it is explicitly required
 - Booking lifecycle management
 - Payment integration using Saga Choreography
 - Notification processing
@@ -135,7 +136,10 @@ Each service exclusively owns its domain data.
 Important seat ownership rules:
 
 - `show_seats` belongs exclusively to Inventory Service.
-- Redis locks for seats belong exclusively to Inventory Service.
+- Inventory Service owns every seat-coordination mechanism.
+- Current single-row ShowSeat transitions use database transactions and
+  `PESSIMISTIC_WRITE`.
+- Redis coordination is reserved for operations where it is explicitly required.
 - Booking Service must not query or update `show_seats`.
 - Booking Service must not connect to the Inventory Service database.
 - Booking and Inventory coordinate through Kafka events.
@@ -148,7 +152,7 @@ Important seat ownership rules:
 | Category          | Technology                           |
 | ----------------- | ------------------------------------ |
 | Language          | Java 21                              |
-| Framework         | Spring Boot 3.5.16                    |
+| Framework         | Spring Boot 3.5.16                   |
 | Build             | Maven Multi Module                   |
 | Cloud             | Spring Cloud                         |
 | Database          | MySQL 8                              |
@@ -220,6 +224,10 @@ docs/04_MODULES.md
 
 Seat reservation is coordinated asynchronously between Booking Service
 and Inventory Service.
+
+> The following is the approved target booking flow. Its Inventory event,
+> Outbox, idempotency and Redis-coordination portions remain planned until
+> their corresponding roadmap increments are completed.
 
 ```mermaid
 sequenceDiagram
@@ -506,7 +514,9 @@ Important decisions include:
 - Database per Service
 - No cross-database foreign keys
 - Inventory Service owns `show_seats`
-- Inventory Service owns seat distributed locks
+- Inventory Service owns every seat-coordination mechanism
+- Current single-row ShowSeat transitions use database transactions and `PESSIMISTIC_WRITE`
+- Redis coordination is used only where explicitly required
 - No Lombok in common modules
 - MapStruct
 - Unified `ApiResponse`
