@@ -24,3 +24,8 @@ spring:
 eureka:
     client:
         enabled: false
+
+cinema:
+    security:
+        jwt:
+            secret: cinema-system-test-jwt-secret-key-at-least-32-bytes

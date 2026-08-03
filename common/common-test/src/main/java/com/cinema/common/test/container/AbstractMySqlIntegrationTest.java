@@ -17,7 +17,7 @@ public abstract class AbstractMySqlIntegrationTest {
     @Container
     protected static final MySQLContainer<?> MYSQL = new MySQLContainer<>(MYSQL_IMAGE)
             .withDatabaseName(
-                    "cinema_test")
+                    "cinema_inventory_test_db")
             .withUsername(
                     "cinema")
             .withPassword(
