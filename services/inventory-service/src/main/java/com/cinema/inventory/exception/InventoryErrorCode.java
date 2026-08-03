@@ -135,6 +135,51 @@ public final class InventoryErrorCode implements ErrorCode {
             "INVENTORY_INVALID_HOLD_EXPIRATION",
             "Hold expiration must be in the future");
 
+    public static final InventoryErrorCode SHOW_SEAT_ALREADY_UNAVAILABLE = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_SHOW_SEAT_ALREADY_UNAVAILABLE",
+            "Show seat is already unavailable");
+
+    public static final InventoryErrorCode SHOW_SEAT_CANNOT_BECOME_AVAILABLE = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_SHOW_SEAT_CANNOT_BECOME_AVAILABLE",
+            "Only an unavailable show seat can become available");
+
+    public static final InventoryErrorCode BOOKED_SHOW_SEAT_CANNOT_BE_CHANGED = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_BOOKED_SHOW_SEAT_CANNOT_BE_CHANGED",
+            "Booked show seat cannot be changed");
+
+    public static final InventoryErrorCode BOOKING_ID_REQUIRED = new InventoryErrorCode(
+            ErrorCategory.VALIDATION,
+            "INVENTORY_BOOKING_ID_REQUIRED",
+            "Booking ID is required");
+
+    public static final InventoryErrorCode HOLD_EXPIRATION_AND_CURRENT_TIME_REQUIRED = new InventoryErrorCode(
+            ErrorCategory.VALIDATION,
+            "INVENTORY_HOLD_EXPIRATION_AND_CURRENT_TIME_REQUIRED",
+            "Hold expiration and current time are required");
+
+    public static final InventoryErrorCode ONLY_AVAILABLE_SEATS_CAN_BE_HELD = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_ONLY_AVAILABLE_SEATS_CAN_BE_HELD",
+            "Only an available seat can be held");
+
+    public static final InventoryErrorCode ONLY_HELD_SEATS_CAN_BE_RELEASED = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_ONLY_HELD_SEATS_CAN_BE_RELEASED",
+            "Only a held seat can be released");
+
+    public static final InventoryErrorCode CURRENT_TIME_REQUIRED = new InventoryErrorCode(
+            ErrorCategory.VALIDATION,
+            "INVENTORY_CURRENT_TIME_REQUIRED",
+            "Current time is required");
+
+    public static final InventoryErrorCode SEAT_HOLD_NOT_EXPIRED = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_SEAT_HOLD_NOT_EXPIRED",
+            "Seat hold has not expired");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

@@ -25,4 +25,8 @@ public interface ShowSeatService {
     ShowSeatResponse book(UUID showSeatId, ShowSeatBookingRequest request);
 
     ShowSeatResponse release(UUID showSeatId, ShowSeatBookingRequest request);
+
+    ShowSeatResponse makeUnavailable(UUID showSeatId);
+
+    ShowSeatResponse makeAvailable(UUID showSeatId);
 }

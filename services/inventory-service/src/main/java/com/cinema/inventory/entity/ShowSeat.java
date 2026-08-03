@@ -4,9 +4,12 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.ShowSeatStatus;
+import com.cinema.inventory.exception.InventoryErrorCode;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -116,23 +119,19 @@ public class ShowSeat extends BaseEntity {
             OffsetDateTime now) {
 
         if (bookingId == null) {
-            throw new IllegalArgumentException(
-                    "Booking ID is required");
+            throw new ValidationException(InventoryErrorCode.BOOKING_ID_REQUIRED);
         }
 
         if (expiresAt == null || now == null) {
-            throw new IllegalArgumentException(
-                    "Hold expiration and current time are required");
+            throw new ValidationException(InventoryErrorCode.HOLD_EXPIRATION_AND_CURRENT_TIME_REQUIRED);
         }
 
         if (!expiresAt.isAfter(now)) {
-            throw new IllegalArgumentException(
-                    "Hold expiration must be in the future");
+            throw new ValidationException(InventoryErrorCode.INVALID_HOLD_EXPIRATION);
         }
 
         if (status != ShowSeatStatus.AVAILABLE) {
-            throw new IllegalStateException(
-                    "Only an available seat can be held");
+            throw new ConflictException(InventoryErrorCode.ONLY_AVAILABLE_SEATS_CAN_BE_HELD);
         }
 
         status = ShowSeatStatus.HELD;
@@ -156,18 +155,15 @@ public class ShowSeat extends BaseEntity {
 
     public void releaseExpiredHold(OffsetDateTime now) {
         if (status != ShowSeatStatus.HELD) {
-            throw new IllegalStateException(
-                    "Only a held seat can be released");
+            throw new ConflictException(InventoryErrorCode.ONLY_HELD_SEATS_CAN_BE_RELEASED);
         }
 
         if (now == null) {
-            throw new IllegalArgumentException(
-                    "Current time is required");
+            throw new ValidationException(InventoryErrorCode.CURRENT_TIME_REQUIRED);
         }
 
         if (holdExpiresAt == null || holdExpiresAt.isAfter(now)) {
-            throw new IllegalStateException(
-                    "Seat hold has not expired");
+            throw new ConflictException(InventoryErrorCode.SEAT_HOLD_NOT_EXPIRED);
         }
 
         status = ShowSeatStatus.AVAILABLE;
@@ -175,23 +171,11 @@ public class ShowSeat extends BaseEntity {
     }
 
     public void makeUnavailable() {
-        if (status == ShowSeatStatus.HELD
-                || status == ShowSeatStatus.BOOKED) {
-
-            throw new IllegalStateException(
-                    "Held or booked seat cannot become unavailable");
-        }
-
         status = ShowSeatStatus.UNAVAILABLE;
         clearHold();
     }
 
     public void makeAvailable() {
-        if (status != ShowSeatStatus.UNAVAILABLE) {
-            throw new IllegalStateException(
-                    "Only an unavailable seat can become available");
-        }
-
         status = ShowSeatStatus.AVAILABLE;
         clearHold();
     }

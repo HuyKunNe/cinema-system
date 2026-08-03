@@ -210,4 +210,46 @@ public class ShowSeatServiceImpl implements ShowSeatService {
             throw new ConflictException(InventoryErrorCode.SHOW_SEAT_HELD_BY_ANOTHER_BOOKING);
         }
     }
+
+    @Transactional
+    @Override
+    public ShowSeatResponse makeUnavailable(UUID showSeatId) {
+        ShowSeat showSeat = showSeatRepository.findByIdForUpdate(showSeatId)
+                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.SHOW_SEAT_NOT_FOUND));
+
+        if (showSeat.getStatus() == ShowSeatStatus.BOOKED) {
+            throw new ConflictException(
+                    InventoryErrorCode.BOOKED_SHOW_SEAT_CANNOT_BE_CHANGED);
+        }
+
+        if (showSeat.getStatus() == ShowSeatStatus.UNAVAILABLE) {
+            throw new ConflictException(
+                    InventoryErrorCode.SHOW_SEAT_ALREADY_UNAVAILABLE);
+        }
+
+        showSeat.makeUnavailable();
+
+        return showSeatMapper.toResponse(showSeat);
+    }
+
+    @Transactional
+    @Override
+    public ShowSeatResponse makeAvailable(UUID showSeatId) {
+        ShowSeat showSeat = showSeatRepository.findByIdForUpdate(showSeatId)
+                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.SHOW_SEAT_NOT_FOUND));
+
+        if (showSeat.getStatus() == ShowSeatStatus.BOOKED) {
+            throw new ConflictException(
+                    InventoryErrorCode.BOOKED_SHOW_SEAT_CANNOT_BE_CHANGED);
+        }
+
+        if (showSeat.getStatus() != ShowSeatStatus.UNAVAILABLE) {
+            throw new ConflictException(
+                    InventoryErrorCode.SHOW_SEAT_CANNOT_BECOME_AVAILABLE);
+        }
+
+        showSeat.makeAvailable();
+
+        return showSeatMapper.toResponse(showSeat);
+    }
 }
