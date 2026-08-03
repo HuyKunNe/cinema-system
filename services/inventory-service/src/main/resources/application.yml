@@ -63,3 +63,7 @@ logging:
         com.cinema.inventory: INFO
         com.netflix.discovery: INFO
         org.hibernate.SQL: DEBUG
+cinema:
+    security:
+        jwt:
+            secret: ${JWT_SECRET}
