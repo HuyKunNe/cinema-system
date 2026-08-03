@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -52,7 +53,7 @@ class ShowtimeControllerTest {
 
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
-
+    private static final BigDecimal BASE_PRICE = new BigDecimal("100000.00");
     private static final DateTimeFormatter JSON_DATE_TIME_FORMATTER = DateTimeFormatter
             .ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
 
@@ -80,7 +81,8 @@ class ShowtimeControllerTest {
                 movieId,
                 roomId,
                 STARTS_AT,
-                ENDS_AT);
+                ENDS_AT,
+                BASE_PRICE);
 
         ShowtimeResponse response = response(
                 showtimeId,
@@ -125,7 +127,8 @@ class ShowtimeControllerTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 ENDS_AT,
-                STARTS_AT);
+                STARTS_AT,
+                BASE_PRICE);
 
         mockMvc.perform(post("/api/v1/showtimes")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -143,7 +146,8 @@ class ShowtimeControllerTest {
                 null,
                 UUID.randomUUID(),
                 STARTS_AT,
-                ENDS_AT);
+                ENDS_AT,
+                BASE_PRICE);
 
         mockMvc.perform(post("/api/v1/showtimes")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -504,6 +508,25 @@ class ShowtimeControllerTest {
                         .value("COMPLETED"));
 
         verify(showtimeService).complete(showtimeId);
+    }
+
+    @Test
+    void createShouldReturnBadRequestWhenBasePriceIsZero()
+            throws Exception {
+
+        CreateShowtimeRequest request = new CreateShowtimeRequest(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                STARTS_AT,
+                ENDS_AT,
+                BigDecimal.ZERO);
+
+        mockMvc.perform(post("/api/v1/showtimes")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(showtimeService);
     }
 
     private ShowtimeResponse response(

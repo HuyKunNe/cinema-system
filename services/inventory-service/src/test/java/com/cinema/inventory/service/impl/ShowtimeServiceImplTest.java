@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -36,6 +37,7 @@ import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.mapper.ShowtimeMapper;
 import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
+import com.cinema.inventory.service.ShowSeatGenerationService;
 
 @ExtendWith(MockitoExtension.class)
 class ShowtimeServiceImplTest {
@@ -66,15 +68,20 @@ class ShowtimeServiceImplTest {
 
     @Mock
     private ShowtimeMapper showtimeMapper;
+    @Mock
+    private ShowSeatGenerationService showSeatGenerationService;
 
     private ShowtimeServiceImpl showtimeService;
+
+    private static final BigDecimal BASE_PRICE = new BigDecimal("100000.00");
 
     @BeforeEach
     void setUp() {
         showtimeService = new ShowtimeServiceImpl(
                 showtimeRepository,
                 roomRepository,
-                showtimeMapper);
+                showtimeMapper,
+                showSeatGenerationService);
     }
 
     @Test
@@ -134,7 +141,10 @@ class ShowtimeServiceImplTest {
                         eq(STARTS_AT),
                         eq(ENDS_AT),
                         anyCollection());
-
+        verify(showSeatGenerationService)
+                .generate(
+                        savedShowtime,
+                        BASE_PRICE);
         verify(showtimeMapper)
                 .toResponse(savedShowtime);
 
@@ -923,7 +933,8 @@ class ShowtimeServiceImplTest {
                 MOVIE_ID,
                 ROOM_ID,
                 startsAt,
-                endsAt);
+                endsAt,
+                BASE_PRICE);
     }
 
     private Room availableRoom() {
