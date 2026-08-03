@@ -103,18 +103,18 @@ flowchart TD
 
 Infrastructure components:
 
-| Component | Responsibility |
-|---|---|
-| Config Server | Centralized application configuration |
-| Discovery Server | Service registration and discovery |
-| API Gateway | External routing and cross-cutting request handling |
-| Kafka | Asynchronous event transport |
-| Redis | Distributed locking and short-lived distributed state |
-| MySQL | Service-owned transactional persistence |
-| Elasticsearch | Search capabilities where required |
-| MinIO | Object and file storage |
-| OpenTelemetry | Distributed tracing |
-| Docker Compose | Local infrastructure orchestration |
+| Component        | Responsibility                                        |
+| ---------------- | ----------------------------------------------------- |
+| Config Server    | Centralized application configuration                 |
+| Discovery Server | Service registration and discovery                    |
+| API Gateway      | External routing and cross-cutting request handling   |
+| Kafka            | Asynchronous event transport                          |
+| Redis            | Distributed locking and short-lived distributed state |
+| MySQL            | Service-owned transactional persistence               |
+| Elasticsearch    | Search capabilities where required                    |
+| MinIO            | Object and file storage                               |
+| OpenTelemetry    | Distributed tracing                                   |
+| Docker Compose   | Local infrastructure orchestration                    |
 
 ---
 
@@ -376,15 +376,15 @@ cross-database foreign keys.
 
 # Data Ownership
 
-| Domain data | Owning service |
-|---|---|
-| Movies and genres | Movie Service |
-| Users and roles | User Service |
-| Show-seat inventory | Inventory Service |
-| Seat distributed locks | Inventory Service |
-| Bookings and booking seat snapshots | Booking Service |
-| Payments and payment transactions | Payment Service |
-| Notification delivery history | Notification Service |
+| Domain data                         | Owning service       |
+| ----------------------------------- | -------------------- |
+| Movies and genres                   | Movie Service        |
+| Users and roles                     | User Service         |
+| Show-seat inventory                 | Inventory Service    |
+| Seat distributed locks              | Inventory Service    |
+| Bookings and booking seat snapshots | Booking Service      |
+| Payments and payment transactions   | Payment Service      |
+| Notification delivery history       | Notification Service |
 
 The owning service is the only authority allowed to modify its data.
 
@@ -477,16 +477,16 @@ public record EventEnvelope<T>(
 
 Required event metadata:
 
-| Field | Purpose |
-|---|---|
-| `eventId` | Globally unique identifier used for idempotency |
-| `eventType` | Logical event type |
-| `eventVersion` | Contract version |
-| `correlationId` | Connects events in the same distributed workflow |
-| `causationId` | Identifies the event or command that caused this event |
-| `occurredAt` | Event creation time in ISO-8601 format |
-| `producer` | Service that created the event |
-| `payload` | Event-specific data |
+| Field           | Purpose                                                |
+| --------------- | ------------------------------------------------------ |
+| `eventId`       | Globally unique identifier used for idempotency        |
+| `eventType`     | Logical event type                                     |
+| `eventVersion`  | Contract version                                       |
+| `correlationId` | Connects events in the same distributed workflow       |
+| `causationId`   | Identifies the event or command that caused this event |
+| `occurredAt`    | Event creation time in ISO-8601 format                 |
+| `producer`      | Service that created the event                         |
+| `payload`       | Event-specific data                                    |
 
 Identifiers must use UUID v7 where applicable.
 
@@ -1124,9 +1124,9 @@ Example:
 
 ```yaml
 spring:
-  datasource:
-    username: ${MOVIE_DB_USERNAME}
-    password: ${MOVIE_DB_PASSWORD}
+    datasource:
+        username: ${MOVIE_DB_USERNAME}
+        password: ${MOVIE_DB_PASSWORD}
 ```
 
 Passwords must not have real committed default values.
@@ -1213,9 +1213,9 @@ Required setting:
 
 ```yaml
 spring:
-  jpa:
-    hibernate:
-      ddl-auto: validate
+    jpa:
+        hibernate:
+            ddl-auto: validate
 ```
 
 Do not use Hibernate schema generation as the production migration strategy.

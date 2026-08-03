@@ -110,6 +110,31 @@ public final class InventoryErrorCode implements ErrorCode {
             "INVENTORY_SHOWTIME_ROOM_REQUIRED",
             "Showtime room is required");
 
+    public static final InventoryErrorCode SHOW_SEAT_NOT_AVAILABLE = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_SHOW_SEAT_NOT_AVAILABLE",
+            "Show seat is not available");
+
+    public static final InventoryErrorCode SHOW_SEAT_NOT_HELD = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_SHOW_SEAT_NOT_HELD",
+            "Show seat is not held");
+
+    public static final InventoryErrorCode SHOW_SEAT_HELD_BY_ANOTHER_BOOKING = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_SHOW_SEAT_HELD_BY_ANOTHER_BOOKING",
+            "Show seat is held by another booking");
+
+    public static final InventoryErrorCode SHOW_SEAT_HOLD_EXPIRED = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_SHOW_SEAT_HOLD_EXPIRED",
+            "Show seat hold has expired");
+
+    public static final InventoryErrorCode INVALID_HOLD_EXPIRATION = new InventoryErrorCode(
+            ErrorCategory.VALIDATION,
+            "INVENTORY_INVALID_HOLD_EXPIRATION",
+            "Hold expiration must be in the future");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

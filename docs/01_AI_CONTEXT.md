@@ -171,14 +171,14 @@ Cross-service communication must use:
 
 Service ownership:
 
-| Service              | Owned data                                     |
-| -------------------- | ---------------------------------------------- |
-| Movie Service        | Movies, genres and movie metadata              |
-| User Service         | Users, roles, permissions and refresh tokens   |
+| Service              | Owned data                                      |
+| -------------------- | ----------------------------------------------- |
+| Movie Service        | Movies, genres and movie metadata               |
+| User Service         | Users, roles, permissions and refresh tokens    |
 | Inventory Service    | Cinemas, rooms, seats, showtimes and show seats |
-| Booking Service      | Booking lifecycle and requested seat snapshots |
-| Payment Service      | Payment transactions                           |
-| Notification Service | Notifications and delivery history             |
+| Booking Service      | Booking lifecycle and requested seat snapshots  |
+| Payment Service      | Payment transactions                            |
+| Notification Service | Notifications and delivery history              |
 
 ---
 
