@@ -195,8 +195,7 @@ public class ShowSeat extends BaseEntity {
 
     private void requireHeldBy(UUID bookingId) {
         if (!isHeldBy(bookingId)) {
-            throw new IllegalStateException(
-                    "Seat is not held by booking " + bookingId);
+            throw new ConflictException(InventoryErrorCode.SEAT_NOT_HELD_BY_BOOKING);
         }
     }
 

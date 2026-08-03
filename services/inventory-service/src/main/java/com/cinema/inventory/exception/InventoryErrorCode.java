@@ -180,6 +180,11 @@ public final class InventoryErrorCode implements ErrorCode {
             "INVENTORY_SEAT_HOLD_NOT_EXPIRED",
             "Seat hold has not expired");
 
+    public static final InventoryErrorCode SEAT_NOT_HELD_BY_BOOKING = new InventoryErrorCode(
+            ErrorCategory.BUSINESS,
+            "INVENTORY_SEAT_NOT_HELD_BY_BOOKING",
+            "Seat is not held by booking");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

@@ -617,6 +617,104 @@ class ShowSeatControllerTest {
         verifyNoInteractions(showSeatService);
     }
 
+    @Test
+    void makeUnavailableShouldReturnUnavailableShowSeat()
+            throws Exception {
+
+        UUID showSeatId = UUID.randomUUID();
+
+        ShowSeatResponse response = response(
+                showSeatId,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "A1",
+                SeatType.STANDARD,
+                DEFAULT_PRICE,
+                ShowSeatStatus.UNAVAILABLE,
+                null,
+                null);
+
+        when(showSeatService.makeUnavailable(showSeatId))
+                .thenReturn(response);
+
+        mockMvc.perform(put(
+                "/api/v1/show-seats/{showSeatId}/unavailable",
+                showSeatId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id")
+                        .value(showSeatId.toString()))
+                .andExpect(jsonPath("$.status")
+                        .value("UNAVAILABLE"))
+                .andExpect(jsonPath("$.heldByBookingId")
+                        .doesNotExist())
+                .andExpect(jsonPath("$.holdExpiresAt")
+                        .doesNotExist());
+
+        verify(showSeatService)
+                .makeUnavailable(showSeatId);
+    }
+
+    @Test
+    void makeAvailableShouldReturnAvailableShowSeat()
+            throws Exception {
+
+        UUID showSeatId = UUID.randomUUID();
+
+        ShowSeatResponse response = response(
+                showSeatId,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "A1",
+                SeatType.STANDARD,
+                DEFAULT_PRICE,
+                ShowSeatStatus.AVAILABLE,
+                null,
+                null);
+
+        when(showSeatService.makeAvailable(showSeatId))
+                .thenReturn(response);
+
+        mockMvc.perform(put(
+                "/api/v1/show-seats/{showSeatId}/available",
+                showSeatId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id")
+                        .value(showSeatId.toString()))
+                .andExpect(jsonPath("$.status")
+                        .value("AVAILABLE"))
+                .andExpect(jsonPath("$.heldByBookingId")
+                        .doesNotExist())
+                .andExpect(jsonPath("$.holdExpiresAt")
+                        .doesNotExist());
+
+        verify(showSeatService)
+                .makeAvailable(showSeatId);
+    }
+
+    @Test
+    void makeUnavailableShouldReturnBadRequestForMalformedId()
+            throws Exception {
+
+        mockMvc.perform(put(
+                "/api/v1/show-seats/{showSeatId}/unavailable",
+                "invalid-uuid"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(showSeatService);
+    }
+
+    @Test
+    void makeAvailableShouldReturnBadRequestForMalformedId()
+            throws Exception {
+
+        mockMvc.perform(put(
+                "/api/v1/show-seats/{showSeatId}/available",
+                "invalid-uuid"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(showSeatService);
+    }
+
     private org.springframework.test.web.servlet.ResultActions performHold(
             UUID showSeatId,
             HoldShowSeatRequest request)

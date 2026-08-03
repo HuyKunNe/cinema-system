@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import com.cinema.inventory.enums.RoomType;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.ShowSeatStatus;
+import com.cinema.common.exception.exception.ConflictException;
 
 class ShowSeatTest {
 
@@ -127,8 +128,7 @@ class ShowSeatTest {
                 NOW.plusMinutes(10),
                 NOW);
 
-        assertThrows(
-                IllegalStateException.class,
+        assertThrows(ConflictException.class,
                 () -> showSeat.hold(
                         UUID.randomUUID(),
                         NOW.plusMinutes(10),
@@ -142,8 +142,7 @@ class ShowSeatTest {
                 NOW.plusMinutes(10),
                 NOW);
 
-        assertThrows(
-                IllegalStateException.class,
+        assertThrows(ConflictException.class,
                 () -> showSeat.book(UUID.randomUUID()));
     }
 
@@ -174,5 +173,48 @@ class ShowSeatTest {
                 IllegalArgumentException.class,
                 () -> showSeat.changePrice(
                         new BigDecimal("-1.00")));
+    }
+
+    @Test
+    void shouldMakeAvailableSeatUnavailable() {
+        showSeat.makeUnavailable();
+
+        assertEquals(
+                ShowSeatStatus.UNAVAILABLE,
+                showSeat.getStatus());
+
+        assertNull(showSeat.getHeldByBookingId());
+        assertNull(showSeat.getHoldExpiresAt());
+    }
+
+    @Test
+    void shouldMakeHeldSeatUnavailableAndClearHoldMetadata() {
+        showSeat.hold(
+                bookingId,
+                NOW.plusMinutes(10),
+                NOW);
+
+        showSeat.makeUnavailable();
+
+        assertEquals(
+                ShowSeatStatus.UNAVAILABLE,
+                showSeat.getStatus());
+
+        assertNull(showSeat.getHeldByBookingId());
+        assertNull(showSeat.getHoldExpiresAt());
+    }
+
+    @Test
+    void shouldMakeUnavailableSeatAvailable() {
+        showSeat.makeUnavailable();
+
+        showSeat.makeAvailable();
+
+        assertEquals(
+                ShowSeatStatus.AVAILABLE,
+                showSeat.getStatus());
+
+        assertNull(showSeat.getHeldByBookingId());
+        assertNull(showSeat.getHoldExpiresAt());
     }
 }

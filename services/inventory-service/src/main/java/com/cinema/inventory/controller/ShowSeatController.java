@@ -102,4 +102,20 @@ public class ShowSeatController {
                         showSeatId,
                         request));
     }
+
+    @PutMapping("/{showSeatId}/unavailable")
+    public ResponseEntity<ShowSeatResponse> makeUnavailable(
+            @PathVariable("showSeatId") UUID showSeatId) {
+
+        return ResponseEntity.ok(
+                showSeatService.makeUnavailable(showSeatId));
+    }
+
+    @PutMapping("/{showSeatId}/available")
+    public ResponseEntity<ShowSeatResponse> makeAvailable(
+            @PathVariable("showSeatId") UUID showSeatId) {
+
+        return ResponseEntity.ok(
+                showSeatService.makeAvailable(showSeatId));
+    }
 }

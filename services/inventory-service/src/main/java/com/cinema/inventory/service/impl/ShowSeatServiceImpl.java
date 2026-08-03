@@ -180,6 +180,7 @@ public class ShowSeatServiceImpl implements ShowSeatService {
     }
 
     @Override
+    @Transactional
     public ShowSeatResponse release(UUID showSeatId, ShowSeatBookingRequest request) {
         ShowSeat showSeat = findShowSeatForUpdate(showSeatId);
 
