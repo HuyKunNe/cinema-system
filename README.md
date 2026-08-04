@@ -324,12 +324,9 @@ Inventory Service remains the only service allowed to change
 - [x] R21 — Discovery Server
 - [x] R22 — API Gateway
 - [x] R23 — Movie Service
+- [x] R24 — Inventory Service
 
-## In progress
-
-- [ ] R24 — Inventory Service
-
-Current R24 scope:
+Completed R24 scope:
 
 - Cinema management
 - Room management
@@ -343,31 +340,37 @@ Current R24 scope:
 - Idempotent event processing
 - Unit, integration and concurrency tests
 
-Current accepted progress:
+R24 completion evidence:
 
 - Cinema, Room, Seat and Showtime management
 - Fixed physical seat layouts
 - Showtime overlap validation
 - ShowSeat generation
 - Transactional booking transitions:
-  - `AVAILABLE → HELD`
-  - `HELD → BOOKED`
-  - `HELD → AVAILABLE`
+    - `AVAILABLE → HELD`
+    - `HELD → BOOKED`
+    - `HELD → AVAILABLE`
 - Administrative transitions:
-  - `AVAILABLE → UNAVAILABLE`
-  - `HELD → UNAVAILABLE`
-  - `UNAVAILABLE → AVAILABLE`
+    - `AVAILABLE → UNAVAILABLE`
+    - `HELD → UNAVAILABLE`
+    - `UNAVAILABLE → AVAILABLE`
 - `PESSIMISTIC_WRITE` concurrency control
 - MySQL concurrent-hold integration testing
 - Shared validation, response and exception contracts
-
-Current implementation target:
-
-- R24.4.13.8 — ShowSeat endpoint authorization
-- Public access policy for ShowSeat queries
+- Public access policy for approved ShowSeat queries
 - `inventory:manage` authorization for administrative operations
-- `SERVICE` authorization for booking transitions
+- `ROLE_SERVICE` authorization for booking transitions
 - Security tests for `401`, `403` and successful access
+- Flyway and Hibernate schema validation
+- Maven verification and documentation synchronization
+
+Completion status:
+
+```text
+R24.5.1–R24.5.9 — DONE
+R24.5             — DONE
+R24               — DONE
+```
 
 ## Not started
 
@@ -376,13 +379,15 @@ Current implementation target:
 - [ ] R27 — Payment Service
 - [ ] R28 — Notification Service
 
-Current milestone:
+Latest completed milestone:
 
-> **R24 — Inventory Service Implementation**
+> **R24 — Inventory Service**
 
-Next milestone after R24 verification:
+Next approved milestone:
 
 > **R25 — User Service**
+
+R25 implementation has not started.
 
 ---
 
@@ -473,14 +478,14 @@ Business Services
 - Discovery Server
 - API Gateway
 - Movie Service
-
-## In progress
-
-- Inventory Service implementation
+- Inventory Service
 
 ## Next
 
 - User Service
+
+## Planned
+
 - Booking Service
 - Payment Service
 - Notification Service

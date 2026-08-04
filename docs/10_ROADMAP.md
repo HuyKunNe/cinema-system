@@ -1,7 +1,7 @@
 # Project Roadmap
 
-**Version:** R24
-**Current target:** R24 stabilization and exit-criteria verification
+**Version:** R24 Completed
+**Current target:** R25 planning — User Service
 **Last updated:** 2026-08-04
 
 ---
@@ -575,9 +575,10 @@ Movie Service is the authoritative owner of movie and genre catalog data.
 
 ---
 
-## 🚧 R24 — Inventory Service
+## ✅ R24 — Inventory Service
 
-Inventory Service is the active implementation target.
+Inventory Service implementation, stabilization, verification and documentation
+synchronization are complete.
 
 Inventory Service owns:
 
@@ -751,7 +752,7 @@ UNAVAILABLE
 Redis locks are a technical coordination mechanism and must not appear as a
 business status such as `LOCKED`.
 
-### Active implementation scope
+### Completed implementation scope
 
 1. Inventory Service Maven module.
 2. Spring Boot application entry point.
@@ -839,6 +840,23 @@ request when only one saleable seat remains.
 - ✅ R24.4.13.6 — Transactional booking ShowSeat transitions.
 - ✅ R24.4.13.7 — Administrative ShowSeat availability transitions.
 - ✅ R24.4.13.8 — ShowSeat endpoint authorization.
+- ✅ R24.5.1 — Schema and JPA mapping verification.
+- ✅ R24.5.2 — Domain-invariant verification.
+- ✅ R24.5.3 — Transaction and locking verification.
+- ✅ R24.5.4 — Idempotency verification.
+- ✅ R24.5.5 — Security verification.
+- ✅ R24.5.6 — Integration and Testcontainers stabilization.
+- ✅ R24.5.7 — Concurrency verification.
+- ✅ R24.5.8 — Full quality-gate verification.
+- ✅ R24.5.9 — Documentation synchronization and R24 closure.
+
+Completion status:
+
+```text
+R24.5.1–R24.5.9 — DONE
+R24.5             — DONE
+R24               — DONE
+```
 
 #### Completed ShowSeat behavior
 
@@ -873,9 +891,9 @@ Implemented guarantees:
 
 Database row locking is the correctness mechanism for current single-row ShowSeat transitions. Redis distributed locking remains part of the approved technical baseline but is not added as a redundant second lock for these transitions.
 
-#### Active authorization scope
+#### Completed authorization scope
 
-R24.4.13.8 must establish the following endpoint policy:
+R24.4.13.8 established the following endpoint policy:
 
 | Endpoint group                | Required access                             |
 | ----------------------------- | ------------------------------------------- |
@@ -884,14 +902,12 @@ R24.4.13.8 must establish the following endpoint policy:
 | Mark available or unavailable | `inventory:manage`                          |
 | Hold, book or release         | `SERVICE`                                   |
 
-R24.4.13.8 is complete. Applicable unauthenticated, forbidden and successful
-authorization cases are covered by security tests.
-
-R25 must not start before all remaining R24 exit criteria pass.
+Applicable unauthenticated, forbidden and successful authorization cases are
+covered by security tests.
 
 ### R24 exit criteria
 
-R24 may be marked complete only when:
+R24 was marked complete after verifying that:
 
 - Cinema, Room, Seat, Showtime and ShowSeat schemas and JPA mappings agree;
 - all identifiers use UUID v7;
@@ -1198,15 +1214,31 @@ Do not:
 | Common Infrastructure   | R11–R19        | ✅ Completed rounds; documented hardening gaps remain where stated |
 | Infrastructure Services | R20–R22        | ✅ Completed                                                       |
 | Movie Service           | R23            | ✅ Completed                                                       |
-| Inventory Service       | R24            | 🚧 Active implementation                                           |
-| User Service            | R25            | ⏳ Planned                                                         |
+| Inventory Service       | R24            | ✅ Completed                                                       |
+| User Service            | R25            | ⏭️ Next                                                            |
 | Booking Service         | R26            | ⏳ Planned                                                         |
 | Payment Service         | R27            | ⏳ Planned                                                         |
 | Notification Service    | R28            | ⏳ Planned                                                         |
 | Production Readiness    | To be assigned | ⏳ Planned                                                         |
 
-The active target is:
-R24 — Inventory Service stabilization and exit-criteria verification
+The latest completed round is:
+
+```text
+R24 — Inventory Service
+```
 
 The latest accepted checkpoint is:
-R24.4.13.8 — ShowSeat endpoint authorization
+
+```text
+R24.5.9 — Documentation synchronization and R24 closure
+```
+
+The next approved round is:
+
+```text
+R25 — User Service
+```
+
+R25 has not started. Confirm its authentication topology, authoritative token
+issuer, audience, signing-key ownership, refresh-token lifecycle and
+privileged-account requirements before implementation.

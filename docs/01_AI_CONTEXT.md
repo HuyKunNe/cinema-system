@@ -17,12 +17,15 @@ The `docs` directory is the project's source of truth.
 - R21 — Discovery Server
 - R22 — API Gateway
 - R23 — Movie Service
+- R24 — Inventory Service
 
-## Current Round
+## Latest Completed Round
 
-> **R24 — Inventory Service Implementation**
+> **R24 — Inventory Service**
 
-Inventory Service is the active business-service round.
+Inventory Service implementation, stabilization, security verification,
+integration testing, concurrency testing and documentation synchronization
+are complete.
 
 Approved domain model:
 
@@ -54,45 +57,69 @@ Inventory Service owns:
 - Inventory Outbox records
 - Inventory consumer-processing records
 
-Current implementation state:
+Completed implementation state:
 
 1. Inventory Service bootstrap — completed.
 2. Cinema implementation — completed.
 3. Room implementation — completed.
 4. Fixed Seat layout implementation — completed.
 5. Showtime and overlap validation — completed.
-6. ShowSeat generation — completed.
+6. ShowSeat generation and idempotency — completed.
 7. Transactional booking ShowSeat transitions — completed.
 8. Administrative availability transitions — completed.
-9. ShowSeat endpoint authorization — in progress.
-10. Remaining event, Outbox, idempotency and round-closing verification — pending
-    according to the R24 roadmap.
+9. ShowSeat endpoint authorization — completed.
+10. Schema, JPA mapping and data-ownership verification — completed.
+11. Business-invariant verification — completed.
+12. API, security, architecture and quality-gate verification — completed.
+13. Documentation synchronization and R24 closure — completed.
 
 Latest accepted checkpoint:
 
-> **R24.4.13.7 — Administrative ShowSeat availability transitions**
+> **R24.5.9 — Documentation synchronization and R24 closure**
 
-Active target:
+Completion status:
 
-> **R24.4.13.8 — ShowSeat endpoint authorization**
+```text
+R24.5.1–R24.5.9 — DONE
+R24.5             — DONE
+R24               — DONE
+```
 
-ShowSeat transition rules:
+Verified ShowSeat rules:
 
-- use `@Transactional`;
-- load mutable ShowSeat state through `findByIdForUpdate(...)`;
-- preserve `PESSIMISTIC_WRITE` until the transaction finishes;
-- do not add Redis locking to current single-row transitions;
-- do not allow booked ShowSeats to return to an availability state;
-- use shared public exceptions and Inventory error codes;
-- do not trust client-supplied role or identity headers;
-- do not start R25 before every R24 exit criterion passes.
+- every mutable operation uses `@Transactional`;
+- mutable ShowSeat state is loaded through `findByIdForUpdate(...)`;
+- `PESSIMISTIC_WRITE` is preserved until the transaction finishes;
+- current single-row transitions do not duplicate database locking with Redis;
+- booked ShowSeats cannot return to an availability state;
+- hold ownership and expiration are enforced;
+- shared public exceptions and Inventory error codes are used;
+- client-supplied role or identity headers are not trusted;
+- competing holds for the same ShowSeat allow at most one success.
+
+Verified endpoint authorization:
+
+- approved ShowSeat query endpoints are public;
+- generation and availability administration require `inventory:manage`;
+- hold, book and release require `ROLE_SERVICE`;
+- unauthenticated, forbidden and successful-access cases are tested;
+- JWT role and permission claims are mapped to granted authorities;
+- blank and duplicate authorities are removed.
 
 ## Next Round
 
 > **R25 — User Service**
 
-Do not start R25 before R24 passes all exit criteria defined in
-`docs/10_ROADMAP.md`.
+R25 is the next approved round but has not started.
+
+Before implementation, confirm:
+
+- the authoritative token issuer;
+- the OAuth2 or authorization-server topology;
+- access-token issuer and audience validation;
+- signing-key ownership and rotation;
+- access-token and refresh-token lifecycle;
+- roles, permissions and privileged-account requirements.
 
 ---
 
@@ -255,6 +282,14 @@ AVAILABLE → HELD → BOOKED
      └────────┘
 ```
 
+Approved administrative availability transitions:
+
+```text
+AVAILABLE   → UNAVAILABLE
+HELD        → UNAVAILABLE
+UNAVAILABLE → AVAILABLE
+```
+
 Redis provides coordination only. Database conditional updates or locking
 are the final consistency guarantee against double booking.
 
@@ -265,7 +300,6 @@ are the final consistency guarantee against double booking.
 The following is the authoritative seat reservation flow:
 
 > The following is the approved future event-driven multi-seat reservation flow.
-> Its event, Outbox, idempotency and Redis-coordination portions remain planned.
 > Current single-row ShowSeat transitions use database transactions and
 > `PESSIMISTIC_WRITE`.
 
@@ -346,7 +380,8 @@ database.
 When Inventory Service receives a reservation request, it performs:
 
 1. Check idempotency using `eventId`.
-2. Acquire Redis distributed locks.
+2. Acquire Redis distributed locks where the approved multi-seat operation
+   requires them.
 3. Query Inventory-owned `show_seats`.
 4. Verify that all requested seats are `AVAILABLE`.
 5. Atomically change available seats to `HELD`.
@@ -541,14 +576,17 @@ explicitly requested.
 | Round | Service              | Status      |
 | ----- | -------------------- | ----------- |
 | R23   | Movie Service        | DONE        |
-| R24   | Inventory Service    | IN PROGRESS |
-| R25   | User Service         | NOT STARTED |
+| R24   | Inventory Service    | DONE        |
+| R25   | User Service         | NEXT        |
 | R26   | Booking Service      | NOT STARTED |
 | R27   | Payment Service      | NOT STARTED |
 | R28   | Notification Service | NOT STARTED |
 
-Movie Service has completed its implementation, testing and verification
-requirements. Inventory Service is the active business-service round.
+Movie Service and Inventory Service have completed their implementation,
+testing and verification requirements.
+
+User Service is the next approved business-service round. Its
+implementation has not started.
 
 ---
 
@@ -650,21 +688,25 @@ For a business service, verify at least:
 - Duplicate constraint behavior
 - Full Maven verification
 
-R24 Inventory Service must additionally verify:
+R24 Inventory Service verification completed for:
 
 - Cinema service behavior
 - Room service behavior
 - Fixed physical Seat layout behavior
-- Showtime overlap rejection
-- ShowSeat generation
+- Showtime time-range and overlap invariants
+- Transactional and idempotent ShowSeat generation
 - Atomic `AVAILABLE → HELD` transitions
 - Atomic `HELD → BOOKED` transitions
 - Atomic `HELD → AVAILABLE` transitions
+- Administrative availability transitions
+- Hold ownership and expiration
 - Duplicate event idempotency
 - Concurrent reservation of the same seat
+- Endpoint authorization
 - Flyway schema validation
 - MySQL Testcontainers integration
 - Redis Testcontainers integration where required
+- Full Maven verification
 
 ---
 
@@ -683,19 +725,21 @@ A round can be marked complete only when:
 
 A merged pull request alone does not mean the round is complete.
 
+R24 met all completion requirements on 2026-08-04.
+
 ---
 
 # Current Next Step
 
-Continue with:
+Prepare R25 — User Service:
 
-1. Complete R24.4.13.8 — ShowSeat endpoint authorization.
-2. Verify public ShowSeat query access.
-3. Require `inventory:manage` for generation and availability administration.
-4. Require `SERVICE` for hold, book and release.
-5. Add unauthenticated, forbidden and successful-access security tests.
-6. Continue the remaining event, Outbox and idempotency work defined by R24.
-7. Run the complete R24 verification.
-8. Synchronize documentation.
+1. Confirm the authoritative token issuer.
+2. Confirm the OAuth2 or authorization-server topology.
+3. Define access-token issuer and audience validation.
+4. Define signing-key ownership and rotation.
+5. Define access-token and refresh-token lifecycle.
+6. Define roles, permissions and privileged-account requirements.
+7. Split the approved R25 scope into implementation checkpoints.
 
-Do not start R25 before every R24 exit criterion passes.
+Do not modify the completed R24 implementation unless addressing a
+verified defect.

@@ -1,6 +1,6 @@
 # Cinema Booking System
 
-Version: 0.2 (R24 Inventory Service Implementation)
+Version: 0.3 (R24 Inventory Service Completed)
 
 ---
 
@@ -55,10 +55,7 @@ Hệ thống được thiết kế để mô phỏng nền tảng của các chu
 - ✅ R21 — Discovery Server
 - ✅ R22 — API Gateway
 - ✅ R23 — Movie Service
-
-## In Progress
-
-- 🚧 R24 — Inventory Service Implementation
+- ✅ R24 — Inventory Service
 
 Inventory Service owns:
 
@@ -74,19 +71,19 @@ Inventory Service owns:
 - Inventory Outbox records
 - Inventory consumer-processing records
 
-R24 implementation scope:
+Completed R24 scope:
 
-- Bootstrap the Spring Boot application
-- Create the Inventory database and Flyway migrations
-- Implement Cinema management
-- Implement Room management
-- Implement fixed Seat layouts
-- Implement Showtime management and overlap validation
-- Generate ShowSeat records for each Showtime
-- Implement atomic ShowSeat state transitions
-- Integrate shared exception, response, validation and mapping modules
-- Add unit, integration and concurrency tests
-- Complete security and documentation verification
+- Bootstrapped the Spring Boot application
+- Created the Inventory database and Flyway migrations
+- Implemented Cinema management
+- Implemented Room management
+- Implemented fixed Seat layouts
+- Implemented Showtime management and overlap validation
+- Implemented ShowSeat generation for each Showtime
+- Implemented atomic ShowSeat state transitions
+- Integrated shared exception, response, validation and mapping modules
+- Added unit, integration, security and concurrency tests
+- Completed stabilization, exit-criteria and documentation verification
 
 ## Not Started
 
@@ -99,17 +96,19 @@ R24 implementation scope:
 
 # Current Target
 
-Current milestone:
+Latest completed round:
 
-> **R24 — Inventory Service Implementation**
+> **R24 — Inventory Service**
 
-Current checkpoint:
+Completed stabilization checkpoint:
 
-- ✅ R24.4.13.6 — Transactional booking ShowSeat transitions
-- ✅ R24.4.13.7 — Administrative ShowSeat availability transitions
-- 🚧 R24.4.13.8 — ShowSeat endpoint authorization
+```text
+R24.5.1–R24.5.9 — DONE
+R24.5             — DONE
+R24               — DONE
+```
 
-Implemented ShowSeat transitions:
+Completed ShowSeat transitions:
 
 ```text
 AVAILABLE   → HELD
@@ -120,40 +119,49 @@ HELD        → UNAVAILABLE
 UNAVAILABLE → AVAILABLE
 ```
 
-Current concurrency model:
+Verified concurrency model:
 
 - every transition executes inside a database transaction;
 - current ShowSeat state is loaded using `PESSIMISTIC_WRITE`;
 - concurrent holds for one ShowSeat allow at most one success;
 - Redis locking is not duplicated for current single-row transitions.
 
-Current security target:
+Verified security policy:
 
 - ShowSeat queries follow the approved public-access policy;
 - generation and availability administration require `inventory:manage`;
-- hold, book and release require `SERVICE`;
-- authorization behavior must be verified through `401`, `403` and successful-access tests.
+- hold, book and release require `ROLE_SERVICE`;
+- authorization behavior is covered by applicable `401`, `403` and
+  successful-access tests;
+- JWT role and permission claims are mapped to granted authorities;
+- blank and duplicate authorities are removed.
 
-R24 is complete only when:
+R24 completion evidence:
 
-- Inventory Service owns all approved inventory-domain data
-- Flyway migrations pass
-- Cinema, Room, Seat, Showtime and ShowSeat behavior is implemented
-- Showtime overlap validation is covered
-- ShowSeat generation is verified
-- Seat-state transitions are atomic
-- Duplicate event processing is idempotent
-- Unit and integration tests pass
-- Concurrency tests pass
-- Security requirements pass
-- `mvn clean verify` passes from the repository root
-- Documentation is synchronized
+- Inventory Service owns all approved inventory-domain data.
+- Flyway migrations and Hibernate schema validation pass.
+- Cinema, Room, Seat, Showtime and ShowSeat behavior is implemented.
+- Showtime overlap validation is covered.
+- ShowSeat generation is transactional and idempotent.
+- Seat-state transitions are atomic.
+- Hold ownership and expiration rules are enforced.
+- Database locking prevents competing requests from successfully holding the
+  same ShowSeat.
+- Duplicate event processing is idempotent.
+- Unit, controller, repository and integration tests pass.
+- Concurrency tests pass.
+- Security and authorization requirements pass.
+- Maven verification passes.
+- Documentation is synchronized.
 
-After R24 has been verified, continue with:
+Next approved round:
 
 > **R25 — User Service**
 
-Do not start R25 before R24 passes its exit criteria.
+R25 has not started. Its authentication topology, authoritative token issuer,
+access-token audience, signing-key ownership, refresh-token lifecycle and
+privileged-account security requirements must be confirmed before
+implementation.
 
 ---
 
@@ -522,7 +530,7 @@ cinema-system
 The project is developed incrementally through numbered rounds.
 
 ```text
-R1 → R2 → ... → R22 → R23 → R24 → ...
+R1 → R2 → ... → R22 → R23 → R24 → R25 → ...
 ```
 
 Each round must pass:

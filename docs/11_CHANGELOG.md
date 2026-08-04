@@ -1,8 +1,8 @@
 # Changelog
 
 **Version:** 0.4
-**Current baseline:** R24 Inventory Service implementation
-**Last reviewed:** 2026-07-24
+**Current baseline:** R24 Inventory Service completed
+**Last reviewed:** 2026-08-04
 
 ---
 
@@ -32,14 +32,73 @@ the roadmap.
 Current status:
 
 ```text
-R1-R23   Completed
-R24      Inventory Service implementation
-R25-R28  Planned
+R1-R24   Completed
+R25      User Service next
+R26-R28  Planned
 ```
 
 ---
 
 # Unreleased
+
+## 2026-08-04
+
+### Completed
+
+- Completed R24.5.1–R24.5.9 stabilization and exit-criteria verification.
+- Completed R24 — Inventory Service.
+- Accepted R24.5.9 — Documentation synchronization and R24 closure as the
+  latest completed checkpoint.
+- Set R25 — User Service as the next approved round; implementation has not
+  started.
+
+### Added
+
+- Added ShowSeat endpoint-authorization coverage for public, management and
+  service-only operations.
+- Added JWT role and permission authority-mapping verification.
+- Added duplicate event-processing idempotency verification.
+- Added repository, integration, security and concurrency evidence required by
+  the R24 exit criteria.
+
+### Changed
+
+- Finalized ShowSeat authorization policy:
+    - approved query endpoints are public;
+    - generation and administrative availability changes require
+      `inventory:manage`;
+    - hold, book and release require `ROLE_SERVICE`.
+- JWT roles and permissions are mapped to granted authorities while blank and
+  duplicate authorities are removed.
+- Updated the repository baseline from active Inventory implementation to
+  completed Inventory Service.
+
+### Verified
+
+- Inventory Service owns Cinema, Room, fixed Seat, Showtime and ShowSeat data.
+- Flyway migration and Hibernate schema validation pass.
+- Cinema, Room, Seat, Showtime and ShowSeat behavior is covered.
+- Showtime time-range and overlap invariants are enforced.
+- ShowSeat generation is transactional and idempotent.
+- ShowSeat state transitions are atomic and use `PESSIMISTIC_WRITE` where
+  mutable state is loaded.
+- Hold ownership and expiration rules are enforced.
+- Concurrent requests for the same ShowSeat allow at most one successful hold.
+- Duplicate event processing is idempotent.
+- Endpoint authorization behavior is covered by applicable `401`, `403` and
+  successful-access tests.
+- Unit, mapper, controller, repository, integration, security and concurrency
+  tests pass.
+- Full Maven verification passes.
+- R24 documentation is synchronized.
+
+### R25 Preparation
+
+- R25 — User Service is the next approved round.
+- Before implementation, confirm the authoritative token issuer, OAuth2 or
+  authorization-server topology, access-token issuer and audience validation,
+  signing-key ownership and rotation, token lifecycle, and privileged-account
+  security requirements.
 
 ## 2026-08-03
 
@@ -81,7 +140,7 @@ R25-R28  Planned
 - Preserved Movie Service ownership of movies and genres.
 - Preserved Inventory Service ownership of cinema, room, seat, showtime, and
   ShowSeat data.
-- Documented that R24 is started but not completed.
+- Recorded that R24 was still in progress at this historical checkpoint.
 
 ### Verified
 
@@ -92,7 +151,7 @@ R25-R28  Planned
   conflict for two concurrent requests targeting the same ShowSeat.
 - R24.4.13.6 and R24.4.13.7 are accepted as completed checkpoints.
 
-### In Progress
+### In Progress at This Checkpoint
 
 - Started R24.4.13.8 — ShowSeat endpoint authorization.
 - The active authorization work covers:
@@ -101,7 +160,7 @@ R25-R28  Planned
     - `SERVICE` for hold, book and release operations;
     - applicable `401`, `403` and successful authorization tests.
 
-### Remaining
+### Remaining at This Checkpoint
 
 - R24 as a whole remains in implementation.
 - R24.4.13.8 security verification is not yet complete.
@@ -113,8 +172,9 @@ R25-R28  Planned
 
 # R24 - Inventory Service
 
-**Status:** Implementation
+**Status:** Completed
 **Started:** 2026-07-24
+**Completed:** 2026-08-04
 
 ### Approved Ownership
 
@@ -164,25 +224,6 @@ Inventory Service owns:
 - Cross-service database foreign keys are prohibited.
 - `showtimes.movie_id` stores only the Movie Service UUID reference.
 
-### Security
-
-- Added an Inventory Service OAuth2 Resource Server security filter chain.
-- Kept approved ShowSeat query endpoints publicly accessible.
-- Required `inventory:manage` for ShowSeat generation and administrative
-  availability transitions.
-- Required `ROLE_SERVICE` for hold, book and release operations.
-- Added JWT role and permission claim mapping.
-- Prevented duplicate `ROLE_` prefixes and duplicate authorities.
-- Added unauthenticated, forbidden and successful authorization tests.
-
-### Testing
-
-- Added ShowSeat endpoint security tests.
-- Added JWT authority claim-mapping tests.
-- Verified the complete Inventory Service test suite.
-- Stabilized the shared MySQL integration-test container lifecycle so cached
-  Spring contexts do not reference a stopped container.
-
 ### Business-State Baseline
 
 ```text
@@ -194,11 +235,14 @@ UNAVAILABLE
 
 Redis locks are not represented as a `LOCKED` business state.
 
-### Current State
+### Completion State
 
-R24 is the active implementation round. Its implementation and verification
-evidence must be recorded in future changelog updates as each accepted increment
-is completed.
+R24.5.1–R24.5.9, R24.5 and R24 are complete. Inventory Service implementation,
+stabilization, schema verification, business-invariant verification, API and
+security verification, concurrency testing, full Maven verification and
+documentation synchronization have been accepted.
+
+R25 — User Service is the next approved round and has not started.
 
 ---
 
@@ -260,7 +304,8 @@ is completed.
 Movie Service is the authoritative owner of movies, genres, movie lifecycle
 state, and movie catalog metadata.
 
-R23 is accepted as completed and R24 Inventory Service is now the active round.
+At this historical checkpoint, R23 was accepted as completed and R24 Inventory
+Service became the active round.
 
 ---
 
@@ -700,7 +745,8 @@ deployment configuration.
 ### Roadmap
 
 - Accepted R23 Movie Service as completed.
-- Selected R24 Inventory Service as the active round.
+- Selected R24 Inventory Service as the active round at this historical
+  checkpoint.
 - Moved User Service to R25.
 - Preserved Booking, Payment, and Notification as R26, R27, and R28.
 
