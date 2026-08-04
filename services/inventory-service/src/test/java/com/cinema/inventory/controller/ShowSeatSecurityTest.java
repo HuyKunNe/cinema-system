@@ -1,5 +1,7 @@
 package com.cinema.inventory.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -24,6 +26,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.cinema.common.security.config.SecurityConfiguration;
 import com.cinema.inventory.config.InventorySecurityConfig;
 import com.cinema.inventory.dto.request.GenerateShowSeatsRequest;
 import com.cinema.inventory.dto.request.HoldShowSeatRequest;
@@ -31,11 +34,11 @@ import com.cinema.inventory.dto.request.ShowSeatBookingRequest;
 import com.cinema.inventory.service.ShowSeatService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.eq;
-
 @WebMvcTest(ShowSeatController.class)
-@Import(InventorySecurityConfig.class)
+@Import({
+        InventorySecurityConfig.class,
+        SecurityConfiguration.class
+})
 @TestPropertySource(properties = {
         "cinema.security.jwt.secret="
                 + "cinema-system-security-test-secret-key-32-bytes"
