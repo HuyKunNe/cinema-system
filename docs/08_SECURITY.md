@@ -2432,6 +2432,28 @@ private static final String SECRET = "cinema-secret-123";
 
 ---
 
+## Inventory Service Endpoint Authorization
+
+The implemented ShowSeat endpoint policy is:
+
+| Endpoint group | Required access |
+|---|---|
+| Query ShowSeats | Public |
+| Generate ShowSeats | `inventory:manage` |
+| Mark available or unavailable | `inventory:manage` |
+| Hold, book or release | `ROLE_SERVICE` |
+
+Inventory Service maps:
+
+- `roles: ["SERVICE"]` to `ROLE_SERVICE`;
+- already-prefixed roles without adding another prefix;
+- values from `permissions` directly to granted authorities.
+
+Blank and duplicate authorities are removed.
+
+Authorization tests cover applicable unauthenticated, forbidden and
+successful-access cases.
+
 ## Plain-text password storage
 
 ```java

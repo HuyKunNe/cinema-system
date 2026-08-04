@@ -164,6 +164,25 @@ Inventory Service owns:
 - Cross-service database foreign keys are prohibited.
 - `showtimes.movie_id` stores only the Movie Service UUID reference.
 
+### Security
+
+- Added an Inventory Service OAuth2 Resource Server security filter chain.
+- Kept approved ShowSeat query endpoints publicly accessible.
+- Required `inventory:manage` for ShowSeat generation and administrative
+  availability transitions.
+- Required `ROLE_SERVICE` for hold, book and release operations.
+- Added JWT role and permission claim mapping.
+- Prevented duplicate `ROLE_` prefixes and duplicate authorities.
+- Added unauthenticated, forbidden and successful authorization tests.
+
+### Testing
+
+- Added ShowSeat endpoint security tests.
+- Added JWT authority claim-mapping tests.
+- Verified the complete Inventory Service test suite.
+- Stabilized the shared MySQL integration-test container lifecycle so cached
+  Spring contexts do not reference a stopped container.
+
 ### Business-State Baseline
 
 ```text

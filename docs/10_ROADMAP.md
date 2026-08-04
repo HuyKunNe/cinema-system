@@ -1,8 +1,8 @@
 # Project Roadmap
 
 **Version:** R24
-**Current target:** R24.4.13.8 — Inventory ShowSeat endpoint authorization
-**Last updated:** 2026-08-03
+**Current target:** R24 stabilization and exit-criteria verification
+**Last updated:** 2026-08-04
 
 ---
 
@@ -838,10 +838,7 @@ request when only one saleable seat remains.
 - ✅ R24.4.13.1–R24.4.13.5 — ShowSeat API and transition preparation.
 - ✅ R24.4.13.6 — Transactional booking ShowSeat transitions.
 - ✅ R24.4.13.7 — Administrative ShowSeat availability transitions.
-
-#### In progress
-
-- 🚧 R24.4.13.8 — ShowSeat endpoint authorization.
+- ✅ R24.4.13.8 — ShowSeat endpoint authorization.
 
 #### Completed ShowSeat behavior
 
@@ -887,8 +884,8 @@ R24.4.13.8 must establish the following endpoint policy:
 | Mark available or unavailable | `inventory:manage`                          |
 | Hold, book or release         | `SERVICE`                                   |
 
-R24.4.13.8 remains incomplete until applicable unauthenticated, forbidden and
-successful authorization cases are verified.
+R24.4.13.8 is complete. Applicable unauthenticated, forbidden and successful
+authorization cases are covered by security tests.
 
 R25 must not start before all remaining R24 exit criteria pass.
 
@@ -1209,13 +1206,7 @@ Do not:
 | Production Readiness    | To be assigned | ⏳ Planned                                                         |
 
 The active target is:
-
-```text
-R24.4.13.8 — Inventory ShowSeat endpoint authorization
-```
+R24 — Inventory Service stabilization and exit-criteria verification
 
 The latest accepted checkpoint is:
-
-```text
-R24.4.13.7 — Administrative ShowSeat availability transitions
-```
+R24.4.13.8 — ShowSeat endpoint authorization
