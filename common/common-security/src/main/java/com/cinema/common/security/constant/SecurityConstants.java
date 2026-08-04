@@ -9,12 +9,11 @@ public final class SecurityConstants {
 
     public static final String BEARER_PREFIX = "Bearer ";
 
-    public static final String CLAIM_USER_ID = "userId";
-
     public static final String CLAIM_USERNAME = "username";
 
     public static final String CLAIM_ROLES = "roles";
 
     public static final String CLAIM_PERMISSIONS = "permissions";
 
+    public static final String ROLE_PREFIX = "ROLE_";
 }

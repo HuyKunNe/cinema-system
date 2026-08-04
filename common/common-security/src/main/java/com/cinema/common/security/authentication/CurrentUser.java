@@ -1,5 +1,8 @@
 package com.cinema.common.security.authentication;
 
+import java.util.Set;
+import java.util.UUID;
+
 import com.cinema.common.security.context.SecurityContextUtils;
 
 public final class CurrentUser {
@@ -7,24 +10,23 @@ public final class CurrentUser {
     private CurrentUser() {
     }
 
-    public static Long id() {
-
-        return SecurityContextUtils
-                .getCurrentUser()
-                .userId();
+    public static UUID id() {
+        return get().userId();
     }
 
     public static String username() {
+        return get().username();
+    }
 
-        return SecurityContextUtils
-                .getCurrentUser()
-                .username();
+    public static Set<String> roles() {
+        return get().roles();
+    }
+
+    public static Set<String> permissions() {
+        return get().permissions();
     }
 
     public static AuthenticationUser get() {
-
-        return SecurityContextUtils
-                .getCurrentUser();
+        return SecurityContextUtils.getCurrentUser();
     }
-
 }
