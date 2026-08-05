@@ -1,5 +1,7 @@
 # Database Design
 
+Version: R25
+
 This document defines the authoritative database ownership, schema design rules,
 table responsibilities, relationships, constraints, indexing strategy, and
 migration requirements for Cinema Booking System.
@@ -34,13 +36,13 @@ The database design follows these principles:
 
 Each business service owns a separate logical database.
 
-| Service | Database |
-|---|---|
-| Movie Service | `cinema_movie_db` |
-| User Service | `cinema_user_db` |
-| Inventory Service | `cinema_inventory_db` |
-| Booking Service | `cinema_booking_db` |
-| Payment Service | `cinema_payment_db` |
+| Service              | Database                 |
+| -------------------- | ------------------------ |
+| Movie Service        | `cinema_movie_db`        |
+| User Service         | `cinema_user_db`         |
+| Inventory Service    | `cinema_inventory_db`    |
+| Booking Service      | `cinema_booking_db`      |
+| Payment Service      | `cinema_payment_db`      |
 | Notification Service | `cinema_notification_db` |
 
 Infrastructure services must not use these databases for their own persistence.
@@ -439,17 +441,32 @@ Database:
 cinema_user_db
 ```
 
-User Service owns identity, authorization, user profiles, and refresh tokens.
+User Service owns identity, credentials, authorization, user profiles, OAuth2
+and OpenID Connect persistence, refresh-token state, MFA state, and security
+audit records.
+
+This section defines the accepted R25 data contract. User Service migrations are
+not implemented yet. Final table and column names become authoritative when the
+R25 Flyway migrations are reviewed and accepted.
 
 Conceptual tables:
 
 ```text
 users
+user_profiles
+user_credentials
 roles
 permissions
 user_roles
 role_permissions
+verification_tokens
+password_reset_tokens
+oauth2_registered_client
+oauth2_authorization
+oauth2_authorization_consent
 refresh_tokens
+user_mfa_methods
+security_audit_events
 ```
 
 ---
@@ -461,13 +478,14 @@ Conceptual columns:
 ```text
 id
 email
+normalized_email
 username
-password_hash
-first_name
-last_name
-phone_number
+normalized_username
 status
-email_verified
+email_verified_at
+locked_at
+disabled_at
+last_login_at
 created_at
 updated_at
 version
@@ -475,13 +493,64 @@ version
 
 Requirements:
 
-- Email must be unique according to the approved normalization rule.
-- Username must be unique when username authentication is supported.
-- Passwords must be stored only as secure password hashes.
-- Plain-text passwords must never be persisted.
-- Authentication secrets must never appear in audit logs.
+- Normalized email must be unique.
+- Normalized username must be unique when username authentication is supported.
 - User status must use a string enum.
+- Locked and disabled accounts must not receive new access tokens.
 - External services may store `user_id`, but it is not a physical foreign key.
+- Authentication secrets must never appear in audit logs.
+
+Recommended uniqueness:
+
+```text
+users(normalized_email)
+users(normalized_username)
+```
+
+Normalization must be deterministic and tested before persistence.
+
+---
+
+## User Profiles and Credentials
+
+Profile data and authentication credentials have different sensitivity and
+lifecycle rules. They should not be exposed through one unrestricted entity.
+
+Conceptual profile columns:
+
+```text
+user_id
+first_name
+last_name
+phone_number
+created_at
+updated_at
+version
+```
+
+Conceptual credential columns:
+
+```text
+user_id
+password_hash
+password_changed_at
+password_hash_algorithm
+failed_attempt_count
+last_failed_at
+created_at
+updated_at
+version
+```
+
+Rules:
+
+- Passwords are stored only as approved adaptive password hashes.
+- Plain-text passwords must never be persisted.
+- Password history, when introduced, stores password hashes only.
+- Password reset invalidates affected authorization sessions and refresh
+  tokens.
+- Credential records must not be returned by profile APIs.
+- User Service is the only service allowed to query credential tables.
 
 ---
 
@@ -501,6 +570,137 @@ Join tables should use composite primary keys or equivalent unique constraints.
 
 Role names and permission codes must be unique.
 
+Recommended constraints:
+
+```text
+roles(name)
+permissions(code)
+user_roles(user_id, role_id)
+role_permissions(role_id, permission_id)
+```
+
+Role and permission assignment changes require privileged authorization and
+security audit records.
+
+---
+
+## Verification and Password-Reset Tokens
+
+Verification and password-reset token persistence may include:
+
+```text
+id
+user_id
+purpose
+token_hash
+expires_at
+used_at
+revoked_at
+created_at
+```
+
+Rules:
+
+- Store a secure token hash, never the raw token.
+- Tokens are single-purpose, single-use, and short-lived.
+- A token is accepted only when its purpose, user, expiry, and unused/revoked
+  state all match.
+- Issuing a replacement may revoke earlier active tokens for the same purpose.
+- Cleanup must be safe with multiple User Service instances.
+
+---
+
+## OAuth2 Registered Clients
+
+Spring Authorization Server registered-client persistence belongs only to User
+Service.
+
+Conceptual data includes:
+
+```text
+id
+client_id
+client_id_issued_at
+client_secret_hash
+client_secret_expires_at
+client_name
+client_authentication_methods
+authorization_grant_types
+redirect_uris
+post_logout_redirect_uris
+scopes
+client_settings
+token_settings
+created_at
+updated_at
+version
+```
+
+Rules:
+
+- `client_id` must be unique.
+- Confidential-client secrets use an approved one-way password encoder.
+- Raw client secrets must not be stored or logged.
+- Public clients must not be given a client secret.
+- Public Authorization Code clients require PKCE.
+- Redirect URIs require exact allow-list matching.
+- Resource Owner Password Credentials must never appear in the approved grant
+  set.
+- Client Credentials is limited to approved service identities.
+- Client configuration changes require an audit record.
+
+The conventional Spring Authorization Server table name
+`oauth2_registered_client` may be retained unless an accepted migration chooses
+another name without weakening the contract.
+
+---
+
+## OAuth2 Authorizations and Consents
+
+Authorization persistence owns active authorization sessions, grants, token
+metadata, revocation state, and consent.
+
+Conceptual authorization data includes:
+
+```text
+id
+registered_client_id
+principal_name
+authorization_grant_type
+authorized_scopes
+authorization_code metadata
+access_token metadata
+oidc_id_token metadata
+device or state metadata when an approved flow requires it
+created_at
+updated_at
+expires_at
+revoked_at
+version
+```
+
+Conceptual consent data includes:
+
+```text
+registered_client_id
+principal_name
+authorities
+created_at
+updated_at
+```
+
+Rules:
+
+- Only approved grants may create authorization records.
+- Authorization and consent rows belong to User Service and may reference its
+  users and registered clients with local foreign keys.
+- Access-token JWT values do not need to be stored merely to validate them.
+- Persist only token metadata required for protocol behavior, revocation,
+  auditing, and incident response.
+- Authorization revocation must be concurrency-safe and idempotent.
+- Consent is scoped to one principal and one registered client.
+- Consent changes require security audit coverage.
+
 ---
 
 ## Refresh Tokens
@@ -510,18 +710,83 @@ Refresh token persistence may include:
 ```text
 id
 user_id
+authorization_id
+registered_client_id
+token_family_id
 token_hash
+issued_at
 expires_at
+rotated_at
+replaced_by_token_id
 revoked_at
+revocation_reason
+last_used_at
 created_at
+updated_at
+version
 ```
 
 Rules:
 
-- Prefer storing a secure token hash instead of the raw token.
+- Store a secure token hash instead of the raw token.
 - `user_id` may reference `users` because both tables belong to User Service.
+- Authorization and registered-client references may use local foreign keys
+  because all participating tables belong to User Service.
+- Refresh tokens are opaque.
+- Refresh tokens expire no later than 30 days after issuance.
+- Successful use rotates the token and invalidates the previous token.
+- Reuse of an already-rotated token rejects the request and revokes the token
+  family or authorization session according to the accepted security policy.
 - Expired and revoked tokens must not be accepted.
+- Logout, password reset, account disablement, client revocation, and confirmed
+  compromise must revoke affected refresh tokens.
+- Rotation must use a transaction and concurrency protection so one token cannot
+  produce two valid successors.
 - Token cleanup must be safe when multiple service instances run concurrently.
+
+If Spring Authorization Server's default authorization schema cannot satisfy
+hashed opaque refresh-token storage, rotation, reuse detection, and revocation
+requirements, User Service must provide an adapted authorization service or
+dedicated refresh-token persistence. Do not weaken the requirements to fit a
+default schema.
+
+---
+
+## MFA and Security Audit Data
+
+Privileged production accounts require MFA under ADR-013.
+
+MFA persistence may include method type, encrypted or externally referenced
+secret material, activation state, recovery-code hashes, creation time, and
+last-use time.
+
+Rules:
+
+- Never store recovery codes in plain text.
+- Prefer an external secret manager or encrypted-at-rest secret reference for
+  TOTP seeds.
+- MFA secrets must not appear in API responses, logs, events, or audit payloads.
+- Enrollment, removal, recovery, and privileged bypass actions require audit
+  records.
+
+Security audit records should capture:
+
+```text
+id
+occurred_at
+actor_user_id
+actor_client_id
+action
+target_type
+target_id
+outcome
+correlation_id
+source metadata with privacy controls
+details without secrets
+```
+
+Audit data must be append-oriented and access-controlled. It is not a place to
+store passwords, raw tokens, client secrets, or private keys.
 
 ---
 
@@ -536,6 +801,10 @@ cinema_inventory_db
 Inventory Service exclusively owns:
 
 ```text
+cinemas
+rooms
+seats
+showtimes
 show_seats
 ```
 
@@ -549,12 +818,13 @@ outbox_events
 Only Inventory Service may:
 
 - Query authoritative show-seat state
-- Reserve seats
+- Hold seats
 - Release seats
-- Mark seats as sold
-- Associate a reservation with a booking reference
-- Manage seat reservation expiration
-- Acquire Redis distributed locks for seats
+- Book held seats
+- Manage administrative availability
+- Associate a hold with a Booking Service UUID reference
+- Manage hold expiration
+- Apply database locking and any approved distributed coordination
 
 ---
 
@@ -568,13 +838,13 @@ Conceptual columns:
 ```text
 id
 showtime_id
+seat_id
 seat_number
 seat_type
 price
 status
-reserved_by_booking_id
-reserved_at
-reservation_expires_at
+held_by_booking_id
+hold_expires_at
 created_at
 updated_at
 version
@@ -586,30 +856,36 @@ Example design:
 CREATE TABLE show_seats (
     id BINARY(16) NOT NULL,
     showtime_id BINARY(16) NOT NULL,
+    seat_id BINARY(16) NOT NULL,
     seat_number VARCHAR(20) NOT NULL,
     seat_type VARCHAR(50) NOT NULL,
-    price DECIMAL(19, 2) NOT NULL,
-    status VARCHAR(50) NOT NULL,
-    reserved_by_booking_id BINARY(16) NULL,
-    reserved_at TIMESTAMP(6) NULL,
-    reservation_expires_at TIMESTAMP(6) NULL,
-    created_at TIMESTAMP(6) NOT NULL,
-    updated_at TIMESTAMP(6) NOT NULL,
+    price DECIMAL(12, 2) NOT NULL,
+    status VARCHAR(30) NOT NULL,
+    held_by_booking_id BINARY(16) NULL,
+    hold_expires_at DATETIME(6) NULL,
     version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
     CONSTRAINT pk_show_seats PRIMARY KEY (id),
+    CONSTRAINT fk_show_seats_showtime
+        FOREIGN KEY (showtime_id) REFERENCES showtimes (id),
+    CONSTRAINT fk_show_seats_seat
+        FOREIGN KEY (seat_id) REFERENCES seats (id),
     CONSTRAINT uk_show_seats_showtime_seat
+        UNIQUE (showtime_id, seat_id),
+    CONSTRAINT uk_show_seats_showtime_number
         UNIQUE (showtime_id, seat_number),
-    CONSTRAINT ck_show_seats_price_non_negative
+    CONSTRAINT chk_show_seats_price
         CHECK (price >= 0)
 );
 ```
 
-`showtime_id` is an external reference unless showtime data is later formally
-assigned to Inventory Service through an approved architecture decision.
+`showtime_id` and `seat_id` use local foreign keys because Showtimes and physical
+Seats are owned by Inventory Service.
 
-`reserved_by_booking_id` is an external Booking Service reference.
+`held_by_booking_id` is an external Booking Service UUID reference.
 
-Neither column creates a cross-database foreign key.
+It must not create a foreign key to Booking Service.
 
 ---
 
@@ -619,8 +895,9 @@ Approved conceptual states:
 
 ```text
 AVAILABLE
-RESERVED
-SOLD
+HELD
+BOOKED
+UNAVAILABLE
 ```
 
 Valid normal transitions:
@@ -628,39 +905,44 @@ Valid normal transitions:
 ```mermaid
 stateDiagram-v2
     [*] --> AVAILABLE
-    AVAILABLE --> RESERVED: Reservation succeeds
-    RESERVED --> AVAILABLE: Release or expiration
-    RESERVED --> SOLD: Booking confirmed
+    AVAILABLE --> HELD: Hold succeeds
+    HELD --> AVAILABLE: Release or expiration
+    HELD --> BOOKED: Booking succeeds
+    AVAILABLE --> UNAVAILABLE: Administrative action
+    HELD --> UNAVAILABLE: Administrative action
+    UNAVAILABLE --> AVAILABLE: Administrative action
 ```
 
 Inventory Service must reject or safely ignore invalid transitions.
 
 Examples:
 
-- `AVAILABLE → SOLD` without a valid reservation is invalid.
-- `SOLD → AVAILABLE` is invalid under the standard workflow.
-- A seat reserved by booking A must not be released by booking B.
-- A delayed event must not overwrite a newer reservation.
-- A repeated reservation event for the same booking may be handled
+- `AVAILABLE → BOOKED` without a valid hold is invalid.
+- `BOOKED → AVAILABLE` is invalid under the standard workflow.
+- A seat held by booking A must not be booked or released by booking B.
+- A delayed command or event must not overwrite a newer hold.
+- A repeated hold request for the same booking may be handled
   idempotently.
+- `HELD → UNAVAILABLE` clears the hold owner and expiry.
 
 ---
 
 ## Seat Reservation Query Requirements
 
-Reservation processing must:
+Multi-seat hold processing, when introduced by the approved Booking workflow,
+must:
 
 1. Normalize requested seat numbers.
 2. Reject duplicated seat numbers in the same request.
-3. Acquire Redis locks in deterministic order.
+3. Acquire any required distributed locks in deterministic order.
 4. Query all requested seats.
 5. Verify that the number of returned seats matches the request.
 6. Verify that all seats are `AVAILABLE`.
 7. Update the complete set atomically.
-8. Store the processed event.
-9. Store the result outbox event.
+8. Store the processed event when invoked through Kafka.
+9. Store the result Outbox event when publication is required.
 10. Commit the local transaction.
-11. Release locks.
+11. Release distributed locks when used.
 
 The operation is all-or-nothing.
 
@@ -672,11 +954,11 @@ Useful indexes may include:
 CREATE INDEX idx_show_seats_showtime_status
     ON show_seats (showtime_id, status);
 
-CREATE INDEX idx_show_seats_reservation_expiration
-    ON show_seats (status, reservation_expires_at);
+CREATE INDEX idx_show_seats_expired_hold
+    ON show_seats (status, hold_expires_at);
 
 CREATE INDEX idx_show_seats_booking
-    ON show_seats (reserved_by_booking_id);
+    ON show_seats (held_by_booking_id);
 ```
 
 Indexes must be verified against actual repository queries.
@@ -1238,7 +1520,7 @@ Invalid examples:
 booking_seats.inventory_seat_id → cinema_inventory_db.show_seats.id
 bookings.user_id → cinema_user_db.users.id
 payments.booking_id → cinema_booking_db.bookings.id
-show_seats.reserved_by_booking_id → cinema_booking_db.bookings.id
+show_seats.held_by_booking_id → cinema_booking_db.bookings.id
 ```
 
 Cross-service references are stored as UUID values without physical foreign
@@ -1290,8 +1572,13 @@ genres.slug
 movie_genres(movie_id, genre_id)
 users.email
 users.username
+users.normalized_email
+users.normalized_username
 roles.name
 permissions.code
+oauth2_registered_client.client_id
+user_roles(user_id, role_id)
+role_permissions(role_id, permission_id)
 show_seats(showtime_id, seat_number)
 booking_seats(booking_id, showtime_id, seat_number)
 processed_events(event_id, consumer)
@@ -1319,6 +1606,13 @@ Typical access patterns include:
 - Movie filtering by status
 - Genre lookup by name or slug
 - User lookup by normalized email
+- User lookup by normalized username
+- Active verification or password-reset token lookup by token hash
+- OAuth2 registered-client lookup by client ID
+- OAuth2 authorization lookup by principal, client, and state
+- Active refresh-token lookup by token hash
+- Refresh-token family revocation and expiry cleanup
+- Security-audit lookup by actor, target, action, and time
 - Seat lookup by showtime and seat number
 - Available-seat lookup by showtime
 - Reservation expiration scanning
@@ -1346,15 +1640,15 @@ Use column lengths based on domain requirements.
 
 General guidance:
 
-| Data | Suggested type |
-|---|---|
-| Short code | `VARCHAR(50)` |
-| Name | `VARCHAR(100)` or `VARCHAR(255)` |
-| Slug | `VARCHAR(255)` |
-| URL | `VARCHAR(1000)` |
-| Short error | `VARCHAR(500)` |
-| Detailed description | `TEXT` |
-| Serialized event payload | `LONGTEXT` |
+| Data                     | Suggested type                   |
+| ------------------------ | -------------------------------- |
+| Short code               | `VARCHAR(50)`                    |
+| Name                     | `VARCHAR(100)` or `VARCHAR(255)` |
+| Slug                     | `VARCHAR(255)`                   |
+| URL                      | `VARCHAR(1000)`                  |
+| Short error              | `VARCHAR(500)`                   |
+| Detailed description     | `TEXT`                           |
+| Serialized event payload | `LONGTEXT`                       |
 
 Do not use a small text type for JSON event payloads.
 
@@ -1460,9 +1754,9 @@ Required JPA configuration:
 
 ```yaml
 spring:
-  jpa:
-    hibernate:
-      ddl-auto: validate
+    jpa:
+        hibernate:
+            ddl-auto: validate
 ```
 
 Do not use:
@@ -1522,10 +1816,10 @@ Example:
 
 ```yaml
 spring:
-  datasource:
-    url: ${MOVIE_DB_URL}
-    username: ${MOVIE_DB_USERNAME:cinema_movie}
-    password: ${MOVIE_DB_PASSWORD}
+    datasource:
+        url: ${MOVIE_DB_URL}
+        username: ${MOVIE_DB_USERNAME:cinema_movie}
+        password: ${MOVIE_DB_PASSWORD}
 ```
 
 Password variables must not contain real committed defaults.
@@ -1534,9 +1828,9 @@ Not allowed:
 
 ```yaml
 spring:
-  datasource:
-    username: root
-    password: root
+    datasource:
+        username: root
+        password: root
 ```
 
 Also not allowed:
@@ -1633,18 +1927,18 @@ Inventory Service must not:
 Inventory Service must record enough information to prevent delayed or unrelated
 events from changing a newer reservation.
 
-At minimum, a reserved seat should be associated with:
+At minimum, a held seat is associated with:
 
 ```text
-reserved_by_booking_id
-reservation_expires_at
+held_by_booking_id
+hold_expires_at
 ```
 
 A release operation must conditionally verify:
 
 ```text
-status = RESERVED
-reserved_by_booking_id = requested booking ID
+status = HELD
+held_by_booking_id = requested booking ID
 ```
 
 Conceptual conditional update:
@@ -1652,14 +1946,13 @@ Conceptual conditional update:
 ```sql
 UPDATE show_seats
 SET status = 'AVAILABLE',
-    reserved_by_booking_id = NULL,
-    reserved_at = NULL,
-    reservation_expires_at = NULL,
+    held_by_booking_id = NULL,
+    hold_expires_at = NULL,
     updated_at = CURRENT_TIMESTAMP(6),
     version = version + 1
 WHERE id = ?
-  AND status = 'RESERVED'
-  AND reserved_by_booking_id = ?;
+  AND status = 'HELD'
+  AND held_by_booking_id = ?;
 ```
 
 A zero-row update must not be treated automatically as a successful state
@@ -1668,8 +1961,8 @@ change.
 The service must distinguish between:
 
 - Idempotent already-released state
-- Reservation owned by another booking
-- Seat already sold
+- Hold owned by another booking
+- Seat already booked
 - Missing seat
 - Stale event
 
@@ -1677,26 +1970,39 @@ The service must distinguish between:
 
 # Schema Ownership Summary
 
-| Table | Owning service |
-|---|---|
-| `movies` | Movie Service |
-| `genres` | Movie Service |
-| `movie_genres` | Movie Service |
-| `users` | User Service |
-| `roles` | User Service |
-| `permissions` | User Service |
-| `user_roles` | User Service |
-| `role_permissions` | User Service |
-| `refresh_tokens` | User Service |
-| `show_seats` | Inventory Service |
-| `bookings` | Booking Service |
-| `booking_seats` | Booking Service |
-| `payments` | Payment Service |
-| `payment_transactions` | Payment Service |
-| `notifications` | Notification Service |
-| `notification_deliveries` | Notification Service |
-| `outbox_events` | The publishing service |
-| `processed_events` | The consuming service |
+| Table                          | Owning service         |
+| ------------------------------ | ---------------------- |
+| `movies`                       | Movie Service          |
+| `genres`                       | Movie Service          |
+| `movie_genres`                 | Movie Service          |
+| `users`                        | User Service           |
+| `user_profiles`                | User Service           |
+| `user_credentials`             | User Service           |
+| `roles`                        | User Service           |
+| `permissions`                  | User Service           |
+| `user_roles`                   | User Service           |
+| `role_permissions`             | User Service           |
+| `verification_tokens`          | User Service           |
+| `password_reset_tokens`        | User Service           |
+| `oauth2_registered_client`     | User Service           |
+| `oauth2_authorization`         | User Service           |
+| `oauth2_authorization_consent` | User Service           |
+| `refresh_tokens`               | User Service           |
+| `user_mfa_methods`             | User Service           |
+| `security_audit_events`        | User Service           |
+| `cinemas`                      | Inventory Service      |
+| `rooms`                        | Inventory Service      |
+| `seats`                        | Inventory Service      |
+| `showtimes`                    | Inventory Service      |
+| `show_seats`                   | Inventory Service      |
+| `bookings`                     | Booking Service        |
+| `booking_seats`                | Booking Service        |
+| `payments`                     | Payment Service        |
+| `payment_transactions`         | Payment Service        |
+| `notifications`                | Notification Service   |
+| `notification_deliveries`      | Notification Service   |
+| `outbox_events`                | The publishing service |
+| `processed_events`             | The consuming service  |
 
 The same technical table name may exist in multiple service databases.
 
@@ -1750,9 +2056,9 @@ A single shared business database removes service ownership and is not approved.
 
 ```yaml
 spring:
-  jpa:
-    hibernate:
-      ddl-auto: update
+    jpa:
+        hibernate:
+            ddl-auto: update
 ```
 
 This bypasses the required Flyway migration process.
@@ -1784,9 +2090,9 @@ Flyway and entity UUID mappings must use the same representation.
 
 ```yaml
 spring:
-  datasource:
-    username: root
-    password: root
+    datasource:
+        username: root
+        password: root
 ```
 
 Credentials must come from environment variables or approved secret storage.
@@ -1815,6 +2121,16 @@ Before marking a service round complete, verify:
 - [ ] Hibernate `ddl-auto` is `validate`
 - [ ] MySQL Testcontainers integration tests pass
 - [ ] No committed database password exists
+- [ ] User normalized email and username uniqueness is database-enforced
+- [ ] Passwords and confidential-client secrets use approved one-way hashes
+- [ ] Raw verification, reset, and refresh tokens are not persisted
+- [ ] OAuth2 clients, authorizations, consents, and refresh tokens remain owned
+      by User Service
+- [ ] Refresh-token rotation and reuse handling are concurrency-safe
+- [ ] MFA secret and recovery-code storage meets the security policy
+- [ ] Security audit records contain no credentials or raw tokens
+- [ ] Signing private keys are not stored in service business tables or Config
+      Server configuration
 - [ ] `mvn clean verify` passes
 - [ ] Documentation matches implemented migrations
 
@@ -1887,6 +2203,7 @@ docs/11_CHANGELOG.md
 docs/12_DEPENDENCY_RULES.md
 docs/13_SEQUENCE_DIAGRAMS.md
 docs/14_DEPLOYMENT.md
+docs/decisions/ADR-013-spring-authorization-server.md
 docs/decisions/
 ```
 

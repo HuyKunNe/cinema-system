@@ -1,8 +1,8 @@
 # Changelog
 
-**Version:** 0.4
-**Current baseline:** R24 Inventory Service completed
-**Last reviewed:** 2026-08-04
+**Version:** 0.5
+**Current baseline:** R25.1 common-security hardening completed; R25.2 documentation synchronization in progress
+**Last reviewed:** 2026-08-05
 
 ---
 
@@ -33,13 +33,108 @@ Current status:
 
 ```text
 R1-R24   Completed
-R25      User Service next
+R25.1    Completed
+R25.2    Documentation synchronization in progress
+R25.3+   Planned User Service implementation
 R26-R28  Planned
 ```
 
 ---
 
 # Unreleased
+
+## 2026-08-05
+
+### Completed
+
+- Completed R25.1 — `common-security` hardening before User Service
+  implementation.
+- Removed JWT self-issuance from `common-security`.
+- Removed the shared HMAC-secret model and JJWT dependency from the shared
+  Resource Server module.
+- Centralized JWT principal creation and role/permission authority mapping.
+- Added issuer, JWK, timestamp, and required-audience validation foundations.
+- Added standard servlet JSON responses for unauthenticated and forbidden
+  requests.
+- Integrated Inventory Service with the shared Resource Server components.
+- Verified the root Maven reactor with `mvn clean verify` after stabilizing the
+  compiler, annotation-processing, and test execution configuration.
+
+### Added
+
+- Added `SecurityProperties` for issuer, JWK Set URI, and audience
+  configuration.
+- Added `AudienceValidator` with the required `cinema-api` audience contract.
+- Added shared `CinemaJwtAuthenticationConverter` and
+  `CinemaJwtGrantedAuthoritiesConverter` components.
+- Added `SecurityErrorCode` and shared-exception integration for security
+  context failures.
+- Added `CinemaAuthenticationEntryPoint`, `CinemaAccessDeniedHandler`, and the
+  shared security response writer.
+- Added separate servlet auto-configuration through
+  `ServletSecurityConfiguration` so servlet-only dependencies do not leak into
+  reactive applications.
+- Added unit and integration-oriented coverage for shared security
+  configuration, authority conversion, audience validation, security-context
+  behavior, and standard `401`/`403` responses.
+
+### Changed
+
+- Changed the authenticated user identifier from `Long` to `UUID` to match the
+  platform identity strategy.
+- Changed `SecurityContextUtils` to use shared `UnauthorizedException` and
+  `ForbiddenException` contracts instead of generic argument or state errors.
+- Normalized JWT role and permission claims by removing blanks and duplicates.
+- Changed Inventory Service security configuration to reuse shared JWT
+  conversion and validation instead of duplicating that logic.
+- Pinned Maven compiler, Surefire, Failsafe, and Spring Boot Maven plugin
+  versions at the root build to keep annotation processing and test discovery
+  deterministic.
+
+### Architecture Decision
+
+- Accepted ADR-013: User Service integrates Spring Authorization Server and is
+  the authoritative OAuth2/OpenID Connect issuer.
+- Approved Authorization Code with PKCE, Refresh Token, and controlled Client
+  Credentials grants.
+- Prohibited Resource Owner Password Credentials.
+- Approved RS256 access tokens, an RSA key of at least 3072 bits, the
+  `cinema-api` audience, and a 15-minute access-token lifetime.
+- Approved opaque, rotated, revocable refresh tokens with a maximum lifetime of
+  30 days.
+- Confirmed that `common-security` contains Resource Server mechanics only and
+  never owns token issuance, signing private keys, OAuth2 clients, consent, or
+  refresh-token persistence.
+
+### Documentation
+
+- Started R25.2 documentation synchronization.
+- Updated project and AI context to show R25.1 completed and R25.2 active.
+- Updated architecture, module, technology-stack, security, and roadmap
+  documentation for the accepted Authorization Server topology.
+- Added ADR-013 for the Spring Authorization Server decision.
+- Kept R25.3 and later User Service runtime implementation explicitly planned;
+  documentation changes do not claim that those features already exist.
+
+### Verified
+
+- `common-security` no longer provides an API for issuing JWTs.
+- JWT authorities are mapped consistently from role and permission claims.
+- Blank and duplicate authorities are removed.
+- Resource Server validation includes the configured issuer and required
+  audience.
+- Missing authentication and insufficient authorization use the shared
+  exception and API response contracts.
+- Servlet security handlers are isolated from reactive security configuration.
+- Inventory security tests use the shared security components.
+- Focused Inventory tests and root `mvn clean verify` pass.
+
+### Current Work
+
+- R25.2 documentation synchronization remains active until all affected files
+  are aligned and reviewed.
+- R25.3 — User Service foundation is the next implementation checkpoint after
+  R25.2 closes.
 
 ## 2026-08-04
 
@@ -167,6 +262,58 @@ R26-R28  Planned
 - The root Maven verification and remaining R24 exit criteria must pass before
   R24 can be marked completed.
 - R25 has not started.
+
+---
+
+# R25 - User Service and Identity Platform
+
+**Status:** Implementation
+**Started:** 2026-08-05
+
+### R25.1 - common-security Hardening
+
+**Status:** Completed
+
+Before implementing User Service, the shared security boundary was hardened so
+that it could be safely reused by Gateway and business Resource Servers.
+
+Accepted baseline:
+
+- Authenticated user identifiers use UUID.
+- Shared Resource Servers validate JWTs through issuer and JWK configuration.
+- Access tokens require the `cinema-api` audience.
+- Roles and permissions use one shared authority-mapping contract.
+- Security context failures use `common-exception`.
+- Servlet applications receive standard JSON `401` and `403` responses.
+- `common-security` cannot issue access or refresh tokens.
+- Signing keys and user/account persistence do not belong to
+  `common-security`.
+
+### R25.2 - Architecture and Documentation Synchronization
+
+**Status:** In Progress
+
+The documentation is being synchronized before User Service runtime work
+begins. ADR-013 records the accepted identity topology:
+
+- User Service hosts Spring Authorization Server.
+- User Service is the authoritative OAuth2/OpenID Connect issuer.
+- Gateway and protected business services are Resource Servers.
+- Access tokens use RS256 and public JWK discovery.
+- Authorization Code with PKCE, Refresh Token, and controlled Client
+  Credentials are the approved grants.
+- Privileged production access requires MFA policy enforcement.
+
+### Remaining R25 Scope
+
+R25.3 and later checkpoints remain planned. They include User Service module
+foundation, schema and migrations, account lifecycle, roles and permissions,
+Authorization Server configuration, registered clients, consent, token
+lifecycle, key management, MFA, API/security tests, integration tests,
+operational readiness, and final documentation closure.
+
+No R25.3+ runtime capability is considered implemented merely because its
+architecture has been approved or documented.
 
 ---
 

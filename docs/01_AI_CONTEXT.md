@@ -73,7 +73,7 @@ Completed implementation state:
 12. API, security, architecture and quality-gate verification — completed.
 13. Documentation synchronization and R24 closure — completed.
 
-Latest accepted checkpoint:
+Latest completed R24 checkpoint:
 
 > **R24.5.9 — Documentation synchronization and R24 closure**
 
@@ -106,20 +106,43 @@ Verified endpoint authorization:
 - JWT role and permission claims are mapped to granted authorities;
 - blank and duplicate authorities are removed.
 
-## Next Round
+## Active Round
 
 > **R25 — User Service**
 
-R25 is the next approved round but has not started.
+R25 implementation is in progress.
 
-Before implementation, confirm:
+Completed checkpoint:
 
-- the authoritative token issuer;
-- the OAuth2 or authorization-server topology;
-- access-token issuer and audience validation;
-- signing-key ownership and rotation;
-- access-token and refresh-token lifecycle;
-- roles, permissions and privileged-account requirements.
+```text
+R25.1 — common-security hardening — DONE
+```
+
+Active checkpoint:
+
+```text
+R25.2 — authentication architecture and roadmap — IN PROGRESS
+```
+
+ADR-013 accepts the following decisions:
+
+- User Service integrates Spring Authorization Server.
+- User Service is the single authoritative OAuth2 and OpenID Connect issuer.
+- `common-security` validates tokens but does not issue them.
+- Authorization Code with PKCE, Refresh Token and Client Credentials are approved.
+- Resource Owner Password Credentials is prohibited.
+- JWT access tokens use RS256, UUID v7 subjects and the `cinema-api` audience.
+- Initial access-token lifetime is 15 minutes.
+- Refresh tokens are opaque, rotate after use and have an initial maximum lifetime of 30 days.
+- User Service owns private signing keys and publishes public keys through JWK Set.
+- Gateway and protected business services validate tokens independently.
+- Production privileged access requires MFA or an approved external control.
+
+Authoritative decision record:
+
+```text
+docs/decisions/ADR-013-spring-authorization-server.md
+```
 
 ---
 
@@ -577,7 +600,7 @@ explicitly requested.
 | ----- | -------------------- | ----------- |
 | R23   | Movie Service        | DONE        |
 | R24   | Inventory Service    | DONE        |
-| R25   | User Service         | NEXT        |
+| R25   | User Service         | IN PROGRESS |
 | R26   | Booking Service      | NOT STARTED |
 | R27   | Payment Service      | NOT STARTED |
 | R28   | Notification Service | NOT STARTED |
@@ -585,8 +608,7 @@ explicitly requested.
 Movie Service and Inventory Service have completed their implementation,
 testing and verification requirements.
 
-User Service is the next approved business-service round. Its
-implementation has not started.
+User Service is the active business-service round. R25.1 common-security hardening is complete and R25.2 documentation synchronization is in progress.
 
 ---
 
@@ -731,15 +753,18 @@ R24 met all completion requirements on 2026-08-04.
 
 # Current Next Step
 
-Prepare R25 — User Service:
+Complete R25.2 documentation synchronization:
 
-1. Confirm the authoritative token issuer.
-2. Confirm the OAuth2 or authorization-server topology.
-3. Define access-token issuer and audience validation.
-4. Define signing-key ownership and rotation.
-5. Define access-token and refresh-token lifecycle.
-6. Define roles, permissions and privileged-account requirements.
-7. Split the approved R25 scope into implementation checkpoints.
+1. Keep ADR-013 as the authoritative authentication decision.
+2. Synchronize project context, AI context, architecture, security, modules, roadmap and changelog documents.
+3. Verify all documents distinguish completed R25.1 work from planned User Service implementation.
+4. Run `git diff --check`.
+5. Commit the documentation checkpoint.
 
-Do not modify the completed R24 implementation unless addressing a
-verified defect.
+After R25.2 is complete, begin:
+
+```text
+R25.3 — User Service bootstrap
+```
+
+Do not modify the completed R24 implementation unless addressing a verified defect. Do not implement User Service domain or Authorization Server code before R25.2 documentation synchronization is complete.

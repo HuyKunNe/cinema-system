@@ -2,88 +2,142 @@
 
 # 🎬 Cinema Booking System
 
-**Production-Grade Event-Driven Cinema Booking Platform**
+**Event-driven cinema booking platform built as a Java microservice system**
 
 Built with **Java 21**, **Spring Boot**, **Microservices**, **Kafka**,
 **Saga Pattern**, and **Transactional Outbox**
 
 ![Java](https://img.shields.io/badge/Java-21-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.16-brightgreen)
+![Spring Cloud](https://img.shields.io/badge/Spring%20Cloud-2025.0.2-blue)
 ![Maven](https://img.shields.io/badge/Maven-Multi--Module-blue)
-![Kafka](https://img.shields.io/badge/Kafka-Event--Driven-black)
-![Redis](https://img.shields.io/badge/Redis-Distributed%20Lock-red)
 ![MySQL](https://img.shields.io/badge/MySQL-8-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
 
 </div>
 
 ---
 
-# Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Service Ownership](#service-ownership)
-- [Technology Stack](#technology-stack)
-- [Project Structure](#project-structure)
-- [Booking Flow](#booking-flow)
-- [Current Progress](#current-progress)
-- [Documentation](#documentation)
-- [Getting Started](#getting-started)
-- [Roadmap](#roadmap)
-- [Architecture Decisions](#architecture-decisions)
-
----
-
 # Overview
 
-Cinema Booking System is an enterprise-grade backend application that
-simulates a real-world online movie ticket booking platform similar to
-CGV, Galaxy Cinema, Cinestar, or Lotte Cinema.
+Cinema Booking System is a learning and production-oriented backend project for
+an online cinema platform. It incrementally implements domain ownership,
+high-concurrency seat management, event-driven workflows, reliable messaging,
+and an OAuth2/OpenID Connect identity platform.
 
-The project focuses on building a scalable, fault-tolerant, and
-maintainable distributed system using modern backend architecture
-patterns.
+The project prioritizes:
 
-Core objectives:
-
-- High-concurrency seat reservation
-- Event-Driven Architecture
-- Distributed transactions using Saga Pattern
-- Reliable messaging using Transactional Outbox
-- Idempotent event consumption
 - Database per service
-- Modular Maven architecture
-- Production-ready coding standards
-- Comprehensive technical documentation
+- Explicit business ownership
+- Atomic seat-state transitions
+- Event-driven communication
+- Saga choreography
+- Transactional Outbox
+- Idempotent event consumers
+- Reusable technical modules without shared business persistence
+- Testable security boundaries
+- Root Maven reactor verification
+- Documentation-driven roadmap execution
+
+The repository is developed checkpoint by checkpoint. A module directory or
+documented target does not mean the corresponding runtime capability is already
+implemented.
 
 ---
 
-# Features
+# Current Status
 
-Current and planned platform capabilities:
+| Scope                                                  | Status      |
+| ------------------------------------------------------ | ----------- |
+| R1-R24                                                 | Completed   |
+| R25.1 — `common-security` hardening                    | Completed   |
+| R25.2 — Architecture and documentation synchronization | In progress |
+| R25.3+ — User Service and identity runtime             | Planned     |
+| R26 — Booking Service                                  | Planned     |
+| R27 — Payment Service                                  | Planned     |
+| R28 — Notification Service                             | Planned     |
+
+Latest completed runtime service:
+
+> **R24 — Inventory Service**
+
+Active checkpoint:
+
+> **R25.2 — Architecture and documentation synchronization**
+
+Next implementation checkpoint:
+
+> **R25.3 — User Service foundation**
+
+See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
+
+---
+
+# Implemented Capabilities
+
+## Shared platform modules
+
+- Common core utilities and UUIDv7 strategy
+- JPA entity, repository, and auditing foundations
+- Shared error-code and exception contracts
+- Standard API responses and global exception handling
+- Bean Validation foundations
+- Shared Jackson configuration
+- Correlation-aware logging and tracing foundations
+- MapStruct foundations
+- OAuth2 Resource Server mechanics in `common-security`
+- Redisson distributed-lock abstraction
+- Kafka producer, consumer, serialization, retry, and error-handling support
+- Transactional Outbox infrastructure
+- Elasticsearch search abstraction
+- MinIO storage abstraction
+- OpenAPI configuration
+- JUnit and Testcontainers foundations
+
+## Infrastructure
+
+- Config Server
+- Eureka Discovery Server
+- Spring Cloud Gateway routing
+
+Gateway OAuth2 Resource Server integration remains R25 work. Token forwarding
+must not be mistaken for token validation.
+
+## Movie Service
 
 - Movie and genre management
-- Showtime management
-- Seat inventory management
-- Database-backed atomic ShowSeat transitions
-- Redis coordination for operations where it is explicitly required
-- Booking lifecycle management
-- Payment integration using Saga Choreography
-- Notification processing
-- JWT authentication and authorization
-- Kafka event processing
-- Transactional Outbox
-- Idempotent Consumer
-- Global exception handling
-- Standard API responses
-- Bean Validation
-- OpenAPI and Swagger
-- Testcontainers integration testing
-- Docker Compose
+- MySQL persistence and Flyway migrations
+- Validation, mapping, API response, OpenAPI, and test integration
 
-Feature availability depends on the current roadmap milestone.
+## Inventory Service
+
+- Cinema management
+- Room management
+- Fixed physical seat layouts
+- Showtime management and overlap validation
+- ShowSeat generation
+- Atomic ShowSeat state transitions
+- Hold ownership and expiration enforcement
+- Administrative availability transitions
+- MySQL concurrency verification
+- Shared Resource Server integration
+- Public, management, and service-only endpoint authorization
+- Standard JSON `401` and `403` responses
+- Flyway and Hibernate schema verification
+
+Normal ShowSeat lifecycle:
+
+```text
+AVAILABLE -> HELD -> BOOKED
+```
+
+Release lifecycle:
+
+```text
+HELD -> AVAILABLE
+```
+
+Administrative availability includes controlled transitions to and from
+`UNAVAILABLE`.
 
 ---
 
@@ -91,143 +145,162 @@ Feature availability depends on the current roadmap milestone.
 
 ```mermaid
 flowchart TD
-    Client[Client] --> Gateway[API Gateway]
-
+    Client[Client application] --> Gateway[API Gateway]
+    Client --> Identity[User Service / Authorization Server]
     Gateway --> Movie[Movie Service]
-    Gateway --> User[User Service]
-    Gateway --> Booking[Booking Service]
-
-    Booking --> Kafka[Kafka Event Bus]
-    Kafka --> Inventory[Inventory Service]
-    Kafka --> Payment[Payment Service]
-    Kafka --> Notification[Notification Service]
-
-    Inventory --> Kafka
-    Payment --> Kafka
+    Gateway --> Inventory[Inventory Service]
+    Gateway --> Future[Future business services]
+    Identity -.->|Public JWK Set| Gateway
+    Identity -.->|Public JWK Set| Inventory
 ```
 
 The system follows:
 
-- Microservices Architecture
-- Event-Driven Architecture
-- Saga Pattern using Choreography
-- Transactional Outbox Pattern
-- Idempotent Consumer Pattern
-- Database per Service
-- Eventual consistency between services
+- Microservices architecture
+- Database per service
+- API Gateway
+- Centralized configuration
+- Service discovery
+- Event-driven integration
+- Saga choreography for distributed workflows
+- Transactional Outbox for reliable database-to-Kafka publication
+- Idempotent consumers
+- OAuth2 Authorization Server and Resource Server separation
+- OpenID Connect for identity interoperability
 
-No service directly reads or modifies another service's database.
+No service may directly read or modify another service's database.
 
 ---
 
 # Service Ownership
 
-Each service exclusively owns its domain data.
+| Service              | Authoritative ownership                                                                        |
+| -------------------- | ---------------------------------------------------------------------------------------------- |
+| Movie Service        | Movies, genres, and movie lifecycle                                                            |
+| Inventory Service    | Cinemas, rooms, physical seats, showtimes, ShowSeats, seat state, and seat concurrency         |
+| User Service         | Users, profiles, roles, permissions, OAuth2 clients, grants, consent, tokens, and signing keys |
+| Booking Service      | Bookings and booking-seat references                                                           |
+| Payment Service      | Payments and payment-provider state                                                            |
+| Notification Service | Notification templates, delivery policy, and delivery state                                    |
 
-| Service              | Owned data                                     |
-| -------------------- | ---------------------------------------------- |
-| Movie Service        | Movies, genres, movie metadata                 |
-| User Service         | Users, roles, permissions, refresh tokens      |
-| Inventory Service    | Show-seat availability and reservation state   |
-| Booking Service      | Booking lifecycle and requested seat snapshots |
-| Payment Service      | Payments and payment transactions              |
-| Notification Service | Notifications and delivery history             |
-
-Important seat ownership rules:
+Important Inventory boundary:
 
 - `show_seats` belongs exclusively to Inventory Service.
-- Inventory Service owns every seat-coordination mechanism.
-- Current single-row ShowSeat transitions use database transactions and
-  `PESSIMISTIC_WRITE`.
-- Redis coordination is reserved for operations where it is explicitly required.
+- Inventory Service owns every authoritative seat-state transition.
+- Current mutable ShowSeat loads use database transactions and
+  `PESSIMISTIC_WRITE` where required.
+- Redis coordination is added only where the accepted workflow requires it.
 - Booking Service must not query or update `show_seats`.
-- Booking Service must not connect to the Inventory Service database.
-- Booking and Inventory coordinate through Kafka events.
-- Cross-database foreign keys are not allowed.
+- Cross-database foreign keys are prohibited.
+- Cross-service coordination uses approved APIs and versioned Kafka events.
+
+---
+
+# Security Architecture
+
+ADR-013 defines the R25 identity topology:
+
+- User Service integrates Spring Authorization Server.
+- User Service is the authoritative OAuth2/OpenID Connect issuer.
+- Gateway and protected business services are OAuth2 Resource Servers.
+- `common-security` provides Resource Server mechanics only.
+- Access tokens are JWTs signed with RS256.
+- Resource Servers validate signature, issuer, timestamps, and the required
+  `cinema-api` audience.
+- Access tokens expire after 15 minutes.
+- Refresh tokens are opaque, rotated, revocable, and expire within 30 days.
+
+Approved grants:
+
+- Authorization Code with PKCE
+- Refresh Token
+- Controlled Client Credentials
+
+Resource Owner Password Credentials must not be implemented.
+
+`common-security` does not issue tokens, store refresh tokens, own OAuth2
+clients, or contain signing private keys.
+
+R25.1 hardened this shared boundary. The User Service Authorization Server
+runtime remains planned for R25.3 and later checkpoints.
 
 ---
 
 # Technology Stack
 
-| Category          | Technology                           |
-| ----------------- | ------------------------------------ |
-| Language          | Java 21                              |
-| Framework         | Spring Boot 3.5.16                   |
-| Build             | Maven Multi Module                   |
-| Cloud             | Spring Cloud                         |
-| Database          | MySQL 8                              |
-| ORM               | Spring Data JPA / Hibernate          |
-| Migration         | Flyway                               |
-| Cache             | Redis                                |
-| Distributed Lock  | Redisson                             |
-| Messaging         | Apache Kafka                         |
-| Mapping           | MapStruct                            |
-| JSON              | Jackson                              |
-| Security          | Spring Security and JWT              |
-| API Documentation | OpenAPI and Swagger                  |
-| Testing           | JUnit 5, Mockito, Testcontainers     |
-| Container         | Docker Compose                       |
-| Search            | Elasticsearch                        |
-| Storage           | MinIO                                |
-| Tracing           | Micrometer Tracing and OpenTelemetry |
+| Category               | Technology                                                                       |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| Language               | Java 21                                                                          |
+| Framework              | Spring Boot 3.5.16                                                               |
+| Cloud                  | Spring Cloud 2025.0.2                                                            |
+| Build                  | Apache Maven multi-module reactor                                                |
+| Database               | MySQL 8                                                                          |
+| Persistence            | Spring Data JPA and Hibernate                                                    |
+| Migration              | Flyway 12.0.0                                                                    |
+| Messaging              | Apache Kafka and Spring for Apache Kafka                                         |
+| Cache and coordination | Redis and Redisson 3.50.0                                                        |
+| Mapping                | MapStruct 1.6.3                                                                  |
+| JSON                   | Jackson                                                                          |
+| Security               | Spring Security, OAuth2 Resource Server, and planned Spring Authorization Server |
+| API documentation      | OpenAPI 3 and Swagger UI                                                         |
+| Search                 | Elasticsearch 8.18.1                                                             |
+| Storage                | MinIO SDK 8.5.17                                                                 |
+| Observability          | Actuator, Micrometer, and OpenTelemetry                                          |
+| Testing                | JUnit Jupiter, Mockito, Spring Test, and Testcontainers 1.21.3                   |
+
+Docker and Docker Compose are approved deployment technologies, but the
+repository does not yet contain a verified root Compose topology.
 
 ---
 
 # Project Structure
 
 ```text
-cinema-system
-├── common
-│   ├── common-api
-│   ├── common-core
-│   ├── common-exception
-│   ├── common-jackson
-│   ├── common-jpa
-│   ├── common-kafka
-│   ├── common-lock
-│   ├── common-logging
-│   ├── common-mapper
-│   ├── common-openapi
-│   ├── common-outbox
-│   ├── common-response
-│   ├── common-search
-│   ├── common-security
-│   ├── common-storage
-│   ├── common-test
-│   ├── common-tracing
-│   └── common-validation
-├── infrastructure
-│   ├── config-service
-│   ├── discovery-service
-│   └── gateway-service
-├── services
-│   ├── movie-service
-│   ├── user-service
-│   ├── inventory-service
-│   ├── booking-service
-│   ├── payment-service
-│   └── notification-service
-├── docs
-├── docker
+cinema-system/
+├── common/
+│   ├── common-api/
+│   ├── common-core/
+│   ├── common-exception/
+│   ├── common-jackson/
+│   ├── common-jpa/
+│   ├── common-kafka/
+│   ├── common-lock/
+│   ├── common-logging/
+│   ├── common-mapper/
+│   ├── common-openapi/
+│   ├── common-outbox/
+│   ├── common-response/
+│   ├── common-search/
+│   ├── common-security/
+│   ├── common-storage/
+│   ├── common-test/
+│   ├── common-tracing/
+│   ├── common-util/
+│   └── common-validation/
+├── infrastructure/
+│   ├── config-service/
+│   ├── discovery-service/
+│   └── gateway-service/
+├── services/
+│   ├── booking-service/
+│   ├── inventory-service/
+│   ├── movie-service/
+│   ├── notification-service/
+│   ├── payment-service/
+│   └── user-service/
+├── docs/
 └── pom.xml
 ```
 
-Detailed module descriptions are documented in:
-
-```text
-docs/04_MODULES.md
-```
+The root `pom.xml` is the authoritative Maven module registry. Placeholder
+service modules remain non-deployable until their roadmap rounds are complete.
 
 ---
 
-# Booking Flow
+# Target Booking Flow
 
-Seat reservation is coordinated asynchronously between Booking Service
-and Inventory Service.
-
-> The following is the approved target booking flow. Its Inventory event,
-> Outbox, idempotency and Redis-coordination portions remain planned until
-> their corresponding roadmap increments are completed.
+The booking Saga is an approved future workflow. Booking, Payment, and
+Notification services are not yet implemented.
 
 ```mermaid
 sequenceDiagram
@@ -237,306 +310,198 @@ sequenceDiagram
     participant Inventory as Inventory Service
 
     Client->>Booking: Create booking
-    Booking->>Booking: Save PENDING booking
-    Booking->>Booking: Save outbox event
+    Booking->>Booking: Save PENDING booking and outbox event
     Booking-->>Client: Booking accepted
+    Booking->>Kafka: Seat reservation requested
+    Kafka->>Inventory: Consume request
+    Inventory->>Inventory: Validate and hold ShowSeats
 
-    Booking->>Kafka: seat-reservation-requested
-    Kafka->>Inventory: Consume reservation request
-
-    Inventory->>Inventory: Check idempotency
-    Inventory->>Inventory: Acquire Redis seat lock
-    Inventory->>Inventory: Validate and update show_seats
-
-    alt Seats available
-        Inventory->>Kafka: seat-reserved
-        Kafka->>Booking: Consume seat-reserved
-        Booking->>Booking: PENDING to RESERVED
-        Booking->>Kafka: payment-requested
-    else Seats unavailable
-        Inventory->>Kafka: seat-reservation-rejected
-        Kafka->>Booking: Consume rejection
-        Booking->>Booking: PENDING to REJECTED
+    alt Seats held
+        Inventory->>Kafka: Seat reservation succeeded
+        Kafka->>Booking: Mark booking RESERVED
+    else Reservation rejected
+        Inventory->>Kafka: Seat reservation rejected
+        Kafka->>Booking: Mark booking REJECTED
     end
 ```
 
-Booking Service transaction:
+Target rules:
 
-1. Create a booking with status `PENDING`.
-2. Store the requested seat snapshot.
-3. Create a `SEAT_RESERVATION_REQUESTED` outbox event.
-4. Commit the local transaction.
+- Booking Service stores its local booking and Outbox event atomically.
+- Inventory Service performs the authoritative ShowSeat transition.
+- State-changing consumers are idempotent.
+- Booking Service never imports Inventory entities or repositories.
+- Payment and notification workflows join through versioned events in their
+  approved rounds.
 
-Inventory Service transaction:
-
-1. Validate event idempotency.
-2. Acquire Redis distributed locks.
-3. Query Inventory-owned `show_seats`.
-4. Verify all requested seats are available.
-5. Change the seats to `RESERVED`.
-6. Create the result outbox event.
-7. Commit the local transaction.
-8. Release the Redis locks.
-
-When a booking expires, is cancelled, or payment fails:
-
-```text
-Booking Service
-    ↓
-seat-release-requested
-    ↓
-Inventory Service
-    ↓
-show_seats: RESERVED → AVAILABLE
-    ↓
-seat-released
-```
-
-Inventory Service remains the only service allowed to change
-`show_seats`.
+Detailed contracts remain authoritative in the roadmap, event catalog, and
+sequence-diagram documents.
 
 ---
 
-# Current Progress
+# Build and Test
 
-## Completed
+## Prerequisites
 
-- [x] R1 — Parent Project
-- [x] R2 — common-core
-- [x] R3 — common-jpa
-- [x] R4 — common-exception
-- [x] R5 — common-response
-- [x] R6 — common-api
-- [x] R7 — common-validation
-- [x] R8 — common-jackson
-- [x] R9 — common-logging
-- [x] R10 — common-mapper
-- [x] R11 — common-security
-- [x] R12 — common-lock
-- [x] R13 — common-kafka
-- [x] R14 — common-outbox
-- [x] R15 — common-search
-- [x] R16 — common-openapi
-- [x] R17 — common-test
-- [x] R18 — common-tracing
-- [x] R19 — common-storage
-- [x] R20 — Config Server
-- [x] R21 — Discovery Server
-- [x] R22 — API Gateway
-- [x] R23 — Movie Service
-- [x] R24 — Inventory Service
-
-Completed R24 scope:
-
-- Cinema management
-- Room management
-- Fixed physical seat layouts
-- Showtime management
-- ShowSeat generation
-- Atomic ShowSeat state transitions
-- Database-backed atomic ShowSeat transitions
-- Redis coordination only for operations where it is explicitly required
-- Inventory Outbox
-- Idempotent event processing
-- Unit, integration and concurrency tests
-
-R24 completion evidence:
-
-- Cinema, Room, Seat and Showtime management
-- Fixed physical seat layouts
-- Showtime overlap validation
-- ShowSeat generation
-- Transactional booking transitions:
-    - `AVAILABLE → HELD`
-    - `HELD → BOOKED`
-    - `HELD → AVAILABLE`
-- Administrative transitions:
-    - `AVAILABLE → UNAVAILABLE`
-    - `HELD → UNAVAILABLE`
-    - `UNAVAILABLE → AVAILABLE`
-- `PESSIMISTIC_WRITE` concurrency control
-- MySQL concurrent-hold integration testing
-- Shared validation, response and exception contracts
-- Public access policy for approved ShowSeat queries
-- `inventory:manage` authorization for administrative operations
-- `ROLE_SERVICE` authorization for booking transitions
-- Security tests for `401`, `403` and successful access
-- Flyway and Hibernate schema validation
-- Maven verification and documentation synchronization
-
-Completion status:
-
-```text
-R24.5.1–R24.5.9 — DONE
-R24.5             — DONE
-R24               — DONE
-```
-
-## Not started
-
-- [ ] R25 — User Service
-- [ ] R26 — Booking Service
-- [ ] R27 — Payment Service
-- [ ] R28 — Notification Service
-
-Latest completed milestone:
-
-> **R24 — Inventory Service**
-
-Next approved milestone:
-
-> **R25 — User Service**
-
-R25 implementation has not started.
-
----
-
-# Documentation
-
-| Document                   | Description                           |
-| -------------------------- | ------------------------------------- |
-| `00_PROJECT_CONTEXT.md`    | Project overview and current progress |
-| `01_AI_CONTEXT.md`         | Context for continuing development    |
-| `02_ARCHITECTURE.md`       | System architecture                   |
-| `03_TECHNOLOGY_STACK.md`   | Technology stack                      |
-| `04_MODULES.md`            | Module overview                       |
-| `05_CODING_CONVENTIONS.md` | Coding standards                      |
-| `06_DATABASE_DESIGN.md`    | Database ownership and design         |
-| `07_EVENT_CATALOG.md`      | Kafka event catalog                   |
-| `08_SECURITY.md`           | Security architecture                 |
-| `09_OUTBOX.md`             | Transactional Outbox                  |
-| `10_ROADMAP.md`            | Development roadmap                   |
-| `11_CHANGELOG.md`          | Project changelog                     |
-| `12_DEPENDENCY_RULES.md`   | Module dependency rules               |
-| `13_SEQUENCE_DIAGRAMS.md`  | System sequence diagrams              |
-| `14_DEPLOYMENT.md`         | Deployment guide                      |
-| `decisions/`               | Architecture Decision Records         |
-
-The `docs` directory is the project's source of truth.
-
----
-
-# Getting Started
+- JDK 21
+- Maven 3.9+
+- MySQL 8 for local service runtime
+- Git
+- Redis and Kafka when testing functionality that requires them
 
 ## Clone
 
 ```bash
 git clone https://github.com/HuyKunNe/cinema-system.git
-
 cd cinema-system
 ```
 
-## Configure environment variables
-
-Database credentials must be provided through environment variables.
-
-Example:
-
-```dotenv
-MYSQL_ROOT_PASSWORD=change-me
-MOVIE_DB_USERNAME=cinema_movie
-MOVIE_DB_PASSWORD=change-me
-```
-
-Never commit the real `.env` file or real credentials.
-
-## Start infrastructure
-
-```bash
-docker compose up -d
-```
-
-## Build
+## Verify the complete reactor
 
 ```bash
 mvn clean verify
 ```
 
-## Start services
+This is the final project-level verification command.
 
-Start infrastructure services in this order:
+## Test one service with dependencies
 
-```text
-Config Server
-    ↓
-Discovery Server
-    ↓
-Gateway Service
-    ↓
-Business Services
+```bash
+mvn -pl services/inventory-service -am clean test
 ```
+
+Focused success does not replace root `mvn clean verify`.
+
+## Run infrastructure applications
+
+```bash
+mvn -pl infrastructure/config-service -am spring-boot:run
+```
+
+```bash
+mvn -pl infrastructure/discovery-service -am spring-boot:run
+```
+
+```bash
+mvn -pl infrastructure/gateway-service -am spring-boot:run
+```
+
+## Run implemented business services
+
+```bash
+mvn -pl services/movie-service -am spring-boot:run
+```
+
+```bash
+mvn -pl services/inventory-service -am spring-boot:run
+```
+
+Movie and Inventory services require their documented database credentials.
+Protected Inventory runtime also requires `CINEMA_AUTH_ISSUER` and
+`CINEMA_AUTH_JWK_SET_URI`.
+
+The repository does not currently support starting the whole platform with a
+root `docker compose up` command. See `docs/14_DEPLOYMENT.md` for the current
+startup model and required environment variables.
 
 ---
 
-# Roadmap
+# Documentation
+
+| Document                        | Purpose                                            |
+| ------------------------------- | -------------------------------------------------- |
+| `docs/00_PROJECT_CONTEXT.md`    | Project state and current checkpoint               |
+| `docs/01_AI_CONTEXT.md`         | Continuation context and implementation guardrails |
+| `docs/02_ARCHITECTURE.md`       | System architecture and ownership                  |
+| `docs/03_TECHNOLOGY_STACK.md`   | Versioned technology baseline                      |
+| `docs/04_MODULES.md`            | Module responsibilities                            |
+| `docs/05_CODING_CONVENTIONS.md` | Coding conventions                                 |
+| `docs/06_DATABASE_DESIGN.md`    | Database ownership and design                      |
+| `docs/07_EVENT_CATALOG.md`      | Event contracts and evolution                      |
+| `docs/08_SECURITY.md`           | Security architecture and rules                    |
+| `docs/09_OUTBOX.md`             | Transactional Outbox rules                         |
+| `docs/10_ROADMAP.md`            | Authoritative implementation sequence              |
+| `docs/11_CHANGELOG.md`          | Completed historical changes                       |
+| `docs/12_DEPENDENCY_RULES.md`   | Compile-time and runtime boundaries                |
+| `docs/13_SEQUENCE_DIAGRAMS.md`  | Approved interaction flows                         |
+| `docs/14_DEPLOYMENT.md`         | Local and deployment guidance                      |
+| `docs/decisions/`               | Architecture Decision Records                      |
+
+The roadmap defines completion. The changelog records history. Accepted ADRs
+resolve durable architectural decisions.
+
+---
+
+# Roadmap Summary
 
 ## Completed
 
-- Foundation common modules
-- Infrastructure common modules
-- Config Server
-- Discovery Server
-- API Gateway
-- Movie Service
-- Inventory Service
+- R1-R19 common platform modules
+- R20 Config Server
+- R21 Discovery Server
+- R22 API Gateway
+- R23 Movie Service
+- R24 Inventory Service
+- R25.1 `common-security` hardening
+
+## Active
+
+- R25.2 architecture and documentation synchronization
 
 ## Next
 
-- User Service
+- R25.3 User Service foundation
+- Remaining User Service identity and Authorization Server checkpoints
 
 ## Planned
 
-- Booking Service
-- Payment Service
-- Notification Service
-
-## Future
-
-- CI/CD
-- Kubernetes
-- Monitoring
-- Metrics
-- Prometheus
-- Grafana
-- Performance testing
-- Chaos testing
+- R26 Booking Service
+- R27 Payment Service
+- R28 Notification Service
+- Complete container and production deployment
+- CI/CD, metrics, alerting, performance, and resilience verification
 
 ---
 
 # Architecture Decisions
 
-The project follows Architecture Decision Records.
-
-Important decisions include:
+Important accepted decisions include:
 
 - Java 21
-- Spring Boot 3.5.16
-- UUID Version 7
-- Event-Driven Architecture
-- Saga Pattern using Choreography
-- Transactional Outbox Pattern
-- Idempotent Consumer Pattern
-- Database per Service
+- Spring Boot 3.5.x baseline
+- UUIDv7 identifiers
+- Database per service
 - No cross-database foreign keys
+- Event-driven architecture
+- Saga choreography
+- Transactional Outbox
+- Idempotent event consumers
 - Inventory Service owns `show_seats`
-- Inventory Service owns every seat-coordination mechanism
-- Current single-row ShowSeat transitions use database transactions and `PESSIMISTIC_WRITE`
-- Redis coordination is used only where explicitly required
-- No Lombok in common modules
-- MapStruct
-- Unified `ApiResponse`
-- Environment-based credentials
+- MapStruct compile-time mapping
+- Unified API response and exception contracts
+- User Service hosts Spring Authorization Server under ADR-013
+- `common-security` contains Resource Server mechanics only
+- Environment-based credentials and externalized secrets
 
-See:
+See `docs/decisions/` for the complete decision record.
 
-```text
-docs/decisions/
-```
+---
+
+# Contribution Rules
+
+Before closing a checkpoint:
+
+1. Preserve service and database ownership.
+2. Use `common-exception` for expected domain/API failures instead of
+   `IllegalArgumentException`.
+3. Add Flyway migrations instead of editing applied migrations.
+4. Add or update relevant tests.
+5. Run `mvn clean verify` from the repository root.
+6. Synchronize roadmap, changelog, architecture, and affected documentation.
 
 ---
 
 # License
 
-MIT License
-
----
+No repository license file is currently committed. Add an approved `LICENSE`
+before describing the project as distributed under a specific license.

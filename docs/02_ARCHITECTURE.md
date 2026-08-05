@@ -157,10 +157,13 @@ User Service owns identity and user account data.
 Responsibilities:
 
 - User registration
-- Authentication support
+- OAuth2 and OpenID Connect authorization server
+- User authentication and consent flows
 - User profile management
 - Role and permission management
-- Refresh token management
+- OAuth2 client registration and management
+- Authorization, access, and refresh token lifecycle management
+- Publishing the public JSON Web Key Set used by resource servers
 - Publishing user lifecycle events where required
 
 Owned tables may include:
@@ -1135,27 +1138,67 @@ Passwords must not have real committed default values.
 
 # Security Architecture
 
-The security architecture uses Spring Security with JWT and OAuth2 support.
+User Service is the authoritative identity provider and OAuth2/OpenID Connect
+issuer for the cinema platform. It integrates Spring Authorization Server and
+owns user authentication, registered clients, authorization grants, consent,
+and token lifecycle state.
+
+API Gateway and protected business services are OAuth2 Resource Servers. They
+must validate access tokens independently through the shared `common-security`
+module. Passing through API Gateway does not replace service-level token
+validation or authorization.
 
 Conceptual flow:
 
 ```mermaid
 flowchart TD
-    Client[Client] -->|JWT| Gateway[API Gateway]
-    Gateway --> Validate[Validate authentication]
-    Validate --> Service[Business Service]
-    Service --> Authorize[Apply authorization rules]
+    Client[Client application] -->|Authorize or obtain token| User[User Service / Authorization Server]
+    User -->|RS256 access token| Client
+    Client -->|Bearer access token| Gateway[API Gateway / Resource Server]
+    Gateway -->|Forward bearer token| Service[Business Service / Resource Server]
+    Gateway -.->|Discover keys| Jwks[User Service JWK Set]
+    Service -.->|Discover keys| Jwks
 ```
+
+Approved authorization grants:
+
+- Authorization Code with PKCE for interactive clients
+- Refresh Token for session continuity
+- Client Credentials for approved service-to-service clients
+
+Resource Owner Password Credentials must not be introduced.
+
+Token trust contract:
+
+- User Service publishes one environment-specific issuer identifier.
+- Access tokens are JWTs signed with RS256 and an RSA key of at least 3072 bits.
+- Resource servers validate signature, issuer, timestamps, and the required
+  `cinema-api` audience.
+- Access tokens expire after 15 minutes.
+- Refresh tokens are opaque, rotated on use, revocable, and expire no later
+  than 30 days after issuance.
+- Signing private keys remain owned by User Service and must never be shared
+  with Gateway, business services, or `common-security`.
+
+Security ownership:
+
+| Component         | Security responsibility                                                                                                                      |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| User Service      | Authentication, OAuth2/OIDC endpoints, clients, grants, consent, key ownership, and token issuance/revocation                                |
+| `common-security` | Reusable Resource Server configuration, JWT validation, claim-to-authority mapping, security context helpers, and standard 401/403 responses |
+| API Gateway       | Edge token validation, routing, CORS, and edge policies without becoming the sole authorization boundary                                     |
+| Business service  | Token validation plus endpoint- and domain-level authorization for its owned resources                                                       |
 
 Security principles:
 
 - Authenticate external requests.
 - Authorize protected operations.
-- Propagate required identity context safely.
+- Forward bearer tokens without rewriting trusted identity claims.
 - Do not trust client-provided user identifiers without verification.
 - Do not log tokens or secrets.
 - Do not commit JWT secrets or private keys.
-- Apply service-level authorization where required.
+- Apply service-level authorization to every protected business operation.
+- Require MFA for privileged production access.
 
 Detailed security rules belong in:
 
@@ -1288,6 +1331,7 @@ Shared modules may contain:
 - Outbox infrastructure
 - Testing utilities
 - Logging and tracing support
+- Reusable OAuth2 Resource Server mechanics
 
 Shared modules must not contain:
 
@@ -1298,6 +1342,8 @@ Shared modules must not contain:
 - Service-specific repositories
 - Service-specific business rules
 - A shared database schema
+- Authorization Server endpoints, signing private keys, registered OAuth2
+  clients, consent records, or refresh-token persistence
 
 ---
 
@@ -1566,6 +1612,7 @@ docs/11_CHANGELOG.md
 docs/12_DEPENDENCY_RULES.md
 docs/13_SEQUENCE_DIAGRAMS.md
 docs/14_DEPLOYMENT.md
+docs/decisions/ADR-013-spring-authorization-server.md
 docs/decisions/
 ```
 

@@ -1,6 +1,6 @@
 # Transactional Outbox
 
-Version: R23
+Version: R25
 
 ---
 
@@ -49,7 +49,8 @@ This document describes:
 
 1. The `common-outbox` implementation completed in R14.
 2. The rules every business service must follow when integrating it.
-3. The hardening still required before production use.
+3. The implementation gaps still present at the R25 documentation review.
+4. The security and privacy rules for User Service lifecycle events.
 
 When documentation and implementation differ:
 
@@ -76,9 +77,10 @@ Examples:
 | Service              | Owns business data            | Owns outbox events                          |
 | -------------------- | ----------------------------- | ------------------------------------------- |
 | Booking Service      | `bookings`, `booking_seats`   | Booking lifecycle events                    |
-| Inventory Service    | `show_seats`, inventory state | Seat reservation and release events         |
+| Inventory Service    | `show_seats`, inventory state | Seat hold, booking and release events       |
 | Payment Service      | `payments`, payment attempts  | Payment result events                       |
 | Notification Service | Notification state            | Notification-owned events only when defined |
+| User Service         | Users and identity state      | Approved minimal user lifecycle events only |
 
 An outbox table is not shared infrastructure data.
 
@@ -96,6 +98,11 @@ Rules:
 Inventory Service owns `show_seats`. Booking Service must request seat
 reservation through `seat-reservation-requested`; it must not update inventory
 tables directly.
+
+User Service owns OAuth2 clients, authorizations, consent, refresh tokens,
+credentials, MFA state, and signing-key access. Those records are not Outbox
+events. User Service may create Outbox rows only for approved minimal lifecycle
+events defined by `docs/07_EVENT_CATALOG.md`.
 
 ---
 
@@ -401,21 +408,29 @@ column.
 
 # Business Event Ownership
 
-The current project event flow is:
+The approved catalog ownership is:
 
-| Event/topic                  | Producer          | Primary consumers                       |
-| ---------------------------- | ----------------- | --------------------------------------- |
-| `seat-reservation-requested` | Booking Service   | Inventory Service                       |
-| `seat-reserved`              | Inventory Service | Booking Service, Payment Service        |
-| `seat-reservation-rejected`  | Inventory Service | Booking Service                         |
-| `payment-success`            | Payment Service   | Booking Service, Notification Service   |
-| `payment-failed`             | Payment Service   | Booking Service, Inventory Service      |
-| `booking-confirmed`          | Booking Service   | Notification Service                    |
-| `booking-cancelled`          | Booking Service   | Inventory Service, Notification Service |
-| `inventory-restored`         | Inventory Service | Booking Service                         |
+| Event/topic                   | Producer          | Primary consumers                       |
+| ----------------------------- | ----------------- | --------------------------------------- |
+| `seat-reservation-requested`  | Booking Service   | Inventory Service                       |
+| `seat-reserved`               | Inventory Service | Booking Service                         |
+| `seat-reservation-rejected`   | Inventory Service | Booking Service                         |
+| `payment-requested`           | Booking Service   | Payment Service                         |
+| `payment-succeeded`           | Payment Service   | Booking Service                         |
+| `payment-failed`              | Payment Service   | Booking Service                         |
+| `seat-release-requested`      | Booking Service   | Inventory Service                       |
+| `seat-released`               | Inventory Service | Booking Service                         |
+| `booking-confirmed`           | Booking Service   | Inventory Service, Notification Service |
+| `booking-cancelled`           | Booking Service   | Inventory Service, Notification Service |
+| `booking-expired`             | Booking Service   | Inventory Service, Notification Service |
+| `user-registered`             | User Service      | Approved consumers only                 |
+| `user-email-verified`         | User Service      | Approved consumers only                 |
+| `user-account-status-changed` | User Service      | Approved consumers only                 |
 
-This table summarizes the current `docs/07_EVENT_CATALOG.md`; that catalog remains
-authoritative if the event set changes.
+Booking, Payment, Notification, and User event contracts are planned until their
+owning roadmap rounds implement and test them. This table summarizes
+`docs/07_EVENT_CATALOG.md`; that catalog remains authoritative if the event set
+changes.
 
 A consumer does not gain permission to publish a topic merely because it can
 consume it.
@@ -588,6 +603,11 @@ Invalid topic mapping
 Non-retryable failures must not be retried forever. Their operational handling
 requires an explicit terminal policy, protected diagnostics and an authorized
 replay process.
+
+Expected Outbox application failures use `common-exception` and stable error
+codes. Do not introduce `IllegalArgumentException`, `IllegalStateException`, or
+a generic `RuntimeException` as the service/API error contract for malformed
+events, unsupported routing, serialization, or publication failure.
 
 ---
 
@@ -768,7 +788,7 @@ Before applying a business effect, consumers validate:
 - Current business-state preconditions.
 - Producer identity where infrastructure provides it.
 
-A delayed `payment-success` must not revive a cancelled or expired booking.
+A delayed `payment-succeeded` must not revive a cancelled or expired booking.
 
 An event with a duplicate `eventId` but different content is invalid and must not
 be treated as a normal duplicate.
@@ -889,11 +909,16 @@ Prohibited payload data:
 ```text
 Passwords
 Password hashes
+Password-reset tokens
+Email-verification tokens
 Access tokens
 Refresh tokens
+Authorization codes
 Database credentials
 Private signing keys
 OAuth2 client secrets
+MFA secrets
+MFA recovery codes
 Payment provider secrets
 CVV values
 Full card numbers
@@ -903,6 +928,37 @@ Internal stack traces
 
 If `last_error` is introduced later, it must store a bounded sanitized reason,
 not credentials, raw payloads or complete exception traces.
+
+## User Service and OAuth2 boundary
+
+The Outbox must not be used as OAuth2 token persistence, session persistence,
+revocation storage, consent storage, or security-audit storage.
+
+The following are not Kafka business events by default:
+
+- Login success or failure
+- Authorization denial
+- Access-token issuance
+- Refresh-token issuance, rotation, reuse detection, or revocation
+- Authorization-code issuance
+- OAuth2 consent changes
+- Client-secret changes
+- MFA enrollment, challenge, recovery, or bypass
+- Signing-key loading or rotation
+
+These activities remain inside User Service security state, audit records, and
+observability unless an accepted ADR and concrete consumer requirement approve
+a minimal event.
+
+An approved User lifecycle Outbox payload must:
+
+- Use a UUID user identifier.
+- Contain only fields required by an approved consumer.
+- Avoid a full user profile when an identifier is sufficient.
+- Exclude every credential, token, secret, private key, and raw authentication
+  artifact.
+- Follow retention and privacy requirements in both MySQL and Kafka.
+- Be covered by payload-contract and sensitive-data tests.
 
 ---
 
@@ -1142,9 +1198,10 @@ be considered production-hardened until the required automated tests are added.
 
 ---
 
-# Implementation Gaps at R23
+# Current Implementation Gaps Reviewed at R25
 
-R14 provides the reusable outbox foundation, but the following items remain:
+R14 provides the reusable Outbox foundation. Repository review during R25 shows
+that the following items remain:
 
 - Align `OutboxEventMessage` with the canonical event envelope.
 - Persist or otherwise supply `aggregateId`, `aggregateType`, `eventVersion`,
@@ -1164,6 +1221,8 @@ R14 provides the reusable outbox foundation, but the following items remain:
 - Add unit, repository, transaction, Kafka, concurrency and security tests.
 - Add Flyway migrations to each outbox-owning business service.
 - Verify topic ACLs and database least privilege.
+- Ensure User Service Outbox payloads cannot serialize credentials, OAuth2
+  tokens, client secrets, MFA material, or signing-key data.
 
 These are implementation tasks, not features that may be marked complete merely
 by documenting them.
@@ -1183,6 +1242,10 @@ Before an outbox-owning service is complete:
 - [ ] Published envelope matches the canonical event contract
 - [ ] Payload uses the approved Jackson configuration
 - [ ] Payload contains no secrets or prohibited payment data
+- [ ] User lifecycle payloads contain no credentials, tokens, client secrets,
+      MFA material, or signing-key data
+- [ ] OAuth2 protocol and internal security-audit activity is not modeled as an
+      Outbox business event without an approved requirement
 - [ ] New rows start as `PENDING`
 - [ ] Rows become `SENT` only after Kafka acknowledgement
 - [ ] Failed publication increments retry state
@@ -1384,6 +1447,7 @@ docs/11_CHANGELOG.md
 docs/12_DEPENDENCY_RULES.md
 docs/13_SEQUENCE_DIAGRAMS.md
 docs/14_DEPLOYMENT.md
+docs/decisions/ADR-013-spring-authorization-server.md
 docs/decisions/
 ```
 

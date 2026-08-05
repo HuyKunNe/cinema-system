@@ -84,11 +84,10 @@ Security testing
 Deployment controls
 ```
 
-This document does not define a specific production identity provider unless an
-accepted Architecture Decision Record selects one.
-
-The implementation may begin with project-owned authentication while preserving a
-migration path to an external OAuth2 or OpenID Connect provider.
+ADR-013 selects User Service with Spring Authorization Server as the authoritative
+OAuth2 and OpenID Connect issuer for Cinema Booking System. The implementation must
+preserve issuer, JWK, audience and protocol compatibility so a future migration to an
+approved external identity provider remains possible.
 
 ---
 
@@ -124,19 +123,19 @@ Security assumptions:
 
 Conceptual responsibilities:
 
-| Component | Security responsibility |
-|---|---|
-| Client | Protect locally stored credentials and tokens |
-| API Gateway | Validate tokens, enforce edge policies, route requests |
-| User Service | Own users, credentials, roles, and account lifecycle |
-| Business services | Enforce endpoint and resource authorization |
-| Authorization Server | Authenticate users and issue tokens |
-| Kafka | Authenticate clients and authorize topic access |
-| Redis | Protect distributed locks, caches, and temporary security data |
-| Databases | Enforce isolated credentials and least privilege |
-| Config/secret platform | Deliver protected environment configuration |
-| Observability platform | Protect logs, metrics, and traces |
-| External providers | Authenticate requests and protect provider credentials |
+| Component                                   | Security responsibility                                                               |
+| ------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Client                                      | Protect locally stored credentials and tokens                                         |
+| API Gateway                                 | Validate tokens, enforce edge policies, route requests                                |
+| User Service                                | Own users, credentials, roles, account lifecycle and Authorization Server persistence |
+| Business services                           | Enforce endpoint and resource authorization                                           |
+| Spring Authorization Server in User Service | Authenticate users and clients, issue tokens, publish JWKs and own revocation         |
+| Kafka                                       | Authenticate clients and authorize topic access                                       |
+| Redis                                       | Protect distributed locks, caches, and temporary security data                        |
+| Databases                                   | Enforce isolated credentials and least privilege                                      |
+| Config/secret platform                      | Deliver protected environment configuration                                           |
+| Observability platform                      | Protect logs, metrics, and traces                                                     |
+| External providers                          | Authenticate requests and protect provider credentials                                |
 
 Gateway security is not a substitute for service security.
 
@@ -150,11 +149,17 @@ The approved application model uses:
 
 ```text
 OAuth 2.0
-OpenID Connect where user identity federation is required
+OpenID Connect
+Spring Authorization Server in User Service
 JWT access tokens
+Authorization Code with PKCE
+Refresh Token
+Client Credentials
 Spring Security
 OAuth2 Resource Server
 ```
+
+Resource Owner Password Credentials is prohibited.
 
 Conceptual user authentication flow:
 
@@ -189,30 +194,32 @@ Rules:
 
 # Authorization Server
 
-The system requires one authoritative issuer for access tokens within an environment.
+ADR-013 selects User Service with Spring Authorization Server as the single
+authoritative issuer for each environment.
 
-The issuer may be:
+User Service owns:
 
-- A dedicated standards-compliant identity provider
-- Spring Authorization Server
-- Another approved OAuth2/OpenID Connect provider
-
-The selected solution must be documented in an Architecture Decision Record before
-production use.
-
-The authorization server is responsible for:
-
-- User authentication
-- Client authentication where applicable
-- Access-token issuance
-- Refresh-token issuance and rotation
-- Key management
-- Token revocation strategy
+- User and approved client authentication
+- Authorization Code with PKCE
+- Refresh Token
+- Client Credentials for approved service identities
+- OpenID Connect protocol behavior
+- JWT access-token issuance
+- Opaque refresh-token issuance, rotation and revocation
+- RSA signing-key access and JWK publication
+- OAuth2 registered clients, authorizations and consents
+- Account-status enforcement
 - Security event recording
-- Account status enforcement
-- OAuth2 and OpenID Connect protocol behavior
 
-Business services must not independently sign user access tokens with unrelated keys.
+The canonical issuer is supplied through `CINEMA_AUTH_ISSUER`. The initial API
+audience is `cinema-api` and is supplied through `CINEMA_AUTH_AUDIENCE`.
+
+Resource Owner Password Credentials is prohibited. Business services must not
+independently sign user access tokens, and `common-security` must not implement token
+issuance, Authorization Server filter chains, private keys or refresh-token
+persistence.
+
+Gateway and every protected business service remain independent Resource Servers.
 
 ---
 
@@ -226,35 +233,31 @@ Recommended claims:
 
 ```json
 {
-  "iss": "https://identity.cinema.example",
-  "sub": "019c1234-1111-7abc-8def-0123456789ab",
-  "aud": [
-    "cinema-api"
-  ],
-  "iat": 1784795415,
-  "nbf": 1784795415,
-  "exp": 1784796315,
-  "jti": "019c1234-2222-7abc-8def-0123456789ab",
-  "scope": "booking:read booking:create",
-  "roles": [
-    "USER"
-  ]
+    "iss": "https://identity.cinema.example",
+    "sub": "019c1234-1111-7abc-8def-0123456789ab",
+    "aud": ["cinema-api"],
+    "iat": 1784795415,
+    "nbf": 1784795415,
+    "exp": 1784796315,
+    "jti": "019c1234-2222-7abc-8def-0123456789ab",
+    "scope": "booking:read booking:create",
+    "roles": ["USER"]
 }
 ```
 
 Required validation:
 
-| Claim or property | Validation |
-|---|---|
-| Signature | Must match an approved active key |
-| `iss` | Must match the configured issuer |
-| `aud` | Must include the intended API audience |
-| `sub` | Must identify a valid subject format |
-| `exp` | Must not be expired |
-| `nbf` | Must not be used before validity begins |
-| `iat` | Must be reasonable |
-| Algorithm | Must be explicitly allowed |
-| Key ID | Must resolve to an approved signing key |
+| Claim or property | Validation                              |
+| ----------------- | --------------------------------------- |
+| Signature         | Must match an approved active key       |
+| `iss`             | Must match the configured issuer        |
+| `aud`             | Must include the intended API audience  |
+| `sub`             | Must identify a valid subject format    |
+| `exp`             | Must not be expired                     |
+| `nbf`             | Must not be used before validity begins |
+| `iat`             | Must be reasonable                      |
+| Algorithm         | Must be explicitly allowed              |
+| Key ID            | Must resolve to an approved signing key |
 
 Rules:
 
@@ -276,8 +279,9 @@ Authorization Server owns the private key
 Gateway and services receive public verification keys
 ```
 
-Shared symmetric signing secrets should not be distributed across all services in
-production.
+Shared symmetric signing secrets must not be distributed across services. ADR-013
+selects RS256 with RSA keys of at least 3072 bits. User Service owns private signing
+keys; Resource Servers receive public verification keys through the JWK Set endpoint.
 
 ---
 
@@ -285,11 +289,11 @@ production.
 
 Token lifetime must balance usability and risk.
 
-Conceptual defaults:
+Accepted initial defaults:
 
 ```text
-Access token: short-lived, such as 5–15 minutes
-Refresh token: longer-lived, controlled by rotation and revocation
+Access token: 15 minutes
+Refresh token maximum lifetime: 30 days
 Service token: short-lived and audience-restricted
 ```
 
@@ -321,6 +325,11 @@ Rules:
 - Refresh-token storage and revocation ownership must be documented.
 
 A refresh token must never be accepted as an API access token.
+
+User Service owns refresh-token and authorization-session state. Refresh tokens are
+opaque and rotate after every successful refresh. Spring Authorization Server clients
+must disable refresh-token reuse. Reuse of an invalidated token must revoke the
+affected authorization session and create an auditable security event.
 
 ---
 
@@ -736,12 +745,12 @@ Tests must supply valid authenticated principals where required.
 
 Security failures use consistent semantics:
 
-| Situation | Status |
-|---|---:|
-| Missing or invalid authentication | `401 Unauthorized` |
-| Authenticated but insufficient permission | `403 Forbidden` |
-| Resource not found or intentionally concealed | `404 Not Found` |
-| Too many requests | `429 Too Many Requests` |
+| Situation                                     |                  Status |
+| --------------------------------------------- | ----------------------: |
+| Missing or invalid authentication             |      `401 Unauthorized` |
+| Authenticated but insufficient permission     |         `403 Forbidden` |
+| Resource not found or intentionally concealed |         `404 Not Found` |
+| Too many requests                             | `429 Too Many Requests` |
 
 Rules:
 
@@ -800,12 +809,12 @@ An authenticated service is not authorized to perform every internal operation.
 
 Examples:
 
-| Caller | Target operation | Required authority |
-|---|---|---|
-| Booking Service | Read approved user reference | Restricted internal user scope |
-| Notification Service | Obtain approved contact data | Restricted notification scope |
-| Gateway | Route user request | Audience and route authorization |
-| Operations tooling | Administrative action | Administrative service scope |
+| Caller               | Target operation             | Required authority               |
+| -------------------- | ---------------------------- | -------------------------------- |
+| Booking Service      | Read approved user reference | Restricted internal user scope   |
+| Notification Service | Obtain approved contact data | Restricted notification scope    |
+| Gateway              | Route user request           | Audience and route authorization |
+| Operations tooling   | Administrative action        | Administrative service scope     |
 
 Services must expose the smallest required internal API surface.
 
@@ -950,12 +959,12 @@ Rules:
 
 Conceptual least-privilege matrix:
 
-| Service | Write topics | Read topics |
-|---|---|---|
-| Booking Service | `seat-reservation-requested`, `payment-requested`, `seat-release-requested`, `booking-confirmed`, `booking-cancelled`, `booking-expired` | `seat-reserved`, `seat-reservation-rejected`, `payment-succeeded`, `payment-failed`, `seat-released` |
-| Inventory Service | `seat-reserved`, `seat-reservation-rejected`, `seat-released` | `seat-reservation-requested`, `seat-release-requested`, `booking-confirmed`, `booking-cancelled`, `booking-expired` |
-| Payment Service | `payment-succeeded`, `payment-failed` | `payment-requested` |
-| Notification Service | Notification-owned events only when defined | `booking-confirmed`, `booking-cancelled`, `booking-expired` |
+| Service              | Write topics                                                                                                                             | Read topics                                                                                                         |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Booking Service      | `seat-reservation-requested`, `payment-requested`, `seat-release-requested`, `booking-confirmed`, `booking-cancelled`, `booking-expired` | `seat-reserved`, `seat-reservation-rejected`, `payment-succeeded`, `payment-failed`, `seat-released`                |
+| Inventory Service    | `seat-reserved`, `seat-reservation-rejected`, `seat-released`                                                                            | `seat-reservation-requested`, `seat-release-requested`, `booking-confirmed`, `booking-cancelled`, `booking-expired` |
+| Payment Service      | `payment-succeeded`, `payment-failed`                                                                                                    | `payment-requested`                                                                                                 |
+| Notification Service | Notification-owned events only when defined                                                                                              | `booking-confirmed`, `booking-cancelled`, `booking-expired`                                                         |
 
 Topic permissions must match `docs/07_EVENT_CATALOG.md`.
 
@@ -1071,19 +1080,19 @@ Example configuration:
 
 ```yaml
 spring:
-  datasource:
-    url: ${BOOKING_DB_URL}
-    username: ${BOOKING_DB_USERNAME}
-    password: ${BOOKING_DB_PASSWORD}
+    datasource:
+        url: ${BOOKING_DB_URL}
+        username: ${BOOKING_DB_USERNAME}
+        password: ${BOOKING_DB_PASSWORD}
 ```
 
 Unsafe configuration:
 
 ```yaml
 spring:
-  datasource:
-    username: root
-    password: root
+    datasource:
+        username: root
+        password: root
 ```
 
 Environment variables are configuration delivery mechanisms, not a complete secret
@@ -1645,11 +1654,11 @@ Example response:
 
 ```json
 {
-  "success": false,
-  "code": "AUTHENTICATION_REQUIRED",
-  "message": "Authentication is required",
-  "timestamp": "2026-07-23T08:30:15.123456Z",
-  "path": "/api/v1/bookings"
+    "success": false,
+    "code": "AUTHENTICATION_REQUIRED",
+    "message": "Authentication is required",
+    "timestamp": "2026-07-23T08:30:15.123456Z",
+    "path": "/api/v1/bookings"
 }
 ```
 
@@ -1845,10 +1854,10 @@ Unsafe production configuration:
 
 ```yaml
 management:
-  endpoints:
-    web:
-      exposure:
-        include: "*"
+    endpoints:
+        web:
+            exposure:
+                include: "*"
 ```
 
 ---
@@ -1872,11 +1881,11 @@ Example security scheme:
 
 ```yaml
 components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+    securitySchemes:
+        bearerAuth:
+            type: http
+            scheme: bearer
+            bearerFormat: JWT
 ```
 
 ---
@@ -2258,16 +2267,16 @@ Mocking authentication alone is insufficient for all security tests.
 
 Each protected resource should include tests equivalent to:
 
-| Authentication | Authority | Ownership | Expected result |
-|---|---|---|---:|
-| Missing | None | N/A | `401` |
-| Invalid | None | N/A | `401` |
-| Valid | Missing | Owner | `403` |
-| Valid | Present | Non-owner | `403` or concealed `404` |
-| Valid | Present | Owner | Success |
-| Admin | Administrative | Non-owner | Success only when policy permits |
-| Service | Wrong audience | N/A | `401` |
-| Service | Wrong scope | N/A | `403` |
+| Authentication | Authority      | Ownership |                  Expected result |
+| -------------- | -------------- | --------- | -------------------------------: |
+| Missing        | None           | N/A       |                            `401` |
+| Invalid        | None           | N/A       |                            `401` |
+| Valid          | Missing        | Owner     |                            `403` |
+| Valid          | Present        | Non-owner |         `403` or concealed `404` |
+| Valid          | Present        | Owner     |                          Success |
+| Admin          | Administrative | Non-owner | Success only when policy permits |
+| Service        | Wrong audience | N/A       |                            `401` |
+| Service        | Wrong scope    | N/A       |                            `403` |
 
 Tests must verify both HTTP status and absence of sensitive response data.
 
@@ -2400,21 +2409,21 @@ Rules:
 
 Conceptual ownership:
 
-| Security area | Primary owner |
-|---|---|
-| User credentials | User Service or Identity Provider |
-| Token issuance | Authorization Server |
-| Edge policy | API Gateway |
-| Booking authorization | Booking Service |
-| Inventory administration | Inventory Service |
-| Payment credentials | Payment Service |
-| Notification credentials | Notification Service |
-| Kafka ACLs | Platform operations |
-| Database users | Platform operations and service owner |
-| Redis security | Platform operations |
-| Signing keys | Security or identity platform |
-| Secrets | Approved secret-management platform |
-| Audit and monitoring | Security and operations |
+| Security area            | Primary owner                                        |
+| ------------------------ | ---------------------------------------------------- |
+| User credentials         | User Service                                         |
+| Token issuance           | Spring Authorization Server in User Service          |
+| Edge policy              | API Gateway                                          |
+| Booking authorization    | Booking Service                                      |
+| Inventory administration | Inventory Service                                    |
+| Payment credentials      | Payment Service                                      |
+| Notification credentials | Notification Service                                 |
+| Kafka ACLs               | Platform operations                                  |
+| Database users           | Platform operations and service owner                |
+| Redis security           | Platform operations                                  |
+| Signing keys             | User Service with approved secret-management support |
+| Secrets                  | Approved secret-management platform                  |
+| Audit and monitoring     | Security and operations                              |
 
 Ownership must be explicit before production deployment.
 
@@ -2436,12 +2445,12 @@ private static final String SECRET = "cinema-secret-123";
 
 The implemented ShowSeat endpoint policy is:
 
-| Endpoint group | Required access |
-|---|---|
-| Query ShowSeats | Public |
-| Generate ShowSeats | `inventory:manage` |
+| Endpoint group                | Required access    |
+| ----------------------------- | ------------------ |
+| Query ShowSeats               | Public             |
+| Generate ShowSeats            | `inventory:manage` |
 | Mark available or unavailable | `inventory:manage` |
-| Hold, book or release | `ROLE_SERVICE` |
+| Hold, book or release         | `ROLE_SERVICE`     |
 
 Inventory Service maps:
 
@@ -2523,9 +2532,9 @@ Inventory Service owns `show_seats`.
 
 ```yaml
 spring:
-  datasource:
-    username: root
-    password: root
+    datasource:
+        username: root
+        password: root
 ```
 
 ---
@@ -2542,9 +2551,9 @@ Kafka UI exposed publicly with broker administration enabled
 
 ```json
 {
-  "bookingId": "...",
-  "accessToken": "...",
-  "paymentApiKey": "..."
+    "bookingId": "...",
+    "accessToken": "...",
+    "paymentApiKey": "..."
 }
 ```
 
@@ -2591,14 +2600,14 @@ without a strict reviewed allowlist.
 
 Before marking a security round complete, verify:
 
-- [ ] Authentication architecture is documented
-- [ ] One authoritative token issuer is configured per environment
+- [ ] Authentication architecture follows accepted ADR-013
+- [ ] User Service is the single authoritative issuer per environment
 - [ ] Access tokens are short-lived
 - [ ] JWT signatures are validated
 - [ ] JWT issuer is validated
 - [ ] JWT audience is validated
-- [ ] Allowed JWT algorithms are explicit
-- [ ] Refresh tokens use rotation and revocation controls
+- [ ] RS256 is enforced and JWK key identifiers are validated
+- [ ] Opaque refresh tokens rotate and reuse revokes the affected session
 - [ ] Passwords use an approved adaptive hash
 - [ ] Authentication endpoints are rate-limited
 - [ ] Privileged accounts use MFA or an approved external control

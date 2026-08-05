@@ -1,6 +1,6 @@
 # Deployment Guide
 
-Version: R24
+Version: R25
 
 ---
 
@@ -9,39 +9,36 @@ Version: R24
 This document describes the deployment and local startup model currently
 supported by the Cinema Booking System repository.
 
-The current active milestone is:
+Current baseline:
 
-> **R24 — Inventory Service Implementation**
+- R1-R24 are completed.
+- R25.1 `common-security` hardening is completed.
+- R25.2 architecture and documentation synchronization is active.
+- User Service Authorization Server implementation begins at R25.3 or its
+  approved successor checkpoint.
 
-Implemented runtime applications:
-
-- Config Server
-- Discovery Server
-- API Gateway
-- Movie Service
-
-Inventory Service is under implementation. User, Booking, Payment and
-Notification services must not be treated as deployable until their respective
-rounds are complete.
+A placeholder Maven module or Config Server file does not make a service
+deployable. Only completed roadmap checkpoints define operational capability.
 
 ---
 
 # Current Deployment Status
 
-| Component            | Round | Status      |
-| -------------------- | ----- | ----------- |
-| Config Server        | R20   | DONE        |
-| Discovery Server     | R21   | DONE        |
-| API Gateway          | R22   | DONE        |
-| Movie Service        | R23   | DONE        |
-| Inventory Service    | R24   | IN PROGRESS |
-| User Service         | R25   | NOT STARTED |
-| Booking Service      | R26   | NOT STARTED |
-| Payment Service      | R27   | NOT STARTED |
-| Notification Service | R28   | NOT STARTED |
+| Component            | Round | Status                                                              |
+| -------------------- | ----- | ------------------------------------------------------------------- |
+| Config Server        | R20   | Implemented                                                         |
+| Discovery Server     | R21   | Implemented                                                         |
+| API Gateway          | R22   | Implemented; Resource Server integration remains R25 work           |
+| Movie Service        | R23   | Implemented                                                         |
+| Inventory Service    | R24   | Implemented; protected runtime requires issuer/JWK configuration    |
+| User Service         | R25   | Authorization Server architecture approved; runtime not implemented |
+| Booking Service      | R26   | Not implemented                                                     |
+| Payment Service      | R27   | Not implemented                                                     |
+| Notification Service | R28   | Not implemented                                                     |
 
-Do not deploy a service merely because its placeholder module exists in the
-Maven reactor.
+The Gateway currently provides routing and infrastructure behavior. Do not
+claim that it validates bearer tokens until its reactive Resource Server
+configuration is implemented and tested.
 
 ---
 
@@ -51,108 +48,162 @@ Maven reactor.
 - Maven 3.9 or later
 - Git
 - MySQL 8
-- Redis
-- Kafka
+- Redis when exercising distributed-lock functionality
+- Kafka when exercising event-driven or Outbox publication functionality
 
-Docker and Docker Compose may be used to run infrastructure after a verified
-Compose manifest is added to the repository. The current repository does not
-contain a root Compose manifest, so `docker compose up` is not currently a
-repository-supported startup command.
+Docker and Docker Compose are approved technologies, but the repository does
+not currently contain a verified root Compose manifest. Therefore:
+
+```bash
+docker compose up
+```
+
+is not yet an authoritative full-system startup command.
+
+The first approved Docker adoption will be introduced in a later checkpoint for
+local Kafka infrastructure. Until that checkpoint is implemented and verified,
+Kafka must be started through the developer's existing local installation or
+another explicitly documented development environment. Docker support for
+Kafka must not be interpreted as completed containerization of the Spring
+services, MySQL, Redis, or the full platform.
 
 ---
 
 # Configuration Model
 
-Config Server uses the native Spring profile and reads configuration from:
+Config Server uses its native profile and reads committed development
+configuration from:
 
 ```text
 infrastructure/config-service/src/main/resources/config-repo
 ```
 
-All applications that import Config Server use:
+Applications that support centralized configuration use:
 
 ```text
 CONFIG_SERVER_URL=http://localhost:8888
 ```
 
-The localhost value is the development default. Override it when applications
-run on different hosts or inside containers.
+The localhost value is a development default. Override it when applications run
+on different hosts or inside containers.
 
-Sensitive values must be provided through environment variables. Do not commit
-database passwords, tokens or other secrets to:
-
-- `application.yml`
-- Config Server configuration
-- source code
-- deployment documentation
+Config files must contain secret references, not real credentials, tokens,
+client secrets, or signing private keys.
 
 ---
 
 # Required Environment Variables
 
-## Infrastructure applications
+## Infrastructure
 
-| Variable                     | Required | Development default       |
-| ---------------------------- | -------- | ------------------------- |
-| `CONFIG_SERVER_PORT`         | No       | `8888`                    |
-| `CONFIG_SERVER_URL`          | No       | `http://localhost:8888`   |
-| `DISCOVERY_SERVICE_PORT`     | No       | `8761`                    |
-| `GATEWAY_SERVICE_PORT`       | No       | `8080`                    |
-| `EUREKA_SERVER_URL`          | No       | `http://localhost:8761/eureka/` |
-| `SPRING_PROFILES_ACTIVE`     | No       | `native`                  |
-| `TRACING_SAMPLING_PROBABILITY` | No    | `1.0`                     |
-| `OTEL_EXPORTER_ENABLED`      | No       | `false`                   |
+| Variable                       | Required | Development default             |
+| ------------------------------ | -------- | ------------------------------- |
+| `CONFIG_SERVER_PORT`           | No       | `8888`                          |
+| `CONFIG_SERVER_URL`            | No       | `http://localhost:8888`         |
+| `DISCOVERY_SERVICE_PORT`       | No       | `8761`                          |
+| `GATEWAY_SERVICE_PORT`         | No       | `8080`                          |
+| `EUREKA_SERVER_URL`            | No       | `http://localhost:8761/eureka/` |
+| `SPRING_PROFILES_ACTIVE`       | No       | `native` for Config Server      |
+| `TRACING_SAMPLING_PROBABILITY` | No       | `1.0`                           |
+| `OTEL_EXPORTER_ENABLED`        | No       | `false`                         |
+
+Some service configurations use `EUREKA_URL`, while infrastructure
+configuration uses `EUREKA_SERVER_URL`. Preserve the variable expected by the
+target application until configuration naming is intentionally standardized.
 
 ## Movie Service
 
-| Variable                | Required | Development default |
-| ----------------------- | -------- | ------------------- |
-| `MOVIE_SERVICE_PORT`    | No       | `8081`              |
-| `MOVIE_DB_URL`          | No       | Local MySQL URL for `cinema_movie_db` |
-| `MOVIE_DB_USERNAME`     | Yes      | None                |
-| `MOVIE_DB_PASSWORD`     | Yes      | None                |
-| `APP_VERSION`           | No       | `1.0.0-SNAPSHOT`    |
+| Variable             | Required | Development default               |
+| -------------------- | -------- | --------------------------------- |
+| `MOVIE_SERVICE_PORT` | No       | `8081`                            |
+| `MOVIE_DB_URL`       | No       | Local MySQL `cinema_movie_db` URL |
+| `MOVIE_DB_USERNAME`  | Yes      | None                              |
+| `MOVIE_DB_PASSWORD`  | Yes      | None                              |
+| `APP_VERSION`        | No       | `1.0.0-SNAPSHOT`                  |
 
-Example local shell values:
+## Inventory Service
+
+| Variable                  | Required                  | Development default                   |
+| ------------------------- | ------------------------- | ------------------------------------- |
+| `INVENTORY_SERVICE_PORT`  | No                        | `8083`                                |
+| `INVENTORY_DB_URL`        | No                        | Local MySQL `cinema_inventory_db` URL |
+| `INVENTORY_DB_USERNAME`   | Yes                       | None                                  |
+| `INVENTORY_DB_PASSWORD`   | Yes                       | None                                  |
+| `EUREKA_URL`              | No                        | `http://localhost:8761/eureka/`       |
+| `CINEMA_AUTH_ISSUER`      | Yes for protected runtime | None                                  |
+| `CINEMA_AUTH_JWK_SET_URI` | Yes for protected runtime | None                                  |
+| `CINEMA_AUTH_AUDIENCE`    | No                        | `cinema-api`                          |
+
+`CINEMA_AUTH_ISSUER` and `CINEMA_AUTH_JWK_SET_URI` must refer to the same
+trusted User Service environment. They must not point to arbitrary public test
+issuers in a production-capable profile.
+
+## Future User Service
+
+The exact environment-variable names become authoritative only when the User
+Service configuration is implemented. The deployment must eventually provide:
+
+- User database credentials
+- Environment-specific issuer URI
+- Public endpoint and JWK Set endpoint configuration
+- OAuth2 client credentials through secret management
+- RSA signing-key references
+- Key identifiers and rotation state
+- MFA provider or credential configuration for privileged accounts
+
+Do not store signing private-key material in the Config Server classpath
+repository.
+
+---
+
+# Development Environment Examples
+
+Bash:
 
 ```bash
 export MOVIE_DB_USERNAME=cinema_movie
 export MOVIE_DB_PASSWORD='<your-password>'
+export INVENTORY_DB_USERNAME=cinema_inventory
+export INVENTORY_DB_PASSWORD='<your-password>'
+export CINEMA_AUTH_ISSUER='https://identity.cinema.local'
+export CINEMA_AUTH_JWK_SET_URI='https://identity.cinema.local/oauth2/jwks'
 ```
 
-Do not use `root` as the documented application credential.
+PowerShell:
 
-## Inventory Service
+```powershell
+$env:MOVIE_DB_USERNAME = "cinema_movie"
+$env:MOVIE_DB_PASSWORD = "<your-password>"
+$env:INVENTORY_DB_USERNAME = "cinema_inventory"
+$env:INVENTORY_DB_PASSWORD = "<your-password>"
+$env:CINEMA_AUTH_ISSUER = "https://identity.cinema.local"
+$env:CINEMA_AUTH_JWK_SET_URI = "https://identity.cinema.local/oauth2/jwks"
+```
 
-The committed R24 configuration currently defines:
-
-| Variable                 | Required | Development default |
-| ------------------------ | -------- | ------------------- |
-| `INVENTORY_SERVICE_PORT` | No       | `8083`              |
-
-Database, Kafka, Redis and service-registration variables must be documented
-here only after their R24 configuration has been implemented and verified.
+These values are examples only. Do not use `root` as the documented application
+database account.
 
 ---
 
 # Default Ports
 
-| Component         | Port   |
-| ----------------- | ------ |
-| API Gateway       | `8080` |
-| Movie Service     | `8081` |
-| Inventory Service | `8083` |
-| Config Server     | `8888` |
-| Discovery Server  | `8761` |
-| Kafka             | `9092` |
-| Redis             | `6379` |
-| MySQL             | `3306` |
+| Component            |                              Port |
+| -------------------- | --------------------------------: |
+| API Gateway          |                            `8080` |
+| Movie Service        |                            `8081` |
+| User Service         |                   `8082` reserved |
+| Inventory Service    |                            `8083` |
+| Booking Service      |                   `8084` reserved |
+| Payment Service      |                   `8085` reserved |
+| Notification Service |                   `8086` reserved |
+| Config Server        |                            `8888` |
+| Discovery Server     |                            `8761` |
+| Kafka                | `9092` conventional local default |
+| Redis                | `6379` conventional local default |
+| MySQL                | `3306` conventional local default |
 
-These are development defaults. Environment variables may override application
-ports.
-
-Kafka UI is not part of the current verified deployment configuration and
-therefore has no authoritative port in this document.
+Reserved service ports do not imply that the corresponding service is
+implemented.
 
 ---
 
@@ -161,14 +212,24 @@ therefore has no authoritative port in this document.
 Create a dedicated database and least-privileged application account for each
 service that owns persisted data.
 
-For Movie Service, the current database name is:
+Current databases:
 
 ```text
 cinema_movie_db
+cinema_inventory_db
 ```
 
-Flyway owns schema evolution. Hibernate must validate the schema and must not
-create or update it automatically:
+Example MySQL preparation must be adapted to the local credential policy:
+
+```sql
+CREATE DATABASE cinema_movie_db;
+CREATE DATABASE cinema_inventory_db;
+```
+
+Do not use one application account with access to every service database in
+production.
+
+Flyway owns schema evolution. Hibernate validates the result:
 
 ```yaml
 spring:
@@ -180,63 +241,70 @@ spring:
         validate-on-migrate: true
 ```
 
-Do not edit an applied Flyway migration. Add a new versioned migration for every
-schema change.
+Never edit an applied migration in a shared environment. Add a new versioned
+migration.
 
 ---
 
-# Build
+# Build and Verification
 
-Run the full repository verification from the repository root:
+Run the final verification from the repository root:
 
 ```bash
 mvn clean verify
 ```
 
-To build Movie Service and every required upstream module:
+Build one service and all required upstream modules:
 
 ```bash
 mvn -pl services/movie-service -am clean package
 ```
 
-During R24, build Inventory Service and every required upstream module with:
+```bash
+mvn -pl services/inventory-service -am clean package
+```
+
+Focused tests remain useful during development:
 
 ```bash
 mvn -pl services/inventory-service -am clean test
 ```
 
-The Inventory Service package must not be considered deployable until all R24
-exit criteria pass.
+A focused module success does not replace root `mvn clean verify`. Generated
+MapStruct implementations and test discovery must work from a clean root
+reactor build.
 
 ---
 
 # Local Startup Order
 
-Start infrastructure dependencies before Spring applications:
+Start only the dependencies required by the selected flow.
+
+Infrastructure dependencies:
 
 1. MySQL
-2. Redis
-3. Kafka
+2. Redis when required
+3. Kafka when required
 
-Then start the applications in this order:
+Spring applications:
 
 1. Config Server
 2. Discovery Server
-3. API Gateway
-4. Movie Service
-5. Inventory Service, only while developing or verifying R24
+3. User Service Authorization Server, after it is implemented
+4. Movie Service and Inventory Service
+5. API Gateway
 
-Config Server must become healthy before applications that import centralized
-configuration are started.
+Gateway may start earlier for route-development work, but end-to-end readiness
+requires its target services to be registered.
 
-Discovery Server must become healthy before registration-dependent application
-verification.
+Until User Service is implemented, authenticated Inventory runtime flows require
+an explicitly approved development issuer/JWK source. Unit and integration tests
+may use test-only security configuration; that configuration must not leak into
+production profiles.
 
 ---
 
 # Run Config Server
-
-From the repository root:
 
 ```bash
 mvn -pl infrastructure/config-service -am spring-boot:run
@@ -248,25 +316,23 @@ Verify:
 http://localhost:8888/actuator/health
 ```
 
-The response must report a healthy application before continuing.
+Do not continue until the health response is successful.
 
 ---
 
 # Run Discovery Server
 
-From the repository root:
-
 ```bash
 mvn -pl infrastructure/discovery-service -am spring-boot:run
 ```
 
-Verify:
+Verify health:
 
 ```text
 http://localhost:8761/actuator/health
 ```
 
-The Eureka dashboard is available at:
+Development Eureka dashboard:
 
 ```text
 http://localhost:8761
@@ -274,9 +340,64 @@ http://localhost:8761
 
 ---
 
-# Run API Gateway
+# Run Movie Service
 
-From the repository root:
+Set database credentials, then run:
+
+```bash
+mvn -pl services/movie-service -am spring-boot:run
+```
+
+Verify:
+
+```text
+http://localhost:8081/actuator/health
+http://localhost:8081/swagger-ui.html
+```
+
+Confirm:
+
+- Config Server configuration loaded as expected.
+- Flyway migrations succeeded.
+- Hibernate schema validation succeeded.
+- Movie Service registered with Discovery Server.
+- Gateway routes reach Movie Service when Gateway is running.
+
+---
+
+# Run Inventory Service
+
+Set database and security trust configuration, then run:
+
+```bash
+mvn -pl services/inventory-service -am spring-boot:run
+```
+
+Verify:
+
+```text
+http://localhost:8083/actuator/health
+http://localhost:8083/swagger-ui.html
+```
+
+Confirm:
+
+- Inventory database connectivity.
+- Flyway migration success.
+- Hibernate schema validation.
+- Discovery registration.
+- JWT issuer, JWK Set, and `cinema-api` audience configuration.
+- Public ShowSeat endpoints behave as documented.
+- Management operations require `inventory:manage`.
+- Hold, book, and release operations require `ROLE_SERVICE`.
+- Standard JSON `401` and `403` responses are returned.
+
+Inventory Service owns ShowSeat transitions and concurrency control. Booking
+Service must never access its tables or locks.
+
+---
+
+# Run API Gateway
 
 ```bash
 mvn -pl infrastructure/gateway-service -am spring-boot:run
@@ -288,94 +409,41 @@ Verify:
 http://localhost:8080/actuator/health
 ```
 
-Gateway route verification must use the routes defined in centralized
-configuration. Do not bypass the Gateway when validating a public API flow.
+Use the centralized route configuration for end-to-end API verification.
+
+Current limitation: Gateway has not yet completed the R25 reactive OAuth2
+Resource Server integration. It may forward an `Authorization` header, but
+token forwarding is not evidence of edge validation. Business services remain
+responsible for validating their own tokens.
 
 ---
 
-# Run Movie Service
+# User Service Deployment Requirements
 
-Set the required database credentials:
+This section is an accepted deployment contract, not a claim of current runtime
+implementation.
 
-```bash
-export MOVIE_DB_USERNAME=cinema_movie
-export MOVIE_DB_PASSWORD='<your-password>'
-```
+User Service will host Spring Authorization Server and must expose an
+environment-specific issuer plus public metadata/JWK endpoints.
 
-Then run:
+Required production characteristics:
 
-```bash
-mvn -pl services/movie-service -am spring-boot:run
-```
+- TLS on every external identity endpoint.
+- Stable issuer URI matching the `iss` claim exactly.
+- RS256 signing with RSA keys of at least 3072 bits.
+- Private keys readable only by the User Service identity runtime.
+- Public JWK Set containing active verification keys.
+- Overlapping old and new public keys during safe rotation.
+- Authorization Code with PKCE for interactive clients.
+- Rotated, revocable, opaque refresh tokens.
+- Controlled Client Credentials for service clients.
+- MFA enforcement for privileged production users.
+- Durable audit events for privileged identity changes.
 
-Verify the service directly:
+Resource Owner Password Credentials must not be enabled.
 
-```text
-http://localhost:8081/actuator/health
-```
-
-Verify all of the following:
-
-- Config Server configuration was loaded.
-- Flyway migrations completed successfully.
-- Hibernate schema validation passed.
-- Movie Service registered with Discovery Server.
-- The Gateway route reaches Movie Service.
-
-Swagger UI is available in development when enabled by the service
-configuration:
-
-```text
-http://localhost:8081/swagger-ui.html
-```
-
----
-
-# Run Inventory Service During R24
-
-Inventory Service is still under implementation. Start it only after its
-bootstrap application and required runtime configuration exist.
-
-Run:
-
-```bash
-mvn -pl services/inventory-service -am spring-boot:run
-```
-
-The current configured development port is:
-
-```text
-8083
-```
-
-Before R24 is marked complete, verify:
-
-- Inventory database connectivity
-- Flyway migration success
-- Hibernate schema validation
-- Discovery registration
-- Gateway routing
-- Redis connectivity
-- Kafka connectivity
-- Outbox publishing
-- Idempotent event processing
-- Atomic `ShowSeat` transitions
-- Concurrent reservation of the same seat
-
-The approved normal `ShowSeat` transitions are:
-
-```text
-AVAILABLE → HELD → BOOKED
-```
-
-The approved release transition is:
-
-```text
-HELD → AVAILABLE
-```
-
-Redis provides coordination only. Database conditional updates or database
-locking provide the final consistency guarantee.
+Key rotation must be rehearsed before production. Removing an old public key
+before all access tokens signed by it expire can break every Resource Server.
 
 ---
 
@@ -383,26 +451,23 @@ locking provide the final consistency guarantee.
 
 Spring Boot Actuator is the health-check interface.
 
-Standard endpoints:
+Standard endpoints when enabled:
 
 ```text
 /actuator/health
 /actuator/info
 /actuator/metrics
 /actuator/prometheus
-```
-
-Readiness and liveness health groups are exposed through Actuator when enabled:
-
-```text
 /actuator/health/readiness
 /actuator/health/liveness
 ```
 
-Do not use `/readiness`, `/liveness` or `/health` as standalone paths unless an
+Do not assume `/health`, `/readiness`, or `/liveness` aliases exist unless the
 application explicitly maps them.
 
-Detailed health output may require authorization.
+Detailed health output should be restricted in non-development environments.
+Identity-service readiness must include database and key availability without
+exposing private key material or client secrets.
 
 ---
 
@@ -410,37 +475,43 @@ Detailed health output may require authorization.
 
 For every deployable application:
 
-1. Confirm the expected Java version.
-2. Confirm required environment variables are present.
-3. Confirm Config Server is reachable.
-4. Confirm external dependencies are reachable.
+1. Confirm Java and artifact versions.
+2. Confirm required environment variables and secret references.
+3. Confirm Config Server reachability where used.
+4. Confirm required external dependencies.
 5. Start the application.
-6. Confirm Flyway migration success where applicable.
-7. Confirm Hibernate schema validation success where applicable.
-8. Confirm Actuator health.
-9. Confirm Discovery registration.
+6. Confirm Flyway success where applicable.
+7. Confirm Hibernate schema validation where applicable.
+8. Confirm Actuator readiness and liveness.
+9. Confirm Discovery registration where applicable.
 10. Confirm Gateway routing where applicable.
-11. Confirm logs contain no secrets.
+11. Confirm logs contain no secrets or bearer tokens.
 
-For event-driven services, additionally verify:
+For protected Resource Servers, additionally verify:
 
-1. Kafka producer and consumer connectivity.
-2. Transactional outbox publishing.
-3. Retry behavior.
-4. Idempotent duplicate-event handling.
-5. Domain changes and processed-event records commit atomically.
+1. Valid issuer, signature, timestamp, and audience are accepted.
+2. Wrong issuer is rejected.
+3. Wrong or missing `cinema-api` audience is rejected.
+4. Expired tokens are rejected.
+5. Unknown signing-key IDs fail safely.
+6. Roles and permissions map to expected authorities.
+7. `401` and `403` responses follow the shared API contract.
+
+For event-driven services, additionally verify Kafka connectivity, Outbox
+publication, retry behavior, idempotent duplicate processing, and atomic local
+state/processing-record transactions.
 
 ---
 
 # Observability
 
-The current shared observability baseline includes:
+The current shared baseline includes:
 
 - Spring Boot Actuator
 - Micrometer
-- Prometheus endpoint exposure
-- OpenTelemetry-compatible tracing configuration
-- Correlation identifiers in logs
+- Prometheus endpoint support
+- OpenTelemetry-compatible tracing
+- Correlation identifiers
 
 OTLP export is disabled by default:
 
@@ -448,69 +519,91 @@ OTLP export is disabled by default:
 OTEL_EXPORTER_ENABLED=false
 ```
 
-Enable an exporter only when a verified collector endpoint and deployment
-configuration exist.
+Prometheus, Grafana, a tracing backend, alerting, and centralized log aggregation
+are not yet complete repository-managed deployment infrastructure.
 
-Prometheus, Grafana, a tracing backend and centralized log aggregation are not
-yet defined as deployable repository infrastructure.
+Security logs and metrics must not expose access tokens, refresh tokens, client
+secrets, passwords, signing private keys, or complete sensitive claims.
 
 ---
 
 # Scaling Constraints
 
-Stateless application instances may be scaled horizontally only after their
-database, Kafka consumer-group, outbox and distributed-lock behavior have been
-verified with multiple instances.
+Stateless instances may be scaled horizontally only after multi-instance
+database, Kafka, Outbox, lock, and cache behavior is verified.
 
-Inventory Service scaling must preserve:
+Inventory scaling must preserve:
 
-- ordered Redis seat-lock acquisition
-- database-enforced atomic seat-state transitions
-- idempotent event processing
-- single logical ownership of `show_seats`
+- Database-enforced atomic ShowSeat transitions.
+- Pessimistic locking where currently required.
+- Idempotent event processing.
+- Single logical ownership of `show_seats`.
 
-Booking Service must never acquire Inventory seat locks or directly update
-Inventory tables.
+Future User Service scaling must preserve:
 
----
-
-# Production Deployment
-
-A production container image, Kubernetes manifests, Ingress configuration,
-secret-management integration and production infrastructure topology are not
-yet implemented in the repository.
-
-Do not describe the following as current deployment capabilities:
-
-- Kubernetes deployment
-- multi-availability-zone deployment
-- zero-downtime rollout
-- Redis Cluster
-- Kafka Cluster
-- automated database backup and restore
-- centralized ELK or OpenSearch logging
-
-These require separate approved implementation and verification work.
+- One authoritative issuer value.
+- Consistent registered-client and consent state.
+- Shared durable refresh-token/revocation state.
+- Safe access to active signing keys.
+- Consistent JWK Set publication during rotation.
 
 ---
 
-# R24 Exit Gate
+# Production Deployment Status
 
-Inventory Service becomes deployable only when:
+The repository does not yet provide a complete verified production deployment.
 
-- all approved Inventory domain behavior is implemented
-- Flyway migrations pass
-- Hibernate schema validation passes
-- unit tests pass
-- integration tests pass
-- concurrency tests pass
-- Redis and Kafka integration pass
-- outbox behavior passes
-- idempotent processing passes
-- security requirements pass
-- `mvn clean verify` passes from the repository root
-- deployment configuration is complete
-- documentation is synchronized
+Not currently implemented as repository-owned operational capability:
 
-Do not start R25 User Service before all R24 exit criteria defined in
-`docs/10_ROADMAP.md` pass.
+- Production container images for all services
+- Root Docker Compose topology
+- Kubernetes manifests or Helm charts
+- Ingress and certificate automation
+- Secret-manager integration
+- Automated signing-key rotation
+- Multi-availability-zone deployment
+- Zero-downtime rollout
+- Redis or Kafka production clusters
+- Automated database backup and restore
+- Centralized production logging and alerting
+
+Do not document these items as available until implementation, recovery tests,
+security review, and operational verification are complete.
+
+---
+
+# R25 Deployment Gate
+
+R25 identity runtime cannot be considered deployable until:
+
+- User Service module and database migrations are implemented.
+- Spring Authorization Server configuration is implemented.
+- Approved grants and registered clients are tested.
+- Issuer metadata and public JWK Set are stable.
+- Signing private-key custody and rotation are verified.
+- Access-token issuer, signature, timestamp, and audience validation pass across
+  Gateway and protected services.
+- Refresh-token rotation, reuse detection, revocation, and expiration pass.
+- Privileged MFA and audit requirements pass.
+- Standard `401` and `403` contracts pass.
+- No secret or private key is committed or logged.
+- Root `mvn clean verify` passes.
+- Deployment and security documentation are synchronized.
+
+R25.1 completion alone does not make User Service deployable. R25.2 documents
+the contract; R25.3 and later checkpoints implement and verify it.
+
+---
+
+# Related Documentation
+
+```text
+docs/02_ARCHITECTURE.md
+docs/03_TECHNOLOGY_STACK.md
+docs/04_MODULES.md
+docs/08_SECURITY.md
+docs/10_ROADMAP.md
+docs/11_CHANGELOG.md
+docs/12_DEPENDENCY_RULES.md
+docs/decisions/ADR-013-spring-authorization-server.md
+```

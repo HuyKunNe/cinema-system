@@ -1,6 +1,6 @@
 # Cinema Booking System
 
-Version: 0.3 (R24 Inventory Service Completed)
+Version: 0.5 (R25 User Service In Progress)
 
 ---
 
@@ -85,9 +85,41 @@ Completed R24 scope:
 - Added unit, integration, security and concurrency tests
 - Completed stabilization, exit-criteria and documentation verification
 
+## In Progress
+
+- 🚧 R25 — User Service
+
+Completed R25 checkpoint:
+
+```text
+R25.1 — common-security hardening — DONE
+```
+
+Active R25 checkpoint:
+
+```text
+R25.2 — authentication architecture and roadmap — IN PROGRESS
+```
+
+Accepted authentication decision:
+
+- User Service integrates Spring Authorization Server.
+- User Service is the single authoritative OAuth2 and OpenID Connect issuer.
+- `common-security` validates tokens but does not issue them.
+- Access tokens use RS256, UUID v7 subjects and the `cinema-api` audience.
+- Authorization Code with PKCE, Refresh Token and Client Credentials are approved.
+- Resource Owner Password Credentials is prohibited.
+- Refresh tokens are opaque, rotated and revocable.
+- Production privileged access requires MFA or an approved external control.
+
+Architecture decision:
+
+```text
+docs/decisions/ADR-013-spring-authorization-server.md
+```
+
 ## Not Started
 
-- R25 — User Service
 - R26 — Booking Service
 - R27 — Payment Service
 - R28 — Notification Service
@@ -154,14 +186,26 @@ R24 completion evidence:
 - Maven verification passes.
 - Documentation is synchronized.
 
-Next approved round:
+Active round:
 
 > **R25 — User Service**
 
-R25 has not started. Its authentication topology, authoritative token issuer,
-access-token audience, signing-key ownership, refresh-token lifecycle and
-privileged-account security requirements must be confirmed before
-implementation.
+Latest completed checkpoint:
+
+```text
+R25.1 — common-security hardening
+```
+
+Active checkpoint:
+
+```text
+R25.2 — authentication architecture and roadmap
+```
+
+ADR-013 selects User Service with Spring Authorization Server as the authoritative
+issuer. The issuer, audience, RS256/JWK ownership, approved grant types, access-token
+lifetime, refresh-token lifecycle, service identity and privileged-account boundary
+are confirmed. R25 implementation is in progress.
 
 ---
 
@@ -284,10 +328,14 @@ foreign key to the Inventory Service database.
 
 ---
 
-# Seat Reservation Flow
+# Target Seat Reservation Flow
 
 The previous design in which Booking Service directly locked and updated
 `show_seats` is no longer valid.
+
+This is the approved R26+ Booking Saga target. Booking Service is not yet
+implemented. Inventory's direct ShowSeat `HELD`, `BOOKED`, `AVAILABLE`, and
+`UNAVAILABLE` transitions were completed in R24.
 
 The standardized flow is:
 
@@ -308,11 +356,11 @@ sequenceDiagram
     Kafka->>Inventory: Consume request
 
     Inventory->>Inventory: Check idempotency
-    Inventory->>Inventory: Acquire Redis lock
+    Inventory->>Inventory: Acquire ordered Redis locks when required
     Inventory->>Inventory: Validate show_seats
 
     alt Seats available
-        Inventory->>Inventory: Mark seats RESERVED
+        Inventory->>Inventory: Mark ShowSeats HELD
         Inventory->>Kafka: seat-reserved
         Kafka->>Booking: Consume success
         Booking->>Booking: PENDING to RESERVED
@@ -345,10 +393,11 @@ seat-reservation-requested
 Inventory Service processes the reservation request:
 
 1. Check event idempotency using `eventId`.
-2. Acquire Redis distributed locks for the requested seats.
+2. Acquire ordered Redis distributed locks when the approved multi-seat
+   workflow requires them.
 3. Query Inventory-owned `show_seats`.
 4. Verify all requested seats are `AVAILABLE`.
-5. Change available seats to `RESERVED`.
+5. Change available ShowSeats to `HELD` and store hold owner/expiry.
 6. Store the result in the Inventory outbox table.
 7. Commit the local database transaction.
 8. Release the Redis locks.
@@ -393,7 +442,7 @@ seat-release-requested
     ↓
 Inventory Service
     ↓
-show_seats: RESERVED → AVAILABLE
+show_seats: HELD → AVAILABLE
     ↓
 seat-released
 ```
@@ -506,6 +555,7 @@ cinema-system
 │   ├── common-storage
 │   ├── common-test
 │   ├── common-tracing
+│   ├── common-util
 │   └── common-validation
 ├── infrastructure
 │   ├── config-service
@@ -519,7 +569,6 @@ cinema-system
 │   ├── payment-service
 │   └── notification-service
 ├── docs
-├── docker
 └── pom.xml
 ```
 
@@ -567,6 +616,9 @@ Relevant documents:
 - `00_PROJECT_CONTEXT.md`
 - `01_AI_CONTEXT.md`
 - `02_ARCHITECTURE.md`
+- `08_SECURITY.md`
+- `10_ROADMAP.md`
+- `decisions/ADR-013-spring-authorization-server.md`
 - `06_DATABASE_DESIGN.md`
 - `07_EVENT_CATALOG.md`
 - `10_ROADMAP.md`

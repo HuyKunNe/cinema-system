@@ -1,10 +1,113 @@
 # Sequence Diagrams
 
-Version: R24
+Version: R25
 
 ---
 
-# Booking and Seat Reservation Flow
+# Purpose and Status
+
+This document visualizes implemented interactions and approved target flows.
+
+| Flow                                                    | Status                                             |
+| ------------------------------------------------------- | -------------------------------------------------- |
+| Inventory ShowSeat transitions and database concurrency | Implemented in R24                                 |
+| Shared servlet Resource Server responses                | Implemented for Inventory in R25.1                 |
+| Booking, Payment, and Notification Saga                 | Target for R26-R28                                 |
+| User Service Authorization Server                       | Target for R25.3+                                  |
+| Gateway reactive Resource Server                        | Target for R25.13                                  |
+| Hardened multi-instance Outbox retry/claim              | Target; not implemented by current `common-outbox` |
+
+A target diagram is an approved interaction contract, not proof that every
+participant currently exists.
+
+---
+
+# Implemented Inventory Hold Flow
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant Inventory as Inventory Service
+    participant Security as common-security
+    participant DB as Inventory Database
+
+    Caller->>Inventory: POST ShowSeat hold with bearer token
+    Inventory->>Security: Validate JWT and ROLE_SERVICE
+    Security-->>Inventory: UUID principal and authorities
+    Inventory->>DB: Load ShowSeat with PESSIMISTIC_WRITE
+
+    alt AVAILABLE and request valid
+        Inventory->>DB: Set HELD, booking ID, and expiry
+        DB-->>Inventory: Commit
+        Inventory-->>Caller: Standard success response
+    else Invalid state or ownership
+        Inventory-->>Caller: Standard conflict or validation response
+    end
+```
+
+Inventory Service is the only owner of the ShowSeat transaction. The caller's
+booking ID is an external UUID reference and has no cross-database foreign key.
+
+---
+
+# Implemented Inventory Book and Release Flow
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant Inventory as Inventory Service
+    participant DB as Inventory Database
+
+    Caller->>Inventory: Book or release ShowSeat
+    Inventory->>DB: Load ShowSeat with PESSIMISTIC_WRITE
+    Inventory->>Inventory: Verify HELD and held by booking ID
+
+    alt Book
+        Inventory->>DB: HELD to BOOKED and clear hold metadata
+    else Release
+        Inventory->>DB: HELD to AVAILABLE and clear hold metadata
+    end
+
+    DB-->>Inventory: Commit
+    Inventory-->>Caller: Standard response
+```
+
+`AVAILABLE → BOOKED`, `BOOKED → AVAILABLE`, and operations by a different
+booking ID are rejected.
+
+---
+
+# Implemented Concurrent Hold Flow
+
+```mermaid
+sequenceDiagram
+    participant CallerA as Caller A
+    participant CallerB as Caller B
+    participant Inventory as Inventory Service
+    participant DB as Inventory Database
+
+    par Competing requests
+        CallerA->>Inventory: Hold same ShowSeat
+        CallerB->>Inventory: Hold same ShowSeat
+    end
+
+    Inventory->>DB: First PESSIMISTIC_WRITE lock
+    Inventory->>DB: Commit AVAILABLE to HELD
+    Inventory->>DB: Second request reads HELD
+    Inventory-->>CallerA: One request succeeds
+    Inventory-->>CallerB: Other request receives conflict
+```
+
+The order of caller success is nondeterministic. The invariant is that at most
+one competing hold succeeds.
+
+---
+
+# Target Booking and Seat Reservation Flow
+
+The event name uses Booking-domain language. A successful
+`seat-reservation-requested` operation places Inventory ShowSeats in `HELD`
+state; Inventory does not have a `RESERVED` state.
 
 ```mermaid
 sequenceDiagram
@@ -13,53 +116,35 @@ sequenceDiagram
     participant Booking as Booking Service
     participant Kafka
     participant Inventory as Inventory Service
-    participant Redis
-    participant InventoryDB as Inventory Database
 
     Client->>Gateway: Create booking
-    Gateway->>Booking: POST /bookings
-
-    Booking->>Booking: Create PENDING booking
-    Booking->>Booking: Store seat snapshot
-    Booking->>Booking: Insert SEAT_RESERVATION_REQUESTED outbox event
+    Gateway->>Booking: POST booking
+    Booking->>Booking: Save PENDING booking and Outbox event
     Booking-->>Client: Booking accepted
-
     Booking->>Kafka: seat-reservation-requested
     Kafka->>Inventory: Consume request
+    Inventory->>Inventory: Validate idempotency and hold ShowSeats
 
-    Inventory->>Inventory: Check event idempotency
-    Inventory->>Redis: Acquire ordered seat locks
-    Redis-->>Inventory: Locks acquired
-
-    Inventory->>InventoryDB: Validate requested show_seats
-
-    alt All seats are AVAILABLE
-        Inventory->>InventoryDB: AVAILABLE to HELD
-        Inventory->>InventoryDB: Insert SEAT_RESERVED outbox event
-        Inventory->>InventoryDB: Commit transaction
+    alt Complete seat set held
         Inventory->>Kafka: seat-reserved
-        Kafka->>Booking: Consume reservation success
+        Kafka->>Booking: Consume success
         Booking->>Booking: PENDING to RESERVED
-        Booking->>Booking: Insert PAYMENT_REQUESTED outbox event
-    else One or more seats are unavailable
-        Inventory->>InventoryDB: Insert SEAT_RESERVATION_REJECTED outbox event
-        Inventory->>InventoryDB: Commit transaction
+    else Hold rejected
         Inventory->>Kafka: seat-reservation-rejected
         Kafka->>Booking: Consume rejection
         Booking->>Booking: PENDING to REJECTED
     end
-
-    Inventory->>Redis: Release seat locks
 ```
 
-Booking Service owns booking state. Inventory Service exclusively owns
-`show_seats`, Redis seat locks and seat-state transitions.
+The future multi-seat workflow may use ordered Redis locks if its accepted
+design requires distributed coordination. Database transactions and constraints
+remain the final state guarantee.
 
-Booking status `RESERVED` and Inventory status `HELD` are separate concepts.
+Booking Service must never query or update `show_seats`.
 
 ---
 
-# Payment Success Flow
+# Target Payment Success Flow
 
 ```mermaid
 sequenceDiagram
@@ -70,29 +155,23 @@ sequenceDiagram
     participant Notification as Notification Service
 
     Booking->>Kafka: payment-requested
-    Kafka->>Payment: Consume request
-
-    Payment->>Payment: Check event idempotency
-    Payment->>Payment: Process payment
-    Payment->>Payment: Save payment result and outbox event
+    Kafka->>Payment: Consume idempotently
+    Payment->>Payment: Save success and Outbox event
     Payment->>Kafka: payment-succeeded
-
-    Kafka->>Booking: Consume payment success
+    Kafka->>Booking: Consume success
     Booking->>Booking: RESERVED to CONFIRMED
-    Booking->>Booking: Insert BOOKING_CONFIRMED outbox event
     Booking->>Kafka: booking-confirmed
-
-    Kafka->>Inventory: Consume booking confirmation
-    Inventory->>Inventory: Check event idempotency
+    Kafka->>Inventory: Consume confirmation
     Inventory->>Inventory: HELD to BOOKED
-
-    Kafka->>Notification: Consume booking confirmation
-    Notification->>Notification: Send ticket notification
+    Kafka->>Notification: Consume confirmation
+    Notification->>Notification: Create idempotent notification
 ```
+
+Booking `RESERVED` and Inventory `HELD` are separate service-owned states.
 
 ---
 
-# Payment Failure and Seat Release Flow
+# Target Payment Failure and Seat Release Flow
 
 ```mermaid
 sequenceDiagram
@@ -100,84 +179,84 @@ sequenceDiagram
     participant Kafka
     participant Booking as Booking Service
     participant Inventory as Inventory Service
-    participant Redis
-    participant InventoryDB as Inventory Database
+    participant DB as Inventory Database
 
     Payment->>Kafka: payment-failed
-    Kafka->>Booking: Consume payment failure
-
-    Booking->>Booking: RESERVED to CANCELLED
-    Booking->>Booking: Insert SEAT_RELEASE_REQUESTED outbox event
+    Kafka->>Booking: Consume failure
+    Booking->>Booking: RESERVED to PAYMENT_FAILED
     Booking->>Kafka: seat-release-requested
-
     Kafka->>Inventory: Consume release request
-    Inventory->>Inventory: Check event idempotency
-    Inventory->>Redis: Acquire ordered seat locks
-    Redis-->>Inventory: Locks acquired
-
-    Inventory->>InventoryDB: HELD to AVAILABLE
-    Inventory->>InventoryDB: Insert SEAT_RELEASED outbox event
-    Inventory->>InventoryDB: Commit transaction
-    Inventory->>Redis: Release seat locks
+    Inventory->>DB: Verify HELD and held by booking ID
+    Inventory->>DB: HELD to AVAILABLE
+    Inventory->>DB: Save seat-released Outbox event
+    DB-->>Inventory: Commit
     Inventory->>Kafka: seat-released
 ```
 
-Booking expiration or cancellation follows the same
-`seat-release-requested` flow.
-
-Only Inventory Service may perform `HELD → AVAILABLE`.
+Booking cancellation or expiration uses the same conditional release rule.
+Inventory never releases a `BOOKED` ShowSeat through this compensation flow.
 
 ---
 
-# Transactional Outbox Flow
+# Current Transactional Outbox Flow
 
 ```mermaid
 sequenceDiagram
     participant Service as Business Service
-    participant Database
+    participant DB as Service Database
     participant Scheduler as Outbox Scheduler
     participant Kafka
 
-    Service->>Database: Save aggregate changes
-    Service->>Database: Save outbox event
-    Database-->>Service: Commit local transaction
+    Service->>DB: Save aggregate and PENDING Outbox row
+    DB-->>Service: Commit one local transaction
+    Scheduler->>DB: Select PENDING or retryable FAILED rows
+    Scheduler->>DB: Mark PROCESSING
+    Scheduler->>Kafka: Publish event
 
-    loop Poll publishable events
-        Scheduler->>Database: Claim NEW events
-        Scheduler->>Kafka: Publish event
-        Kafka-->>Scheduler: Acknowledge
-        Scheduler->>Database: Mark event SENT
+    alt Kafka acknowledges
+        Scheduler->>DB: Mark SENT
+    else Publish fails
+        Scheduler->>DB: Mark FAILED and increment retry count
     end
 ```
 
-Aggregate changes and their outbox event must be committed in the same local
-database transaction.
+The current enum is `PENDING`, `PROCESSING`, `SENT`, and `FAILED`. `NEW` is not
+the current Outbox status.
+
+The business change and Outbox insert share one local transaction. Kafka
+publication occurs afterward and may be repeated.
 
 ---
 
-# Outbox Retry Flow
+# Target Hardened Outbox Claim and Retry Flow
 
 ```mermaid
 sequenceDiagram
-    participant Scheduler as Outbox Scheduler
-    participant Database
+    participant SchedulerA as Scheduler A
+    participant SchedulerB as Scheduler B
+    participant DB as Service Database
     participant Kafka
 
-    Scheduler->>Database: Claim publishable event
-    Scheduler->>Kafka: Publish event
-    Kafka--xScheduler: Publish failure
+    par Competing pollers
+        SchedulerA->>DB: Atomically claim due rows
+        SchedulerB->>DB: Atomically claim due rows
+    end
+    DB-->>SchedulerA: Owned leased batch
+    DB-->>SchedulerB: Different batch or empty
+    SchedulerA->>Kafka: Publish with aggregate key
 
-    Scheduler->>Database: Increment retry count
-    Scheduler->>Database: Set next retry time
-    Scheduler->>Database: Mark retryable failure
-
-    loop Until published or exhausted
-        Scheduler->>Database: Claim event when retry is due
-        Scheduler->>Kafka: Retry publish
+    alt Success
+        SchedulerA->>DB: Mark SENT
+    else Retryable failure
+        SchedulerA->>DB: Store bounded reason and next retry
+    else Non-retryable failure
+        SchedulerA->>DB: Apply terminal failure policy
     end
 ```
 
-Retries must be bounded and use the retry policy defined by `common-outbox`.
+This flow requires schema, entity, repository, scheduler, metrics, and test work.
+The current implementation does not yet provide atomic claims, processing
+leases, delayed exponential backoff, or a terminal status.
 
 ---
 
@@ -187,54 +266,161 @@ Retries must be bounded and use the retry policy defined by `common-outbox`.
 sequenceDiagram
     participant Kafka
     participant Consumer
-    participant Database
+    participant DB as Consumer Database
 
     Kafka->>Consumer: Deliver event
-    Consumer->>Database: Check processed event ID
+    Consumer->>DB: Insert processed event ID
 
-    alt Event was already processed
+    alt Duplicate key
         Consumer-->>Kafka: Acknowledge without side effects
-    else Event is new
-        Consumer->>Database: Apply domain changes
-        Consumer->>Database: Record processed event ID
-        Database-->>Consumer: Commit transaction
+    else New event
+        Consumer->>DB: Validate state and apply domain change
+        Consumer->>DB: Save resulting Outbox event if required
+        DB-->>Consumer: Commit one local transaction
         Consumer-->>Kafka: Acknowledge
     end
 ```
 
-The domain changes and processed-event record must belong to the same local
-transaction.
+The processed-event record, domain changes, and any resulting Outbox insert
+must commit in the same service-owned transaction.
 
 ---
 
-# Inventory Distributed Lock Flow
+# Target Authorization Code with PKCE Flow
+
+This R25 flow is not implemented yet.
 
 ```mermaid
 sequenceDiagram
-    participant Consumer as Inventory Consumer
-    participant Redis
-    participant InventoryDB as Inventory Database
+    participant User
+    participant Client
+    participant Auth as User Service / Authorization Server
+    participant Gateway
+    participant API as Business Resource Server
 
-    Consumer->>Consumer: Normalize and sort seat identifiers
-    Consumer->>Redis: Acquire ordered seat locks
-    Redis-->>Consumer: Locks acquired
-
-    Consumer->>InventoryDB: Read current persisted states
-    Consumer->>InventoryDB: Execute conditional state update
-
-    alt Conditional update succeeds
-        InventoryDB-->>Consumer: Commit
-    else State changed or update failed
-        InventoryDB-->>Consumer: Roll back
-    end
-
-    Consumer->>Redis: Release seat locks
+    User->>Client: Start sign-in
+    Client->>Auth: Authorization request with code challenge
+    Auth->>User: Authenticate and request consent when required
+    User->>Auth: Complete authentication and consent
+    Auth-->>Client: Authorization code
+    Client->>Auth: Exchange code plus verifier
+    Auth-->>Client: RS256 access token and opaque refresh token
+    Client->>Gateway: API request with bearer token
+    Gateway->>API: Forward bearer token
+    API-->>Client: Authorized response
 ```
 
-Redis provides coordination only. Database conditional updates or database
-locking provide the final consistency guarantee against double booking.
+Public clients do not receive a client secret. PKCE verification occurs in User
+Service before token issuance. Resource Owner Password Credentials is
+prohibited.
 
-Booking Service must never acquire Inventory seat locks.
+---
+
+# Resource Server JWT Validation Flow
+
+Inventory implements the servlet validation foundation. Gateway reactive
+validation and remaining service integration are R25.13 work.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Resource as Gateway or Business Service
+    participant Security as common-security
+    participant Auth as User Service JWK Endpoint
+
+    Client->>Resource: Request with bearer JWT
+    Resource->>Security: Decode and validate token
+    Security->>Auth: Load or refresh public JWK by kid
+    Auth-->>Security: Public JWK Set
+    Security->>Security: Validate RS256, issuer, time, and cinema-api audience
+    Security->>Security: Map UUID subject, roles, and permissions
+
+    alt Valid and authorized
+        Security-->>Resource: Authentication principal
+        Resource-->>Client: Success
+    else Missing or invalid authentication
+        Resource-->>Client: Standard JSON 401
+    else Valid identity without permission
+        Resource-->>Client: Standard JSON 403
+    end
+```
+
+Resource Servers use public keys only. User Service signing private keys must
+never be shared with Gateway, business services, or `common-security`.
+
+---
+
+# Target Refresh Token Rotation Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Auth as User Service
+    participant DB as User Database
+    participant Audit as Security Audit
+
+    Client->>Auth: Refresh request with opaque token
+    Auth->>DB: Lock and resolve token hash
+
+    alt Active token
+        Auth->>DB: Revoke old token and create successor
+        Auth->>DB: Commit rotation atomically
+        Auth-->>Client: New access and refresh tokens
+    else Rotated token reused
+        Auth->>DB: Revoke token family or authorization session
+        Auth->>Audit: Record reuse security event
+        Auth-->>Client: OAuth2 error
+    else Expired or revoked
+        Auth-->>Client: OAuth2 error
+    end
+```
+
+One refresh token must not produce two valid successors under concurrent use.
+Raw refresh tokens must not be stored or logged.
+
+---
+
+# Target Client Credentials Flow
+
+```mermaid
+sequenceDiagram
+    participant ServiceClient as Approved Service Client
+    participant Auth as User Service
+    participant API as Resource Server
+
+    ServiceClient->>Auth: Client authentication and token request
+    Auth->>Auth: Validate encoded secret and allowed scopes
+    Auth-->>ServiceClient: Short-lived RS256 service access token
+    ServiceClient->>API: Bearer token
+    API->>API: Validate JWT and ROLE_SERVICE or permission
+    API-->>ServiceClient: Authorized service operation
+```
+
+Client Credentials represents the service identity, not a human user. A service
+must not impersonate an end user by inventing user claims.
+
+---
+
+# Target Signing-Key Rotation Flow
+
+```mermaid
+sequenceDiagram
+    participant Operator
+    participant Auth as User Service
+    participant JWK as Public JWK Set
+    participant Resource as Resource Servers
+
+    Operator->>Auth: Activate new RSA signing key and kid
+    Auth->>JWK: Publish old and new public keys
+    Auth->>Auth: Sign new tokens with new key
+    Resource->>JWK: Refresh keys on unknown kid or cache expiry
+    JWK-->>Resource: Overlapping public key set
+    Operator->>Auth: Retire old key after safe verification window
+    Auth->>JWK: Remove retired public key
+```
+
+The old public key remains available until every access token signed by it has
+expired plus the accepted clock-skew and cache-safety window.
 
 ---
 
@@ -243,7 +429,7 @@ Booking Service must never acquire Inventory seat locks.
 ```mermaid
 stateDiagram-v2
     [*] --> AVAILABLE
-    AVAILABLE --> HELD: Reservation accepted
+    AVAILABLE --> HELD: Hold accepted
     HELD --> AVAILABLE: Released or expired
     HELD --> BOOKED: Booking confirmed
     AVAILABLE --> UNAVAILABLE: Operational block
@@ -251,16 +437,56 @@ stateDiagram-v2
     UNAVAILABLE --> AVAILABLE: Re-enabled
 ```
 
-The normal booking path is:
+Normal booking path:
 
 ```text
 AVAILABLE → HELD → BOOKED
 ```
 
-The normal release path is:
+Normal release path:
 
 ```text
 HELD → AVAILABLE
 ```
 
-Unsupported transitions, including `BOOKED → HELD`, must be rejected.
+`HELD → UNAVAILABLE` clears hold ownership and expiry. Unsupported transitions,
+including `AVAILABLE → BOOKED`, `BOOKED → HELD`, and `BOOKED → AVAILABLE`, are
+rejected.
+
+---
+
+# Verification Checklist
+
+- [ ] Implemented diagrams match current code and migrations
+- [ ] Target diagrams are explicitly marked as target
+- [ ] Booking `RESERVED` is not confused with Inventory `HELD`
+- [ ] Inventory never uses obsolete `RESERVED` or `SOLD` ShowSeat states
+- [ ] Booking Service never accesses Inventory tables or locks
+- [ ] Outbox current status starts at `PENDING`, not `NEW`
+- [ ] Outbox target hardening is not documented as implemented
+- [ ] User Service is the sole token issuer and signing-key owner
+- [ ] Authorization Code uses PKCE
+- [ ] Resource Owner Password Credentials is absent
+- [ ] Resource Servers validate signature, issuer, timestamps, and `cinema-api`
+      audience
+- [ ] Refresh rotation and reuse handling are atomic and tested when implemented
+- [ ] Gateway reactive security remains planned until R25.13 passes
+- [ ] No password, token, client secret, MFA material, or private key appears in
+      events or logs
+- [ ] `mvn clean verify` passes
+
+---
+
+# Related Documentation
+
+```text
+docs/02_ARCHITECTURE.md
+docs/06_DATABASE_DESIGN.md
+docs/07_EVENT_CATALOG.md
+docs/08_SECURITY.md
+docs/09_OUTBOX.md
+docs/10_ROADMAP.md
+docs/12_DEPENDENCY_RULES.md
+docs/14_DEPLOYMENT.md
+docs/decisions/ADR-013-spring-authorization-server.md
+```

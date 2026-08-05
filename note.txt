@@ -6,6 +6,15 @@ $env:INVENTORY_DB_URL="jdbc:mysql://localhost:3306/cinema_inventory_db?createDat
 $env:INVENTORY_DB_USERNAME="root"
 $env:INVENTORY_DB_PASSWORD="huykun17"
 
+$env:INVENTORY_DB_URL="jdbc:mysql://localhost:3306/cinema_inventory_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+$env:MOVIE_DB_URL="jdbc:mysql://localhost:3306/cinema_movie_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+$env:MOVIE_DB_USERNAME = "root"
+$env:MOVIE_DB_PASSWORD = "huykun17"
+$env:INVENTORY_DB_USERNAME = "root"
+$env:INVENTORY_DB_PASSWORD = "huykun17"
+$env:CINEMA_AUTH_ISSUER = "https://identity.cinema.local"
+$env:CINEMA_AUTH_JWK_SET_URI = "https://identity.cinema.local/oauth2/jwks"
+
 mvn -pl infrastructure/config-service spring-boot:run
 mvn -pl infrastructure/discovery-service spring-boot:run
 mvn -pl infrastructure/gateway-service spring-boot:run

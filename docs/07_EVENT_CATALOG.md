@@ -1,5 +1,7 @@
 # Event Catalog
 
+Version: R25
+
 This document defines the authoritative Kafka event contracts, ownership,
 versioning, routing, metadata, payload requirements, producer and consumer
 responsibilities, idempotency rules, and Saga choreography for Cinema Booking
@@ -9,6 +11,17 @@ Events are integration contracts.
 
 They must remain stable, versioned, documented, and independent from internal JPA
 entities.
+
+Implementation status:
+
+- The event infrastructure and reliability foundations exist in common
+  modules.
+- Inventory Service state and ownership rules are implemented.
+- Booking, Payment, Notification, and User Service integration events in this
+  document are target contracts until their roadmap rounds implement and test
+  them.
+- Documentation of a topic is not proof that the topic, producer, or consumer
+  currently exists.
 
 ---
 
@@ -101,33 +114,33 @@ Conceptual structure:
 
 ```json
 {
-  "eventId": "019c1234-5678-7abc-8def-0123456789ab",
-  "eventType": "seat-reservation-requested",
-  "eventVersion": "1",
-  "occurredAt": "2026-07-23T08:30:15.123456Z",
-  "producer": "booking-service",
-  "aggregateType": "BOOKING",
-  "aggregateId": "019c1234-1111-7abc-8def-0123456789ab",
-  "correlationId": "019c1234-2222-7abc-8def-0123456789ab",
-  "causationId": null,
-  "payload": {}
+    "eventId": "019c1234-5678-7abc-8def-0123456789ab",
+    "eventType": "seat-reservation-requested",
+    "eventVersion": "1",
+    "occurredAt": "2026-07-23T08:30:15.123456Z",
+    "producer": "booking-service",
+    "aggregateType": "BOOKING",
+    "aggregateId": "019c1234-1111-7abc-8def-0123456789ab",
+    "correlationId": "019c1234-2222-7abc-8def-0123456789ab",
+    "causationId": null,
+    "payload": {}
 }
 ```
 
 Required envelope fields:
 
-| Field | Type | Required | Description |
-|---|---|---:|---|
-| `eventId` | UUID v7 | Yes | Globally unique event identifier |
-| `eventType` | String | Yes | Stable event contract name |
-| `eventVersion` | String | Yes | Payload contract version |
-| `occurredAt` | ISO-8601 timestamp | Yes | Time the domain event occurred |
-| `producer` | String | Yes | Publishing service |
-| `aggregateType` | String | Yes | Aggregate category |
-| `aggregateId` | UUID | Yes | Aggregate used for ordering and tracing |
-| `correlationId` | UUID | Yes | Identifier shared across the business flow |
-| `causationId` | UUID | No | Event that caused this event |
-| `payload` | Object | Yes | Event-specific immutable data |
+| Field           | Type               | Required | Description                                |
+| --------------- | ------------------ | -------: | ------------------------------------------ |
+| `eventId`       | UUID v7            |      Yes | Globally unique event identifier           |
+| `eventType`     | String             |      Yes | Stable event contract name                 |
+| `eventVersion`  | String             |      Yes | Payload contract version                   |
+| `occurredAt`    | ISO-8601 timestamp |      Yes | Time the domain event occurred             |
+| `producer`      | String             |      Yes | Publishing service                         |
+| `aggregateType` | String             |      Yes | Aggregate category                         |
+| `aggregateId`   | UUID               |      Yes | Aggregate used for ordering and tracing    |
+| `correlationId` | UUID               |      Yes | Identifier shared across the business flow |
+| `causationId`   | UUID               |       No | Event that caused this event               |
+| `payload`       | Object             |      Yes | Event-specific immutable data              |
 
 If the implemented common Kafka contract uses equivalent field names, the
 implementation and this document must be synchronized before a round is complete.
@@ -240,7 +253,7 @@ public record SeatReservedPayload(
     List<ReservedSeat> seats,
     BigDecimal totalAmount,
     String currency,
-    OffsetDateTime reservationExpiresAt
+    OffsetDateTime holdExpiresAt
 ) {
 }
 ```
@@ -324,19 +337,19 @@ This preserves ordering for one booking within a topic partition.
 
 Examples:
 
-| Event | Recommended key |
-|---|---|
-| `seat-reservation-requested` | `bookingId` |
-| `seat-reserved` | `bookingId` |
-| `seat-reservation-rejected` | `bookingId` |
-| `payment-requested` | `bookingId` |
-| `payment-succeeded` | `bookingId` |
-| `payment-failed` | `bookingId` |
-| `seat-release-requested` | `bookingId` |
-| `seat-released` | `bookingId` |
-| `booking-confirmed` | `bookingId` |
-| `booking-cancelled` | `bookingId` |
-| `booking-expired` | `bookingId` |
+| Event                        | Recommended key |
+| ---------------------------- | --------------- |
+| `seat-reservation-requested` | `bookingId`     |
+| `seat-reserved`              | `bookingId`     |
+| `seat-reservation-rejected`  | `bookingId`     |
+| `payment-requested`          | `bookingId`     |
+| `payment-succeeded`          | `bookingId`     |
+| `payment-failed`             | `bookingId`     |
+| `seat-release-requested`     | `bookingId`     |
+| `seat-released`              | `bookingId`     |
+| `booking-confirmed`          | `bookingId`     |
+| `booking-cancelled`          | `bookingId`     |
+| `booking-expired`            | `bookingId`     |
 
 The outbox `partition_key` must match the Kafka record key used by the publisher.
 
@@ -352,22 +365,31 @@ Partition ordering does not remove the need for:
 
 # Event Ownership Summary
 
-| Event | Producer | Primary consumer |
-|---|---|---|
-| `seat-reservation-requested` | Booking Service | Inventory Service |
-| `seat-reserved` | Inventory Service | Booking Service |
-| `seat-reservation-rejected` | Inventory Service | Booking Service |
-| `payment-requested` | Booking Service | Payment Service |
-| `payment-succeeded` | Payment Service | Booking Service |
-| `payment-failed` | Payment Service | Booking Service |
-| `seat-release-requested` | Booking Service | Inventory Service |
-| `seat-released` | Inventory Service | Booking Service |
-| `booking-confirmed` | Booking Service | Inventory Service, Notification Service |
-| `booking-cancelled` | Booking Service | Inventory Service, Notification Service |
-| `booking-expired` | Booking Service | Inventory Service, Notification Service |
+| Event                         | Producer          | Primary consumer                        |
+| ----------------------------- | ----------------- | --------------------------------------- |
+| `seat-reservation-requested`  | Booking Service   | Inventory Service                       |
+| `seat-reserved`               | Inventory Service | Booking Service                         |
+| `seat-reservation-rejected`   | Inventory Service | Booking Service                         |
+| `payment-requested`           | Booking Service   | Payment Service                         |
+| `payment-succeeded`           | Payment Service   | Booking Service                         |
+| `payment-failed`              | Payment Service   | Booking Service                         |
+| `seat-release-requested`      | Booking Service   | Inventory Service                       |
+| `seat-released`               | Inventory Service | Booking Service                         |
+| `booking-confirmed`           | Booking Service   | Inventory Service, Notification Service |
+| `booking-cancelled`           | Booking Service   | Inventory Service, Notification Service |
+| `booking-expired`             | Booking Service   | Inventory Service, Notification Service |
+| `user-registered`             | User Service      | Approved consumers only                 |
+| `user-email-verified`         | User Service      | Approved consumers only                 |
+| `user-account-status-changed` | User Service      | Approved consumers only                 |
 
 Additional consumers may be added only when their ownership and idempotency
 requirements are documented.
+
+The three User Service events are R25 candidate contracts. They become active
+only when a concrete consumer requirement, minimal payload, retention policy,
+privacy review, Java contract, and integration test are accepted. Internal
+security audit records and OAuth2 protocol activity are not automatically Kafka
+integration events.
 
 ---
 
@@ -404,17 +426,19 @@ No service updates another service's database during this flow.
 
 # `seat-reservation-requested`
 
-Requests Inventory Service to reserve a complete set of seats for a booking.
+Requests Inventory Service to place an expiring hold on a complete set of
+ShowSeats for a booking. The topic retains the established booking-domain term
+`reservation`; Inventory's authoritative state is `HELD`.
 
 ## Ownership
 
-| Attribute | Value |
-|---|---|
-| Producer | Booking Service |
-| Consumer | Inventory Service |
-| Aggregate | Booking |
-| Partition key | `bookingId` |
-| Current version | `1` |
+| Attribute       | Value             |
+| --------------- | ----------------- |
+| Producer        | Booking Service   |
+| Consumer        | Inventory Service |
+| Aggregate       | Booking           |
+| Partition key   | `bookingId`       |
+| Current version | `1`               |
 
 ## Producer transaction
 
@@ -433,33 +457,33 @@ Booking Service must not update `show_seats`.
 
 ```json
 {
-  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-  "userId": "019c1234-2222-7abc-8def-0123456789ab",
-  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
-  "seats": [
-    {
-      "seatNumber": "H7"
-    },
-    {
-      "seatNumber": "H8"
-    }
-  ],
-  "requestedAt": "2026-07-23T08:30:15.123456Z",
-  "reservationExpiresAt": "2026-07-23T08:40:15.123456Z"
+    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+    "userId": "019c1234-2222-7abc-8def-0123456789ab",
+    "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+    "seats": [
+        {
+            "seatNumber": "H7"
+        },
+        {
+            "seatNumber": "H8"
+        }
+    ],
+    "requestedAt": "2026-07-23T08:30:15.123456Z",
+    "holdExpiresAt": "2026-07-23T08:40:15.123456Z"
 }
 ```
 
 ## Required fields
 
-| Field | Required | Description |
-|---|---:|---|
-| `bookingId` | Yes | Booking Service aggregate identifier |
-| `userId` | Yes | External user reference |
-| `showtimeId` | Yes | Showtime reference |
-| `seats` | Yes | Non-empty requested seat set |
-| `seats[].seatNumber` | Yes | Normalized seat label |
-| `requestedAt` | Yes | Request creation time |
-| `reservationExpiresAt` | Yes | Requested reservation deadline |
+| Field                | Required | Description                          |
+| -------------------- | -------: | ------------------------------------ |
+| `bookingId`          |      Yes | Booking Service aggregate identifier |
+| `userId`             |      Yes | External user reference              |
+| `showtimeId`         |      Yes | Showtime reference                   |
+| `seats`              |      Yes | Non-empty requested seat set         |
+| `seats[].seatNumber` |      Yes | Normalized seat label                |
+| `requestedAt`        |      Yes | Request creation time                |
+| `holdExpiresAt`      |      Yes | Requested hold deadline              |
 
 ## Consumer behavior
 
@@ -468,12 +492,14 @@ Inventory Service must:
 1. Check `processed_events`.
 2. Normalize and validate seat numbers.
 3. Reject duplicate seat numbers.
-4. Acquire Redis locks in deterministic order.
+4. Acquire distributed locks in deterministic order only when the approved
+   multi-seat workflow requires them.
 5. Load all requested `show_seats`.
 6. Confirm all seats exist.
-7. Confirm all seats are `AVAILABLE`, or already reserved by the same booking.
-8. Reserve the complete set atomically.
-9. Associate the reservation with `bookingId`.
+7. Confirm all seats are `AVAILABLE`, or are an idempotent valid hold by the
+   same booking.
+8. Change the complete set to `HELD` atomically.
+9. Store `held_by_booking_id` and `hold_expires_at`.
 10. Store the processed event.
 11. Create either `seat-reserved` or `seat-reservation-rejected`.
 12. Commit the local transaction.
@@ -485,43 +511,44 @@ Partial reservation is not allowed.
 
 # `seat-reserved`
 
-Reports that Inventory Service successfully reserved the complete requested seat
-set.
+Reports that Inventory Service successfully placed the requested ShowSeats in
+`HELD` state. The event name is expressed in Booking-domain language and does
+not introduce an Inventory `RESERVED` state.
 
 ## Ownership
 
-| Attribute | Value |
-|---|---|
-| Producer | Inventory Service |
-| Consumer | Booking Service |
-| Aggregate | Booking reservation |
-| Partition key | `bookingId` |
-| Current version | `1` |
+| Attribute       | Value               |
+| --------------- | ------------------- |
+| Producer        | Inventory Service   |
+| Consumer        | Booking Service     |
+| Aggregate       | Booking reservation |
+| Partition key   | `bookingId`         |
+| Current version | `1`                 |
 
 ## Payload
 
 ```json
 {
-  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
-  "seats": [
-    {
-      "inventorySeatId": "019c1234-4444-7abc-8def-0123456789ab",
-      "seatNumber": "H7",
-      "seatType": "STANDARD",
-      "price": 90000.00
-    },
-    {
-      "inventorySeatId": "019c1234-5555-7abc-8def-0123456789ab",
-      "seatNumber": "H8",
-      "seatType": "STANDARD",
-      "price": 90000.00
-    }
-  ],
-  "totalAmount": 180000.00,
-  "currency": "VND",
-  "reservedAt": "2026-07-23T08:30:16.123456Z",
-  "reservationExpiresAt": "2026-07-23T08:40:15.123456Z"
+    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+    "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+    "seats": [
+        {
+            "inventorySeatId": "019c1234-4444-7abc-8def-0123456789ab",
+            "seatNumber": "H7",
+            "seatType": "STANDARD",
+            "price": 90000.0
+        },
+        {
+            "inventorySeatId": "019c1234-5555-7abc-8def-0123456789ab",
+            "seatNumber": "H8",
+            "seatType": "STANDARD",
+            "price": 90000.0
+        }
+    ],
+    "totalAmount": 180000.0,
+    "currency": "VND",
+    "heldAt": "2026-07-23T08:30:16.123456Z",
+    "holdExpiresAt": "2026-07-23T08:40:15.123456Z"
 }
 ```
 
@@ -553,26 +580,24 @@ Reports that Inventory Service could not reserve the complete requested seat set
 
 ## Ownership
 
-| Attribute | Value |
-|---|---|
-| Producer | Inventory Service |
-| Consumer | Booking Service |
-| Aggregate | Booking reservation |
-| Partition key | `bookingId` |
-| Current version | `1` |
+| Attribute       | Value               |
+| --------------- | ------------------- |
+| Producer        | Inventory Service   |
+| Consumer        | Booking Service     |
+| Aggregate       | Booking reservation |
+| Partition key   | `bookingId`         |
+| Current version | `1`                 |
 
 ## Payload
 
 ```json
 {
-  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
-  "reasonCode": "SEAT_UNAVAILABLE",
-  "message": "One or more requested seats are unavailable",
-  "unavailableSeats": [
-    "H7"
-  ],
-  "rejectedAt": "2026-07-23T08:30:16.123456Z"
+    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+    "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+    "reasonCode": "SEAT_UNAVAILABLE",
+    "message": "One or more requested seats are unavailable",
+    "unavailableSeats": ["H7"],
+    "rejectedAt": "2026-07-23T08:30:16.123456Z"
 }
 ```
 
@@ -614,25 +639,25 @@ booking.
 
 ## Ownership
 
-| Attribute | Value |
-|---|---|
-| Producer | Booking Service |
-| Consumer | Payment Service |
-| Aggregate | Booking |
-| Partition key | `bookingId` |
-| Current version | `1` |
+| Attribute       | Value           |
+| --------------- | --------------- |
+| Producer        | Booking Service |
+| Consumer        | Payment Service |
+| Aggregate       | Booking         |
+| Partition key   | `bookingId`     |
+| Current version | `1`             |
 
 ## Payload
 
 ```json
 {
-  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-  "userId": "019c1234-2222-7abc-8def-0123456789ab",
-  "amount": 180000.00,
-  "currency": "VND",
-  "paymentAttempt": 1,
-  "reservationExpiresAt": "2026-07-23T08:40:15.123456Z",
-  "requestedAt": "2026-07-23T08:30:17.123456Z"
+    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+    "userId": "019c1234-2222-7abc-8def-0123456789ab",
+    "amount": 180000.0,
+    "currency": "VND",
+    "paymentAttempt": 1,
+    "holdExpiresAt": "2026-07-23T08:40:15.123456Z",
+    "requestedAt": "2026-07-23T08:30:17.123456Z"
 }
 ```
 
@@ -662,25 +687,25 @@ Reports that payment completed successfully.
 
 ## Ownership
 
-| Attribute | Value |
-|---|---|
-| Producer | Payment Service |
-| Consumer | Booking Service |
-| Aggregate | Payment |
-| Partition key | `bookingId` |
-| Current version | `1` |
+| Attribute       | Value           |
+| --------------- | --------------- |
+| Producer        | Payment Service |
+| Consumer        | Booking Service |
+| Aggregate       | Payment         |
+| Partition key   | `bookingId`     |
+| Current version | `1`             |
 
 ## Payload
 
 ```json
 {
-  "paymentId": "019c1234-6666-7abc-8def-0123456789ab",
-  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-  "amount": 180000.00,
-  "currency": "VND",
-  "provider": "MOCK",
-  "providerReference": "PAY-20260723-000001",
-  "paidAt": "2026-07-23T08:31:10.123456Z"
+    "paymentId": "019c1234-6666-7abc-8def-0123456789ab",
+    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+    "amount": 180000.0,
+    "currency": "VND",
+    "provider": "MOCK",
+    "providerReference": "PAY-20260723-000001",
+    "paidAt": "2026-07-23T08:31:10.123456Z"
 }
 ```
 
@@ -716,24 +741,24 @@ Reports that a payment attempt failed.
 
 ## Ownership
 
-| Attribute | Value |
-|---|---|
-| Producer | Payment Service |
-| Consumer | Booking Service |
-| Aggregate | Payment |
-| Partition key | `bookingId` |
-| Current version | `1` |
+| Attribute       | Value           |
+| --------------- | --------------- |
+| Producer        | Payment Service |
+| Consumer        | Booking Service |
+| Aggregate       | Payment         |
+| Partition key   | `bookingId`     |
+| Current version | `1`             |
 
 ## Payload
 
 ```json
 {
-  "paymentId": "019c1234-6666-7abc-8def-0123456789ab",
-  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-  "failureCode": "PAYMENT_DECLINED",
-  "message": "The payment was declined",
-  "failedAt": "2026-07-23T08:31:10.123456Z",
-  "retryable": false
+    "paymentId": "019c1234-6666-7abc-8def-0123456789ab",
+    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+    "failureCode": "PAYMENT_DECLINED",
+    "message": "The payment was declined",
+    "failedAt": "2026-07-23T08:31:10.123456Z",
+    "retryable": false
 }
 ```
 
@@ -781,26 +806,26 @@ BOOKING_EXPIRED
 
 ## Ownership
 
-| Attribute | Value |
-|---|---|
-| Producer | Booking Service |
-| Consumer | Inventory Service |
-| Aggregate | Booking |
-| Partition key | `bookingId` |
-| Current version | `1` |
+| Attribute       | Value             |
+| --------------- | ----------------- |
+| Producer        | Booking Service   |
+| Consumer        | Inventory Service |
+| Aggregate       | Booking           |
+| Partition key   | `bookingId`       |
+| Current version | `1`               |
 
 ## Payload
 
 ```json
 {
-  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
-  "seatIds": [
-    "019c1234-4444-7abc-8def-0123456789ab",
-    "019c1234-5555-7abc-8def-0123456789ab"
-  ],
-  "reason": "PAYMENT_FAILED",
-  "requestedAt": "2026-07-23T08:31:11.123456Z"
+    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+    "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+    "seatIds": [
+        "019c1234-4444-7abc-8def-0123456789ab",
+        "019c1234-5555-7abc-8def-0123456789ab"
+    ],
+    "reason": "PAYMENT_FAILED",
+    "requestedAt": "2026-07-23T08:31:11.123456Z"
 }
 ```
 
@@ -809,15 +834,15 @@ BOOKING_EXPIRED
 Inventory Service must release a seat only when:
 
 ```text
-status = RESERVED
-reserved_by_booking_id = event.bookingId
+status = HELD
+held_by_booking_id = event.bookingId
 ```
 
 Inventory Service must not release:
 
-- A seat reserved by another booking
-- A sold seat
-- A newer reservation
+- A seat held by another booking
+- A booked seat
+- A newer hold
 - A seat whose state was changed by a later valid command
 
 The complete release operation and resulting `seat-released` outbox record must be
@@ -831,26 +856,26 @@ Reports the result of a seat release operation.
 
 ## Ownership
 
-| Attribute | Value |
-|---|---|
-| Producer | Inventory Service |
-| Consumer | Booking Service |
-| Aggregate | Booking reservation |
-| Partition key | `bookingId` |
-| Current version | `1` |
+| Attribute       | Value               |
+| --------------- | ------------------- |
+| Producer        | Inventory Service   |
+| Consumer        | Booking Service     |
+| Aggregate       | Booking reservation |
+| Partition key   | `bookingId`         |
+| Current version | `1`                 |
 
 ## Payload
 
 ```json
 {
-  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
-  "releasedSeatIds": [
-    "019c1234-4444-7abc-8def-0123456789ab",
-    "019c1234-5555-7abc-8def-0123456789ab"
-  ],
-  "reason": "PAYMENT_FAILED",
-  "releasedAt": "2026-07-23T08:31:12.123456Z"
+    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+    "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+    "releasedSeatIds": [
+        "019c1234-4444-7abc-8def-0123456789ab",
+        "019c1234-5555-7abc-8def-0123456789ab"
+    ],
+    "reason": "PAYMENT_FAILED",
+    "releasedAt": "2026-07-23T08:31:12.123456Z"
 }
 ```
 
@@ -866,37 +891,37 @@ Reports that a booking completed successfully.
 
 ## Ownership
 
-| Attribute | Value |
-|---|---|
-| Producer | Booking Service |
-| Consumers | Inventory Service, Notification Service |
-| Aggregate | Booking |
-| Partition key | `bookingId` |
-| Current version | `1` |
+| Attribute       | Value                                   |
+| --------------- | --------------------------------------- |
+| Producer        | Booking Service                         |
+| Consumers       | Inventory Service, Notification Service |
+| Aggregate       | Booking                                 |
+| Partition key   | `bookingId`                             |
+| Current version | `1`                                     |
 
 ## Payload
 
 ```json
 {
-  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-  "userId": "019c1234-2222-7abc-8def-0123456789ab",
-  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
-  "paymentId": "019c1234-6666-7abc-8def-0123456789ab",
-  "seats": [
-    {
-      "seatNumber": "H7",
-      "seatType": "STANDARD",
-      "price": 90000.00
-    },
-    {
-      "seatNumber": "H8",
-      "seatType": "STANDARD",
-      "price": 90000.00
-    }
-  ],
-  "totalAmount": 180000.00,
-  "currency": "VND",
-  "confirmedAt": "2026-07-23T08:31:11.123456Z"
+    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+    "userId": "019c1234-2222-7abc-8def-0123456789ab",
+    "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+    "paymentId": "019c1234-6666-7abc-8def-0123456789ab",
+    "seats": [
+        {
+            "seatNumber": "H7",
+            "seatType": "STANDARD",
+            "price": 90000.0
+        },
+        {
+            "seatNumber": "H8",
+            "seatType": "STANDARD",
+            "price": 90000.0
+        }
+    ],
+    "totalAmount": 180000.0,
+    "currency": "VND",
+    "confirmedAt": "2026-07-23T08:31:11.123456Z"
 }
 ```
 
@@ -906,9 +931,9 @@ Inventory Service must:
 
 ```text
 Check processed event
-Verify seats are RESERVED by this booking
-Update RESERVED → SOLD
-Clear or finalize reservation metadata
+Verify seats are HELD by this booking
+Update HELD → BOOKED
+Clear hold ownership and expiry metadata
 Store processed event
 Commit
 ```
@@ -940,32 +965,33 @@ Reports that a booking was cancelled.
 
 ## Ownership
 
-| Attribute | Value |
-|---|---|
-| Producer | Booking Service |
-| Consumers | Inventory Service, Notification Service |
-| Aggregate | Booking |
-| Partition key | `bookingId` |
-| Current version | `1` |
+| Attribute       | Value                                   |
+| --------------- | --------------------------------------- |
+| Producer        | Booking Service                         |
+| Consumers       | Inventory Service, Notification Service |
+| Aggregate       | Booking                                 |
+| Partition key   | `bookingId`                             |
+| Current version | `1`                                     |
 
 ## Payload
 
 ```json
 {
-  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-  "userId": "019c1234-2222-7abc-8def-0123456789ab",
-  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
-  "reason": "USER_REQUESTED",
-  "cancelledAt": "2026-07-23T08:35:00.123456Z"
+    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+    "userId": "019c1234-2222-7abc-8def-0123456789ab",
+    "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+    "reason": "USER_REQUESTED",
+    "cancelledAt": "2026-07-23T08:35:00.123456Z"
 }
 ```
 
-Cancellation does not itself authorize Inventory Service to reverse sold seats.
+Cancellation does not itself authorize Inventory Service to reverse booked
+seats.
 
 Inventory behavior depends on the approved cancellation and refund policy.
 
-For a booking whose seats are still only `RESERVED`, Inventory Service may release
-them after validating reservation ownership.
+For a booking whose ShowSeats are still `HELD`, Inventory Service may release
+them after validating hold ownership.
 
 ---
 
@@ -975,30 +1001,110 @@ Reports that a booking expired before successful completion.
 
 ## Ownership
 
-| Attribute | Value |
-|---|---|
-| Producer | Booking Service |
-| Consumers | Inventory Service, Notification Service |
-| Aggregate | Booking |
-| Partition key | `bookingId` |
-| Current version | `1` |
+| Attribute       | Value                                   |
+| --------------- | --------------------------------------- |
+| Producer        | Booking Service                         |
+| Consumers       | Inventory Service, Notification Service |
+| Aggregate       | Booking                                 |
+| Partition key   | `bookingId`                             |
+| Current version | `1`                                     |
 
 ## Payload
 
 ```json
 {
-  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-  "userId": "019c1234-2222-7abc-8def-0123456789ab",
-  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
-  "expiredAt": "2026-07-23T08:40:15.123456Z"
+    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+    "userId": "019c1234-2222-7abc-8def-0123456789ab",
+    "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+    "expiredAt": "2026-07-23T08:40:15.123456Z"
 }
 ```
 
-Inventory Service must conditionally release only seats still reserved by the same
-booking.
+Inventory Service must conditionally release only ShowSeats still `HELD` by the
+same booking.
 
-A delayed expiration event must not release seats that are already `SOLD` or owned
-by another booking.
+A delayed expiration event must not release ShowSeats that are already `BOOKED`
+or held by another booking.
+
+---
+
+# User Service Candidate Events
+
+User Service may publish lifecycle facts only when another service has a
+documented business need. These contracts are planned R25 integration points,
+not implemented topics.
+
+## `user-registered`
+
+Reports that User Service committed a new user account.
+
+Conceptual payload:
+
+```json
+{
+    "userId": "019c1234-2222-7abc-8def-0123456789ab",
+    "accountStatus": "PENDING_VERIFICATION",
+    "registeredAt": "2026-08-05T08:30:15.123456Z"
+}
+```
+
+The event does not include a password, password hash, verification token,
+refresh token, access token, MFA secret, or complete profile. If an approved
+consumer needs a delivery address such as email, the privacy-reviewed contract
+must define whether to include a minimal address or use an authorized User
+Service API.
+
+## `user-email-verified`
+
+Reports completion of email verification without exposing the verification
+token.
+
+Conceptual payload:
+
+```json
+{
+    "userId": "019c1234-2222-7abc-8def-0123456789ab",
+    "verifiedAt": "2026-08-05T08:35:15.123456Z"
+}
+```
+
+Duplicate delivery must not create duplicate welcome or audit side effects.
+
+## `user-account-status-changed`
+
+Reports a durable account lifecycle change needed by an approved consumer.
+
+Conceptual payload:
+
+```json
+{
+    "userId": "019c1234-2222-7abc-8def-0123456789ab",
+    "previousStatus": "ACTIVE",
+    "newStatus": "DISABLED",
+    "changedAt": "2026-08-05T09:00:00.123456Z"
+}
+```
+
+Do not include private administrative notes, authentication evidence, raw IP
+addresses without an approved privacy need, or credential material.
+
+## Security activity that is not an integration event by default
+
+The following are User Service security audit or observability records unless a
+separate ADR and consumer requirement approve publication:
+
+- Login success or failure
+- Authorization denial
+- Access-token issuance
+- Refresh-token rotation or reuse detection
+- Token revocation
+- Client-secret changes
+- MFA enrollment, challenge, recovery, or bypass
+- Signing-key loading or rotation
+
+OAuth2 tokens and protocol messages must not be carried through Kafka as
+business events. Token revocation is enforced through User Service state,
+short-lived access tokens, and the accepted protocol/security design.
 
 ---
 
@@ -1007,7 +1113,7 @@ by another booking.
 ```mermaid
 flowchart TD
     A["Booking: PENDING"] --> B["seat-reservation-requested"]
-    B --> C["Inventory: RESERVED"]
+    B --> C["Inventory: HELD"]
     C --> D["seat-reserved"]
     D --> E["Booking: RESERVED"]
     E --> F["payment-requested"]
@@ -1015,7 +1121,7 @@ flowchart TD
     G --> H["payment-succeeded"]
     H --> I["Booking: CONFIRMED"]
     I --> J["booking-confirmed"]
-    J --> K["Inventory: SOLD"]
+    J --> K["Inventory: BOOKED"]
 ```
 
 Each arrow crossing a service boundary represents Kafka communication.
@@ -1064,17 +1170,17 @@ Each logical consumer must use its own consumer group.
 
 Conceptual examples:
 
-| Service | Event | Consumer group |
-|---|---|---|
-| Inventory Service | `seat-reservation-requested` | `inventory-seat-reservation` |
-| Booking Service | `seat-reserved` | `booking-seat-reserved` |
-| Booking Service | `seat-reservation-rejected` | `booking-seat-rejected` |
-| Payment Service | `payment-requested` | `payment-request-processing` |
-| Booking Service | `payment-succeeded` | `booking-payment-succeeded` |
-| Booking Service | `payment-failed` | `booking-payment-failed` |
-| Inventory Service | `seat-release-requested` | `inventory-seat-release` |
-| Inventory Service | `booking-confirmed` | `inventory-booking-confirmed` |
-| Notification Service | `booking-confirmed` | `notification-booking-confirmed` |
+| Service              | Event                        | Consumer group                   |
+| -------------------- | ---------------------------- | -------------------------------- |
+| Inventory Service    | `seat-reservation-requested` | `inventory-seat-reservation`     |
+| Booking Service      | `seat-reserved`              | `booking-seat-reserved`          |
+| Booking Service      | `seat-reservation-rejected`  | `booking-seat-rejected`          |
+| Payment Service      | `payment-requested`          | `payment-request-processing`     |
+| Booking Service      | `payment-succeeded`          | `booking-payment-succeeded`      |
+| Booking Service      | `payment-failed`             | `booking-payment-failed`         |
+| Inventory Service    | `seat-release-requested`     | `inventory-seat-release`         |
+| Inventory Service    | `booking-confirmed`          | `inventory-booking-confirmed`    |
+| Notification Service | `booking-confirmed`          | `notification-booking-confirmed` |
 
 Multiple instances of the same logical consumer must share the same consumer group.
 
@@ -1179,8 +1285,8 @@ Consumers must still validate current state.
 Examples:
 
 - `payment-succeeded` must not blindly change `EXPIRED → CONFIRMED`.
-- `seat-release-requested` must not release a seat owned by another booking.
-- `booking-confirmed` must not convert an unrelated reservation to `SOLD`.
+- `seat-release-requested` must not release a hold owned by another booking.
+- `booking-confirmed` must not convert an unrelated hold to `BOOKED`.
 - `seat-reserved` must not restore a rejected or cancelled booking.
 - A duplicate `payment-requested` must not create another charge.
 
@@ -1363,8 +1469,8 @@ Example JSON:
 
 ```json
 {
-  "amount": 180000.00,
-  "currency": "VND"
+    "amount": 180000.0,
+    "currency": "VND"
 }
 ```
 
@@ -1404,7 +1510,8 @@ It must not:
 - Update `show_seats`
 - Treat the snapshot as authoritative current Inventory state
 
-Inventory Service remains the owner of seat availability and reservation state.
+Inventory Service remains the owner of ShowSeat availability, hold, booking,
+and administrative-availability state.
 
 ---
 
@@ -1414,8 +1521,14 @@ Events must not contain:
 
 - Plain-text passwords
 - Password hashes
+- Password-reset tokens
+- Email-verification tokens
 - Refresh tokens
 - Access tokens
+- Authorization codes
+- OAuth2 client secrets
+- MFA secrets or recovery codes
+- Signing private keys
 - Database credentials
 - Payment provider secrets
 - CVV values
@@ -1534,8 +1647,8 @@ Use Transactional Outbox.
 
 ```json
 {
-  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-  "status": "CONFIRMED"
+    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+    "status": "CONFIRMED"
 }
 ```
 
@@ -1547,7 +1660,7 @@ Without `eventId`, reliable consumer idempotency cannot be implemented consisten
 
 ```json
 {
-  "createdAt": [2026, 7, 23, 15, 30, 15]
+    "createdAt": [2026, 7, 23, 15, 30, 15]
 }
 ```
 
@@ -1598,22 +1711,25 @@ Inventory Service is the only valid consumer that changes `show_seats`.
 
 # Event Catalog Summary
 
-| Topic | Producer | Consumer | Result |
-|---|---|---|---|
-| `seat-reservation-requested` | Booking | Inventory | Attempts atomic seat reservation |
-| `seat-reserved` | Inventory | Booking | Booking becomes `RESERVED` |
-| `seat-reservation-rejected` | Inventory | Booking | Booking becomes `REJECTED` |
-| `payment-requested` | Booking | Payment | Creates idempotent payment attempt |
-| `payment-succeeded` | Payment | Booking | Booking becomes `CONFIRMED` |
-| `payment-failed` | Payment | Booking | Booking becomes `PAYMENT_FAILED` |
-| `seat-release-requested` | Booking | Inventory | Releases booking-owned reservation |
-| `seat-released` | Inventory | Booking | Confirms compensation result |
-| `booking-confirmed` | Booking | Inventory | Seats become `SOLD` |
-| `booking-confirmed` | Booking | Notification | Sends confirmation notification |
-| `booking-cancelled` | Booking | Inventory | Conditionally releases reserved seats |
-| `booking-cancelled` | Booking | Notification | Sends cancellation notification |
-| `booking-expired` | Booking | Inventory | Conditionally releases expired reservation |
-| `booking-expired` | Booking | Notification | Sends expiration notification if required |
+| Topic                         | Producer  | Consumer           | Result                                            |
+| ----------------------------- | --------- | ------------------ | ------------------------------------------------- |
+| `seat-reservation-requested`  | Booking   | Inventory          | Attempts an atomic expiring ShowSeat hold         |
+| `seat-reserved`               | Inventory | Booking            | Inventory holds seats; Booking becomes `RESERVED` |
+| `seat-reservation-rejected`   | Inventory | Booking            | Booking becomes `REJECTED`                        |
+| `payment-requested`           | Booking   | Payment            | Creates idempotent payment attempt                |
+| `payment-succeeded`           | Payment   | Booking            | Booking becomes `CONFIRMED`                       |
+| `payment-failed`              | Payment   | Booking            | Booking becomes `PAYMENT_FAILED`                  |
+| `seat-release-requested`      | Booking   | Inventory          | Releases a booking-owned hold                     |
+| `seat-released`               | Inventory | Booking            | Confirms compensation result                      |
+| `booking-confirmed`           | Booking   | Inventory          | ShowSeats change `HELD → BOOKED`                  |
+| `booking-confirmed`           | Booking   | Notification       | Sends confirmation notification                   |
+| `booking-cancelled`           | Booking   | Inventory          | Conditionally releases held ShowSeats             |
+| `booking-cancelled`           | Booking   | Notification       | Sends cancellation notification                   |
+| `booking-expired`             | Booking   | Inventory          | Conditionally releases expired holds              |
+| `user-registered`             | User      | Approved consumers | Candidate minimal account-created fact            |
+| `user-email-verified`         | User      | Approved consumers | Candidate verification fact                       |
+| `user-account-status-changed` | User      | Approved consumers | Candidate lifecycle fact without credentials      |
+| `booking-expired`             | Booking   | Notification       | Sends expiration notification if required         |
 
 ---
 
@@ -1643,7 +1759,13 @@ Before marking an event-driven round complete, verify:
 - [ ] Retry and DLT behavior are configured
 - [ ] Booking Service never updates `show_seats`
 - [ ] Inventory Service validates reservation ownership
+- [ ] Inventory event behavior uses `HELD`, `BOOKED`, and `UNAVAILABLE`; it does
+      not introduce obsolete `RESERVED` or `SOLD` ShowSeat states
 - [ ] Payment processing prevents duplicate provider charges
+- [ ] User lifecycle events contain no password, token, client-secret, MFA, or
+      signing-key material
+- [ ] OAuth2 protocol and security-audit activity is not published as a business
+      event without an approved requirement
 - [ ] Event contracts match Java records and tests
 - [ ] Documentation matches actual topic configuration
 - [ ] `mvn clean verify` passes
@@ -1734,6 +1856,7 @@ docs/11_CHANGELOG.md
 docs/12_DEPENDENCY_RULES.md
 docs/13_SEQUENCE_DIAGRAMS.md
 docs/14_DEPLOYMENT.md
+docs/decisions/ADR-013-spring-authorization-server.md
 docs/decisions/
 ```
 

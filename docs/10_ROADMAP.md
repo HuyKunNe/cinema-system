@@ -1,8 +1,8 @@
 # Project Roadmap
 
-**Version:** R24 Completed
-**Current target:** R25 planning — User Service
-**Last updated:** 2026-08-04
+**Version:** R25 In Progress
+**Current target:** R25.2 — User Service authentication architecture
+**Last updated:** 2026-08-05
 
 ---
 
@@ -932,38 +932,238 @@ R24 was marked complete after verifying that:
 
 ---
 
-## ⏳ R25 — User Service
+## 🚧 R25 — User Service
 
-User Service will own:
+User Service is the active implementation target.
 
-- user accounts;
-- user profiles;
-- credentials when local authentication is used;
-- roles and account status;
+User Service owns:
+
+- user accounts and profiles;
+- credentials;
+- roles and permissions;
+- account status;
 - verification and password-recovery state;
-- refresh-token or session state according to the accepted authentication design.
+- OAuth2 registered clients;
+- OAuth2 authorizations and consents;
+- refresh-token and authorization-session state;
+- signing-key access;
+- security audit records.
 
-### Planned scope
+### Accepted authentication architecture
 
-- account registration;
-- authentication integration;
-- password hashing;
-- account verification;
-- profile management;
-- role and permission enforcement;
-- refresh rotation and revocation where applicable;
-- administrative account actions;
-- audit coverage for privileged changes.
+The authoritative authentication architecture is defined by:
 
-### Required decisions before implementation
+```text
+docs/decisions/ADR-013-spring-authorization-server.md
+```
 
-- authoritative token issuer;
-- OAuth2 or authorization-server topology;
-- access and refresh token model;
-- issuer, audience and signing-key ownership;
-- MFA scope for privileged accounts.
+Accepted decisions:
 
-R25 must satisfy the token and authorization test cases in `docs/08_SECURITY.md`.
+- User Service integrates Spring Authorization Server.
+- User Service is the single authoritative issuer.
+- OpenID Connect is enabled for approved user identity flows.
+- Authorization Code with PKCE is used for public user clients.
+- Client Credentials is used for approved service identities.
+- Resource Owner Password Credentials is prohibited.
+- Access tokens are short-lived signed JWTs.
+- Initial access-token lifetime is 15 minutes.
+- Initial API audience is `cinema-api`.
+- Access-token subjects use UUID v7.
+- User Service owns RSA signing keys.
+- The initial signing algorithm is RS256.
+- Public keys are exposed through the JWK Set endpoint.
+- Refresh tokens are opaque, rotated and revocable.
+- Initial maximum refresh-token lifetime is 30 days.
+- Production privileged access requires MFA.
+- `common-security` validates tokens but does not issue them.
+- Gateway and business services validate tokens independently.
+
+### Architectural boundaries
+
+User Service must not:
+
+- access another service database;
+- expose credential entities through APIs;
+- place passwords or refresh tokens in Kafka events;
+- share its private signing key with Resource Servers;
+- accept arbitrary client-supplied roles or permissions;
+- issue access tokens for locked or disabled accounts;
+- implement Resource Owner Password Credentials;
+- store plain-text passwords or client secrets;
+- treat Gateway validation as sufficient service authorization.
+
+`common-security` must not own User entities, User repositories, password authentication, Authorization Server filter chains, registered-client persistence, OAuth2 authorization persistence, private signing keys, refresh-token persistence, or login and registration controllers.
+
+### Implementation checkpoints
+
+#### ✅ R25.1 — common-security hardening
+
+Completed scope:
+
+- changed authenticated identifiers from `Long` to UUID;
+- added JWT principal support;
+- removed token issuance and shared HMAC signing from `common-security`;
+- centralized role and permission conversion;
+- added issuer, JWK Set and audience configuration;
+- added audience validation and a shared JWK-based `JwtDecoder`;
+- standardized security error codes and Servlet `401`/`403` responses;
+- integrated Inventory Service with shared security;
+- added principal, converter, validator and response tests;
+- pinned Maven compiler and test plugin versions;
+- verified Inventory and root Maven builds.
+
+```text
+R25.1.1–R25.1.8 — DONE
+R25.1             — DONE
+```
+
+#### 🚧 R25.2 — authentication architecture and roadmap
+
+Scope:
+
+- confirm the authoritative issuer and Authorization Server topology;
+- define OAuth2 and OpenID Connect flows;
+- define issuer, audience, claims and token lifetime;
+- define grant types, signing-key ownership and rotation;
+- define refresh-token rotation and revocation;
+- define service identity and privileged-account requirements;
+- create ADR-013;
+- split R25 into implementation checkpoints;
+- synchronize affected documentation.
+
+```text
+R25.2.1 — ADR-013 drafted
+R25.2.2 — Roadmap checkpoint definition in progress
+R25.2   — IN PROGRESS
+```
+
+#### ⏳ R25.3 — User Service bootstrap
+
+- complete the Maven module and Spring Boot entry point;
+- integrate Config Server and Eureka;
+- configure database, Flyway, JPA auditing, validation, mapping, responses and exceptions;
+- add application-context tests.
+
+#### ⏳ R25.4 — User domain and database schema
+
+- User, profile and credential persistence;
+- AccountStatus;
+- UUID v7 identifiers;
+- unique normalized username and email constraints;
+- Flyway schema, repository integration tests and Hibernate validation.
+
+#### ⏳ R25.5 — roles and permissions
+
+- Role and Permission entities;
+- user-role and role-permission assignments;
+- initial roles and permissions;
+- duplicate-assignment protection;
+- administrative assignment services and tests.
+
+#### ⏳ R25.6 — registration and password security
+
+- registration and normalized identifiers;
+- approved adaptive password encoder and password policy;
+- duplicate-account protection;
+- safe public errors;
+- password-hash upgrade support;
+- unit, controller and integration tests.
+
+#### ⏳ R25.7 — verification and password recovery
+
+- expiring, single-purpose, single-use verification and reset tokens;
+- non-enumerating responses;
+- password-reset session revocation;
+- audit coverage and integration tests.
+
+#### ⏳ R25.8 — Spring Authorization Server foundation
+
+- Authorization Server filter chain and settings;
+- OpenID Connect;
+- canonical issuer;
+- authentication provider integration;
+- account-status enforcement;
+- protocol endpoint tests.
+
+#### ⏳ R25.9 — OAuth2 clients and grant types
+
+- JDBC registered-client persistence;
+- controlled client registration;
+- Authorization Code with PKCE, Refresh Token and Client Credentials;
+- public and confidential client rules;
+- encoded client secrets and redirect URI validation.
+
+#### ⏳ R25.10 — JWT claims and JWK signing
+
+- RSA signing-key loading and JWK source;
+- `kid` and RS256;
+- required standard claims;
+- `username`, `roles` and `permissions` claims;
+- UUID v7 subject enforcement;
+- JWK publication and token integration tests.
+
+#### ⏳ R25.11 — refresh rotation and revocation
+
+- opaque refresh tokens and rotation;
+- reuse rejection and security events;
+- authorization-session persistence;
+- logout, account, password-reset and client revocation;
+- concurrency and integration tests.
+
+#### ⏳ R25.12 — profile and account lifecycle
+
+- current-user profile operations;
+- password change;
+- account lock, unlock and disable;
+- administrative operations;
+- ownership enforcement and privileged-operation auditing.
+
+#### ⏳ R25.13 — Gateway and Resource Server integration
+
+- Gateway issuer, audience and JWK validation;
+- standard reactive `401` and `403` responses;
+- route security policy;
+- Movie and Inventory Resource Server integration;
+- service-token and cross-service security tests.
+
+#### ⏳ R25.14 — security and protocol verification
+
+- issuer, audience, signature, expiration and not-before tests;
+- subject, role and permission tests;
+- PKCE and Client Credentials tests;
+- refresh rotation and reuse tests;
+- locked and disabled account tests;
+- MySQL Testcontainers verification.
+
+#### ⏳ R25.15 — stabilization and closure
+
+- root `mvn clean verify`;
+- `git diff --check`;
+- dependency, ownership, security, secret, API and architecture reviews;
+- documentation synchronization;
+- R25 exit-criteria verification.
+
+### R25 exit criteria
+
+R25 may be marked complete only after verifying:
+
+- User Service is the authoritative issuer and ADR-013 matches implementation.
+- User identifiers use UUID v7.
+- Passwords and client secrets use approved encoders and are never stored in plain text.
+- Locked and disabled users cannot obtain new tokens.
+- Authorization Code with PKCE and approved Client Credentials flows work.
+- Resource Owner Password Credentials is unavailable.
+- Access tokens use RS256 and private signing keys remain exclusive to User Service.
+- JWK publication, `kid`, issuer, audience and JWT claim validation work.
+- Refresh tokens rotate and invalidated-token reuse is rejected.
+- Logout and sensitive account changes revoke applicable sessions.
+- Gateway and business services validate tokens independently.
+- Applicable `401` and `403` responses follow shared contracts.
+- User Service exclusively owns authentication and authorization persistence.
+- Flyway and Hibernate validation pass on clean MySQL.
+- protocol, controller, service, repository and integration tests pass.
+- root `mvn clean verify` and `git diff --check` pass.
+- affected documentation is synchronized.
 
 ---
 
@@ -1215,7 +1415,7 @@ Do not:
 | Infrastructure Services | R20–R22        | ✅ Completed                                                       |
 | Movie Service           | R23            | ✅ Completed                                                       |
 | Inventory Service       | R24            | ✅ Completed                                                       |
-| User Service            | R25            | ⏭️ Next                                                            |
+| User Service            | R25            | 🚧 In progress                                                     |
 | Booking Service         | R26            | ⏳ Planned                                                         |
 | Payment Service         | R27            | ⏳ Planned                                                         |
 | Notification Service    | R28            | ⏳ Planned                                                         |
@@ -1227,18 +1427,16 @@ The latest completed round is:
 R24 — Inventory Service
 ```
 
-The latest accepted checkpoint is:
+The latest completed checkpoint is:
 
 ```text
-R24.5.9 — Documentation synchronization and R24 closure
+R25.1 — common-security hardening
 ```
 
-The next approved round is:
+The active checkpoint is:
 
 ```text
-R25 — User Service
+R25.2 — authentication architecture and roadmap
 ```
 
-R25 has not started. Confirm its authentication topology, authoritative token
-issuer, audience, signing-key ownership, refresh-token lifecycle and
-privileged-account requirements before implementation.
+ADR-013 selects User Service with Spring Authorization Server as the authoritative issuer. R25 implementation is in progress.
