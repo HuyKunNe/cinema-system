@@ -27,5 +27,7 @@ eureka:
 
 cinema:
     security:
-        jwt:
-            secret: cinema-system-test-jwt-secret-key-at-least-32-bytes
+        oauth2:
+            issuer-uri: https://identity.cinema.test
+            jwk-set-uri: https://identity.cinema.test/oauth2/jwks
+            audience: cinema-api

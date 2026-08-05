@@ -8,6 +8,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
@@ -27,6 +29,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.cinema.common.security.config.SecurityConfiguration;
+import com.cinema.common.security.config.ServletSecurityConfiguration;
 import com.cinema.inventory.config.InventorySecurityConfig;
 import com.cinema.inventory.dto.request.GenerateShowSeatsRequest;
 import com.cinema.inventory.dto.request.HoldShowSeatRequest;
@@ -37,11 +40,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @WebMvcTest(ShowSeatController.class)
 @Import({
         InventorySecurityConfig.class,
-        SecurityConfiguration.class
+        SecurityConfiguration.class,
+        ServletSecurityConfiguration.class
 })
 @TestPropertySource(properties = {
-        "cinema.security.jwt.secret="
-                + "cinema-system-security-test-secret-key-32-bytes"
+        "cinema.security.oauth2.issuer-uri="
+                + "https://identity.cinema.test",
+        "cinema.security.oauth2.jwk-set-uri="
+                + "https://identity.cinema.test/oauth2/jwks",
+        "cinema.security.oauth2.audience=cinema-api"
 })
 class ShowSeatSecurityTest {
 
@@ -85,7 +92,18 @@ class ShowSeatSecurityTest {
             throws Exception {
 
         performGenerate()
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(
+                        MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.error.code")
+                        .value(
+                                "SECURITY_AUTHENTICATION_REQUIRED"))
+                .andExpect(jsonPath("$.error.message")
+                        .value("Authentication is required"))
+                .andExpect(jsonPath("$.error.category")
+                        .value("SECURITY"));
 
         verifyNoInteractions(showSeatService);
     }
@@ -95,7 +113,17 @@ class ShowSeatSecurityTest {
             throws Exception {
 
         performGenerateWithUserRole()
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(
+                        MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.error.code")
+                        .value("SECURITY_ACCESS_DENIED"))
+                .andExpect(jsonPath("$.error.message")
+                        .value("Access is denied"))
+                .andExpect(jsonPath("$.error.category")
+                        .value("SECURITY"));
 
         verifyNoInteractions(showSeatService);
     }

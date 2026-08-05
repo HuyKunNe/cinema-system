@@ -5,11 +5,11 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
 
+import com.cinema.common.exception.exception.UnauthorizedException;
 import com.cinema.common.security.authentication.AuthenticationUser;
 import com.cinema.common.security.constant.SecurityConstants;
+import com.cinema.common.security.error.SecurityErrorCode;
 
-import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -30,6 +30,7 @@ public final class SecurityContextUtils {
         }
 
         if (authentication instanceof JwtAuthenticationToken jwtAuthentication) {
+
             return fromJwt(jwtAuthentication.getToken());
         }
 
@@ -37,8 +38,8 @@ public final class SecurityContextUtils {
             return fromJwt(jwt);
         }
 
-        throw new AuthenticationCredentialsNotFoundException(
-                "Unsupported authenticated principal");
+        throw new UnauthorizedException(
+                SecurityErrorCode.UNSUPPORTED_AUTHENTICATED_PRINCIPAL);
     }
 
     public static Authentication getAuthentication() {
@@ -53,8 +54,9 @@ public final class SecurityContextUtils {
         if (authentication == null
                 || !authentication.isAuthenticated()
                 || isAnonymous(authentication)) {
-            throw new AuthenticationCredentialsNotFoundException(
-                    "Authentication is required");
+
+            throw new UnauthorizedException(
+                    SecurityErrorCode.AUTHENTICATION_REQUIRED);
         }
 
         return authentication;
@@ -70,7 +72,8 @@ public final class SecurityContextUtils {
                 jwt.getClaim(SecurityConstants.CLAIM_ROLES));
 
         Set<String> permissions = readStringSet(
-                jwt.getClaim(SecurityConstants.CLAIM_PERMISSIONS));
+                jwt.getClaim(
+                        SecurityConstants.CLAIM_PERMISSIONS));
 
         return new AuthenticationUser(
                 userId,
@@ -81,20 +84,22 @@ public final class SecurityContextUtils {
 
     private static UUID parseUserId(String subject) {
         if (subject == null || subject.isBlank()) {
-            throw new BadCredentialsException(
-                    "JWT subject is missing");
+            throw new UnauthorizedException(
+                    SecurityErrorCode.INVALID_JWT_SUBJECT);
         }
 
         try {
             return UUID.fromString(subject);
         } catch (IllegalArgumentException exception) {
-            throw new BadCredentialsException(
-                    "JWT subject is not a valid UUID",
+            throw new UnauthorizedException(
+                    SecurityErrorCode.INVALID_JWT_SUBJECT,
                     exception);
         }
     }
 
-    private static Set<String> readStringSet(Object claimValue) {
+    private static Set<String> readStringSet(
+            Object claimValue) {
+
         if (!(claimValue instanceof Collection<?> values)) {
             return Set.of();
         }
@@ -111,7 +116,9 @@ public final class SecurityContextUtils {
         return Set.copyOf(result);
     }
 
-    private static boolean isAnonymous(Authentication authentication) {
+    private static boolean isAnonymous(
+            Authentication authentication) {
+
         Object principal = authentication.getPrincipal();
 
         return principal instanceof String value

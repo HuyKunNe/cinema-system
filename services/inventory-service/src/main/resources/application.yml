@@ -65,5 +65,7 @@ logging:
         org.hibernate.SQL: DEBUG
 cinema:
     security:
-        jwt:
-            secret: ${JWT_SECRET}
+        oauth2:
+            issuer-uri: ${CINEMA_AUTH_ISSUER}
+            jwk-set-uri: ${CINEMA_AUTH_JWK_SET_URI}
+            audience: ${CINEMA_AUTH_AUDIENCE:cinema-api}

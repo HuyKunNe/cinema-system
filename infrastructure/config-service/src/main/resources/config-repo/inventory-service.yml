@@ -65,3 +65,10 @@ info:
         name: ${spring.application.name}
         description: Cinema inventory and seat availability service
         version: ${project.version:1.0.0-SNAPSHOT}
+
+cinema:
+    security:
+        oauth2:
+            issuer-uri: ${CINEMA_AUTH_ISSUER}
+            jwk-set-uri: ${CINEMA_AUTH_JWK_SET_URI}
+            audience: ${CINEMA_AUTH_AUDIENCE:cinema-api}
