@@ -4,9 +4,6 @@
 
 **Event-driven cinema booking platform built as a Java microservice system**
 
-Built with **Java 21**, **Spring Boot**, **Microservices**, **Kafka**,
-**Saga Pattern**, and **Transactional Outbox**
-
 ![Java](https://img.shields.io/badge/Java-21-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.16-brightgreen)
 ![Spring Cloud](https://img.shields.io/badge/Spring%20Cloud-2025.0.2-blue)
