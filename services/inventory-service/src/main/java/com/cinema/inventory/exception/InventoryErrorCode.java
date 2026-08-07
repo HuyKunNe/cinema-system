@@ -185,6 +185,16 @@ public final class InventoryErrorCode implements ErrorCode {
             "INVENTORY_SEAT_NOT_HELD_BY_BOOKING",
             "Seat is not held by booking");
 
+    public static final InventoryErrorCode SHOWTIME_PERIOD_REQUIRED = new InventoryErrorCode(
+            ErrorCategory.VALIDATION,
+            "INVENTORY_SHOWTIME_PERIOD_REQUIRED",
+            "Showtime start and end are required");
+
+    public static final InventoryErrorCode SHOW_SEAT_PRICE_INVALID = new InventoryErrorCode(
+            ErrorCategory.VALIDATION,
+            "INVENTORY_SHOW_SEAT_PRICE_INVALID",
+            "Show seat price must be zero or greater");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

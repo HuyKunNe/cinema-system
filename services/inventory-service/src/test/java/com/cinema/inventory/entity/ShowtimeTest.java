@@ -9,6 +9,8 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.inventory.enums.RoomType;
 import com.cinema.inventory.enums.ShowtimeStatus;
 
@@ -56,7 +58,7 @@ class ShowtimeTest {
         Room room = createRoom();
 
         assertThrows(
-                IllegalArgumentException.class,
+                ValidationException.class,
                 () -> new Showtime(
                         UUID.randomUUID(),
                         room,
@@ -70,8 +72,7 @@ class ShowtimeTest {
 
         showtime.openForBooking();
 
-        assertThrows(
-                IllegalStateException.class,
+        assertThrows(ConflictException.class,
                 showtime::openForBooking);
     }
 

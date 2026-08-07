@@ -27,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
+import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.inventory.dto.request.CreateShowtimeRequest;
 import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
 import com.cinema.inventory.dto.response.ShowtimeResponse;
@@ -243,9 +244,7 @@ class ShowtimeServiceImplTest {
                 .thenReturn(Optional.of(room));
 
         assertThatThrownBy(() -> showtimeService.create(request))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage(
-                        "Showtime end must be after start");
+                .isInstanceOf(ValidationException.class);
 
         verify(showtimeRepository, never())
                 .existsOverlappingShowtime(
@@ -468,9 +467,7 @@ class ShowtimeServiceImplTest {
         assertThatThrownBy(() -> showtimeService.getByTimeRange(
                 STARTS_AT,
                 STARTS_AT))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage(
-                        "Showtime end must be after start");
+                .isInstanceOf(ValidationException.class);
 
         verify(showtimeRepository, never())
                 .findAllByStartsAtBetweenOrderByStartsAtAsc(
@@ -485,9 +482,7 @@ class ShowtimeServiceImplTest {
         assertThatThrownBy(() -> showtimeService.getByTimeRange(
                 null,
                 ENDS_AT))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage(
-                        "Showtime start and end are required");
+                .isInstanceOf(ValidationException.class);
 
         verifyNoInteractions(
                 showtimeRepository,
@@ -605,9 +600,7 @@ class ShowtimeServiceImplTest {
         assertThatThrownBy(() -> showtimeService.update(
                 SHOWTIME_ID,
                 request))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage(
-                        "Showtime end must be after start");
+                .isInstanceOf(ValidationException.class);
 
         verify(showtimeRepository, never())
                 .existsOverlappingShowtimeExcludingId(
@@ -750,7 +743,7 @@ class ShowtimeServiceImplTest {
 
         assertThatThrownBy(() -> showtimeService.openForBooking(
                 SHOWTIME_ID))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(ConflictException.class);
 
         verify(showtimeRepository)
                 .findById(SHOWTIME_ID);
@@ -797,7 +790,7 @@ class ShowtimeServiceImplTest {
                 .thenReturn(Optional.of(showtime));
 
         assertThatThrownBy(() -> showtimeService.close(SHOWTIME_ID))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(ConflictException.class);
 
         assertThat(showtime.getStatus())
                 .isEqualTo(ShowtimeStatus.SCHEDULED);
@@ -847,9 +840,7 @@ class ShowtimeServiceImplTest {
                 .thenReturn(Optional.of(showtime));
 
         assertThatThrownBy(() -> showtimeService.cancel(SHOWTIME_ID))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage(
-                        "Completed showtime cannot be cancelled");
+                .isInstanceOf(ConflictException.class);
 
         assertThat(showtime.getStatus())
                 .isEqualTo(ShowtimeStatus.COMPLETED);
@@ -898,9 +889,7 @@ class ShowtimeServiceImplTest {
                 .thenReturn(Optional.of(showtime));
 
         assertThatThrownBy(() -> showtimeService.complete(SHOWTIME_ID))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage(
-                        "Only a closed showtime can be completed");
+                .isInstanceOf(ConflictException.class);
 
         assertThat(showtime.getStatus())
                 .isEqualTo(ShowtimeStatus.SCHEDULED);

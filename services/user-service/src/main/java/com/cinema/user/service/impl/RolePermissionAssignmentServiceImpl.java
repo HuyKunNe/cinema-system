@@ -1,7 +1,7 @@
 package com.cinema.user.service.impl;
 
+import java.time.Clock;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.Set;
 import java.util.TreeSet;
@@ -18,7 +18,6 @@ import com.cinema.user.entity.Permission;
 import com.cinema.user.entity.Role;
 import com.cinema.user.entity.RolePermission;
 import com.cinema.user.entity.User;
-import com.cinema.user.entity.UserRole;
 import com.cinema.user.enums.PermissionCode;
 import com.cinema.user.enums.RoleName;
 import com.cinema.user.exception.UserErrorCode;
@@ -26,7 +25,6 @@ import com.cinema.user.repository.PermissionRepository;
 import com.cinema.user.repository.RolePermissionRepository;
 import com.cinema.user.repository.RoleRepository;
 import com.cinema.user.repository.UserRepository;
-import com.cinema.user.repository.UserRoleRepository;
 import com.cinema.user.service.RolePermissionAssignmentService;
 
 @Service
@@ -38,21 +36,21 @@ public class RolePermissionAssignmentServiceImpl
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
-    private final UserRoleRepository userRoleRepository;
     private final RolePermissionRepository rolePermissionRepository;
+    private final Clock clock;
 
     public RolePermissionAssignmentServiceImpl(
             UserRepository userRepository,
             RoleRepository roleRepository,
             PermissionRepository permissionRepository,
-            UserRoleRepository userRoleRepository,
-            RolePermissionRepository rolePermissionRepository) {
+            RolePermissionRepository rolePermissionRepository,
+            Clock clock) {
 
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
-        this.userRoleRepository = userRoleRepository;
         this.rolePermissionRepository = rolePermissionRepository;
+        this.clock = clock;
     }
 
     @Override
@@ -82,7 +80,7 @@ public class RolePermissionAssignmentServiceImpl
         RolePermission assignment = new RolePermission(
                 role,
                 permission,
-                OffsetDateTime.now(ZoneOffset.UTC),
+                OffsetDateTime.now(clock),
                 assignedBy);
 
         try {
@@ -137,19 +135,10 @@ public class RolePermissionAssignmentServiceImpl
     public Set<String> findEffectivePermissions(UUID userId) {
         User user = findUser(userId);
 
-        TreeSet<String> permissions = new TreeSet<>();
-
-        userRoleRepository
-                .findAllByUser_Id(user.getId())
-                .stream()
-                .map(UserRole::getRole)
-                .map(Role::getId)
-                .flatMap(roleId -> rolePermissionRepository
-                        .findAllByRole_Id(roleId)
-                        .stream())
-                .map(RolePermission::getPermission)
-                .map(Permission::getCode)
-                .forEach(permissions::add);
+        TreeSet<String> permissions = new TreeSet<>(
+                rolePermissionRepository
+                        .findEffectivePermissionCodesByUserId(
+                                user.getId()));
 
         return Collections.unmodifiableSet(permissions);
     }

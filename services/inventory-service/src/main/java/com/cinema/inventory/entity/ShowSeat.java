@@ -206,8 +206,7 @@ public class ShowSeat extends BaseEntity {
 
     private static void validatePrice(BigDecimal price) {
         if (price == null || price.signum() < 0) {
-            throw new IllegalArgumentException(
-                    "Seat price must be zero or greater");
+            throw new ValidationException(InventoryErrorCode.SHOW_SEAT_PRICE_INVALID);
         }
     }
 }

@@ -5,8 +5,11 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
 import com.cinema.inventory.enums.ShowtimeStatus;
+import com.cinema.inventory.exception.InventoryErrorCode;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -114,8 +117,7 @@ public class Showtime extends BaseEntity {
 
     public void cancel() {
         if (status == ShowtimeStatus.COMPLETED) {
-            throw new IllegalStateException(
-                    "Completed showtime cannot be cancelled");
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_EDITABLE);
         }
 
         this.status = ShowtimeStatus.CANCELLED;
@@ -123,8 +125,7 @@ public class Showtime extends BaseEntity {
 
     public void complete() {
         if (status != ShowtimeStatus.CLOSED) {
-            throw new IllegalStateException(
-                    "Only a closed showtime can be completed");
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_EDITABLE);
         }
 
         this.status = ShowtimeStatus.COMPLETED;
@@ -141,11 +142,7 @@ public class Showtime extends BaseEntity {
 
     private void requireStatus(ShowtimeStatus expectedStatus) {
         if (status != expectedStatus) {
-            throw new IllegalStateException(
-                    "Expected showtime status "
-                            + expectedStatus
-                            + " but was "
-                            + status);
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_EDITABLE);
         }
     }
 
@@ -154,13 +151,11 @@ public class Showtime extends BaseEntity {
             OffsetDateTime endsAt) {
 
         if (startsAt == null || endsAt == null) {
-            throw new IllegalArgumentException(
-                    "Showtime start and end are required");
+            throw new ValidationException(InventoryErrorCode.SHOWTIME_PERIOD_REQUIRED);
         }
 
         if (!endsAt.isAfter(startsAt)) {
-            throw new IllegalArgumentException(
-                    "Showtime end must be after start");
+            throw new ValidationException(InventoryErrorCode.INVALID_SHOWTIME_PERIOD);
         }
     }
 }

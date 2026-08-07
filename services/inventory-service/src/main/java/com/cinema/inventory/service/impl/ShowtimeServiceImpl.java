@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
+import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.inventory.dto.request.CreateShowtimeRequest;
 import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
 import com.cinema.inventory.dto.response.ShowtimeResponse;
@@ -241,13 +242,11 @@ public class ShowtimeServiceImpl implements ShowtimeService {
             OffsetDateTime endsAt) {
 
         if (startsAt == null || endsAt == null) {
-            throw new IllegalArgumentException(
-                    "Showtime start and end are required");
+            throw new ValidationException(InventoryErrorCode.SHOWTIME_PERIOD_REQUIRED);
         }
 
         if (!endsAt.isAfter(startsAt)) {
-            throw new IllegalArgumentException(
-                    "Showtime end must be after start");
+            throw new ValidationException(InventoryErrorCode.INVALID_SHOWTIME_PERIOD);
         }
     }
 }

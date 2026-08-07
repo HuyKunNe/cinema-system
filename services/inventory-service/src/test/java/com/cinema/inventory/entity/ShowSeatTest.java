@@ -18,6 +18,7 @@ import com.cinema.inventory.enums.RoomType;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.ShowSeatStatus;
 import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.ValidationException;
 
 class ShowSeatTest {
 
@@ -170,7 +171,7 @@ class ShowSeatTest {
     @Test
     void shouldRejectNegativePrice() {
         assertThrows(
-                IllegalArgumentException.class,
+                ValidationException.class,
                 () -> showSeat.changePrice(
                         new BigDecimal("-1.00")));
     }

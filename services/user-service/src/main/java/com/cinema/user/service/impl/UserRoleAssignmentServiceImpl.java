@@ -1,7 +1,7 @@
 package com.cinema.user.service.impl;
 
+import java.time.Clock;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.UUID;
@@ -32,15 +32,18 @@ public class UserRoleAssignmentServiceImpl
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
+    private final Clock clock;
 
     public UserRoleAssignmentServiceImpl(
             UserRepository userRepository,
             RoleRepository roleRepository,
-            UserRoleRepository userRoleRepository) {
+            UserRoleRepository userRoleRepository,
+            Clock clock) {
 
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userRoleRepository = userRoleRepository;
+        this.clock = clock;
     }
 
     @Override
@@ -68,7 +71,7 @@ public class UserRoleAssignmentServiceImpl
         UserRole assignment = new UserRole(
                 user,
                 role,
-                OffsetDateTime.now(ZoneOffset.UTC),
+                OffsetDateTime.now(clock),
                 assignedBy);
 
         try {
