@@ -27,6 +27,7 @@ class UserFlywayIntegrationTest
             "roles",
             "permissions",
             "user_roles",
+            "email_verification_tokens",
             "role_permissions");
 
     @Autowired
@@ -63,12 +64,12 @@ class UserFlywayIntegrationTest
                 """
                         SELECT COUNT(*)
                         FROM flyway_schema_history
-                        WHERE version IN ('1', '2', '3')
+                        WHERE version IN ('1', '2', '3', '4')
                           AND success = TRUE
                         """,
                 Integer.class);
 
-        assertThat(count).isEqualTo(3);
+        assertThat(count).isEqualTo(4);
     }
 
     @Test
@@ -85,7 +86,8 @@ class UserFlywayIntegrationTest
                               'roles',
                               'permissions',
                               'user_roles',
-                              'role_permissions'
+                              'role_permissions',
+                              'email_verification_tokens'
                           )
                         ORDER BY table_name
                         """,
@@ -155,10 +157,18 @@ class UserFlywayIntegrationTest
                                       'assigned_by_user_id'
                                   )
                               )
+                                OR
+                                (
+                                    table_name = 'email_verification_tokens'
+                                    AND column_name IN (
+                                        'id',
+                                        'user_id'
+                                    )
+                                )
                           )
                         """);
 
-        assertThat(columns).hasSize(13);
+        assertThat(columns).hasSize(15);
 
         assertThat(columns)
                 .allSatisfy(column -> {
@@ -188,7 +198,8 @@ class UserFlywayIntegrationTest
                               'uk_user_profiles_user',
                               'uk_user_credentials_user',
                               'uk_roles_name',
-                              'uk_permissions_code'
+                              'uk_permissions_code',
+                              'uk_email_verification_tokens_hash'
                           )
                         """,
                 String.class);
@@ -200,7 +211,8 @@ class UserFlywayIntegrationTest
                         "uk_user_profiles_user",
                         "uk_user_credentials_user",
                         "uk_roles_name",
-                        "uk_permissions_code");
+                        "uk_permissions_code",
+                        "uk_email_verification_tokens_hash");
     }
 
     @Test
@@ -219,7 +231,8 @@ class UserFlywayIntegrationTest
                               'fk_user_roles_assigned_by',
                               'fk_role_permissions_role',
                               'fk_role_permissions_permission',
-                              'fk_role_permissions_assigned_by'
+                              'fk_role_permissions_assigned_by',
+                              'fk_email_verification_tokens_user'
                           )
                         """,
                 String.class);
@@ -233,7 +246,8 @@ class UserFlywayIntegrationTest
                         "fk_user_roles_assigned_by",
                         "fk_role_permissions_role",
                         "fk_role_permissions_permission",
-                        "fk_role_permissions_assigned_by");
+                        "fk_role_permissions_assigned_by",
+                        "fk_email_verification_tokens_user");
     }
 
     @Test
@@ -247,7 +261,10 @@ class UserFlywayIntegrationTest
                           AND constraint_name IN (
                               'chk_users_status',
                               'chk_user_credentials_failed_attempts',
-                              'chk_roles_name'
+                              'chk_roles_name',
+                              'chk_email_verification_token_hash',
+                              'chk_email_verification_token_expiration',
+                              'chk_email_verification_token_terminal_state'
                           )
                         """,
                 String.class);
@@ -256,7 +273,10 @@ class UserFlywayIntegrationTest
                 .containsExactlyInAnyOrder(
                         "chk_users_status",
                         "chk_user_credentials_failed_attempts",
-                        "chk_roles_name");
+                        "chk_roles_name",
+                        "chk_email_verification_token_hash",
+                        "chk_email_verification_token_expiration",
+                        "chk_email_verification_token_terminal_state");
     }
 
     @Test
@@ -271,7 +291,9 @@ class UserFlywayIntegrationTest
                               'idx_user_roles_role',
                               'idx_user_roles_assigned_by',
                               'idx_role_permissions_permission',
-                              'idx_role_permissions_assigned_by'
+                              'idx_role_permissions_assigned_by',
+                              'idx_email_verification_tokens_user_active',
+                              'idx_email_verification_tokens_expires_at'
                           )
                         """,
                 String.class);
@@ -282,7 +304,9 @@ class UserFlywayIntegrationTest
                         "idx_user_roles_role",
                         "idx_user_roles_assigned_by",
                         "idx_role_permissions_permission",
-                        "idx_role_permissions_assigned_by");
+                        "idx_role_permissions_assigned_by",
+                        "idx_email_verification_tokens_user_active",
+                        "idx_email_verification_tokens_expires_at");
     }
 
     @Test

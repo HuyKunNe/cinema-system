@@ -85,6 +85,41 @@ public final class UserErrorCode implements ErrorCode {
             "USER_PASSWORD_MUST_DIFFER",
             "New password must differ from the current password");
 
+    public static final UserErrorCode ACCOUNT_STATE_TRANSITION_NOT_ALLOWED = new UserErrorCode(
+            ErrorCategory.BUSINESS,
+            "USER_ACCOUNT_STATE_TRANSITION_NOT_ALLOWED",
+            "Account state transition is not allowed");
+
+    public static final UserErrorCode ACCOUNT_TIMESTAMP_REQUIRED = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_ACCOUNT_TIMESTAMP_REQUIRED",
+            "Account transition timestamp is required");
+
+    public static final UserErrorCode EMAIL_VERIFICATION_TOKEN_HASH_INVALID = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_EMAIL_VERIFICATION_TOKEN_HASH_INVALID",
+            "Email verification token hash is invalid");
+
+    public static final UserErrorCode EMAIL_VERIFICATION_EXPIRATION_REQUIRED = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_EMAIL_VERIFICATION_EXPIRATION_REQUIRED",
+            "Email verification expiration is required");
+
+    public static final UserErrorCode EMAIL_VERIFICATION_TIMESTAMP_REQUIRED = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_EMAIL_VERIFICATION_TIMESTAMP_REQUIRED",
+            "Email verification timestamp is required");
+
+    public static final UserErrorCode EMAIL_VERIFICATION_TOKEN_NOT_USABLE = new UserErrorCode(
+            ErrorCategory.BUSINESS,
+            "USER_EMAIL_VERIFICATION_TOKEN_NOT_USABLE",
+            "Email verification token is not usable");
+
+    public static final UserErrorCode EMAIL_VERIFICATION_TOKEN_EXPIRED = new UserErrorCode(
+            ErrorCategory.BUSINESS,
+            "USER_EMAIL_VERIFICATION_TOKEN_EXPIRED",
+            "Email verification token has expired");
+
     private final ErrorCategory category;
     private final String code;
     private final String message;
