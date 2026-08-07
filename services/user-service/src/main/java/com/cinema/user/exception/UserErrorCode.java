@@ -50,6 +50,41 @@ public final class UserErrorCode implements ErrorCode {
             "USER_SERVICE_ROLE_PERMISSION_NOT_ALLOWED",
             "Service permissions must be configured per service client");
 
+    public static final UserErrorCode USER_CREDENTIAL_NOT_FOUND = new UserErrorCode(
+            ErrorCategory.RESOURCE,
+            "USER_CREDENTIAL_NOT_FOUND",
+            "User credential not found");
+
+    public static final UserErrorCode USER_CREDENTIAL_ALREADY_EXISTS = new UserErrorCode(
+            ErrorCategory.BUSINESS,
+            "USER_CREDENTIAL_ALREADY_EXISTS",
+            "User credential already exists");
+
+    public static final UserErrorCode INVALID_CREDENTIALS = new UserErrorCode(
+            ErrorCategory.SECURITY,
+            "USER_INVALID_CREDENTIALS",
+            "Invalid credentials");
+
+    public static final UserErrorCode PASSWORD_REQUIRED = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_PASSWORD_REQUIRED",
+            "Password is required");
+
+    public static final UserErrorCode PASSWORD_TOO_SHORT = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_PASSWORD_TOO_SHORT",
+            "Password must contain at least 12 characters");
+
+    public static final UserErrorCode PASSWORD_TOO_LONG = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_PASSWORD_TOO_LONG",
+            "Password exceeds the supported length");
+
+    public static final UserErrorCode PASSWORD_MUST_DIFFER = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_PASSWORD_MUST_DIFFER",
+            "New password must differ from the current password");
+
     private final ErrorCategory category;
     private final String code;
     private final String message;
