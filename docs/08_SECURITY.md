@@ -405,6 +405,14 @@ Rules:
 - Locked accounts must follow an explicit recovery policy.
 - Email verification tokens must be random, single-purpose, expiring, and
   single-use.
+- The implemented email-verification token contains 256 bits of randomness and
+  uses unpadded Base64 URL encoding.
+- Only the lowercase SHA-256 token hash is persisted; raw verification tokens
+  must never be logged or returned by a public account lookup.
+- Invalid, unknown, expired, used and revoked verification tokens expose the
+  same generic public authentication failure.
+- Token consumption and the account transition to `ACTIVE` occur in one local
+  transaction and roll back together.
 - Password reset tokens must be random, single-purpose, expiring, and single-use.
 - Password reset responses must not reveal whether an email address exists.
 - Successful password reset should invalidate relevant active sessions.
@@ -2030,6 +2038,23 @@ Rules:
 - Encode tokens safely for their transport.
 - Store hashes rather than raw tokens where verification allows.
 - Set expiration and single-use semantics.
+
+Implemented email-verification baseline through R25.7:
+
+- secure raw-token generation with `SecureRandom`;
+- SHA-256 hashes at rest;
+- configurable positive lifetime, initially 24 hours;
+- pessimistic locking when consuming a token;
+- revocation of existing active tokens during reissue;
+- generic non-oracular confirmation failure;
+- one transaction for token consumption and email verification;
+- redacted issued-token `toString()` output;
+- unit and MySQL integration tests.
+
+Concurrency limitation: locking existing active token rows cannot serialize two
+first-issue requests when the user has no token row. Before exposing parallel
+resend operations, User Service must lock the owning user row or add an equivalent
+database-enforced single-active-token design.
 
 ---
 

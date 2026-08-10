@@ -445,9 +445,10 @@ User Service owns identity, credentials, authorization, user profiles, OAuth2
 and OpenID Connect persistence, refresh-token state, MFA state, and security
 audit records.
 
-This section defines the accepted R25 data contract. User Service migrations are
-not implemented yet. Final table and column names become authoritative when the
-R25 Flyway migrations are reviewed and accepted.
+This section defines the accepted R25 data contract. Flyway V1–V4 currently
+implement the identity, profile, credential, authority-assignment and
+email-verification-token baseline. OAuth2 authorization, registered-client,
+refresh-token, password-reset, MFA and security-audit persistence remain planned.
 
 Conceptual tables:
 
@@ -459,7 +460,7 @@ roles
 permissions
 user_roles
 role_permissions
-verification_tokens
+email_verification_tokens
 password_reset_tokens
 oauth2_registered_client
 oauth2_authorization
@@ -468,6 +469,29 @@ refresh_tokens
 user_mfa_methods
 security_audit_events
 ```
+
+Implemented tables through R25.7:
+
+```text
+users
+user_profiles
+user_credentials
+roles
+permissions
+user_roles
+role_permissions
+email_verification_tokens
+```
+
+`email_verification_tokens` stores a lowercase 64-character SHA-256 hash, never
+the raw 43-character URL-safe token. It records expiration, use and revocation
+timestamps. The schema prevents duplicate hashes, requires expiration after
+creation, and prevents a token from being both used and revoked.
+
+Reissuing verification revokes existing active tokens under a pessimistic token-row
+lock. This does not yet guarantee serialization when no token row exists; a later
+hardening step must lock the user row or enforce an equivalent database invariant
+before claiming concurrent first-issue safety.
 
 ---
 
@@ -1982,7 +2006,7 @@ The service must distinguish between:
 | `permissions`                  | User Service           |
 | `user_roles`                   | User Service           |
 | `role_permissions`             | User Service           |
-| `verification_tokens`          | User Service           |
+| `email_verification_tokens`    | User Service           |
 | `password_reset_tokens`        | User Service           |
 | `oauth2_registered_client`     | User Service           |
 | `oauth2_authorization`         | User Service           |
@@ -2191,27 +2215,4 @@ See:
 ```text
 docs/00_PROJECT_CONTEXT.md
 docs/01_AI_CONTEXT.md
-docs/02_ARCHITECTURE.md
-docs/03_TECHNOLOGY_STACK.md
-docs/04_MODULES.md
-docs/05_CODING_CONVENTIONS.md
-docs/07_EVENT_CATALOG.md
-docs/08_SECURITY.md
-docs/09_OUTBOX.md
-docs/10_ROADMAP.md
-docs/11_CHANGELOG.md
-docs/12_DEPENDENCY_RULES.md
-docs/13_SEQUENCE_DIAGRAMS.md
-docs/14_DEPLOYMENT.md
-docs/decisions/ADR-013-spring-authorization-server.md
-docs/decisions/
 ```
-
-When implementation, migrations, and documentation conflict:
-
-1. Respect accepted Architecture Decision Records.
-2. Preserve database-per-service ownership.
-3. Preserve Inventory Service ownership of `show_seats`.
-4. Do not create cross-database foreign keys.
-5. Correct the inconsistent implementation or documentation before marking the
-   round complete.

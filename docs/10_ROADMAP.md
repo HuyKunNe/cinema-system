@@ -1,8 +1,8 @@
 # Project Roadmap
 
 **Version:** R25 In Progress
-**Current target:** R25.2 — User Service authentication architecture
-**Last updated:** 2026-08-05
+**Current target:** R25.8 — Spring Authorization Server foundation
+**Last updated:** 2026-08-10
 
 ---
 
@@ -1017,7 +1017,7 @@ R25.1.1–R25.1.8 — DONE
 R25.1             — DONE
 ```
 
-#### 🚧 R25.2 — authentication architecture and roadmap
+#### ✅ R25.2 — authentication architecture and roadmap
 
 Scope:
 
@@ -1032,19 +1032,21 @@ Scope:
 - synchronize affected documentation.
 
 ```text
-R25.2.1 — ADR-013 drafted
-R25.2.2 — Roadmap checkpoint definition in progress
-R25.2   — IN PROGRESS
+R25.2.1 — ADR-013 accepted
+R25.2.2 — Roadmap checkpoint definition completed
+R25.2   — DONE
 ```
 
-#### ⏳ R25.3 — User Service bootstrap
+#### ✅ R25.3 — User Service bootstrap
 
 - complete the Maven module and Spring Boot entry point;
 - integrate Config Server and Eureka;
 - configure database, Flyway, JPA auditing, validation, mapping, responses and exceptions;
 - add application-context tests.
 
-#### ⏳ R25.4 — User domain and database schema
+Status: DONE.
+
+#### ✅ R25.4 — User domain and database schema
 
 - User, profile and credential persistence;
 - AccountStatus;
@@ -1052,7 +1054,9 @@ R25.2   — IN PROGRESS
 - unique normalized username and email constraints;
 - Flyway schema, repository integration tests and Hibernate validation.
 
-#### ⏳ R25.5 — roles and permissions
+Status: DONE.
+
+#### ✅ R25.5 — roles and permissions
 
 - Role and Permission entities;
 - user-role and role-permission assignments;
@@ -1060,23 +1064,34 @@ R25.2   — IN PROGRESS
 - duplicate-assignment protection;
 - administrative assignment services and tests.
 
-#### ⏳ R25.6 — registration and password security
+Status: DONE. Effective permissions are loaded through focused repository queries
+to avoid N+1 authority resolution.
 
-- registration and normalized identifiers;
+#### ✅ R25.6 — password authentication foundation
+
 - approved adaptive password encoder and password policy;
-- duplicate-account protection;
-- safe public errors;
+- JPA-backed `UserDetailsService` and DAO authentication provider;
+- account-status-aware authentication failures;
 - password-hash upgrade support;
-- unit, controller and integration tests.
+- unit and MySQL integration tests.
 
-#### ⏳ R25.7 — verification and password recovery
+Status: DONE. Public registration remains a later API checkpoint.
 
-- expiring, single-purpose, single-use verification and reset tokens;
-- non-enumerating responses;
-- password-reset session revocation;
-- audit coverage and integration tests.
+#### ✅ R25.7 — account lifecycle and email verification
 
-#### ⏳ R25.8 — Spring Authorization Server foundation
+- account verification, lock, unlock, disable and enable transitions;
+- Clock-based trusted time decisions;
+- expiring, single-purpose, single-use email-verification tokens;
+- 256-bit secure random raw tokens and SHA-256 hashes at rest;
+- revocation of existing active tokens during reissue;
+- generic invalid-token responses that do not reveal token state;
+- unit, repository, Flyway and MySQL integration tests.
+
+Status: DONE. Email delivery remains Notification Service scope. Public registration,
+password recovery and password-reset session revocation remain planned. Concurrent
+first issuance requires later user-row locking or an equivalent database invariant.
+
+#### 🚧 R25.8 — Spring Authorization Server foundation
 
 - Authorization Server filter chain and settings;
 - OpenID Connect;
@@ -1421,7 +1436,7 @@ Do not:
 | Notification Service    | R28            | ⏳ Planned                                                         |
 | Production Readiness    | To be assigned | ⏳ Planned                                                         |
 
-The latest completed round is:
+The latest completed service round is:
 
 ```text
 R24 — Inventory Service
@@ -1430,13 +1445,13 @@ R24 — Inventory Service
 The latest completed checkpoint is:
 
 ```text
-R25.1 — common-security hardening
+R25.7 — account lifecycle and email verification
 ```
 
 The active checkpoint is:
 
 ```text
-R25.2 — authentication architecture and roadmap
+R25.8 — Spring Authorization Server foundation
 ```
 
 ADR-013 selects User Service with Spring Authorization Server as the authoritative issuer. R25 implementation is in progress.

@@ -1,8 +1,8 @@
 # Changelog
 
-**Version:** 0.5
-**Current baseline:** R25.1 common-security hardening completed; R25.2 documentation synchronization in progress
-**Last reviewed:** 2026-08-05
+**Version:** 0.6
+**Current baseline:** R25.1–R25.7 completed; R25.8 Spring Authorization Server foundation active
+**Last reviewed:** 2026-08-10
 
 ---
 
@@ -33,15 +33,56 @@ Current status:
 
 ```text
 R1-R24   Completed
-R25.1    Completed
-R25.2    Documentation synchronization in progress
-R25.3+   Planned User Service implementation
+R25.1–R25.7 Completed
+R25.8    Spring Authorization Server foundation in progress
+R25.9+   Planned User Service implementation
 R26-R28  Planned
 ```
 
 ---
 
 # Unreleased
+
+## 2026-08-10
+
+### Completed
+
+- Completed R25.2 authentication architecture and documentation baseline.
+- Completed R25.3 User Service bootstrap and application-context verification.
+- Completed R25.4 user, profile and credential persistence with Flyway and UUID v7.
+- Completed R25.5 role, permission and assignment foundations with optimized
+  effective-authority loading.
+- Completed R25.6 password authentication foundation with delegating encoding,
+  bcrypt, JPA-backed user details, DAO authentication and hash upgrade support.
+- Completed R25.7 account lifecycle and secure email verification.
+
+### Email Verification
+
+- Added positive configurable verification-token lifetime with a 24-hour default.
+- Added 256-bit raw token generation using `SecureRandom` and unpadded Base64 URL encoding.
+- Persisted only lowercase SHA-256 token hashes.
+- Added expiration, revocation and single-use token semantics.
+- Added pessimistic token locking for reissue and consumption.
+- Made invalid, unknown, expired, revoked and used token failures non-oracular.
+- Kept token consumption and email-verification account transition in one transaction.
+- Redacted raw tokens from issued-token string output.
+
+### Verification
+
+- Added unit tests for token encoding, hashing, redaction and service behavior.
+- Added repository and Flyway verification for the email-verification schema.
+- Added MySQL Testcontainers integration tests for issue, reissue, confirmation,
+  replay rejection, revoked-token rejection and unknown-token rejection.
+- Verified the complete root reactor with `mvn clean verify`.
+
+### Known Boundary
+
+- Public registration, verification controllers, email delivery and password
+  recovery are not implemented by R25.7.
+- Locking active token rows does not serialize two concurrent first-issue requests
+  when no token row exists. User-row locking or an equivalent database invariant
+  is required before claiming concurrent first-issue safety.
+- R25.8 Spring Authorization Server foundation is the next active checkpoint.
 
 ## 2026-08-05
 
@@ -291,10 +332,10 @@ Accepted baseline:
 
 ### R25.2 - Architecture and Documentation Synchronization
 
-**Status:** In Progress
+**Status:** Completed
 
-The documentation is being synchronized before User Service runtime work
-begins. ADR-013 records the accepted identity topology:
+The documentation was synchronized before User Service runtime work began.
+ADR-013 records the accepted identity topology:
 
 - User Service hosts Spring Authorization Server.
 - User Service is the authoritative OAuth2/OpenID Connect issuer.
@@ -306,14 +347,18 @@ begins. ADR-013 records the accepted identity topology:
 
 ### Remaining R25 Scope
 
-R25.3 and later checkpoints remain planned. They include User Service module
-foundation, schema and migrations, account lifecycle, roles and permissions,
-Authorization Server configuration, registered clients, consent, token
-lifecycle, key management, MFA, API/security tests, integration tests,
-operational readiness, and final documentation closure.
+R25.8 and later checkpoints remain. They include Authorization Server
+configuration, registered clients, consent, JWT/JWK issuance, refresh-token
+rotation, profile/account APIs, Gateway and Resource Server integration,
+protocol verification, operational readiness and final documentation closure.
 
-No R25.3+ runtime capability is considered implemented merely because its
-architecture has been approved or documented.
+### R25.3–R25.7 - Identity Foundation
+
+**Status:** Completed
+
+Implemented service bootstrap, identity persistence, roles and permissions,
+password authentication, account lifecycle and email verification. OAuth2/OIDC
+protocol endpoints and token issuance remain R25.8 and later work.
 
 ---
 

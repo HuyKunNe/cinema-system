@@ -13,12 +13,44 @@ This document visualizes implemented interactions and approved target flows.
 | Inventory ShowSeat transitions and database concurrency | Implemented in R24                                 |
 | Shared servlet Resource Server responses                | Implemented for Inventory in R25.1                 |
 | Booking, Payment, and Notification Saga                 | Target for R26-R28                                 |
-| User Service Authorization Server                       | Target for R25.3+                                  |
+| User account lifecycle and email verification           | Implemented through R25.7                          |
+| User Service Authorization Server                       | Target beginning with R25.8                        |
 | Gateway reactive Resource Server                        | Target for R25.13                                  |
 | Hardened multi-instance Outbox retry/claim              | Target; not implemented by current `common-outbox` |
 
 A target diagram is an approved interaction contract, not proof that every
 participant currently exists.
+
+---
+
+# Implemented Email Verification Flow
+
+```mermaid
+sequenceDiagram
+    participant Internal as Internal registration/resend flow
+    participant User as User Service
+    participant Token as Verification Token Repository
+    participant DB as User Database
+
+    Internal->>User: issue(userId)
+    User->>DB: Load pending user
+    User->>Token: Lock existing active token rows
+    User->>Token: Revoke existing active tokens
+    User->>User: Generate 256-bit raw token and SHA-256 hash
+    User->>Token: Persist hash and expiration
+    User-->>Internal: Raw token and expiration for delivery boundary
+
+    Internal->>User: confirm(raw token)
+    User->>User: Validate format and calculate hash
+    User->>Token: Lock token by hash
+    User->>Token: Mark token used
+    User->>DB: Transition pending user to active
+    User->>DB: Commit token and account state atomically
+```
+
+Only the token hash is stored. Invalid, expired, used, revoked and unknown tokens
+produce the same generic public failure. Notification delivery and public HTTP
+endpoints are not part of the implemented R25.7 boundary.
 
 ---
 

@@ -112,16 +112,22 @@ Verified endpoint authorization:
 
 R25 implementation is in progress.
 
-Completed checkpoint:
+Completed checkpoints:
 
 ```text
 R25.1 — common-security hardening — DONE
+R25.2 — authentication architecture and roadmap — DONE
+R25.3 — User Service bootstrap — DONE
+R25.4 — user domain and database schema — DONE
+R25.5 — roles and permissions — DONE
+R25.6 — password authentication foundation — DONE
+R25.7 — account lifecycle and email verification — DONE
 ```
 
 Active checkpoint:
 
 ```text
-R25.2 — authentication architecture and roadmap — IN PROGRESS
+R25.8 — Spring Authorization Server foundation — IN PROGRESS
 ```
 
 ADR-013 accepts the following decisions:
@@ -608,7 +614,8 @@ explicitly requested.
 Movie Service and Inventory Service have completed their implementation,
 testing and verification requirements.
 
-User Service is the active business-service round. R25.1 common-security hardening is complete and R25.2 documentation synchronization is in progress.
+User Service is the active business-service round. R25.1–R25.7 are complete.
+R25.8 Spring Authorization Server foundation is the active checkpoint.
 
 ---
 
@@ -753,18 +760,14 @@ R24 met all completion requirements on 2026-08-04.
 
 # Current Next Step
 
-Complete R25.2 documentation synchronization:
+Implement R25.8 — Spring Authorization Server foundation:
 
-1. Keep ADR-013 as the authoritative authentication decision.
-2. Synchronize project context, AI context, architecture, security, modules, roadmap and changelog documents.
-3. Verify all documents distinguish completed R25.1 work from planned User Service implementation.
-4. Run `git diff --check`.
-5. Commit the documentation checkpoint.
+1. Add the centrally managed Spring Authorization Server dependency.
+2. Add the Authorization Server filter chain separately from application API security.
+3. Configure canonical issuer and authorization-server settings.
+4. Integrate the existing DAO authentication provider and account-status rules.
+5. Enable the approved OpenID Connect baseline.
+6. Add focused context and protocol-endpoint tests.
+7. Keep signing-key persistence, JWT customization, registered clients and refresh rotation in their later checkpoints.
 
-After R25.2 is complete, begin:
-
-```text
-R25.3 — User Service bootstrap
-```
-
-Do not modify the completed R24 implementation unless addressing a verified defect. Do not implement User Service domain or Authorization Server code before R25.2 documentation synchronization is complete.
+Do not modify completed R24 or R25.1–R25.7 behavior unless addressing a verified defect.

@@ -375,6 +375,29 @@ Authorization Server and owns:
 Approved grants are Authorization Code with PKCE, Refresh Token, and approved
 Client Credentials. Resource Owner Password Credentials must not be added.
 
+Current implemented baseline through R25.7:
+
+- service bootstrap, configuration, discovery and MySQL persistence;
+- Flyway-managed user, profile, credential, role, permission and assignment tables;
+- UUID v7 identifiers and JPA auditing;
+- normalized unique email and username identities;
+- role/permission catalog and effective-authority loading;
+- delegating password encoding, bcrypt hashes and hash upgrade support;
+- JPA-backed `UserDetailsService`, DAO authentication and account-status enforcement;
+- account lifecycle transitions;
+- secure, hashed, expiring, revocable and single-use email-verification tokens;
+- unit, repository, Flyway and MySQL integration tests.
+
+Not implemented yet:
+
+- public registration, profile and verification HTTP APIs;
+- email delivery;
+- password-reset tokens and recovery flow;
+- Authorization Server/OIDC filter chain and protocol endpoints;
+- registered OAuth2 clients, grants and consent persistence runtime;
+- RSA signing/JWK publication and JWT claim customization;
+- refresh-token rotation, logout and authorization-session revocation.
+
 ---
 
 # Dependency Rules
