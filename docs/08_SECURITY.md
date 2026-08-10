@@ -221,6 +221,13 @@ persistence.
 
 Gateway and every protected business service remain independent Resource Servers.
 
+Implementation status: R25.8 provides the separate Authorization Server security
+chain, OIDC baseline, canonical issuer configuration, DAO authentication and
+account-status enforcement. The current R25.9 baseline also provides controlled
+public/service client registration backed by `JdbcRegisteredClientRepository`.
+RSA/JWK signing, JWT claim customization, authorization/consent persistence and
+complete protocol grant-flow verification remain later checkpoint work.
+
 ---
 
 # Access Token Requirements

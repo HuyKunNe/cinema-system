@@ -445,10 +445,11 @@ User Service owns identity, credentials, authorization, user profiles, OAuth2
 and OpenID Connect persistence, refresh-token state, MFA state, and security
 audit records.
 
-This section defines the accepted R25 data contract. Flyway V1–V4 currently
-implement the identity, profile, credential, authority-assignment and
-email-verification-token baseline. OAuth2 authorization, registered-client,
-refresh-token, password-reset, MFA and security-audit persistence remain planned.
+This section defines the accepted R25 data contract. Flyway V1–V5 currently
+implement the identity, profile, credential, authority-assignment,
+email-verification-token and OAuth2 registered-client baseline. OAuth2
+authorization, consent, refresh-token, password-reset, MFA and security-audit
+persistence remain planned.
 
 Conceptual tables:
 
@@ -470,7 +471,7 @@ user_mfa_methods
 security_audit_events
 ```
 
-Implemented tables through R25.7:
+Implemented tables through the current R25.9 baseline:
 
 ```text
 users
@@ -481,6 +482,7 @@ permissions
 user_roles
 role_permissions
 email_verification_tokens
+oauth2_registered_client
 ```
 
 `email_verification_tokens` stores a lowercase 64-character SHA-256 hash, never
@@ -673,9 +675,11 @@ Rules:
 - Client Credentials is limited to approved service identities.
 - Client configuration changes require an audit record.
 
-The conventional Spring Authorization Server table name
-`oauth2_registered_client` may be retained unless an accepted migration chooses
-another name without weakening the contract.
+Flyway V5 implements the conventional Spring Authorization Server table name
+`oauth2_registered_client`. It is used by `JdbcRegisteredClientRepository` and
+enforces primary-key, unique `client_id`, and non-blank identifier/name
+constraints. Client and token settings remain serialized in the Spring
+Authorization Server-compatible columns.
 
 ---
 

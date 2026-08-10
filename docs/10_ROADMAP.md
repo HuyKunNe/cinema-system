@@ -1,7 +1,7 @@
 # Project Roadmap
 
 **Version:** R25 In Progress
-**Current target:** R25.8 — Spring Authorization Server foundation
+**Current target:** R25.9 — OAuth2 clients and grant types
 **Last updated:** 2026-08-10
 
 ---
@@ -1091,7 +1091,7 @@ Status: DONE. Email delivery remains Notification Service scope. Public registra
 password recovery and password-reset session revocation remain planned. Concurrent
 first issuance requires later user-row locking or an equivalent database invariant.
 
-#### 🚧 R25.8 — Spring Authorization Server foundation
+#### ✅ R25.8 — Spring Authorization Server foundation
 
 - Authorization Server filter chain and settings;
 - OpenID Connect;
@@ -1100,13 +1100,25 @@ first issuance requires later user-row locking or an equivalent database invaria
 - account-status enforcement;
 - protocol endpoint tests.
 
-#### ⏳ R25.9 — OAuth2 clients and grant types
+Status: DONE. The User Service now has separate Authorization Server and
+application security filter chains, canonical issuer settings, OIDC enablement,
+existing DAO authentication integration and focused security/configuration tests.
+
+#### 🚧 R25.9 — OAuth2 clients and grant types
 
 - JDBC registered-client persistence;
 - controlled client registration;
 - Authorization Code with PKCE, Refresh Token and Client Credentials;
 - public and confidential client rules;
 - encoded client secrets and redirect URI validation.
+
+Status: IN PROGRESS. JDBC registered-client persistence, Flyway schema,
+controlled server-side registration, public PKCE client policy, service-client
+policy, encoded secrets, exact redirect URI validation and MySQL integration
+coverage are implemented. Authorization Server metadata is restricted to the
+three approved grants; protocol tests verify S256 PKCE rejection/consent and
+client-authentication boundaries. Successful token issuance and complete
+end-to-end grant-flow verification remain coupled to R25.10 signing/JWT work.
 
 #### ⏳ R25.10 — JWT claims and JWK signing
 
@@ -1445,13 +1457,13 @@ R24 — Inventory Service
 The latest completed checkpoint is:
 
 ```text
-R25.7 — account lifecycle and email verification
+R25.8 — Spring Authorization Server foundation
 ```
 
 The active checkpoint is:
 
 ```text
-R25.8 — Spring Authorization Server foundation
+R25.9 — OAuth2 clients and grant types
 ```
 
 ADR-013 selects User Service with Spring Authorization Server as the authoritative issuer. R25 implementation is in progress.

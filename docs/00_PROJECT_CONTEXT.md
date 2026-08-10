@@ -99,12 +99,13 @@ R25.4 — user domain and database schema — DONE
 R25.5 — roles and permissions — DONE
 R25.6 — password authentication foundation — DONE
 R25.7 — account lifecycle and email verification — DONE
+R25.8 — Spring Authorization Server foundation — DONE
 ```
 
 Active R25 checkpoint:
 
 ```text
-R25.8 — Spring Authorization Server foundation — IN PROGRESS
+R25.9 — OAuth2 clients and grant types — IN PROGRESS
 ```
 
 Accepted authentication decision:
@@ -199,13 +200,13 @@ Active round:
 Latest completed checkpoint:
 
 ```text
-R25.1–R25.7 — security, persistence and authentication foundations
+R25.1–R25.8 — security, persistence, authentication and Authorization Server foundations
 ```
 
 Active checkpoint:
 
 ```text
-R25.8 — Spring Authorization Server foundation
+R25.9 — OAuth2 clients and grant types
 ```
 
 ADR-013 selects User Service with Spring Authorization Server as the authoritative
@@ -213,7 +214,9 @@ issuer. The issuer, audience, RS256/JWK ownership, approved grant types, access-
 lifetime, refresh-token lifecycle, service identity and privileged-account boundary
 are confirmed. User Service persistence, password authentication, account
 lifecycle and email-verification foundations are implemented. OAuth2/OIDC
-protocol runtime remains the active work.
+foundation, OIDC configuration, JDBC registered-client persistence and controlled
+public/service client registration are implemented. Completing and verifying the
+approved protocol grant flows remains the active work.
 
 ---
 

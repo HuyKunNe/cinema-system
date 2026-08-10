@@ -1,8 +1,8 @@
 # User Service Design
 
-**Status:** R25.2 design baseline
+**Status:** R25.9 implementation in progress
 
-**Runtime status:** Not implemented
+**Runtime status:** R25.3–R25.8 implemented; R25.9 partially implemented
 
 **Architecture decision:** `docs/decisions/ADR-013-spring-authorization-server.md`
 
@@ -10,8 +10,8 @@
 
 ## 1. Purpose
 
-This document defines the implementation blueprint for `services/user-service`
-before runtime work begins in R25.3.
+This document defines the implementation blueprint and current runtime boundary
+for `services/user-service`.
 
 User Service is both:
 
@@ -286,6 +286,19 @@ Confidential clients:
 
 Client secrets must be shown only once at creation or rotation. Stored secrets
 use a `PasswordEncoder`; they are never recoverable as plaintext.
+
+Implementation status (R25.9): controlled server-side registration and JDBC
+registered-client persistence are implemented. Public clients use
+`ClientAuthenticationMethod.NONE`, Authorization Code plus Refresh Token,
+required PKCE and consent, a 15-minute access token and a non-reusable 30-day
+refresh token. Service clients use `client_secret_basic`, Client Credentials,
+encoded secrets, restricted non-human scopes and a five-minute access token.
+Dynamic client registration and a public management controller are not enabled.
+Authorization Server metadata advertises only Authorization Code, Refresh Token
+and Client Credentials. Protocol integration coverage verifies missing-PKCE
+rejection, successful S256 validation through the consent boundary, service
+client isolation and client-secret rejection. Successful token issuance remains
+R25.10-dependent because production RSA/JWK and JWT generation are not yet present.
 
 ### 9.3 Consent
 

@@ -1,7 +1,7 @@
 # Changelog
 
 **Version:** 0.6
-**Current baseline:** R25.1–R25.7 completed; R25.8 Spring Authorization Server foundation active
+**Current baseline:** R25.1–R25.8 completed; R25.9 OAuth2 clients and grant types active
 **Last reviewed:** 2026-08-10
 
 ---
@@ -33,9 +33,9 @@ Current status:
 
 ```text
 R1-R24   Completed
-R25.1–R25.7 Completed
-R25.8    Spring Authorization Server foundation in progress
-R25.9+   Planned User Service implementation
+R25.1–R25.8 Completed
+R25.9    OAuth2 clients and grant types in progress
+R25.10+  Planned User Service implementation
 R26-R28  Planned
 ```
 
@@ -55,6 +55,25 @@ R26-R28  Planned
 - Completed R25.6 password authentication foundation with delegating encoding,
   bcrypt, JPA-backed user details, DAO authentication and hash upgrade support.
 - Completed R25.7 account lifecycle and secure email verification.
+- Completed R25.8 Spring Authorization Server and OpenID Connect foundation.
+
+### Authorization Server and OAuth2 Clients
+
+- Added separate high-priority Authorization Server and application security filter chains.
+- Added externalized canonical issuer configuration and enabled the OIDC baseline.
+- Integrated the existing DAO authentication provider and account-status enforcement.
+- Added Flyway-owned `oauth2_registered_client` persistence backed by
+  `JdbcRegisteredClientRepository`.
+- Added controlled server-side registration for public PKCE and confidential
+  service clients; dynamic client registration remains disabled.
+- Enforced exact HTTPS or loopback HTTP redirect URIs, encoded service secrets,
+  non-human service scopes, consent for public clients, 15-minute user access
+  tokens, five-minute service access tokens and non-reusable 30-day refresh tokens.
+- Added unit, configuration, repository and MySQL Testcontainers integration coverage.
+- Restricted Authorization Server metadata to Authorization Code, Refresh Token
+  and Client Credentials instead of advertising Spring's additional default grants.
+- Added protocol-policy integration tests for S256 PKCE enforcement, consent,
+  service-client grant isolation and invalid client authentication.
 
 ### Email Verification
 
@@ -82,7 +101,7 @@ R26-R28  Planned
 - Locking active token rows does not serialize two concurrent first-issue requests
   when no token row exists. User-row locking or an equivalent database invariant
   is required before claiming concurrent first-issue safety.
-- R25.8 Spring Authorization Server foundation is the next active checkpoint.
+- R25.9 protocol-level grant-flow verification is the active checkpoint.
 
 ## 2026-08-05
 

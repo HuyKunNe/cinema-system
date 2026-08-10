@@ -1168,6 +1168,11 @@ Approved authorization grants:
 
 Resource Owner Password Credentials must not be introduced.
 
+Current implementation boundary: R25.8 completed the Authorization Server/OIDC
+foundation. R25.9 has JDBC-backed controlled registration for public PKCE and
+confidential service clients, while protocol grant-flow verification remains in
+progress. RSA/JWK signing and JWT claim customization remain R25.10 scope.
+
 Token trust contract:
 
 - User Service publishes one environment-specific issuer identifier.

@@ -12,10 +12,10 @@ supported by the Cinema Booking System repository.
 Current baseline:
 
 - R1-R24 are completed.
-- R25.1 `common-security` hardening is completed.
-- R25.2 architecture and documentation synchronization is active.
-- User Service Authorization Server implementation begins at R25.3 or its
-  approved successor checkpoint.
+- R25.1–R25.8 are completed.
+- R25.9 OAuth2 clients and grant types is active.
+- User Service has its Spring Authorization Server/OIDC foundation and
+  controlled JDBC-backed registered-client configuration.
 
 A placeholder Maven module or Config Server file does not make a service
 deployable. Only completed roadmap checkpoints define operational capability.
@@ -31,7 +31,7 @@ deployable. Only completed roadmap checkpoints define operational capability.
 | API Gateway          | R22   | Implemented; Resource Server integration remains R25 work           |
 | Movie Service        | R23   | Implemented                                                         |
 | Inventory Service    | R24   | Implemented; protected runtime requires issuer/JWK configuration    |
-| User Service         | R25   | Authorization Server architecture approved; runtime not implemented |
+| User Service         | R25   | R25.8 foundation implemented; R25.9 client/grant work in progress    |
 | Booking Service      | R26   | Not implemented                                                     |
 | Payment Service      | R27   | Not implemented                                                     |
 | Notification Service | R28   | Not implemented                                                     |
@@ -420,11 +420,12 @@ responsible for validating their own tokens.
 
 # User Service Deployment Requirements
 
-This section is an accepted deployment contract, not a claim of current runtime
-implementation.
+This section combines the implemented R25.8 foundation with requirements that
+remain for later R25 checkpoints.
 
-User Service will host Spring Authorization Server and must expose an
-environment-specific issuer plus public metadata/JWK endpoints.
+User Service hosts Spring Authorization Server with an environment-specific
+issuer. Public JWK publication and production signing-key readiness remain
+R25.10 work.
 
 Required production characteristics:
 

@@ -14,7 +14,8 @@ This document visualizes implemented interactions and approved target flows.
 | Shared servlet Resource Server responses                | Implemented for Inventory in R25.1                 |
 | Booking, Payment, and Notification Saga                 | Target for R26-R28                                 |
 | User account lifecycle and email verification           | Implemented through R25.7                          |
-| User Service Authorization Server                       | Target beginning with R25.8                        |
+| User Service Authorization Server/OIDC foundation       | Implemented in R25.8                               |
+| OAuth2 registered clients and approved grant flows      | Partially implemented in R25.9; protocol flow target |
 | Gateway reactive Resource Server                        | Target for R25.13                                  |
 | Hardened multi-instance Outbox retry/claim              | Target; not implemented by current `common-outbox` |
 
@@ -320,7 +321,9 @@ must commit in the same service-owned transaction.
 
 # Target Authorization Code with PKCE Flow
 
-This R25 flow is not implemented yet.
+The R25.8 Authorization Server/OIDC foundation and R25.9 public-client
+registration policy are implemented. The complete protocol-level flow below,
+including code exchange and token issuance, is not yet verified end to end.
 
 ```mermaid
 sequenceDiagram

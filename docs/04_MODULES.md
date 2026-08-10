@@ -375,7 +375,7 @@ Authorization Server and owns:
 Approved grants are Authorization Code with PKCE, Refresh Token, and approved
 Client Credentials. Resource Owner Password Credentials must not be added.
 
-Current implemented baseline through R25.7:
+Current implemented baseline through R25.8 and the implemented portion of R25.9:
 
 - service bootstrap, configuration, discovery and MySQL persistence;
 - Flyway-managed user, profile, credential, role, permission and assignment tables;
@@ -386,6 +386,12 @@ Current implemented baseline through R25.7:
 - JPA-backed `UserDetailsService`, DAO authentication and account-status enforcement;
 - account lifecycle transitions;
 - secure, hashed, expiring, revocable and single-use email-verification tokens;
+- separate Authorization Server and application security filter chains;
+- externalized canonical issuer settings and OpenID Connect enablement;
+- Flyway V5 and JDBC registered-client persistence;
+- controlled public PKCE and confidential service-client registration;
+- encoded client secrets, exact redirect URI validation and client-specific
+  token lifetime policy;
 - unit, repository, Flyway and MySQL integration tests.
 
 Not implemented yet:
@@ -393,8 +399,9 @@ Not implemented yet:
 - public registration, profile and verification HTTP APIs;
 - email delivery;
 - password-reset tokens and recovery flow;
-- Authorization Server/OIDC filter chain and protocol endpoints;
-- registered OAuth2 clients, grants and consent persistence runtime;
+- end-to-end Authorization Code with PKCE, Refresh Token and Client Credentials
+  protocol-flow verification;
+- OAuth2 authorization and consent persistence runtime;
 - RSA signing/JWK publication and JWT claim customization;
 - refresh-token rotation, logout and authorization-session revocation.
 

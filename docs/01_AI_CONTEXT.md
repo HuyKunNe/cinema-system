@@ -122,12 +122,13 @@ R25.4 — user domain and database schema — DONE
 R25.5 — roles and permissions — DONE
 R25.6 — password authentication foundation — DONE
 R25.7 — account lifecycle and email verification — DONE
+R25.8 — Spring Authorization Server foundation — DONE
 ```
 
 Active checkpoint:
 
 ```text
-R25.8 — Spring Authorization Server foundation — IN PROGRESS
+R25.9 — OAuth2 clients and grant types — IN PROGRESS
 ```
 
 ADR-013 accepts the following decisions:
@@ -614,8 +615,8 @@ explicitly requested.
 Movie Service and Inventory Service have completed their implementation,
 testing and verification requirements.
 
-User Service is the active business-service round. R25.1–R25.7 are complete.
-R25.8 Spring Authorization Server foundation is the active checkpoint.
+User Service is the active business-service round. R25.1–R25.8 are complete.
+R25.9 OAuth2 clients and grant types is the active checkpoint.
 
 ---
 
@@ -760,14 +761,13 @@ R24 met all completion requirements on 2026-08-04.
 
 # Current Next Step
 
-Implement R25.8 — Spring Authorization Server foundation:
+Complete R25.9 — OAuth2 clients and grant types:
 
-1. Add the centrally managed Spring Authorization Server dependency.
-2. Add the Authorization Server filter chain separately from application API security.
-3. Configure canonical issuer and authorization-server settings.
-4. Integrate the existing DAO authentication provider and account-status rules.
-5. Enable the approved OpenID Connect baseline.
-6. Add focused context and protocol-endpoint tests.
-7. Keep signing-key persistence, JWT customization, registered clients and refresh rotation in their later checkpoints.
+1. Preserve the implemented JDBC registered-client persistence and controlled registration service.
+2. Preserve public-client PKCE, exact redirect URI, consent and non-reusable refresh-token policy.
+3. Preserve confidential service-client secret encoding, restricted scopes and five-minute access-token policy.
+4. Preserve the implemented grant metadata, S256 PKCE/consent and client-authentication protocol tests.
+5. Complete successful token issuance and end-to-end grant verification together with R25.10 RSA/JWK support.
+6. Keep production RSA/JWK signing and JWT claim customization in R25.10.
 
-Do not modify completed R24 or R25.1–R25.7 behavior unless addressing a verified defect.
+Do not modify completed R24 or R25.1–R25.8 behavior unless addressing a verified defect.

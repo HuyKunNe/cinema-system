@@ -203,6 +203,12 @@ Access-token contract:
 Refresh tokens are opaque, revocable, rotated on use, and expire no later than
 30 days after issuance.
 
+Current runtime status: Spring Authorization Server, separate security chains,
+OIDC enablement, canonical issuer configuration and JDBC registered-client
+persistence are present in User Service. RSA/JWK signing, application JWT claims,
+authorization/consent persistence and full grant-flow verification remain later
+R25 work.
+
 `common-security` must not contain token issuance, signing private keys, OAuth2
 client persistence, consent persistence, or refresh-token persistence. Detailed
 rules are defined by `docs/08_SECURITY.md` and ADR-013.

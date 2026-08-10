@@ -47,8 +47,8 @@ implemented.
 | ------------------------------------------------------ | ----------- |
 | R1-R24                                                 | Completed   |
 | R25.1 — `common-security` hardening                    | Completed   |
-| R25.2 — Architecture and documentation synchronization | In progress |
-| R25.3+ — User Service and identity runtime             | Planned     |
+| R25.2–R25.8 — User Service foundations                | Completed   |
+| R25.9 — OAuth2 clients and grant types                 | In progress |
 | R26 — Booking Service                                  | Planned     |
 | R27 — Payment Service                                  | Planned     |
 | R28 — Notification Service                             | Planned     |
@@ -57,13 +57,13 @@ Latest completed runtime service:
 
 > **R24 — Inventory Service**
 
+Latest completed User Service checkpoint:
+
+> **R25.8 — Spring Authorization Server foundation**
+
 Active checkpoint:
 
-> **R25.2 — Architecture and documentation synchronization**
-
-Next implementation checkpoint:
-
-> **R25.3 — User Service foundation**
+> **R25.9 — OAuth2 clients and grant types**
 
 See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 
@@ -135,6 +135,22 @@ HELD -> AVAILABLE
 
 Administrative availability includes controlled transitions to and from
 `UNAVAILABLE`.
+
+## User Service
+
+- User, profile, credential, role and permission persistence
+- DAO password authentication and account-status enforcement
+- Email-verification lifecycle with hashed single-use tokens
+- Spring Authorization Server and OpenID Connect foundation
+- Separate protocol and application security filter chains
+- Flyway/JDBC OAuth2 registered-client persistence
+- Controlled public PKCE and confidential service-client registration
+- Encoded client secrets and strict redirect URI/scope validation
+
+R25.9 now verifies approved grant metadata, S256 PKCE through the consent
+boundary and client authentication/isolation. Successful token issuance and
+end-to-end grant verification remain coupled to R25.10 RSA/JWK signing and JWT
+claim customization.
 
 ---
 
@@ -218,8 +234,9 @@ Resource Owner Password Credentials must not be implemented.
 `common-security` does not issue tokens, store refresh tokens, own OAuth2
 clients, or contain signing private keys.
 
-R25.1 hardened this shared boundary. The User Service Authorization Server
-runtime remains planned for R25.3 and later checkpoints.
+R25.1 hardened this shared boundary. The User Service Authorization Server and
+OIDC foundation is implemented; R25.9 is completing OAuth2 clients and approved
+grant-flow verification.
 
 ---
 
@@ -238,7 +255,7 @@ runtime remains planned for R25.3 and later checkpoints.
 | Cache and coordination | Redis and Redisson 3.50.0                                                        |
 | Mapping                | MapStruct 1.6.3                                                                  |
 | JSON                   | Jackson                                                                          |
-| Security               | Spring Security, OAuth2 Resource Server, and planned Spring Authorization Server |
+| Security               | Spring Security, OAuth2 Resource Server, and Spring Authorization Server         |
 | API documentation      | OpenAPI 3 and Swagger UI                                                         |
 | Search                 | Elasticsearch 8.18.1                                                             |
 | Storage                | MinIO SDK 8.5.17                                                                 |
@@ -439,16 +456,16 @@ resolve durable architectural decisions.
 - R22 API Gateway
 - R23 Movie Service
 - R24 Inventory Service
-- R25.1 `common-security` hardening
+- R25.1–R25.8 security, identity, account lifecycle, and Authorization Server foundations
 
 ## Active
 
-- R25.2 architecture and documentation synchronization
+- R25.9 OAuth2 clients and grant types
 
 ## Next
 
-- R25.3 User Service foundation
-- Remaining User Service identity and Authorization Server checkpoints
+- Complete R25.9 protocol grant-flow verification
+- R25.10 JWT claims and JWK signing
 
 ## Planned
 

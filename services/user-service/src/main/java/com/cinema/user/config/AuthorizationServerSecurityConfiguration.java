@@ -1,5 +1,7 @@
 package com.cinema.user.config;
 
+import java.util.Set;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -7,14 +9,19 @@ import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
-import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class AuthorizationServerSecurityConfiguration {
+
+    private static final Set<String> APPROVED_GRANT_TYPES = Set.of(
+            "authorization_code",
+            "refresh_token",
+            "client_credentials");
 
     @Bean
     @Order(1)
@@ -32,7 +39,15 @@ public class AuthorizationServerSecurityConfiguration {
                         authorizationServerConfigurer,
                         authorizationServer -> authorizationServer
                                 .authorizationServerMetadataEndpoint(
-                                        Customizer.withDefaults()))
+                                        metadata -> metadata
+                                                .authorizationServerMetadataCustomizer(
+                                                        builder -> builder
+                                                                .grantTypes(
+                                                                        grantTypes -> {
+                                                                            grantTypes.clear();
+                                                                            grantTypes.addAll(
+                                                                                    APPROVED_GRANT_TYPES);
+                                                                        }))))
                 .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(
                         new LoginUrlAuthenticationEntryPoint(
                                 "/login")));
