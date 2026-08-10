@@ -140,7 +140,37 @@ public final class UserErrorCode implements ErrorCode {
             "USER_EMAIL_VERIFICATION_CRYPTO_FAILURE",
             "Email verification cryptography is unavailable");
 
-    private final ErrorCategory category;
+    public static final UserErrorCode OAUTH2_CLIENT_ID_REQUIRED = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_OAUTH2_CLIENT_ID_REQUIRED",
+            "OAuth2 client identifier is required");
+
+    public static final UserErrorCode OAUTH2_CLIENT_NAME_REQUIRED = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_OAUTH2_CLIENT_NAME_REQUIRED",
+            "OAuth2 client name is required");
+
+    public static final UserErrorCode OAUTH2_CLIENT_SECRET_REQUIRED = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_OAUTH2_CLIENT_SECRET_REQUIRED",
+            "OAuth2 client secret is required");
+
+    public static final UserErrorCode OAUTH2_CLIENT_REDIRECT_URI_INVALID = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_OAUTH2_CLIENT_REDIRECT_URI_INVALID",
+            "OAuth2 client redirect URI is invalid");
+
+    public static final UserErrorCode OAUTH2_CLIENT_SCOPE_INVALID = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_OAUTH2_CLIENT_SCOPE_INVALID",
+            "OAuth2 client scope is invalid");
+
+    public static final UserErrorCode OAUTH2_CLIENT_ALREADY_EXISTS = new UserErrorCode(
+            ErrorCategory.BUSINESS,
+            "USER_OAUTH2_CLIENT_ALREADY_EXISTS",
+            "OAuth2 client already exists");
+
+    final ErrorCategory category;
     private final String code;
     private final String message;
 

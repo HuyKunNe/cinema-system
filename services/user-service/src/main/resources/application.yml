@@ -68,3 +68,5 @@ cinema:
     user:
         email-verification:
             lifetime: ${USER_EMAIL_VERIFICATION_LIFETIME:24h}
+        authorization-server:
+            issuer: ${USER_AUTHORIZATION_SERVER_ISSUER:http://localhost:8082}

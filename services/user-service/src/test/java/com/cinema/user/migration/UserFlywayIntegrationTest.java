@@ -28,7 +28,8 @@ class UserFlywayIntegrationTest
             "permissions",
             "user_roles",
             "email_verification_tokens",
-            "role_permissions");
+            "role_permissions",
+            "oauth2_registered_client");
 
     @Autowired
     private Flyway flyway;
@@ -87,7 +88,8 @@ class UserFlywayIntegrationTest
                               'permissions',
                               'user_roles',
                               'role_permissions',
-                              'email_verification_tokens'
+                              'email_verification_tokens',
+                              'oauth2_registered_client'
                           )
                         ORDER BY table_name
                         """,
@@ -378,6 +380,53 @@ class UserFlywayIntegrationTest
     void hibernateShouldValidateFlywaySchema() {
         assertThat(entityManagerFactory.isOpen())
                 .isTrue();
+    }
+
+    @Test
+    void migrationShouldCreateRegisteredClientUniqueConstraint() {
+        List<String> constraints = jdbcTemplate.queryForList(
+                """
+                        SELECT constraint_name
+                        FROM information_schema.table_constraints
+                        WHERE constraint_schema = DATABASE()
+                          AND table_name =
+                              'oauth2_registered_client'
+                          AND constraint_type = 'UNIQUE'
+                        """,
+                String.class);
+
+        assertThat(constraints)
+                .contains(
+                        "uk_oauth2_registered_client_client_id");
+    }
+
+    @Test
+    void registeredClientTableShouldContainExpectedColumns() {
+        List<String> columns = jdbcTemplate.queryForList(
+                """
+                        SELECT column_name
+                        FROM information_schema.columns
+                        WHERE table_schema = DATABASE()
+                          AND table_name =
+                              'oauth2_registered_client'
+                        """,
+                String.class);
+
+        assertThat(columns)
+                .containsExactlyInAnyOrder(
+                        "id",
+                        "client_id",
+                        "client_id_issued_at",
+                        "client_secret",
+                        "client_secret_expires_at",
+                        "client_name",
+                        "client_authentication_methods",
+                        "authorization_grant_types",
+                        "redirect_uris",
+                        "post_logout_redirect_uris",
+                        "scopes",
+                        "client_settings",
+                        "token_settings");
     }
 
     private int permissionCountForRole(String roleName) {

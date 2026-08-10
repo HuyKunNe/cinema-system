@@ -2,6 +2,13 @@ package com.cinema.user.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
+import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
+import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.unauthenticated;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 import java.time.OffsetDateTime;
 import java.util.Locale;
@@ -22,6 +29,11 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.web.servlet.MvcResult;
 
 import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
 import com.cinema.user.entity.Role;
@@ -39,6 +51,11 @@ import com.cinema.user.service.UserCredentialService;
 import jakarta.persistence.EntityManager;
 
 @Transactional
+@AutoConfigureMockMvc
+@SpringBootTest(properties = {
+        "spring.main.web-application-type=servlet",
+        "cinema.user.authorization-server.issuer=http://localhost:8082"
+})
 class AuthenticationIntegrationTest extends AbstractMySqlIntegrationTest {
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -66,6 +83,9 @@ class AuthenticationIntegrationTest extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    @Autowired
+    private MockMvc mockMvc;
 
     private static final String RAW_PASSWORD = "correct-password-123";
 
@@ -235,6 +255,146 @@ class AuthenticationIntegrationTest extends AbstractMySqlIntegrationTest {
 
         assertThat(updated.getPasswordChangedAt())
                 .isAfter(ASSIGNED_AT.minusDays(1));
+    }
+
+    @Test
+    void shouldAuthenticateActiveUserThroughWebLogin()
+            throws Exception {
+
+        User user = createUserWithCredential(
+                "web-active",
+                AccountStatus.ACTIVE,
+                RAW_PASSWORD);
+
+        mockMvc.perform(formLogin()
+                .user(user.getUsername())
+                .password(RAW_PASSWORD))
+                .andExpect(authenticated()
+                        .withUsername(user.getUsername()));
+    }
+
+    @Test
+    void successfulLoginShouldChangeSessionIdentifier()
+            throws Exception {
+
+        User user = createUserWithCredential(
+                "web-session",
+                AccountStatus.ACTIVE,
+                RAW_PASSWORD);
+
+        MockHttpSession originalSession = new MockHttpSession();
+
+        String originalSessionId = originalSession.getId();
+
+        MvcResult result = mockMvc.perform(
+                post("/login")
+                        .session(originalSession)
+                        .with(csrf())
+                        .param(
+                                "username",
+                                user.getUsername())
+                        .param(
+                                "password",
+                                RAW_PASSWORD))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(authenticated()
+                        .withUsername(user.getUsername()))
+                .andReturn();
+
+        MockHttpSession authenticatedSession = (MockHttpSession) result
+                .getRequest()
+                .getSession(false);
+
+        assertThat(authenticatedSession)
+                .isNotNull();
+
+        assertThat(authenticatedSession.getId())
+                .isNotEqualTo(originalSessionId);
+    }
+
+    @Test
+    void shouldRejectIncorrectPasswordThroughWebLogin()
+            throws Exception {
+
+        User user = createUserWithCredential(
+                "web-incorrect",
+                AccountStatus.ACTIVE,
+                RAW_PASSWORD);
+
+        mockMvc.perform(formLogin()
+                .user(user.getUsername())
+                .password("incorrect-password-999"))
+                .andExpect(unauthenticated())
+                .andExpect(redirectedUrl("/login?error"));
+    }
+
+    @Test
+    void shouldHideMissingUserThroughWebLogin()
+            throws Exception {
+
+        mockMvc.perform(formLogin()
+                .user("missing-web-user")
+                .password(RAW_PASSWORD))
+                .andExpect(unauthenticated())
+                .andExpect(redirectedUrl("/login?error"));
+    }
+
+    @Test
+    void shouldRejectLockedAccountThroughWebLogin()
+            throws Exception {
+
+        User user = createUserWithCredential(
+                "web-locked",
+                AccountStatus.LOCKED,
+                RAW_PASSWORD);
+
+        mockMvc.perform(formLogin()
+                .user(user.getUsername())
+                .password(RAW_PASSWORD))
+                .andExpect(unauthenticated())
+                .andExpect(redirectedUrl("/login?error"));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = AccountStatus.class, names = {
+            "DISABLED",
+            "PENDING_VERIFICATION"
+    })
+    void shouldRejectDisabledAuthenticationThroughWebLogin(
+            AccountStatus status) throws Exception {
+
+        User user = createUserWithCredential(
+                "web-"
+                        + status.name()
+                                .toLowerCase(Locale.ROOT),
+                status,
+                RAW_PASSWORD);
+
+        mockMvc.perform(formLogin()
+                .user(user.getUsername())
+                .password(RAW_PASSWORD))
+                .andExpect(unauthenticated())
+                .andExpect(redirectedUrl("/login?error"));
+    }
+
+    @Test
+    void loginShouldRejectRequestWithoutCsrfToken()
+            throws Exception {
+
+        User user = createUserWithCredential(
+                "web-csrf",
+                AccountStatus.ACTIVE,
+                RAW_PASSWORD);
+
+        mockMvc.perform(post("/login")
+                .param(
+                        "username",
+                        user.getUsername())
+                .param(
+                        "password",
+                        RAW_PASSWORD))
+                .andExpect(status().isForbidden())
+                .andExpect(unauthenticated());
     }
 
     private Authentication authenticate(
