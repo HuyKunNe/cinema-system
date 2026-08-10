@@ -20,6 +20,11 @@ $env:INVENTORY_TEST_DB_PASSWORD = "huykun17"
 $env:CINEMA_AUTH_ISSUER = "https://identity.cinema.local"
 $env:CINEMA_AUTH_JWK_SET_URI = "https://identity.cinema.local/oauth2/jwks"
 
+$env:USER_JWT_SIGNING_ENABLED = "true"
+$env:USER_JWT_SIGNING_KEY_ID = "cinema-user-local-2026-01"
+$env:USER_JWT_PRIVATE_KEY_LOCATION = "file:E:/java/cinema-system/.local/keys/user-service-private.pem"
+$env:USER_JWT_PUBLIC_KEY_LOCATION = "file:E:/java/cinema-system/.local/keys/user-service-public.pem"
+
 mvn -pl infrastructure/config-service spring-boot:run
 mvn -pl infrastructure/discovery-service spring-boot:run
 mvn -pl infrastructure/gateway-service spring-boot:run

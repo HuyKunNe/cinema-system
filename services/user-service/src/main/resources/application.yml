@@ -68,5 +68,12 @@ cinema:
     user:
         email-verification:
             lifetime: ${USER_EMAIL_VERIFICATION_LIFETIME:24h}
+
         authorization-server:
             issuer: ${USER_AUTHORIZATION_SERVER_ISSUER:http://localhost:8082}
+
+            signing:
+                enabled: ${USER_JWT_SIGNING_ENABLED:false}
+                key-id: ${USER_JWT_SIGNING_KEY_ID:}
+                private-key-location: ${USER_JWT_PRIVATE_KEY_LOCATION:}
+                public-key-location: ${USER_JWT_PUBLIC_KEY_LOCATION:}
