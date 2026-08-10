@@ -63,3 +63,8 @@ logging:
         com.cinema.user: INFO
         com.netflix.discovery: INFO
         org.hibernate.SQL: DEBUG
+
+cinema:
+    user:
+        email-verification:
+            lifetime: ${USER_EMAIL_VERIFICATION_LIFETIME:24h}

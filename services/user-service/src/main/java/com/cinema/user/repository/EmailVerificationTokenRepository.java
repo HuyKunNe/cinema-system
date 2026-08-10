@@ -30,4 +30,15 @@ public interface EmailVerificationTokenRepository
             @Param("tokenHash") String tokenHash);
 
     boolean existsByTokenHash(String tokenHash);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select token
+            from EmailVerificationToken token
+            where token.user.id = :userId
+              and token.usedAt is null
+              and token.revokedAt is null
+            """)
+    List<EmailVerificationToken> findAllActiveByUserIdForUpdate(
+            @Param("userId") UUID userId);
 }

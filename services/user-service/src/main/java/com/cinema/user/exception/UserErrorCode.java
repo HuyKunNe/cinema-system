@@ -120,6 +120,26 @@ public final class UserErrorCode implements ErrorCode {
             "USER_EMAIL_VERIFICATION_TOKEN_EXPIRED",
             "Email verification token has expired");
 
+    public static final UserErrorCode EMAIL_VERIFICATION_TOKEN_INVALID = new UserErrorCode(
+            ErrorCategory.SECURITY,
+            "USER_EMAIL_VERIFICATION_TOKEN_INVALID",
+            "Email verification token is invalid");
+
+    public static final UserErrorCode EMAIL_VERIFICATION_TOKEN_ISSUE_NOT_ALLOWED = new UserErrorCode(
+            ErrorCategory.BUSINESS,
+            "USER_EMAIL_VERIFICATION_TOKEN_ISSUE_NOT_ALLOWED",
+            "Email verification token cannot be issued for this account");
+
+    public static final UserErrorCode EMAIL_VERIFICATION_TOKEN_ISSUE_FAILED = new UserErrorCode(
+            ErrorCategory.SYSTEM,
+            "USER_EMAIL_VERIFICATION_TOKEN_ISSUE_FAILED",
+            "Email verification token could not be issued");
+
+    public static final UserErrorCode EMAIL_VERIFICATION_CRYPTO_FAILURE = new UserErrorCode(
+            ErrorCategory.SYSTEM,
+            "USER_EMAIL_VERIFICATION_CRYPTO_FAILURE",
+            "Email verification cryptography is unavailable");
+
     private final ErrorCategory category;
     private final String code;
     private final String message;
