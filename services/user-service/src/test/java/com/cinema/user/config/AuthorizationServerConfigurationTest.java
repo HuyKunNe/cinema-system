@@ -19,6 +19,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -27,6 +28,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 
 import com.cinema.user.security.jwt.JwtSigningKeyLoader;
 import com.cinema.user.security.jwt.RsaSigningKeyPair;
@@ -263,6 +265,10 @@ class AuthorizationServerConfigurationTest {
     private ApplicationContextRunner baseContext() {
         return new ApplicationContextRunner()
                 .withUserConfiguration(AuthorizationServerConfiguration.class)
+                .withBean(JdbcOperations.class, () -> mock(JdbcOperations.class))
+                .withBean(
+                        RegisteredClientRepository.class,
+                        () -> mock(RegisteredClientRepository.class))
                 .withPropertyValues(
                         "cinema.user.authorization-server.issuer=" + ISSUER,
                         "cinema.user.authorization-server.jwt.audiences=cinema-api");

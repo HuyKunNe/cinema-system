@@ -3,6 +3,7 @@ package com.cinema.user.oauth2;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.Duration;
 import java.util.Set;
 import java.util.UUID;
 
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
+import com.cinema.user.oauth2.model.ConfidentialUserClientRegistration;
 import com.cinema.user.oauth2.model.PublicClientRegistration;
 import com.cinema.user.oauth2.model.RegisteredClientRegistrationResult;
 import com.cinema.user.oauth2.model.ServiceClientRegistration;
@@ -233,5 +235,103 @@ class OAuth2ClientRegistrationServiceIntegrationTest
                 .findByClientId(
                         registration.clientId()))
                 .isNull();
+    }
+
+    @Test
+    void shouldRegisterConfidentialUserClient() {
+        String rawSecret = "integration-confidential-user-secret";
+
+        ConfidentialUserClientRegistration registration = new ConfidentialUserClientRegistration(
+                "integration-cinema-bff",
+                "Integration Cinema BFF",
+                rawSecret,
+                Set.of(
+                        "http://127.0.0.1:8080/login/oauth2/code/cinema"),
+                Set.of(
+                        "http://127.0.0.1:8080"),
+                Set.of(
+                        OidcScopes.OPENID,
+                        OidcScopes.PROFILE,
+                        "booking:read"));
+
+        RegisteredClientRegistrationResult result = registrationService
+                .registerConfidentialUserClient(
+                        registration);
+
+        RegisteredClient persisted = registeredClientRepository.findByClientId(
+                "integration-cinema-bff");
+
+        assertThat(persisted).isNotNull();
+        assertThat(result.id())
+                .isEqualTo(persisted.getId());
+
+        assertThat(persisted.getClientSecret())
+                .isNotEqualTo(rawSecret);
+
+        assertThat(passwordEncoder.matches(
+                rawSecret,
+                persisted.getClientSecret()))
+                .isTrue();
+
+        assertThat(persisted.getClientAuthenticationMethods())
+                .containsOnly(
+                        ClientAuthenticationMethod.CLIENT_SECRET_BASIC);
+
+        assertThat(persisted.getAuthorizationGrantTypes())
+                .containsOnly(
+                        AuthorizationGrantType.AUTHORIZATION_CODE,
+                        AuthorizationGrantType.REFRESH_TOKEN);
+
+        assertThat(persisted.getAuthorizationGrantTypes())
+                .doesNotContain(
+                        AuthorizationGrantType.CLIENT_CREDENTIALS);
+
+        assertThat(persisted.getClientSettings()
+                .isRequireProofKey())
+                .isTrue();
+
+        assertThat(persisted.getTokenSettings()
+                .getAccessTokenTimeToLive())
+                .isEqualTo(Duration.ofMinutes(15));
+
+        assertThat(persisted.getTokenSettings()
+                .getRefreshTokenTimeToLive())
+                .isEqualTo(Duration.ofDays(30));
+
+        assertThat(persisted.getTokenSettings()
+                .isReuseRefreshTokens())
+                .isFalse();
+    }
+
+    @Test
+    void shouldRejectDuplicateConfidentialUserClient() {
+        ConfidentialUserClientRegistration registration = confidentialUserRegistration(
+                "duplicate-confidential-client");
+
+        registrationService
+                .registerConfidentialUserClient(
+                        registration);
+
+        assertThatThrownBy(() -> registrationService
+                .registerConfidentialUserClient(
+                        registration))
+                .isInstanceOf(ConflictException.class);
+    }
+
+    private static ConfidentialUserClientRegistration confidentialUserRegistration(
+        String clientId) {
+
+        return new ConfidentialUserClientRegistration(
+                clientId,
+                "Test Confidential User Client",
+                "test-confidential-user-secret",
+                Set.of(
+                        "http://127.0.0.1:8080/login/oauth2/code/cinema"),
+                Set.of(
+                        "http://127.0.0.1:8080"),
+                Set.of(
+                        OidcScopes.OPENID,
+                        OidcScopes.PROFILE,
+                        "booking:read"));
     }
 }

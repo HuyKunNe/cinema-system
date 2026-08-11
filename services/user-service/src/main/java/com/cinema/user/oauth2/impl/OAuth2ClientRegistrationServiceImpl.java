@@ -10,6 +10,7 @@ import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.user.exception.UserErrorCode;
 import com.cinema.user.oauth2.OAuth2ClientRegistrationService;
 import com.cinema.user.oauth2.RegisteredClientFactory;
+import com.cinema.user.oauth2.model.ConfidentialUserClientRegistration;
 import com.cinema.user.oauth2.model.PublicClientRegistration;
 import com.cinema.user.oauth2.model.RegisteredClientRegistrationResult;
 import com.cinema.user.oauth2.model.ServiceClientRegistration;
@@ -60,6 +61,24 @@ public class OAuth2ClientRegistrationServiceImpl
 
         RegisteredClient registeredClient = registeredClientFactory
                 .createServiceClient(registration);
+
+        save(registeredClient);
+
+        return toResult(registeredClient);
+    }
+
+    @Override
+    @Transactional
+    public RegisteredClientRegistrationResult registerConfidentialUserClient(
+            ConfidentialUserClientRegistration registration) {
+
+        rejectDuplicate(registration == null
+                ? null
+                : registration.clientId());
+
+        RegisteredClient registeredClient = registeredClientFactory
+                .createConfidentialUserClient(
+                        registration);
 
         save(registeredClient);
 

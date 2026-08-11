@@ -27,6 +27,7 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.user.oauth2.impl.RegisteredClientFactoryImpl;
+import com.cinema.user.oauth2.model.ConfidentialUserClientRegistration;
 import com.cinema.user.oauth2.model.PublicClientRegistration;
 import com.cinema.user.oauth2.model.ServiceClientRegistration;
 
@@ -40,6 +41,8 @@ class RegisteredClientFactoryImplTest {
             ZoneOffset.UTC);
 
     private static final String RAW_SECRET = "local-test-secret";
+
+    private static final String CONFIDENTIAL_SECRET = "confidential-user-client-secret";
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -195,6 +198,88 @@ class RegisteredClientFactoryImplTest {
         assertThat(registration.toString())
                 .contains("[REDACTED]")
                 .doesNotContain(RAW_SECRET);
+    }
+
+    @Test
+    void shouldCreateConfidentialUserClient() {
+        String encodedSecret = "{bcrypt}encoded-confidential-user-secret";
+
+        when(passwordEncoder.encode(
+                CONFIDENTIAL_SECRET))
+                .thenReturn(encodedSecret);
+
+        ConfidentialUserClientRegistration registration = new ConfidentialUserClientRegistration(
+                "cinema-bff",
+                "Cinema BFF",
+                CONFIDENTIAL_SECRET,
+                Set.of(
+                        "http://127.0.0.1:8080/login/oauth2/code/cinema"),
+                Set.of(
+                        "http://127.0.0.1:8080"),
+                Set.of(
+                        OidcScopes.OPENID,
+                        OidcScopes.PROFILE,
+                        "booking:read",
+                        "booking:create"));
+
+        RegisteredClient client = factory
+                .createConfidentialUserClient(
+                        registration);
+
+        assertThat(client.getClientAuthenticationMethods())
+                .containsOnly(
+                        ClientAuthenticationMethod.CLIENT_SECRET_BASIC);
+
+        assertThat(client.getAuthorizationGrantTypes())
+                .containsOnly(
+                        AuthorizationGrantType.AUTHORIZATION_CODE,
+                        AuthorizationGrantType.REFRESH_TOKEN);
+
+        assertThat(client.getAuthorizationGrantTypes())
+                .doesNotContain(
+                        AuthorizationGrantType.CLIENT_CREDENTIALS);
+
+        assertThat(client.getClientSettings()
+                .isRequireProofKey())
+                .isTrue();
+
+        assertThat(client.getClientSettings()
+                .isRequireAuthorizationConsent())
+                .isTrue();
+
+        assertThat(client.getTokenSettings()
+                .getAccessTokenTimeToLive())
+                .isEqualTo(Duration.ofMinutes(15));
+
+        assertThat(client.getTokenSettings()
+                .getRefreshTokenTimeToLive())
+                .isEqualTo(Duration.ofDays(30));
+
+        assertThat(client.getTokenSettings()
+                .isReuseRefreshTokens())
+                .isFalse();
+
+        assertThat(client.getClientSecret())
+                .isEqualTo(encodedSecret);
+
+        verify(passwordEncoder)
+                .encode(CONFIDENTIAL_SECRET);
+    }
+
+    @Test
+    void confidentialUserRegistrationToStringShouldRedactSecret() {
+        ConfidentialUserClientRegistration registration = new ConfidentialUserClientRegistration(
+                "cinema-bff",
+                "Cinema BFF",
+                CONFIDENTIAL_SECRET,
+                Set.of(
+                        "http://127.0.0.1:8080/callback"),
+                Set.of(),
+                Set.of("booking:read"));
+
+        assertThat(registration.toString())
+                .contains("[REDACTED]")
+                .doesNotContain(CONFIDENTIAL_SECRET);
     }
 
     private static PublicClientRegistration publicRegistration() {

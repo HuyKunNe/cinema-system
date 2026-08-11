@@ -24,6 +24,7 @@ import com.cinema.common.core.id.UuidGenerator;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.user.exception.UserErrorCode;
 import com.cinema.user.oauth2.RegisteredClientFactory;
+import com.cinema.user.oauth2.model.ConfidentialUserClientRegistration;
 import com.cinema.user.oauth2.model.PublicClientRegistration;
 import com.cinema.user.oauth2.model.ServiceClientRegistration;
 
@@ -36,6 +37,8 @@ public class RegisteredClientFactoryImpl
 
     private static final Pattern SCOPE_PATTERN = Pattern.compile(
             "^[A-Za-z0-9][A-Za-z0-9:._-]{0,99}$");
+
+    private static final Duration REFRESH_TOKEN_LIFETIME = Duration.ofDays(30);
 
     private static final Set<String> HUMAN_OIDC_SCOPES = Set.of(
             OidcScopes.OPENID,
@@ -312,5 +315,73 @@ public class RegisteredClientFactoryImpl
             UserErrorCode errorCode) {
 
         return new ValidationException(errorCode);
+    }
+
+    @Override
+    public RegisteredClient createConfidentialUserClient(
+            ConfidentialUserClientRegistration registration) {
+
+        if (registration == null) {
+            throw validation(
+                    UserErrorCode.OAUTH2_CLIENT_ID_REQUIRED);
+        }
+
+        String clientId = requireClientId(
+                registration.clientId());
+
+        String clientName = requireText(
+                registration.clientName(),
+                UserErrorCode.OAUTH2_CLIENT_NAME_REQUIRED);
+
+        String rawClientSecret = requireText(
+                registration.rawClientSecret(),
+                UserErrorCode.OAUTH2_CLIENT_SECRET_REQUIRED);
+
+        Set<String> redirectUris = validateRedirectUris(
+                registration.redirectUris(),
+                true);
+
+        Set<String> postLogoutRedirectUris = validateRedirectUris(
+                registration.postLogoutRedirectUris(),
+                false);
+
+        Set<String> scopes = normalizeScopes(
+                registration.scopes());
+
+        RegisteredClient.Builder builder = RegisteredClient
+                .withId(UuidGenerator.next().toString())
+                .clientId(clientId)
+                .clientIdIssuedAt(Instant.now(clock))
+                .clientSecret(
+                        passwordEncoder.encode(
+                                rawClientSecret))
+                .clientName(clientName)
+                .clientAuthenticationMethod(
+                        ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .authorizationGrantType(
+                        AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(
+                        AuthorizationGrantType.REFRESH_TOKEN)
+                .clientSettings(
+                        ClientSettings.builder()
+                                .requireProofKey(true)
+                                .requireAuthorizationConsent(true)
+                                .build())
+                .tokenSettings(
+                        TokenSettings.builder()
+                                .accessTokenTimeToLive(
+                                        USER_ACCESS_TOKEN_LIFETIME)
+                                .refreshTokenTimeToLive(
+                                        REFRESH_TOKEN_LIFETIME)
+                                .reuseRefreshTokens(false)
+                                .build());
+
+        addAll(builder::redirectUri, redirectUris);
+        addAll(
+                builder::postLogoutRedirectUri,
+                postLogoutRedirectUris);
+        addAll(builder::scope, scopes);
+
+        return builder.build();
     }
 }
