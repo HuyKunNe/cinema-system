@@ -1,6 +1,8 @@
 package com.cinema.user.security;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -28,7 +30,10 @@ public final class CinemaUserDetails implements UserDetails, CredentialsContaine
 
         this.userId = Objects.requireNonNull(userId);
         this.username = Objects.requireNonNull(username);
-        this.password = Objects.requireNonNull(password);
+        // The password is legitimately null after CredentialsContainer erases it.
+        // OAuth2 authorization persistence may reconstruct the principal after
+        // that point, so null must remain a valid deserialization value.
+        this.password = password;
         this.status = Objects.requireNonNull(status);
 
         Objects.requireNonNull(authorities);
@@ -48,12 +53,16 @@ public final class CinemaUserDetails implements UserDetails, CredentialsContaine
                     authority);
         }
 
-        this.authorities = List.copyOf(
-                uniqueAuthorities.values());
+        this.authorities = Collections.unmodifiableList(
+                new ArrayList<>(uniqueAuthorities.values()));
     }
 
     public UUID getUserId() {
         return userId;
+    }
+
+    public AccountStatus getStatus() {
+        return status;
     }
 
     @Override

@@ -29,7 +29,9 @@ class UserFlywayIntegrationTest
             "user_roles",
             "email_verification_tokens",
             "role_permissions",
-            "oauth2_registered_client");
+            "oauth2_registered_client",
+            "oauth2_authorization",
+            "oauth2_authorization_consent");
 
     @Autowired
     private Flyway flyway;
@@ -65,12 +67,12 @@ class UserFlywayIntegrationTest
                 """
                         SELECT COUNT(*)
                         FROM flyway_schema_history
-                        WHERE version IN ('1', '2', '3', '4')
+                        WHERE version IN ('1', '2', '3', '4', '5', '6')
                           AND success = TRUE
                         """,
                 Integer.class);
 
-        assertThat(count).isEqualTo(4);
+        assertThat(count).isEqualTo(6);
     }
 
     @Test
@@ -89,7 +91,9 @@ class UserFlywayIntegrationTest
                               'user_roles',
                               'role_permissions',
                               'email_verification_tokens',
-                              'oauth2_registered_client'
+                              'oauth2_registered_client',
+                              'oauth2_authorization',
+                              'oauth2_authorization_consent'
                           )
                         ORDER BY table_name
                         """,
@@ -427,6 +431,73 @@ class UserFlywayIntegrationTest
                         "scopes",
                         "client_settings",
                         "token_settings");
+    }
+
+    @Test
+    void authorizationTableShouldContainExpectedColumns() {
+        List<String> columns = jdbcTemplate.queryForList(
+                """
+                        SELECT column_name
+                        FROM information_schema.columns
+                        WHERE table_schema = DATABASE()
+                          AND table_name = 'oauth2_authorization'
+                        """,
+                String.class);
+
+        assertThat(columns)
+                .containsExactlyInAnyOrder(
+                        "id",
+                        "registered_client_id",
+                        "principal_name",
+                        "authorization_grant_type",
+                        "authorized_scopes",
+                        "attributes",
+                        "state",
+                        "authorization_code_value",
+                        "authorization_code_issued_at",
+                        "authorization_code_expires_at",
+                        "authorization_code_metadata",
+                        "access_token_value",
+                        "access_token_issued_at",
+                        "access_token_expires_at",
+                        "access_token_metadata",
+                        "access_token_type",
+                        "access_token_scopes",
+                        "oidc_id_token_value",
+                        "oidc_id_token_issued_at",
+                        "oidc_id_token_expires_at",
+                        "oidc_id_token_metadata",
+                        "refresh_token_value",
+                        "refresh_token_issued_at",
+                        "refresh_token_expires_at",
+                        "refresh_token_metadata",
+                        "user_code_value",
+                        "user_code_issued_at",
+                        "user_code_expires_at",
+                        "user_code_metadata",
+                        "device_code_value",
+                        "device_code_issued_at",
+                        "device_code_expires_at",
+                        "device_code_metadata");
+    }
+
+    @Test
+    void authorizationConsentTableShouldContainExpectedColumns() {
+        List<String> columns = jdbcTemplate.queryForList(
+                """
+                        SELECT column_name
+                        FROM information_schema.columns
+                        WHERE table_schema = DATABASE()
+                          AND table_name =
+                              'oauth2_authorization_consent'
+                        """,
+                String.class);
+
+        assertThat(columns)
+                .containsExactlyInAnyOrder(
+                        "registered_client_id",
+                        "principal_name",
+                        "authorities");
     }
 
     private int permissionCountForRole(String roleName) {
