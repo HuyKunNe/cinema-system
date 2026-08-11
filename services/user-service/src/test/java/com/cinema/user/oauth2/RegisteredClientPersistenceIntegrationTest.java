@@ -66,9 +66,8 @@ class RegisteredClientPersistenceIntegrationTest
                         ClientAuthenticationMethod.NONE);
 
         assertThat(found.getAuthorizationGrantTypes())
-                .containsExactlyInAnyOrder(
-                        AuthorizationGrantType.AUTHORIZATION_CODE,
-                        AuthorizationGrantType.REFRESH_TOKEN);
+                .containsOnly(
+                        AuthorizationGrantType.AUTHORIZATION_CODE);
 
         assertThat(found.getRedirectUris())
                 .containsExactly(
@@ -234,8 +233,6 @@ class RegisteredClientPersistenceIntegrationTest
                         ClientAuthenticationMethod.NONE)
                 .authorizationGrantType(
                         AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(
-                        AuthorizationGrantType.REFRESH_TOKEN)
                 .redirectUri(
                         "http://127.0.0.1:3000/callback")
                 .postLogoutRedirectUri(
@@ -249,7 +246,9 @@ class RegisteredClientPersistenceIntegrationTest
                                 .requireProofKey(true)
                                 .requireAuthorizationConsent(true)
                                 .build())
-                .tokenSettings(defaultTokenSettings())
+                .tokenSettings(TokenSettings.builder()
+                        .accessTokenTimeToLive(Duration.ofMinutes(15))
+                        .build())
                 .build();
     }
 

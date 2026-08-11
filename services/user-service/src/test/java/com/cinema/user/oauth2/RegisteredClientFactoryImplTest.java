@@ -65,9 +65,7 @@ class RegisteredClientFactoryImplTest {
         assertThat(client.getClientSecret()).isNull();
 
         assertThat(client.getAuthorizationGrantTypes())
-                .containsExactlyInAnyOrder(
-                        AuthorizationGrantType.AUTHORIZATION_CODE,
-                        AuthorizationGrantType.REFRESH_TOKEN);
+                .containsExactly(AuthorizationGrantType.AUTHORIZATION_CODE);
 
         assertThat(client.getClientSettings()
                 .isRequireProofKey())
@@ -80,14 +78,6 @@ class RegisteredClientFactoryImplTest {
         assertThat(client.getTokenSettings()
                 .getAccessTokenTimeToLive())
                 .isEqualTo(Duration.ofMinutes(15));
-
-        assertThat(client.getTokenSettings()
-                .getRefreshTokenTimeToLive())
-                .isEqualTo(Duration.ofDays(30));
-
-        assertThat(client.getTokenSettings()
-                .isReuseRefreshTokens())
-                .isFalse();
 
         assertThat(client.getId())
                 .satisfies(id -> assertThat(

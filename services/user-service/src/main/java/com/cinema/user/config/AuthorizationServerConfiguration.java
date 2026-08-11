@@ -4,6 +4,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 
 import com.cinema.user.security.jwt.JwtSigningKeyLoader;
@@ -19,7 +22,8 @@ import com.nimbusds.jose.proc.SecurityContext;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties({
         AuthorizationServerProperties.class,
-        JwtSigningKeyProperties.class
+        JwtSigningKeyProperties.class,
+        JwtClaimsProperties.class
 })
 public class AuthorizationServerConfiguration {
 
@@ -48,5 +52,22 @@ public class AuthorizationServerConfiguration {
                 .build();
 
         return new ImmutableJWKSet<>(new JWKSet(rsaKey));
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "cinema.user.authorization-server.signing", name = "enabled", havingValue = "true")
+    JwtEncoder jwtEncoder(
+            JWKSource<SecurityContext> jwkSource) {
+
+        return new NimbusJwtEncoder(jwkSource);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "cinema.user.authorization-server.signing", name = "enabled", havingValue = "true")
+    JwtDecoder jwtDecoder(
+            JWKSource<SecurityContext> jwkSource) {
+
+        return org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration
+                .jwtDecoder(jwkSource);
     }
 }

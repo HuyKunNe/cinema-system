@@ -77,3 +77,5 @@ cinema:
                 key-id: ${USER_JWT_SIGNING_KEY_ID:}
                 private-key-location: ${USER_JWT_PRIVATE_KEY_LOCATION:}
                 public-key-location: ${USER_JWT_PUBLIC_KEY_LOCATION:}
+            jwt:
+                audiences: ${USER_JWT_AUDIENCES:cinema-api}

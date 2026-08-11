@@ -48,8 +48,6 @@ public class RegisteredClientFactoryImpl
 
     private static final Duration SERVICE_ACCESS_TOKEN_LIFETIME = Duration.ofMinutes(5);
 
-    private static final Duration REFRESH_TOKEN_LIFETIME = Duration.ofDays(30);
-
     private final PasswordEncoder passwordEncoder;
 
     private final Clock clock;
@@ -98,21 +96,14 @@ public class RegisteredClientFactoryImpl
                         ClientAuthenticationMethod.NONE)
                 .authorizationGrantType(
                         AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(
-                        AuthorizationGrantType.REFRESH_TOKEN)
                 .clientSettings(
                         ClientSettings.builder()
                                 .requireProofKey(true)
                                 .requireAuthorizationConsent(true)
                                 .build())
-                .tokenSettings(
-                        TokenSettings.builder()
-                                .accessTokenTimeToLive(
-                                        USER_ACCESS_TOKEN_LIFETIME)
-                                .refreshTokenTimeToLive(
-                                        REFRESH_TOKEN_LIFETIME)
-                                .reuseRefreshTokens(false)
-                                .build());
+                .tokenSettings(TokenSettings.builder()
+                        .accessTokenTimeToLive(USER_ACCESS_TOKEN_LIFETIME)
+                        .build());
 
         addAll(builder::redirectUri, redirectUris);
         addAll(builder::postLogoutRedirectUri, postLogoutRedirectUris);

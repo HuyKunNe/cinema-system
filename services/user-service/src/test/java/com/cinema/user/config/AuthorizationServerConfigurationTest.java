@@ -11,11 +11,21 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 
 import com.cinema.user.security.jwt.JwtSigningKeyLoader;
@@ -49,12 +59,10 @@ class AuthorizationServerConfigurationTest {
 
     @Test
     void shouldCreateSettingsWithConfiguredIssuer() {
-        AuthorizationServerConfiguration configuration =
-                new AuthorizationServerConfiguration();
+        AuthorizationServerConfiguration configuration = new AuthorizationServerConfiguration();
 
-        AuthorizationServerSettings settings =
-                configuration.authorizationServerSettings(
-                        new AuthorizationServerProperties(ISSUER));
+        AuthorizationServerSettings settings = configuration.authorizationServerSettings(
+                new AuthorizationServerProperties(ISSUER));
 
         assertThat(settings.getIssuer()).isEqualTo(ISSUER);
         assertThat(settings.getAuthorizationEndpoint())
@@ -96,6 +104,8 @@ class AuthorizationServerConfigurationTest {
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).doesNotHaveBean(JWKSource.class);
+                    assertThat(context).doesNotHaveBean(JwtEncoder.class);
+                    assertThat(context).doesNotHaveBean(JwtDecoder.class);
                     verifyNoInteractions(keyLoader);
                 });
     }
@@ -156,6 +166,80 @@ class AuthorizationServerConfigurationTest {
         });
     }
 
+    @Test
+    void shouldRegisterJwtEncoderAndDecoderWhenSigningIsEnabled() {
+        JwtSigningKeyLoader keyLoader = mock(JwtSigningKeyLoader.class);
+
+        when(keyLoader.load(org.mockito.ArgumentMatchers.any(
+                JwtSigningKeyProperties.class)))
+                .thenReturn(signingKeyPair);
+
+        enabledSigningContext(keyLoader).run(context -> {
+            assertThat(context).hasNotFailed();
+            assertThat(context).hasSingleBean(JwtEncoder.class);
+            assertThat(context).hasSingleBean(JwtDecoder.class);
+        });
+    }
+
+    @Test
+    void shouldEncodeAndDecodeJwtUsingConfiguredRsaKeyPair() {
+        JwtSigningKeyLoader keyLoader = mock(JwtSigningKeyLoader.class);
+
+        when(keyLoader.load(org.mockito.ArgumentMatchers.any(
+                JwtSigningKeyProperties.class)))
+                .thenReturn(signingKeyPair);
+
+        enabledSigningContext(keyLoader).run(context -> {
+            assertThat(context).hasNotFailed();
+
+            JwtEncoder encoder = context.getBean(JwtEncoder.class);
+            JwtDecoder decoder = context.getBean(JwtDecoder.class);
+
+            Clock clock = Clock.systemUTC();
+
+            Instant issuedAt = clock.instant()
+                    .truncatedTo(ChronoUnit.SECONDS);
+
+            Instant expiresAt = issuedAt.plusSeconds(300);
+
+            JwsHeader header = JwsHeader
+                    .with(SignatureAlgorithm.RS256)
+                    .keyId(KEY_ID)
+                    .build();
+
+            JwtClaimsSet claims = JwtClaimsSet.builder()
+                    .issuer(ISSUER)
+                    .subject("0198-aaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee")
+                    .audience(List.of("cinema-api"))
+                    .issuedAt(issuedAt)
+                    .expiresAt(expiresAt)
+                    .claim("username", "customer@example.com")
+                    .build();
+
+            Jwt encoded = encoder.encode(
+                    JwtEncoderParameters.from(header, claims));
+
+            Jwt decoded = decoder.decode(encoded.getTokenValue());
+
+            assertThat(encoded.getHeaders())
+                    .containsEntry("alg", SignatureAlgorithm.RS256)
+                    .containsEntry("kid", KEY_ID);
+
+            assertThat(decoded.getIssuer().toString())
+                    .isEqualTo(ISSUER);
+            assertThat(decoded.getSubject())
+                    .isEqualTo("0198-aaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee");
+            assertThat(decoded.getAudience())
+                    .containsExactly("cinema-api");
+            assertThat(decoded.getClaimAsString("username"))
+                    .isEqualTo("customer@example.com");
+            assertThat(decoded.getIssuedAt())
+                    .isEqualTo(issuedAt);
+            assertThat(decoded.getExpiresAt())
+                    .isEqualTo(expiresAt);
+        });
+    }
+
     private ApplicationContextRunner disabledSigningContext() {
         return baseContext()
                 .withPropertyValues(
@@ -180,13 +264,13 @@ class AuthorizationServerConfigurationTest {
         return new ApplicationContextRunner()
                 .withUserConfiguration(AuthorizationServerConfiguration.class)
                 .withPropertyValues(
-                        "cinema.user.authorization-server.issuer=" + ISSUER);
+                        "cinema.user.authorization-server.issuer=" + ISSUER,
+                        "cinema.user.authorization-server.jwt.audiences=cinema-api");
     }
 
     @SuppressWarnings("unchecked")
     private RSAKey getOnlyRsaKey(JWKSource<?> source) throws Exception {
-        JWKSource<SecurityContext> typedSource =
-                (JWKSource<SecurityContext>) source;
+        JWKSource<SecurityContext> typedSource = (JWKSource<SecurityContext>) source;
 
         List<JWK> keys = typedSource.get(
                 new JWKSelector(new JWKMatcher.Builder().build()),
