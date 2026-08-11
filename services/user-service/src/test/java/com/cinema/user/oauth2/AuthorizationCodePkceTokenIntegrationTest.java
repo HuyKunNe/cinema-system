@@ -271,9 +271,8 @@ class AuthorizationCodePkceTokenIntegrationTest
                         "booking:read",
                         "booking:create");
         assertThat(persistedClient.getAuthorizationGrantTypes())
-                .contains(
-                        AuthorizationGrantType.AUTHORIZATION_CODE,
-                        AuthorizationGrantType.REFRESH_TOKEN);
+                .containsOnly(
+                        AuthorizationGrantType.AUTHORIZATION_CODE);
         assertThat(persistedClient.getClientAuthenticationMethods())
                 .containsExactly(ClientAuthenticationMethod.NONE);
         assertThat(persistedClient.getClientSettings()

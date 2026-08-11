@@ -96,13 +96,6 @@ class RegisteredClientPersistenceIntegrationTest
                 .getAccessTokenTimeToLive())
                 .isEqualTo(Duration.ofMinutes(15));
 
-        assertThat(found.getTokenSettings()
-                .getRefreshTokenTimeToLive())
-                .isEqualTo(Duration.ofDays(30));
-
-        assertThat(found.getTokenSettings()
-                .isReuseRefreshTokens())
-                .isFalse();
     }
 
     @Test
@@ -281,13 +274,4 @@ class RegisteredClientPersistenceIntegrationTest
                 .build();
     }
 
-    private static TokenSettings defaultTokenSettings() {
-        return TokenSettings.builder()
-                .accessTokenTimeToLive(
-                        Duration.ofMinutes(15))
-                .refreshTokenTimeToLive(
-                        Duration.ofDays(30))
-                .reuseRefreshTokens(false)
-                .build();
-    }
 }

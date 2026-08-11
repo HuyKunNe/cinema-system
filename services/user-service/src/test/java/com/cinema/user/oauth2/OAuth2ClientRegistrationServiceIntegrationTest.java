@@ -80,9 +80,8 @@ class OAuth2ClientRegistrationServiceIntegrationTest
 
         assertThat(persisted
                 .getAuthorizationGrantTypes())
-                .containsExactlyInAnyOrder(
-                        AuthorizationGrantType.AUTHORIZATION_CODE,
-                        AuthorizationGrantType.REFRESH_TOKEN);
+                .containsOnly(
+                        AuthorizationGrantType.AUTHORIZATION_CODE);
 
         assertThat(persisted.getClientSettings()
                 .isRequireProofKey())
@@ -92,9 +91,6 @@ class OAuth2ClientRegistrationServiceIntegrationTest
                 .isRequireAuthorizationConsent())
                 .isTrue();
 
-        assertThat(persisted.getTokenSettings()
-                .isReuseRefreshTokens())
-                .isFalse();
     }
 
     @Test
