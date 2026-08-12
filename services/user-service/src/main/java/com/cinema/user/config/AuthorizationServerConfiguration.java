@@ -17,6 +17,7 @@ import org.springframework.security.oauth2.server.authorization.settings.Authori
 import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.oauth2.server.authorization.jackson2.OAuth2AuthorizationServerJackson2Module;
 
+import com.cinema.user.oauth2.token.RefreshTokenReuseService;
 import com.cinema.user.oauth2.token.RefreshTokenTrackingService;
 import com.cinema.user.oauth2.token.TrackingOAuth2AuthorizationService;
 import com.cinema.user.security.CinemaUserDetails;
@@ -88,7 +89,8 @@ public class AuthorizationServerConfiguration {
     OAuth2AuthorizationService authorizationService(
             JdbcOperations jdbcOperations,
             RegisteredClientRepository registeredClientRepository,
-            RefreshTokenTrackingService refreshTokenTrackingService) {
+            RefreshTokenTrackingService refreshTokenTrackingService,
+            RefreshTokenReuseService refreshTokenReuseService) {
 
         JdbcOAuth2AuthorizationService authorizationService = new JdbcOAuth2AuthorizationService(
                 jdbcOperations,
@@ -107,7 +109,8 @@ public class AuthorizationServerConfiguration {
 
         return new TrackingOAuth2AuthorizationService(
                 authorizationService,
-                refreshTokenTrackingService);
+                refreshTokenTrackingService,
+                refreshTokenReuseService);
     }
 
     @Bean

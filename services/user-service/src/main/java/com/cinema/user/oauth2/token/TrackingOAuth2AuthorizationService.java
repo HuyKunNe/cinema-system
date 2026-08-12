@@ -10,13 +10,16 @@ public class TrackingOAuth2AuthorizationService
 
     private final OAuth2AuthorizationService delegate;
     private final RefreshTokenTrackingService trackingService;
+    private final RefreshTokenReuseService refreshTokenReuseService;
 
     public TrackingOAuth2AuthorizationService(
             OAuth2AuthorizationService delegate,
-            RefreshTokenTrackingService trackingService) {
+            RefreshTokenTrackingService trackingService,
+            RefreshTokenReuseService refreshTokenReuseService) {
 
         this.delegate = delegate;
         this.trackingService = trackingService;
+        this.refreshTokenReuseService = refreshTokenReuseService;
     }
 
     @Override
@@ -51,13 +54,29 @@ public class TrackingOAuth2AuthorizationService
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public OAuth2Authorization findByToken(
             String token,
             OAuth2TokenType tokenType) {
 
-        return delegate.findByToken(
+        OAuth2Authorization authorization = delegate.findByToken(
                 token,
                 tokenType);
+
+        if (authorization != null) {
+            return authorization;
+        }
+
+        if (!OAuth2TokenType.REFRESH_TOKEN.equals(
+                tokenType)) {
+
+            return null;
+        }
+
+        refreshTokenReuseService.detectAndRevoke(
+                token,
+                delegate);
+
+        return null;
     }
 }

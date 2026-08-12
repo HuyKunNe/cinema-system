@@ -31,6 +31,7 @@ import org.springframework.security.oauth2.server.authorization.settings.Authori
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 
+import com.cinema.user.oauth2.token.RefreshTokenReuseService;
 import com.cinema.user.oauth2.token.RefreshTokenTrackingService;
 import com.cinema.user.oauth2.token.TrackingOAuth2AuthorizationService;
 import com.cinema.user.security.jwt.JwtSigningKeyLoader;
@@ -299,6 +300,10 @@ class AuthorizationServerConfigurationTest {
                         RefreshTokenTrackingService.class,
                         () -> mock(
                                 RefreshTokenTrackingService.class))
+                .withBean(
+                        RefreshTokenReuseService.class,
+                        () -> mock(
+                                RefreshTokenReuseService.class))
                 .withPropertyValues(
                         "cinema.user.authorization-server.issuer="
                                 + ISSUER,

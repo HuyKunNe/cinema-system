@@ -409,26 +409,64 @@ class RefreshTokenRotationIntegrationTest
                 .andExpect(jsonPath("$.error")
                         .value("invalid_grant"));
 
-        RefreshTokenHistory previousHistory = refreshTokenHistoryRepository
+        RefreshTokenHistory reusedHistory = refreshTokenHistoryRepository
                 .findByTokenHash(
                         refreshTokenHasher.hash(
                                 firstRefreshToken))
                 .orElseThrow();
 
-        assertThat(previousHistory.getStatus())
+        assertThat(reusedHistory.getStatus())
                 .isEqualTo(
-                        RefreshTokenStatus.ROTATED);
+                        RefreshTokenStatus.REUSED);
 
-        assertThat(refreshTokenHistoryRepository
+        assertThat(reusedHistory.getReusedAt())
+                .isNotNull();
+
+        RefreshTokenHistory revokedHistory = refreshTokenHistoryRepository
                 .findByTokenHash(
                         refreshTokenHasher.hash(
-                                secondRefreshToken)))
-                .isPresent();
-                
-        assertThat(authorizationService.findByToken(
-                secondRefreshToken,
-                OAuth2TokenType.REFRESH_TOKEN))
+                                secondRefreshToken))
+                .orElseThrow();
+
+        assertThat(revokedHistory.getStatus())
+                .isEqualTo(
+                        RefreshTokenStatus.REVOKED);
+
+        assertThat(revokedHistory.getRevokedAt())
                 .isNotNull();
+
+        mockMvc.perform(
+                post("/oauth2/token")
+                        .with(httpBasic(
+                                CLIENT_ID,
+                                RAW_CLIENT_SECRET))
+                        .contentType(
+                                MediaType.APPLICATION_FORM_URLENCODED)
+                        .param(
+                                "grant_type",
+                                "refresh_token")
+                        .param(
+                                "refresh_token",
+                                secondRefreshToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error")
+                        .value("invalid_grant"));
+
+        OAuth2Authorization authorization = authorizationService.findById(
+                reusedHistory.getAuthorizationId());
+
+        assertThat(authorization)
+                .isNotNull();
+
+        assertThat(authorization
+                .getRefreshToken()
+                .isInvalidated())
+                .isTrue();
+
+        assertThat(authorization
+                .getAccessToken()
+                .isInvalidated())
+                .isTrue();
     }
 
     @Test
