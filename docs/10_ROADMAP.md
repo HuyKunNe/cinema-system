@@ -1,8 +1,8 @@
 # Project Roadmap
 
 **Version:** R25 In Progress
-**Current target:** R25.9 — OAuth2 clients and grant types
-**Last updated:** 2026-08-10
+**Current target:** R25.11 — refresh rotation and revocation
+**Last updated:** 2026-08-12
 
 ---
 
@@ -1104,38 +1104,78 @@ Status: DONE. The User Service now has separate Authorization Server and
 application security filter chains, canonical issuer settings, OIDC enablement,
 existing DAO authentication integration and focused security/configuration tests.
 
-#### 🚧 R25.9 — OAuth2 clients and grant types
+#### ✅ R25.9 — OAuth2 clients and grant types
 
-- JDBC registered-client persistence;
-- controlled client registration;
-- Authorization Code with PKCE, Refresh Token and Client Credentials;
-- public and confidential client rules;
-- encoded client secrets and redirect URI validation.
+Completed scope:
 
-Status: IN PROGRESS. JDBC registered-client persistence, Flyway schema,
-controlled server-side registration, public PKCE client policy, service-client
-policy, encoded secrets, exact redirect URI validation and MySQL integration
-coverage are implemented. Authorization Server metadata is restricted to the
-three approved grants; protocol tests verify S256 PKCE rejection/consent and
-client-authentication boundaries. Successful token issuance and complete
-end-to-end grant-flow verification remain coupled to R25.10 signing/JWT work.
+- Flyway-owned JDBC registered-client persistence;
+- controlled server-side client registration;
+- public Authorization Code clients with mandatory S256 PKCE and no client secret;
+- confidential BFF clients with encoded secrets, Authorization Code, S256 PKCE and
+  Refresh Token;
+- service clients with encoded secrets and Client Credentials only;
+- exact HTTPS or loopback HTTP redirect URI validation;
+- approved grant metadata and protocol-policy integration tests.
 
-#### ⏳ R25.10 — JWT claims and JWK signing
+Status: DONE.
 
-- RSA signing-key loading and JWK source;
-- `kid` and RS256;
-- required standard claims;
-- `username`, `roles` and `permissions` claims;
-- UUID v7 subject enforcement;
-- JWK publication and token integration tests.
+#### ✅ R25.10 — JWT claims and JWK signing
 
-#### ⏳ R25.11 — refresh rotation and revocation
+Completed scope:
 
-- opaque refresh tokens and rotation;
-- reuse rejection and security events;
-- authorization-session persistence;
-- logout, account, password-reset and client revocation;
-- concurrency and integration tests.
+- externally configured RSA private and public key loading;
+- PKCS#8 private-key and X.509 public-key validation;
+- RS256 signing with stable `kid`;
+- JWK Set publication;
+- configured issuer and API audience;
+- UUID v7 user subject;
+- `username`, `roles` and authorized `permissions` user claims;
+- service-client subject and permission claims;
+- Client Credentials and Authorization Code with PKCE token integration tests;
+- public-client verification that no refresh token is issued.
+
+Status: DONE.
+
+#### 🚧 R25.11 — refresh rotation and revocation
+
+Completed checkpoints:
+
+```text
+R25.11.1 — JDBC authorization and consent persistence              DONE
+R25.11.2 — Confidential user/BFF client policy                     DONE
+R25.11.3 — Refresh-token rotation protocol integration             DONE
+R25.11.4 — Hashed refresh-token history and persistence model      DONE
+R25.11.5 — Issuance and rotation history tracking                  DONE
+R25.11.6 — Rotated-token reuse detection and family invalidation   DONE
+```
+
+Implemented behavior:
+
+- OAuth2 authorization and consent state is persisted through JDBC.
+- Public SPA clients remain Authorization Code plus S256 PKCE clients without refresh
+  tokens.
+- Confidential BFF clients receive non-reusable opaque refresh tokens.
+- Successful refresh rotates the token and preserves one authorization-family identity.
+- History stores only lowercase SHA-256 token hashes.
+- History states are `ACTIVE`, `ROTATED`, `REUSED` and `REVOKED`.
+- Rotated-token reuse revokes active family records and invalidates the current
+  authorization access and refresh tokens.
+- Unknown tokens remain non-oracular and return `invalid_grant`.
+- Unit, Flyway, repository and end-to-end MySQL integration tests cover the implemented
+  behavior.
+
+Remaining checkpoints:
+
+```text
+R25.11.7 — Logout and explicit token revocation                    NEXT
+R25.11.8 — Account, password-reset and client revocation triggers  PLANNED
+R25.11.9 — Durable security-event recording                        PLANNED
+R25.11.10 — Concurrent refresh and reuse verification              PLANNED
+R25.11.11 — Cleanup, full verification and documentation closure   PLANNED
+```
+
+R25.11 remains in progress until these remaining revocation, audit, concurrency and
+closure requirements pass.
 
 #### ⏳ R25.12 — profile and account lifecycle
 

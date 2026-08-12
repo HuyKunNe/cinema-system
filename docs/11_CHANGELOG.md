@@ -33,15 +33,74 @@ Current status:
 
 ```text
 R1-R24   Completed
-R25.1–R25.8 Completed
-R25.9    OAuth2 clients and grant types in progress
-R25.10+  Planned User Service implementation
+R25.1–R25.10 Completed
+R25.11   Refresh rotation and revocation in progress
+R25.12+  Planned User Service implementation
 R26-R28  Planned
 ```
 
 ---
 
 # Unreleased
+
+## 2026-08-12
+
+### Completed
+
+- Completed R25.9 controlled OAuth2 client persistence and grant policies.
+- Completed R25.10 RS256 signing, JWK publication, JWT claim customization and
+  end-to-end Client Credentials and Authorization Code with PKCE token issuance.
+- Completed R25.11.1–R25.11.6 authorization-session persistence, confidential BFF
+  policy, refresh rotation, hashed history tracking, reuse detection and token-family
+  invalidation.
+
+### Authorization Server and JWT
+
+- Added externally configured PKCS#8 private-key and X.509 public-key loading.
+- Added RS256 JWK source, stable key identifiers, JWT encoder and decoder.
+- Added configured issuer and audience plus UUID v7 subjects, username, roles and
+  authorized permission claims.
+- Added JWK endpoint and public-key verification integration coverage.
+- Kept public SPA clients on Authorization Code with mandatory S256 PKCE and without
+  refresh tokens.
+- Added confidential BFF registration with encoded client secrets, mandatory PKCE,
+  Authorization Code and non-reusable 30-day refresh tokens.
+- Verified Client Credentials service tokens and confidential user-token flows.
+
+### Authorization Persistence and Refresh Security
+
+- Added Flyway-owned JDBC OAuth2 authorization and consent tables.
+- Added a dedicated allowlisted Jackson mapping for persisted `CinemaUserDetails`
+  without persisting password hashes.
+- Added a tracking authorization-service decorator while retaining Spring
+  Authorization Server protocol behavior.
+- Added refresh-token history with UUID v7 identifiers, optimistic versioning,
+  database constraints, critical indexes and pessimistic token lookup.
+- Persisted lowercase SHA-256 token hashes rather than raw refresh tokens in history.
+- Added `ACTIVE`, `ROTATED`, `REUSED` and `REVOKED` history transitions.
+- Added automatic history creation on issuance and rotation.
+- Added reuse detection for rotated tokens, active-family revocation and invalidation
+  of current access and refresh token metadata.
+- Kept unknown refresh-token failures non-oracular.
+- Added unit, Flyway, repository and MySQL protocol integration tests.
+
+### Verification
+
+- Verified public-client absence of refresh tokens.
+- Verified confidential-client refresh rotation and rejection of old refresh tokens.
+- Verified refresh requests require confidential client authentication.
+- Verified current family tokens become unusable after rotated-token reuse.
+- Verified OAuth2 persistence uses JDBC and raw history tokens are not stored.
+- Verified the root reactor with `mvn clean verify`.
+
+### Remaining R25.11 Work
+
+- Logout and explicit token revocation.
+- Revocation triggered by account disablement, password reset/change and client
+  deactivation or secret rotation.
+- Durable auditable security-event publication for refresh-token reuse.
+- Concurrent refresh/reuse integration verification.
+- Expired-history cleanup, retention policy and final documentation closure.
 
 ## 2026-08-10
 

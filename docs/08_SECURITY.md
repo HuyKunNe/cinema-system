@@ -221,12 +221,17 @@ persistence.
 
 Gateway and every protected business service remain independent Resource Servers.
 
-Implementation status: R25.8 provides the separate Authorization Server security
-chain, OIDC baseline, canonical issuer configuration, DAO authentication and
-account-status enforcement. The current R25.9 baseline also provides controlled
-public/service client registration backed by `JdbcRegisteredClientRepository`.
-RSA/JWK signing, JWT claim customization, authorization/consent persistence and
-complete protocol grant-flow verification remain later checkpoint work.
+Implementation status through R25.11.6: User Service provides separate Authorization
+Server and application security chains, canonical issuer and OIDC configuration,
+account-status-aware DAO authentication, JDBC registered-client, authorization and
+consent persistence, RS256 signing, JWK publication and customized JWT claims.
+Authorization Code with S256 PKCE is verified for public clients without refresh
+tokens; controlled confidential BFF clients use Authorization Code with PKCE and
+rotating opaque refresh tokens; service clients use Client Credentials. Refresh-token
+history stores only SHA-256 hashes, records ACTIVE, ROTATED, REUSED and REVOKED
+states, detects reuse of rotated tokens and invalidates the affected authorization
+family. Logout, account/password/client revocation, durable security-event publication
+and concurrent refresh hardening remain active R25.11 work.
 
 ---
 
@@ -337,6 +342,28 @@ User Service owns refresh-token and authorization-session state. Refresh tokens 
 opaque and rotate after every successful refresh. Spring Authorization Server clients
 must disable refresh-token reuse. Reuse of an invalidated token must revoke the
 affected authorization session and create an auditable security event.
+
+Implemented R25.11 baseline:
+
+- Public SPA clients use Authorization Code with S256 PKCE and do not receive refresh
+  tokens.
+- Confidential BFF clients authenticate at the token endpoint and receive rotating
+  opaque refresh tokens with a maximum lifetime of 30 days.
+- OAuth2 authorizations and consents are stored through JDBC in the User Service
+  database.
+- Refresh-token history stores lowercase SHA-256 hashes only; raw history tokens are
+  never persisted or logged.
+- A successful rotation changes the prior history record from `ACTIVE` to `ROTATED`
+  and creates a new `ACTIVE` record in the same authorization family.
+- Reuse of a rotated token changes the old record to `REUSED`, revokes active family
+  records, invalidates the current access and refresh token metadata and returns
+  `invalid_grant`.
+- Unknown token values remain non-oracular and return the protocol error without
+  revealing history state.
+
+Remaining R25.11 work includes logout and explicit revocation endpoints, revocation
+triggered by sensitive account or credential changes, durable security-event
+publication, concurrent refresh verification and operational cleanup policy.
 
 ---
 
