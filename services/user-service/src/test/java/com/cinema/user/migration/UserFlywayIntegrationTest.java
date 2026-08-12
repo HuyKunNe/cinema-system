@@ -31,7 +31,8 @@ class UserFlywayIntegrationTest
             "role_permissions",
             "oauth2_registered_client",
             "oauth2_authorization",
-            "oauth2_authorization_consent");
+            "oauth2_authorization_consent",
+            "oauth2_refresh_token_history");
 
     @Autowired
     private Flyway flyway;
@@ -67,12 +68,12 @@ class UserFlywayIntegrationTest
                 """
                         SELECT COUNT(*)
                         FROM flyway_schema_history
-                        WHERE version IN ('1', '2', '3', '4', '5', '6')
+                        WHERE version IN ('1', '2', '3', '4', '5', '6', '7')
                           AND success = TRUE
                         """,
                 Integer.class);
 
-        assertThat(count).isEqualTo(6);
+        assertThat(count).isEqualTo(7);
     }
 
     @Test
@@ -93,7 +94,8 @@ class UserFlywayIntegrationTest
                               'email_verification_tokens',
                               'oauth2_registered_client',
                               'oauth2_authorization',
-                              'oauth2_authorization_consent'
+                              'oauth2_authorization_consent',
+                              'oauth2_refresh_token_history'
                           )
                         ORDER BY table_name
                         """,
@@ -171,10 +173,15 @@ class UserFlywayIntegrationTest
                                         'user_id'
                                     )
                                 )
+                                OR
+                                (
+                                    table_name = 'oauth2_refresh_token_history'
+                                    AND column_name = 'id'
+                                )
                           )
                         """);
 
-        assertThat(columns).hasSize(15);
+        assertThat(columns).hasSize(16);
 
         assertThat(columns)
                 .allSatisfy(column -> {
@@ -205,7 +212,8 @@ class UserFlywayIntegrationTest
                               'uk_user_credentials_user',
                               'uk_roles_name',
                               'uk_permissions_code',
-                              'uk_email_verification_tokens_hash'
+                              'uk_email_verification_tokens_hash',
+                              'uk_oauth2_refresh_token_history_hash'
                           )
                         """,
                 String.class);
@@ -218,7 +226,8 @@ class UserFlywayIntegrationTest
                         "uk_user_credentials_user",
                         "uk_roles_name",
                         "uk_permissions_code",
-                        "uk_email_verification_tokens_hash");
+                        "uk_email_verification_tokens_hash",
+                        "uk_oauth2_refresh_token_history_hash");
     }
 
     @Test
@@ -238,7 +247,8 @@ class UserFlywayIntegrationTest
                               'fk_role_permissions_role',
                               'fk_role_permissions_permission',
                               'fk_role_permissions_assigned_by',
-                              'fk_email_verification_tokens_user'
+                              'fk_email_verification_tokens_user',
+                              'fk_oauth2_refresh_token_history_authorization'
                           )
                         """,
                 String.class);
@@ -253,7 +263,8 @@ class UserFlywayIntegrationTest
                         "fk_role_permissions_role",
                         "fk_role_permissions_permission",
                         "fk_role_permissions_assigned_by",
-                        "fk_email_verification_tokens_user");
+                        "fk_email_verification_tokens_user",
+                        "fk_oauth2_refresh_token_history_authorization");
     }
 
     @Test
@@ -265,12 +276,19 @@ class UserFlywayIntegrationTest
                         WHERE constraint_schema = DATABASE()
                           AND constraint_type = 'CHECK'
                           AND constraint_name IN (
-                              'chk_users_status',
-                              'chk_user_credentials_failed_attempts',
-                              'chk_roles_name',
-                              'chk_email_verification_token_hash',
-                              'chk_email_verification_token_expiration',
-                              'chk_email_verification_token_terminal_state'
+                                'chk_users_status',
+                                'chk_user_credentials_failed_attempts',
+                                'chk_roles_name',
+                                'chk_email_verification_token_hash',
+                                'chk_email_verification_token_expiration',
+                                'chk_email_verification_token_terminal_state',
+                                'chk_oauth2_refresh_token_history_hash',
+                                'chk_oauth2_refresh_token_history_status',
+                                'chk_oauth2_refresh_token_history_time',
+                                'chk_oauth2_refresh_token_history_transition_time',
+                                'chk_oauth2_refresh_token_history_rotated_time',
+                                'chk_oauth2_refresh_token_history_revoked_time',
+                                'chk_oauth2_refresh_token_history_reused_time'
                           )
                         """,
                 String.class);
@@ -282,7 +300,14 @@ class UserFlywayIntegrationTest
                         "chk_roles_name",
                         "chk_email_verification_token_hash",
                         "chk_email_verification_token_expiration",
-                        "chk_email_verification_token_terminal_state");
+                        "chk_email_verification_token_terminal_state",
+                        "chk_oauth2_refresh_token_history_hash",
+                        "chk_oauth2_refresh_token_history_status",
+                        "chk_oauth2_refresh_token_history_time",
+                        "chk_oauth2_refresh_token_history_transition_time",
+                        "chk_oauth2_refresh_token_history_rotated_time",
+                        "chk_oauth2_refresh_token_history_revoked_time",
+                        "chk_oauth2_refresh_token_history_reused_time");
     }
 
     @Test
@@ -299,7 +324,10 @@ class UserFlywayIntegrationTest
                               'idx_role_permissions_permission',
                               'idx_role_permissions_assigned_by',
                               'idx_email_verification_tokens_user_active',
-                              'idx_email_verification_tokens_expires_at'
+                              'idx_email_verification_tokens_expires_at',
+                              'idx_oauth2_refresh_token_history_authorization',
+                              'idx_oauth2_refresh_token_history_client_principal',
+                              'idx_oauth2_refresh_token_history_status_expires'
                           )
                         """,
                 String.class);
@@ -312,7 +340,10 @@ class UserFlywayIntegrationTest
                         "idx_role_permissions_permission",
                         "idx_role_permissions_assigned_by",
                         "idx_email_verification_tokens_user_active",
-                        "idx_email_verification_tokens_expires_at");
+                        "idx_email_verification_tokens_expires_at",
+                        "idx_oauth2_refresh_token_history_authorization",
+                        "idx_oauth2_refresh_token_history_client_principal",
+                        "idx_oauth2_refresh_token_history_status_expires");
     }
 
     @Test
@@ -498,6 +529,36 @@ class UserFlywayIntegrationTest
                         "registered_client_id",
                         "principal_name",
                         "authorities");
+    }
+
+    @Test
+    void refreshTokenHistoryTableShouldContainExpectedColumns() {
+        List<String> columns = jdbcTemplate.queryForList(
+                """
+                        SELECT column_name
+                        FROM information_schema.columns
+                        WHERE table_schema = DATABASE()
+                          AND table_name =
+                              'oauth2_refresh_token_history'
+                        """,
+                String.class);
+
+        assertThat(columns)
+                .containsExactlyInAnyOrder(
+                        "id",
+                        "version",
+                        "authorization_id",
+                        "registered_client_id",
+                        "principal_name",
+                        "token_hash",
+                        "status",
+                        "issued_at",
+                        "expires_at",
+                        "rotated_at",
+                        "revoked_at",
+                        "reused_at",
+                        "created_at",
+                        "updated_at");
     }
 
     private int permissionCountForRole(String roleName) {

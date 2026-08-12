@@ -6,6 +6,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -88,6 +90,24 @@ class CinemaJwtTokenCustomizerTest {
     }
 
     @Test
+    void shouldUseJdbcSafeMutableCollectionsForUserClaims() {
+        JwtClaimsSet claims = customizeUserToken(
+                userDetails(
+                        USER_ID,
+                        defaultAuthorities()));
+
+        Object roles = claims.getClaim("roles");
+        Object permissions = claims.getClaim(
+                "permissions");
+
+        assertThat(roles)
+                .isInstanceOf(ArrayList.class);
+
+        assertThat(permissions)
+                .isInstanceOf(ArrayList.class);
+    }
+
+    @Test
     void shouldSortAndDeduplicateRolesAndPermissions() {
         CinemaUserDetails principal = userDetails(
                 USER_ID,
@@ -148,6 +168,20 @@ class CinemaJwtTokenCustomizerTest {
         assertThat(claims.getAudience()).containsExactly("cinema-api");
         assertThat(claims.getClaimAsStringList("permissions"))
                 .containsExactly("inventory:read", "inventory:write");
+    }
+
+    @Test
+    void shouldUseJdbcSafeMutableCollectionForServicePermissions() {
+        JwtClaimsSet claims = customizeServiceToken(
+                Set.of(
+                        "inventory:write",
+                        "inventory:read"));
+
+        Object permissions = claims.getClaim(
+                "permissions");
+
+        assertThat(permissions)
+                .isInstanceOf(ArrayList.class);
     }
 
     @Test

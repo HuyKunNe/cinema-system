@@ -170,6 +170,31 @@ public final class UserErrorCode implements ErrorCode {
             "USER_OAUTH2_CLIENT_ALREADY_EXISTS",
             "OAuth2 client already exists");
 
+    public static final UserErrorCode OAUTH2_REFRESH_TOKEN_HISTORY_INVALID = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_OAUTH2_REFRESH_TOKEN_HISTORY_INVALID",
+            "Refresh token history data is invalid");
+
+    public static final UserErrorCode OAUTH2_REFRESH_TOKEN_HASH_INVALID = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_OAUTH2_REFRESH_TOKEN_HASH_INVALID",
+            "Refresh token hash is invalid");
+
+    public static final UserErrorCode OAUTH2_REFRESH_TOKEN_EXPIRATION_INVALID = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_OAUTH2_REFRESH_TOKEN_EXPIRATION_INVALID",
+            "Refresh token expiration is invalid");
+
+    public static final UserErrorCode OAUTH2_REFRESH_TOKEN_TIMESTAMP_REQUIRED = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_OAUTH2_REFRESH_TOKEN_TIMESTAMP_REQUIRED",
+            "Refresh token transition timestamp is required");
+
+    public static final UserErrorCode OAUTH2_REFRESH_TOKEN_TRANSITION_NOT_ALLOWED = new UserErrorCode(
+            ErrorCategory.BUSINESS,
+            "USER_OAUTH2_REFRESH_TOKEN_TRANSITION_NOT_ALLOWED",
+            "Refresh token state transition is not allowed");
+
     final ErrorCategory category;
     private final String code;
     private final String message;

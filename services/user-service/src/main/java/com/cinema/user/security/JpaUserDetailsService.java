@@ -1,10 +1,13 @@
 package com.cinema.user.security;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+
+import java.util.stream.Collectors;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -84,7 +87,8 @@ public class JpaUserDetailsService implements UserDetailsService {
         List<GrantedAuthority> authorities = authorityValues.stream()
                 .map(SimpleGrantedAuthority::new)
                 .map(GrantedAuthority.class::cast)
-                .toList();
+                .collect(Collectors.toCollection(
+                        ArrayList::new));
 
         return new CinemaUserDetails(
                 user.getId(),

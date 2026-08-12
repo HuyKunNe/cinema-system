@@ -1,8 +1,10 @@
 package com.cinema.user.security.jwt;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -37,7 +39,9 @@ public class CinemaJwtTokenCustomizer
         }
 
         context.getClaims()
-                .audience(properties.audiences());
+                .audience(
+                        new ArrayList<>(
+                                properties.audiences()));
 
         if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(
                 context.getAuthorizationGrantType())) {
@@ -68,22 +72,27 @@ public class CinemaJwtTokenCustomizer
         List<String> roles = userDetails.getAuthorities()
                 .stream()
                 .map(GrantedAuthority::getAuthority)
-                .filter(authority -> authority.startsWith(ROLE_PREFIX))
-                .map(authority -> authority.substring(ROLE_PREFIX.length()))
+                .filter(authority -> authority.startsWith(
+                        ROLE_PREFIX))
+                .map(authority -> authority.substring(
+                        ROLE_PREFIX.length()))
                 .distinct()
                 .sorted()
-                .toList();
+                .collect(Collectors.toCollection(
+                        ArrayList::new));
 
         Set<String> authorizedScopes = context.getAuthorizedScopes();
 
         List<String> permissions = userDetails.getAuthorities()
                 .stream()
                 .map(GrantedAuthority::getAuthority)
-                .filter(authority -> !authority.startsWith(ROLE_PREFIX))
+                .filter(authority -> !authority.startsWith(
+                        ROLE_PREFIX))
                 .filter(authorizedScopes::contains)
                 .distinct()
                 .sorted()
-                .toList();
+                .collect(Collectors.toCollection(
+                        ArrayList::new));
 
         context.getClaims()
                 .subject(userId.toString())
@@ -99,7 +108,8 @@ public class CinemaJwtTokenCustomizer
                 .stream()
                 .distinct()
                 .sorted()
-                .toList();
+                .collect(Collectors.toCollection(
+                        ArrayList::new));
 
         context.getClaims()
                 .subject(clientId)
