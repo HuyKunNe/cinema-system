@@ -1,6 +1,6 @@
 package com.cinema.user.repository;
 
-import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,10 +34,11 @@ public interface RefreshTokenHistoryRepository
     Optional<RefreshTokenHistory> findByTokenHashForUpdate(
             @Param("tokenHash") String tokenHash);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE RefreshTokenHistory token
             SET token.status = :revokedStatus,
+                token.revokedAt = :revokedAt,
                 token.updatedAt = :revokedAt
             WHERE token.authorizationId = :authorizationId
               AND token.status = :activeStatus
@@ -46,5 +47,5 @@ public interface RefreshTokenHistoryRepository
             @Param("authorizationId") String authorizationId,
             @Param("activeStatus") RefreshTokenStatus activeStatus,
             @Param("revokedStatus") RefreshTokenStatus revokedStatus,
-            @Param("revokedAt") Instant revokedAt);
+            @Param("revokedAt") OffsetDateTime revokedAt);
 }
