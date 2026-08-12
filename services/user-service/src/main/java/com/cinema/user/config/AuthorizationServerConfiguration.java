@@ -17,6 +17,8 @@ import org.springframework.security.oauth2.server.authorization.settings.Authori
 import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.oauth2.server.authorization.jackson2.OAuth2AuthorizationServerJackson2Module;
 
+import com.cinema.user.oauth2.token.RefreshTokenTrackingService;
+import com.cinema.user.oauth2.token.TrackingOAuth2AuthorizationService;
 import com.cinema.user.security.CinemaUserDetails;
 import com.cinema.user.security.CinemaUserDetailsMixin;
 import com.cinema.user.security.jwt.JwtSigningKeyLoader;
@@ -85,7 +87,8 @@ public class AuthorizationServerConfiguration {
     @Bean
     OAuth2AuthorizationService authorizationService(
             JdbcOperations jdbcOperations,
-            RegisteredClientRepository registeredClientRepository) {
+            RegisteredClientRepository registeredClientRepository,
+            RefreshTokenTrackingService refreshTokenTrackingService) {
 
         JdbcOAuth2AuthorizationService authorizationService = new JdbcOAuth2AuthorizationService(
                 jdbcOperations,
@@ -93,18 +96,18 @@ public class AuthorizationServerConfiguration {
 
         ObjectMapper objectMapper = oauth2AuthorizationObjectMapper();
 
-        JdbcOAuth2AuthorizationService.OAuth2AuthorizationRowMapper rowMapper =
-                new JdbcOAuth2AuthorizationService.OAuth2AuthorizationRowMapper(
-                        registeredClientRepository);
+        JdbcOAuth2AuthorizationService.OAuth2AuthorizationRowMapper rowMapper = new JdbcOAuth2AuthorizationService.OAuth2AuthorizationRowMapper(
+                registeredClientRepository);
         rowMapper.setObjectMapper(objectMapper);
         authorizationService.setAuthorizationRowMapper(rowMapper);
 
-        JdbcOAuth2AuthorizationService.OAuth2AuthorizationParametersMapper parametersMapper =
-                new JdbcOAuth2AuthorizationService.OAuth2AuthorizationParametersMapper();
+        JdbcOAuth2AuthorizationService.OAuth2AuthorizationParametersMapper parametersMapper = new JdbcOAuth2AuthorizationService.OAuth2AuthorizationParametersMapper();
         parametersMapper.setObjectMapper(objectMapper);
         authorizationService.setAuthorizationParametersMapper(parametersMapper);
 
-        return authorizationService;
+        return new TrackingOAuth2AuthorizationService(
+                authorizationService,
+                refreshTokenTrackingService);
     }
 
     @Bean

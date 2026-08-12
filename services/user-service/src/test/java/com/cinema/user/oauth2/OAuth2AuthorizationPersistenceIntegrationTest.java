@@ -1,19 +1,17 @@
 package com.cinema.user.oauth2;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Set;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
-import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationCode;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsent;
@@ -27,6 +25,7 @@ import org.springframework.security.oauth2.server.authorization.settings.TokenSe
 import org.springframework.transaction.annotation.Transactional;
 
 import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
+import com.cinema.user.oauth2.token.TrackingOAuth2AuthorizationService;
 
 @Transactional
 class OAuth2AuthorizationPersistenceIntegrationTest
@@ -57,7 +56,7 @@ class OAuth2AuthorizationPersistenceIntegrationTest
     void shouldUseJdbcAuthorizationService() {
         assertThat(authorizationService)
                 .isInstanceOf(
-                        JdbcOAuth2AuthorizationService.class);
+                        TrackingOAuth2AuthorizationService.class);
     }
 
     @Test

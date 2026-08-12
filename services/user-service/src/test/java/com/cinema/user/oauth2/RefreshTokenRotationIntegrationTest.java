@@ -46,11 +46,15 @@ import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
+import com.cinema.user.entity.RefreshTokenHistory;
 import com.cinema.user.entity.Role;
 import com.cinema.user.entity.User;
 import com.cinema.user.entity.UserRole;
 import com.cinema.user.enums.RoleName;
 import com.cinema.user.oauth2.model.ConfidentialUserClientRegistration;
+import com.cinema.user.oauth2.token.RefreshTokenHasher;
+import com.cinema.user.oauth2.token.RefreshTokenStatus;
+import com.cinema.user.repository.RefreshTokenHistoryRepository;
 import com.cinema.user.repository.RoleRepository;
 import com.cinema.user.repository.UserRepository;
 import com.cinema.user.repository.UserRoleRepository;
@@ -111,6 +115,12 @@ class RefreshTokenRotationIntegrationTest
 
     @Autowired
     private OAuth2AuthorizationService authorizationService;
+
+    @Autowired
+    private RefreshTokenHistoryRepository refreshTokenHistoryRepository;
+
+    @Autowired
+    private RefreshTokenHasher refreshTokenHasher;
 
     @Autowired
     private OAuth2AuthorizationConsentService authorizationConsentService;
@@ -192,6 +202,48 @@ class RefreshTokenRotationIntegrationTest
         assertThat(initialAuthorization)
                 .isNotNull();
 
+        String firstRefreshTokenHash = refreshTokenHasher.hash(
+                firstRefreshToken);
+
+        RefreshTokenHistory initialHistory = refreshTokenHistoryRepository
+                .findByTokenHash(
+                        firstRefreshTokenHash)
+                .orElseThrow();
+
+        assertThat(initialHistory.getStatus())
+                .isEqualTo(
+                        RefreshTokenStatus.ACTIVE);
+
+        assertThat(initialHistory.getAuthorizationId())
+                .isEqualTo(
+                        initialAuthorization.getId());
+
+        assertThat(initialHistory
+                .getRegisteredClientId())
+                .isEqualTo(
+                        client.getId());
+
+        assertThat(initialHistory.getPrincipalName())
+                .isEqualTo(
+                        user.getUsername());
+
+        assertThat(initialHistory.getTokenHash())
+                .isEqualTo(
+                        firstRefreshTokenHash);
+
+        assertThat(initialHistory.getTokenHash())
+                .doesNotContain(
+                        firstRefreshToken);
+
+        assertThat(initialHistory.getRotatedAt())
+                .isNull();
+
+        assertThat(initialHistory.getRevokedAt())
+                .isNull();
+
+        assertThat(initialHistory.getReusedAt())
+                .isNull();
+
         JsonNode refreshedResponse = refreshAccessToken(
                 firstRefreshToken);
 
@@ -215,6 +267,78 @@ class RefreshTokenRotationIntegrationTest
         assertThat(secondRefreshToken)
                 .isNotEqualTo(
                         firstRefreshToken);
+
+        RefreshTokenHistory rotatedHistory = refreshTokenHistoryRepository
+                .findByTokenHash(
+                        firstRefreshTokenHash)
+                .orElseThrow();
+
+        assertThat(rotatedHistory.getStatus())
+                .isEqualTo(
+                        RefreshTokenStatus.ROTATED);
+
+        assertThat(rotatedHistory.getRotatedAt())
+                .isNotNull();
+
+        assertThat(rotatedHistory.getRevokedAt())
+                .isNull();
+
+        assertThat(rotatedHistory.getReusedAt())
+                .isNull();
+
+        String secondRefreshTokenHash = refreshTokenHasher.hash(
+                secondRefreshToken);
+
+        RefreshTokenHistory activeHistory = refreshTokenHistoryRepository
+                .findByTokenHash(
+                        secondRefreshTokenHash)
+                .orElseThrow();
+
+        assertThat(activeHistory.getStatus())
+                .isEqualTo(
+                        RefreshTokenStatus.ACTIVE);
+
+        assertThat(activeHistory.getAuthorizationId())
+                .isEqualTo(
+                        rotatedHistory.getAuthorizationId());
+
+        assertThat(activeHistory
+                .getRegisteredClientId())
+                .isEqualTo(
+                        rotatedHistory
+                                .getRegisteredClientId());
+
+        assertThat(activeHistory.getPrincipalName())
+                .isEqualTo(
+                        rotatedHistory
+                                .getPrincipalName());
+
+        assertThat(activeHistory.getIssuedAt())
+                .isNotNull();
+
+        assertThat(activeHistory.getExpiresAt())
+                .isAfter(
+                        activeHistory.getIssuedAt());
+
+        assertThat(activeHistory.getRotatedAt())
+                .isNull();
+
+        assertThat(activeHistory.getRevokedAt())
+                .isNull();
+
+        assertThat(activeHistory.getReusedAt())
+                .isNull();
+
+        assertThat(refreshTokenHistoryRepository
+                .findAllByAuthorizationId(
+                        activeHistory
+                                .getAuthorizationId()))
+                .hasSize(2)
+                .extracting(
+                        RefreshTokenHistory::getStatus)
+                .containsExactlyInAnyOrder(
+                        RefreshTokenStatus.ROTATED,
+                        RefreshTokenStatus.ACTIVE);
 
         OAuth2Authorization currentAuthorization = authorizationService.findByToken(
                 secondRefreshToken,
@@ -285,6 +409,22 @@ class RefreshTokenRotationIntegrationTest
                 .andExpect(jsonPath("$.error")
                         .value("invalid_grant"));
 
+        RefreshTokenHistory previousHistory = refreshTokenHistoryRepository
+                .findByTokenHash(
+                        refreshTokenHasher.hash(
+                                firstRefreshToken))
+                .orElseThrow();
+
+        assertThat(previousHistory.getStatus())
+                .isEqualTo(
+                        RefreshTokenStatus.ROTATED);
+
+        assertThat(refreshTokenHistoryRepository
+                .findByTokenHash(
+                        refreshTokenHasher.hash(
+                                secondRefreshToken)))
+                .isPresent();
+                
         assertThat(authorizationService.findByToken(
                 secondRefreshToken,
                 OAuth2TokenType.REFRESH_TOKEN))
@@ -355,7 +495,7 @@ class RefreshTokenRotationIntegrationTest
                 .asText();
 
         mockMvc.perform(
-            post("/oauth2/token")
+                post("/oauth2/token")
                         .with(httpBasic(
                                 CLIENT_ID,
                                 RAW_CLIENT_SECRET

@@ -28,8 +28,11 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 
+import com.cinema.user.oauth2.token.RefreshTokenTrackingService;
+import com.cinema.user.oauth2.token.TrackingOAuth2AuthorizationService;
 import com.cinema.user.security.jwt.JwtSigningKeyLoader;
 import com.cinema.user.security.jwt.RsaSigningKeyPair;
 import com.nimbusds.jose.JWSAlgorithm;
@@ -242,6 +245,24 @@ class AuthorizationServerConfigurationTest {
         });
     }
 
+    @Test
+    void shouldRegisterTrackingAuthorizationService() {
+        disabledSigningContext()
+                .run(context -> {
+                    assertThat(context)
+                            .hasNotFailed();
+
+                    assertThat(context)
+                            .hasSingleBean(
+                                    OAuth2AuthorizationService.class);
+
+                    assertThat(context.getBean(
+                            OAuth2AuthorizationService.class))
+                            .isInstanceOf(
+                                    TrackingOAuth2AuthorizationService.class);
+                });
+    }
+
     private ApplicationContextRunner disabledSigningContext() {
         return baseContext()
                 .withPropertyValues(
@@ -264,13 +285,23 @@ class AuthorizationServerConfigurationTest {
 
     private ApplicationContextRunner baseContext() {
         return new ApplicationContextRunner()
-                .withUserConfiguration(AuthorizationServerConfiguration.class)
-                .withBean(JdbcOperations.class, () -> mock(JdbcOperations.class))
+                .withUserConfiguration(
+                        AuthorizationServerConfiguration.class)
+                .withBean(
+                        JdbcOperations.class,
+                        () -> mock(
+                                JdbcOperations.class))
                 .withBean(
                         RegisteredClientRepository.class,
-                        () -> mock(RegisteredClientRepository.class))
+                        () -> mock(
+                                RegisteredClientRepository.class))
+                .withBean(
+                        RefreshTokenTrackingService.class,
+                        () -> mock(
+                                RefreshTokenTrackingService.class))
                 .withPropertyValues(
-                        "cinema.user.authorization-server.issuer=" + ISSUER,
+                        "cinema.user.authorization-server.issuer="
+                                + ISSUER,
                         "cinema.user.authorization-server.jwt.audiences=cinema-api");
     }
 

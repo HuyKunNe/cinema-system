@@ -195,6 +195,16 @@ public final class UserErrorCode implements ErrorCode {
             "USER_OAUTH2_REFRESH_TOKEN_TRANSITION_NOT_ALLOWED",
             "Refresh token state transition is not allowed");
 
+    public static final UserErrorCode OAUTH2_REFRESH_TOKEN_CRYPTO_FAILURE = new UserErrorCode(
+            ErrorCategory.SYSTEM,
+            "USER_OAUTH2_REFRESH_TOKEN_CRYPTO_FAILURE",
+            "Refresh token cryptography is unavailable");
+
+    public static final UserErrorCode OAUTH2_REFRESH_TOKEN_HISTORY_NOT_FOUND = new UserErrorCode(
+            ErrorCategory.SYSTEM,
+            "USER_OAUTH2_REFRESH_TOKEN_HISTORY_NOT_FOUND",
+            "Refresh token history is unavailable");
+
     final ErrorCategory category;
     private final String code;
     private final String message;
