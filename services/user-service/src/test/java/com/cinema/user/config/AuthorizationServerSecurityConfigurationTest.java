@@ -117,12 +117,27 @@ class AuthorizationServerSecurityConfigurationTest
     }
 
     @Test
-    void oidcProviderConfigurationShouldNotBeExposedBeforeJwkSetup()
+    void oidcProviderConfigurationShouldExposeLogoutEndpoint()
             throws Exception {
 
         mockMvc.perform(get(
                 "/.well-known/openid-configuration"))
-                .andExpect(status().is3xxRedirection());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.issuer")
+                        .value(
+                                ISSUER))
+                .andExpect(jsonPath("$.authorization_endpoint")
+                        .value(
+                                ISSUER
+                                        + "/oauth2/authorize"))
+                .andExpect(jsonPath("$.token_endpoint")
+                        .value(
+                                ISSUER
+                                        + "/oauth2/token"))
+                .andExpect(jsonPath("$.end_session_endpoint")
+                        .value(
+                                ISSUER
+                                        + "/connect/logout"));
     }
 
     @Test

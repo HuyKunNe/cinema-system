@@ -64,8 +64,12 @@ public class RefreshTokenTrackingServiceImpl
 
         if (previousRefreshToken
                 .getTokenValue()
-                .equals(currentRefreshToken
-                        .getTokenValue())) {
+                .equals(currentRefreshToken.getTokenValue())) {
+
+            synchronizeRevocation(
+                    previous,
+                    current,
+                    currentRefreshToken);
 
             return;
         }
@@ -73,24 +77,56 @@ public class RefreshTokenTrackingServiceImpl
         OffsetDateTime rotatedAt = OffsetDateTime.now(clock);
 
         String previousTokenHash = refreshTokenHasher.hash(
-                previousRefreshToken
-                        .getTokenValue());
+                previousRefreshToken.getTokenValue());
 
         RefreshTokenHistory previousHistory = refreshTokenHistoryRepository
-                .findByTokenHashForUpdate(
-                        previousTokenHash)
-                .orElseThrow(
-                        RefreshTokenTrackingServiceImpl::historyNotFound);
+                .findByTokenHashForUpdate(previousTokenHash)
+                .orElseThrow(RefreshTokenTrackingServiceImpl::historyNotFound);
 
-        previousHistory.markRotated(
-                rotatedAt);
+        previousHistory.markRotated(rotatedAt);
 
-        refreshTokenHistoryRepository.save(
-                previousHistory);
+        refreshTokenHistoryRepository.save(previousHistory);
 
         createHistory(
                 current,
                 currentRefreshToken);
+    }
+
+    private void synchronizeRevocation(
+            OAuth2Authorization previous,
+            OAuth2Authorization current,
+            OAuth2RefreshToken currentRefreshToken) {
+
+        if (previous.getRefreshToken() == null || current.getRefreshToken() == null) {
+
+            return;
+        }
+
+        boolean previouslyInvalidated = previous.getRefreshToken()
+                .isInvalidated();
+
+        boolean currentlyInvalidated = current.getRefreshToken()
+                .isInvalidated();
+
+        if (!previouslyInvalidated && currentlyInvalidated) {
+            revokeHistory(currentRefreshToken);
+        }
+    }
+
+    private void revokeHistory(
+            OAuth2RefreshToken refreshToken) {
+
+        OffsetDateTime revokedAt = OffsetDateTime.now(clock);
+
+        String tokenHash = refreshTokenHasher.hash(refreshToken.getTokenValue());
+
+        RefreshTokenHistory history = refreshTokenHistoryRepository
+                .findByTokenHashForUpdate(tokenHash)
+                .orElseThrow(RefreshTokenTrackingServiceImpl::historyNotFound);
+
+        history.markRevoked(revokedAt);
+
+        refreshTokenHistoryRepository.save(history);
     }
 
     private void createHistory(
@@ -105,25 +141,19 @@ public class RefreshTokenTrackingServiceImpl
 
         RefreshTokenHistory history = new RefreshTokenHistory(
                 authorization.getId(),
-                authorization
-                        .getRegisteredClientId(),
-                authorization
-                        .getPrincipalName(),
-                refreshTokenHasher.hash(
-                        refreshToken
-                                .getTokenValue()),
+                authorization.getRegisteredClientId(),
+                authorization.getPrincipalName(),
+                refreshTokenHasher.hash(refreshToken.getTokenValue()),
                 issuedAt,
                 expiresAt);
 
-        refreshTokenHistoryRepository.save(
-                history);
+        refreshTokenHistoryRepository.save(history);
     }
 
     private static OAuth2RefreshToken refreshToken(
             OAuth2Authorization authorization) {
 
-        if (authorization == null
-                || authorization.getRefreshToken() == null) {
+        if (authorization == null || authorization.getRefreshToken() == null) {
 
             return null;
         }
@@ -147,7 +177,6 @@ public class RefreshTokenTrackingServiceImpl
     }
 
     private static InternalServerException historyNotFound() {
-        return new InternalServerException(
-                UserErrorCode.OAUTH2_REFRESH_TOKEN_HISTORY_NOT_FOUND);
+        return new InternalServerException(UserErrorCode.OAUTH2_REFRESH_TOKEN_HISTORY_NOT_FOUND);
     }
 }

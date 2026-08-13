@@ -38,6 +38,8 @@ public class AuthorizationServerSecurityConfiguration {
                 .with(
                         authorizationServerConfigurer,
                         authorizationServer -> authorizationServer
+                                .oidc(
+                                        Customizer.withDefaults())
                                 .authorizationServerMetadataEndpoint(
                                         metadata -> metadata
                                                 .authorizationServerMetadataCustomizer(
