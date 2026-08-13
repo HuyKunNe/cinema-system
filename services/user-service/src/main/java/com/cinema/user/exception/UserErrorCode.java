@@ -220,6 +220,11 @@ public final class UserErrorCode implements ErrorCode {
             "USER_OAUTH2_CLIENT_SECRET_ROTATION_NOT_ALLOWED",
             "OAuth2 client does not support secret rotation");
 
+    public static final UserErrorCode USER_ID_REQUIRED = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_ID_REQUIRED",
+            "User identifier is required");
+            
     final ErrorCategory category;
     private final String code;
     private final String message;
