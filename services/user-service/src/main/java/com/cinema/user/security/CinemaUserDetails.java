@@ -102,6 +102,25 @@ public final class CinemaUserDetails implements UserDetails, CredentialsContaine
     }
 
     @Override
+    public boolean equals(Object object) {
+        if (this == object) {
+            return true;
+        }
+
+        if (!(object instanceof CinemaUserDetails other)) {
+            return false;
+        }
+
+        return userId.equals(
+                other.userId);
+    }
+
+    @Override
+    public int hashCode() {
+        return userId.hashCode();
+    }
+
+    @Override
     public void eraseCredentials() {
         this.password = null;
     }

@@ -22,6 +22,12 @@
         </dependency>
 
         <dependency>
+            <groupId>com.cinema</groupId>
+            <artifactId>common-exception</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>

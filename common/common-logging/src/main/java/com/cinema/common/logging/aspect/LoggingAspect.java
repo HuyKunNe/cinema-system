@@ -3,9 +3,15 @@ package com.cinema.common.logging.aspect;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.ForbiddenException;
+import com.cinema.common.exception.exception.NotFoundException;
+import com.cinema.common.exception.exception.ResourceLockedException;
+import com.cinema.common.exception.exception.UnauthorizedException;
+import com.cinema.common.exception.exception.ValidationException;
 
 @Aspect
 public class LoggingAspect {
@@ -30,15 +36,28 @@ public class LoggingAspect {
 
             return result;
 
-        } catch (Throwable ex) {
+        } catch (ValidationException
+                | NotFoundException
+                | ConflictException
+                | UnauthorizedException
+                | ForbiddenException
+                | ResourceLockedException exception) {
+
+            LOGGER.warn(
+                    "Business exception in {}: {}",
+                    joinPoint.getSignature(),
+                    exception.getMessage());
+
+            throw exception;
+
+        } catch (Throwable exception) {
 
             LOGGER.error(
-                    "Exception in {}",
+                    "Unexpected exception in {}",
                     joinPoint.getSignature(),
-                    ex);
+                    exception);
 
-            throw ex;
-
+            throw exception;
         }
 
     }

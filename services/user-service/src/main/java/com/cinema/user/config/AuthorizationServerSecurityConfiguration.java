@@ -9,10 +9,15 @@ import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
+
+import com.cinema.user.oauth2.OidcLogoutRevocationSuccessHandler;
 
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
@@ -26,10 +31,17 @@ public class AuthorizationServerSecurityConfiguration {
     @Bean
     @Order(1)
     SecurityFilterChain authorizationServerSecurityFilterChain(
-            HttpSecurity http) throws Exception {
+            HttpSecurity http,
+            SessionRegistry sessionRegistry,
+            OidcLogoutRevocationSuccessHandler logoutSuccessHandler)
+            throws Exception {
 
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = OAuth2AuthorizationServerConfigurer
                 .authorizationServer();
+
+        http.setSharedObject(
+                SessionRegistry.class,
+                sessionRegistry);
 
         http
                 .securityMatcher(
@@ -38,8 +50,10 @@ public class AuthorizationServerSecurityConfiguration {
                 .with(
                         authorizationServerConfigurer,
                         authorizationServer -> authorizationServer
-                                .oidc(
-                                        Customizer.withDefaults())
+                                .oidc(oidc -> oidc
+                                        .logoutEndpoint(logout -> logout
+                                                .logoutResponseHandler(
+                                                        logoutSuccessHandler)))
                                 .authorizationServerMetadataEndpoint(
                                         metadata -> metadata
                                                 .authorizationServerMetadataCustomizer(
@@ -61,7 +75,8 @@ public class AuthorizationServerSecurityConfiguration {
     @Order(2)
     SecurityFilterChain applicationSecurityFilterChain(
             HttpSecurity http,
-            AuthenticationProvider userAuthenticationProvider)
+            AuthenticationProvider userAuthenticationProvider,
+            SessionRegistry sessionRegistry)
             throws Exception {
 
         HttpSessionRequestCache requestCache = new HttpSessionRequestCache();
@@ -78,10 +93,25 @@ public class AuthorizationServerSecurityConfiguration {
                         .anyRequest()
                         .authenticated())
                 .requestCache(cache -> cache.requestCache(requestCache))
-                .sessionManagement(session -> session.sessionFixation(
-                        fixation -> fixation.migrateSession()))
+                .sessionManagement(session -> session
+                        .sessionFixation(
+                                fixation -> fixation
+                                        .migrateSession())
+                        .maximumSessions(-1)
+                        .sessionRegistry(
+                                sessionRegistry))
                 .formLogin(Customizer.withDefaults());
 
         return http.build();
+    }
+
+    @Bean
+    SessionRegistry sessionRegistry() {
+        return new SessionRegistryImpl();
+    }
+
+    @Bean
+    static HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new HttpSessionEventPublisher();
     }
 }

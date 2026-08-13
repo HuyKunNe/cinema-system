@@ -119,4 +119,29 @@ public class CinemaUserDetailsTest {
 
         assertThat(details.getPassword()).isNull();
     }
+
+    @Test
+    void principalsWithSameUserIdShouldBeEqualForSessionLookup() {
+        CinemaUserDetails original = new CinemaUserDetails(
+                USER_ID,
+                "customer@example.com",
+                "encoded-password",
+                AccountStatus.ACTIVE,
+                List.of());
+
+        CinemaUserDetails deserialized = new CinemaUserDetails(
+                USER_ID,
+                "customer@example.com",
+                null,
+                AccountStatus.ACTIVE,
+                List.of());
+
+        assertThat(deserialized)
+                .isEqualTo(
+                        original);
+
+        assertThat(deserialized.hashCode())
+                .isEqualTo(
+                        original.hashCode());
+    }
 }
