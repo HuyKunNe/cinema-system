@@ -6,6 +6,8 @@ import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 
+import com.cinema.user.oauth2.impl.ActiveRegisteredClientRepository;
+
 @Configuration(proxyBeanMethods = false)
 public class RegisteredClientRepositoryConfiguration {
 
@@ -13,7 +15,11 @@ public class RegisteredClientRepositoryConfiguration {
     RegisteredClientRepository registeredClientRepository(
             JdbcOperations jdbcOperations) {
 
-        return new JdbcRegisteredClientRepository(
+        JdbcRegisteredClientRepository delegate = new JdbcRegisteredClientRepository(
+                jdbcOperations);
+
+        return new ActiveRegisteredClientRepository(
+                delegate,
                 jdbcOperations);
     }
 }

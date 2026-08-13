@@ -205,6 +205,21 @@ public final class UserErrorCode implements ErrorCode {
             "USER_OAUTH2_REFRESH_TOKEN_HISTORY_NOT_FOUND",
             "Refresh token history is unavailable");
 
+    public static final UserErrorCode OAUTH2_CLIENT_NOT_FOUND = new UserErrorCode(
+            ErrorCategory.RESOURCE,
+            "USER_OAUTH2_CLIENT_NOT_FOUND",
+            "OAuth2 client not found");
+
+    public static final UserErrorCode OAUTH2_CLIENT_ALREADY_INACTIVE = new UserErrorCode(
+            ErrorCategory.BUSINESS,
+            "USER_OAUTH2_CLIENT_ALREADY_INACTIVE",
+            "OAuth2 client is already inactive");
+
+    public static final UserErrorCode OAUTH2_CLIENT_SECRET_ROTATION_NOT_ALLOWED = new UserErrorCode(
+            ErrorCategory.BUSINESS,
+            "USER_OAUTH2_CLIENT_SECRET_ROTATION_NOT_ALLOWED",
+            "OAuth2 client does not support secret rotation");
+
     final ErrorCategory category;
     private final String code;
     private final String message;

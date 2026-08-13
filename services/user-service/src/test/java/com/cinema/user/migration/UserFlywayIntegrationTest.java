@@ -461,7 +461,8 @@ class UserFlywayIntegrationTest
                         "post_logout_redirect_uris",
                         "scopes",
                         "client_settings",
-                        "token_settings");
+                        "token_settings",
+                        "active");
     }
 
     @Test
@@ -559,6 +560,22 @@ class UserFlywayIntegrationTest
                         "reused_at",
                         "created_at",
                         "updated_at");
+    }
+
+    @Test
+    void registeredClientStatusShouldDefaultToActive() {
+        String defaultValue = jdbcTemplate.queryForObject(
+                """
+                        SELECT column_default
+                        FROM information_schema.columns
+                        WHERE table_schema = DATABASE()
+                          AND table_name = 'oauth2_registered_client'
+                          AND column_name = 'active'
+                        """,
+                String.class);
+
+        assertThat(defaultValue)
+                .isEqualTo("1");
     }
 
     private int permissionCountForRole(String roleName) {

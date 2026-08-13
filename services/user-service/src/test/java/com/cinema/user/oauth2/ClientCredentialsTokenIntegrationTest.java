@@ -54,6 +54,8 @@ class ClientCredentialsTokenIntegrationTest
 
     private static final String RAW_CLIENT_SECRET = "local-client-credentials-secret";
 
+    private static final String ROTATED_CLIENT_SECRET = "rotated-client-credentials-secret";
+
     private static final String KEY_ID = "cinema-user-token-integration-key";
 
     private static final TestRsaKeyMaterial KEY_MATERIAL = TestRsaKeyMaterial.generate();
@@ -63,6 +65,9 @@ class ClientCredentialsTokenIntegrationTest
 
     @Autowired
     private RegisteredClientRepository registeredClientRepository;
+
+    @Autowired
+    private OAuth2ClientLifecycleService clientLifecycleService;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -96,60 +101,34 @@ class ClientCredentialsTokenIntegrationTest
 
     @BeforeEach
     void registerServiceClient() {
-        if (registeredClientRepository.findByClientId(CLIENT_ID) != null) {
+        if (registeredClientRepository.findByClientId(
+                CLIENT_ID) != null) {
+
             return;
         }
 
-        assertThat(UUID.fromString(REGISTERED_CLIENT_ID).version())
+        assertThat(UUID.fromString(
+                REGISTERED_CLIENT_ID).version())
                 .isEqualTo(7);
 
-        RegisteredClient client = RegisteredClient
-                .withId(REGISTERED_CLIENT_ID)
-                .clientId(CLIENT_ID)
-                .clientIdIssuedAt(
-                        Instant.parse("2026-08-11T00:00:00Z"))
-                .clientSecret(
-                        passwordEncoder.encode(RAW_CLIENT_SECRET))
-                .clientName("R25.10.6 Inventory Service")
-                .clientAuthenticationMethod(
-                        ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(
-                        AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .scope("inventory:read")
-                .scope("inventory:write")
-                .clientSettings(
-                        ClientSettings.builder()
-                                .requireAuthorizationConsent(false)
-                                .build())
-                .tokenSettings(
-                        TokenSettings.builder()
-                                .accessTokenFormat(
-                                        OAuth2TokenFormat.SELF_CONTAINED)
-                                .accessTokenTimeToLive(
-                                        Duration.ofMinutes(5))
-                                .build())
-                .build();
+        RegisteredClient client = serviceClient(
+                REGISTERED_CLIENT_ID,
+                CLIENT_ID,
+                RAW_CLIENT_SECRET,
+                "R25.10.6 Inventory Service");
 
-        registeredClientRepository.save(client);
+        registeredClientRepository.save(
+                client);
     }
 
     @Test
     void shouldIssueSignedJwtForClientCredentials()
             throws Exception {
 
-        MvcResult result = mockMvc.perform(
-                post("/oauth2/token")
-                        .with(httpBasic(
-                                CLIENT_ID,
-                                RAW_CLIENT_SECRET))
-                        .contentType(
-                                MediaType.APPLICATION_FORM_URLENCODED)
-                        .param(
-                                "grant_type",
-                                "client_credentials")
-                        .param(
-                                "scope",
-                                "inventory:read inventory:write"))
+        MvcResult result = requestToken(
+                CLIENT_ID,
+                RAW_CLIENT_SECRET,
+                "inventory:read inventory:write")
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(
                         MediaType.APPLICATION_JSON))
@@ -161,50 +140,154 @@ class ClientCredentialsTokenIntegrationTest
 
         JsonNode response = objectMapper.readTree(
                 result.getResponse()
-                        .getContentAsString(StandardCharsets.UTF_8));
+                        .getContentAsString(
+                                StandardCharsets.UTF_8));
 
-        String tokenValue = response
-                .required("access_token")
+        String tokenValue = response.required(
+                "access_token")
                 .asText();
 
-        Jwt jwt = jwtDecoder.decode(tokenValue);
+        Jwt jwt = jwtDecoder.decode(
+                tokenValue);
 
-        assertServiceToken(jwt);
+        assertServiceToken(
+                jwt,
+                CLIENT_ID);
     }
 
     @Test
     void shouldRejectIncorrectClientSecret()
             throws Exception {
 
-        mockMvc.perform(
-                post("/oauth2/token")
-                        .with(httpBasic(
-                                CLIENT_ID,
-                                "incorrect-secret"))
-                        .contentType(
-                                MediaType.APPLICATION_FORM_URLENCODED)
-                        .param(
-                                "grant_type",
-                                "client_credentials")
-                        .param(
-                                "scope",
-                                "inventory:read"))
+        requestToken(
+                CLIENT_ID,
+                "incorrect-secret",
+                "inventory:read")
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentTypeCompatibleWith(
                         MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error")
-                        .value("invalid_client"));
+                        .value(
+                                "invalid_client"));
     }
 
     @Test
     void shouldRejectUnregisteredScope()
             throws Exception {
 
-        mockMvc.perform(
+        requestToken(
+                CLIENT_ID,
+                RAW_CLIENT_SECRET,
+                "user:admin")
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(
+                        MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error")
+                        .value(
+                                "invalid_scope"));
+    }
+
+    @Test
+    void deactivatedClientShouldBeRejectedAsInvalidClient()
+            throws Exception {
+
+        ClientFixture fixture = registerIsolatedServiceClient(
+                "deactivate");
+
+        requestToken(
+                fixture.clientId(),
+                fixture.rawSecret(),
+                "inventory:read")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.access_token")
+                        .isNotEmpty());
+
+        clientLifecycleService.deactivate(
+                fixture.clientId());
+
+        requestToken(
+                fixture.clientId(),
+                fixture.rawSecret(),
+                "inventory:read")
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(
+                        MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error")
+                        .value(
+                                "invalid_client"));
+
+        assertThat(registeredClientRepository.findByClientId(
+                fixture.clientId()))
+                .isNull();
+    }
+
+    @Test
+    void rotatedSecretShouldRejectOldSecretAndAcceptNewSecret()
+            throws Exception {
+
+        ClientFixture fixture = registerIsolatedServiceClient(
+                "rotate");
+
+        requestToken(
+                fixture.clientId(),
+                fixture.rawSecret(),
+                "inventory:read")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.access_token")
+                        .isNotEmpty());
+
+        clientLifecycleService.rotateSecret(
+                fixture.clientId(),
+                ROTATED_CLIENT_SECRET);
+
+        requestToken(
+                fixture.clientId(),
+                fixture.rawSecret(),
+                "inventory:read")
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(
+                        MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error")
+                        .value(
+                                "invalid_client"));
+
+        MvcResult result = requestToken(
+                fixture.clientId(),
+                ROTATED_CLIENT_SECRET,
+                "inventory:read inventory:write")
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(
+                        MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.access_token")
+                        .isNotEmpty())
+                .andReturn();
+
+        JsonNode response = objectMapper.readTree(
+                result.getResponse()
+                        .getContentAsString(
+                                StandardCharsets.UTF_8));
+
+        Jwt jwt = jwtDecoder.decode(
+                response.required(
+                        "access_token")
+                        .asText());
+
+        assertServiceToken(
+                jwt,
+                fixture.clientId());
+    }
+
+    private org.springframework.test.web.servlet.ResultActions requestToken(
+            String clientId,
+            String rawSecret,
+            String scopes)
+            throws Exception {
+
+        return mockMvc.perform(
                 post("/oauth2/token")
                         .with(httpBasic(
-                                CLIENT_ID,
-                                RAW_CLIENT_SECRET))
+                                clientId,
+                                rawSecret))
                         .contentType(
                                 MediaType.APPLICATION_FORM_URLENCODED)
                         .param(
@@ -212,29 +295,110 @@ class ClientCredentialsTokenIntegrationTest
                                 "client_credentials")
                         .param(
                                 "scope",
-                                "user:admin"))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentTypeCompatibleWith(
-                        MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error")
-                        .value("invalid_scope"));
+                                scopes));
     }
 
-    private void assertServiceToken(Jwt jwt) {
+    private ClientFixture registerIsolatedServiceClient(
+            String prefix) {
+
+        String suffix = UUID.randomUUID()
+                .toString();
+
+        String registeredClientId = UUID.randomUUID()
+                .toString();
+
+        String clientId = "r25-11-8-5-"
+                + prefix
+                + "-"
+                + suffix;
+
+        String rawSecret = "isolated-"
+                + prefix
+                + "-secret";
+
+        RegisteredClient client = serviceClient(
+                registeredClientId,
+                clientId,
+                rawSecret,
+                "R25.11.8.5 "
+                        + prefix
+                        + " Client");
+
+        registeredClientRepository.save(
+                client);
+
+        return new ClientFixture(
+                clientId,
+                rawSecret);
+    }
+
+    private RegisteredClient serviceClient(
+            String registeredClientId,
+            String clientId,
+            String rawSecret,
+            String clientName) {
+
+        return RegisteredClient
+                .withId(
+                        registeredClientId)
+                .clientId(
+                        clientId)
+                .clientIdIssuedAt(
+                        Instant.now())
+                .clientSecret(
+                        passwordEncoder.encode(
+                                rawSecret))
+                .clientName(
+                        clientName)
+                .clientAuthenticationMethod(
+                        ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .authorizationGrantType(
+                        AuthorizationGrantType.CLIENT_CREDENTIALS)
+                .scope(
+                        "inventory:read")
+                .scope(
+                        "inventory:write")
+                .clientSettings(
+                        ClientSettings.builder()
+                                .requireAuthorizationConsent(
+                                        false)
+                                .build())
+                .tokenSettings(
+                        TokenSettings.builder()
+                                .accessTokenFormat(
+                                        OAuth2TokenFormat.SELF_CONTAINED)
+                                .accessTokenTimeToLive(
+                                        Duration.ofMinutes(5))
+                                .build())
+                .build();
+    }
+
+    private void assertServiceToken(
+            Jwt jwt,
+            String expectedSubject) {
+
         assertThat(jwt.getHeaders())
-                .containsEntry("alg", "RS256")
-                .containsEntry("kid", KEY_ID);
+                .containsEntry(
+                        "alg",
+                        "RS256")
+                .containsEntry(
+                        "kid",
+                        KEY_ID);
 
         assertThat(jwt.getIssuer().toString())
-                .isEqualTo(ISSUER);
+                .isEqualTo(
+                        ISSUER);
 
         assertThat(jwt.getSubject())
-                .isEqualTo(CLIENT_ID);
+                .isEqualTo(
+                        expectedSubject);
 
         assertThat(jwt.getAudience())
-                .containsExactly("cinema-api");
+                .containsExactly(
+                        "cinema-api");
 
-        assertThat(jwt.getClaimAsStringList("permissions"))
+        assertThat(jwt.getClaimAsStringList(
+                "permissions"))
                 .containsExactly(
                         "inventory:read",
                         "inventory:write");
@@ -244,13 +408,24 @@ class ClientCredentialsTokenIntegrationTest
                         "username",
                         "roles");
 
-        assertThat(jwt.getIssuedAt()).isNotNull();
-        assertThat(jwt.getExpiresAt()).isNotNull();
-        assertThat(jwt.getId()).isNotBlank();
+        assertThat(jwt.getIssuedAt())
+                .isNotNull();
+
+        assertThat(jwt.getExpiresAt())
+                .isNotNull();
+
+        assertThat(jwt.getId())
+                .isNotBlank();
 
         assertThat(Duration.between(
                 jwt.getIssuedAt(),
                 jwt.getExpiresAt()))
-                .isEqualTo(Duration.ofMinutes(5));
+                .isEqualTo(
+                        Duration.ofMinutes(5));
+    }
+
+    private record ClientFixture(
+            String clientId,
+            String rawSecret) {
     }
 }
