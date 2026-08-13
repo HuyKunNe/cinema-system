@@ -31,6 +31,7 @@ import com.cinema.common.exception.exception.UnauthorizedException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.user.entity.User;
 import com.cinema.user.entity.UserCredential;
+import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
 import com.cinema.user.repository.UserCredentialRepository;
 import com.cinema.user.repository.UserRepository;
 
@@ -44,6 +45,9 @@ class UserCredentialServiceImplTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private AuthorizationSessionRevocationService authorizationSessionRevocationService;
 
     private UserCredentialServiceImpl userCredentialService;
 
@@ -70,11 +74,14 @@ class UserCredentialServiceImplTest {
 
     private static final String NEW_HASH = "{bcrypt}$2a$10$new";
 
+    private static final String USERNAME = "member";
+
     @BeforeEach
     void setUp() {
         userCredentialService = new UserCredentialServiceImpl(
                 userRepository,
                 userCredentialRepository,
+                authorizationSessionRevocationService,
                 passwordEncoder,
                 FIXED_CLOCK);
     }
@@ -128,6 +135,9 @@ class UserCredentialServiceImplTest {
 
         verify(userCredentialRepository)
                 .existsByUser_Id(USER_ID);
+
+        verifyNoInteractions(
+                authorizationSessionRevocationService);
     }
 
     @Test
@@ -258,6 +268,10 @@ class UserCredentialServiceImplTest {
 
         assertThat(credential.getPasswordChangedAt())
                 .isEqualTo(FIXED_TIME);
+
+        verify(authorizationSessionRevocationService)
+                .revokeByPrincipalName(
+                        USERNAME);
     }
 
     @Test
@@ -284,6 +298,9 @@ class UserCredentialServiceImplTest {
 
         assertThat(credential.getPasswordHash())
                 .isEqualTo(CURRENT_HASH);
+
+        verifyNoInteractions(
+                authorizationSessionRevocationService);
     }
 
     @Test
@@ -312,6 +329,9 @@ class UserCredentialServiceImplTest {
 
         verify(passwordEncoder, never())
                 .encode(anyString());
+
+        verifyNoInteractions(
+                authorizationSessionRevocationService);
     }
 
     @Test
@@ -327,6 +347,9 @@ class UserCredentialServiceImplTest {
                 .isInstanceOf(NotFoundException.class);
 
         verifyNoInteractions(passwordEncoder);
+
+        verifyNoInteractions(
+                authorizationSessionRevocationService);
     }
 
     @Test
@@ -341,6 +364,8 @@ class UserCredentialServiceImplTest {
 
         assertThat(result).isFalse();
         verifyNoInteractions(passwordEncoder);
+        verifyNoInteractions(
+                authorizationSessionRevocationService);
     }
 
     @Test
@@ -363,6 +388,8 @@ class UserCredentialServiceImplTest {
 
         verify(passwordEncoder, never())
                 .upgradeEncoding(anyString());
+        verifyNoInteractions(
+                authorizationSessionRevocationService);
     }
 
     @Test
@@ -392,6 +419,8 @@ class UserCredentialServiceImplTest {
 
         verify(passwordEncoder, never())
                 .encode(anyString());
+        verifyNoInteractions(
+                authorizationSessionRevocationService);
     }
 
     @Test
@@ -424,6 +453,8 @@ class UserCredentialServiceImplTest {
 
         assertThat(credential.getPasswordChangedAt())
                 .isEqualTo(FIXED_TIME);
+        verifyNoInteractions(
+                authorizationSessionRevocationService);
     }
 
     @Test
@@ -441,6 +472,122 @@ class UserCredentialServiceImplTest {
                 .isFalse();
 
         verifyNoInteractions(passwordEncoder);
+        verifyNoInteractions(
+                authorizationSessionRevocationService);
+    }
+
+    @Test
+    void resetPasswordShouldReplacePasswordAndRevokeAuthorizations() {
+        UserCredential credential = createCredential(
+                CURRENT_HASH);
+
+        when(userCredentialRepository
+                .findByUser_Id(
+                        USER_ID))
+                .thenReturn(
+                        Optional.of(
+                                credential));
+
+        when(passwordEncoder.matches(
+                NEW_PASSWORD,
+                CURRENT_HASH))
+                .thenReturn(
+                        false);
+
+        when(passwordEncoder.encode(
+                NEW_PASSWORD))
+                .thenReturn(
+                        NEW_HASH);
+
+        userCredentialService.resetPassword(
+                USER_ID,
+                NEW_PASSWORD);
+
+        assertThat(credential.getPasswordHash())
+                .isEqualTo(
+                        NEW_HASH);
+
+        assertThat(credential.getPasswordHashAlgorithm())
+                .isEqualTo(
+                        "bcrypt");
+
+        assertThat(credential.getPasswordChangedAt())
+                .isEqualTo(
+                        FIXED_TIME);
+
+        verify(authorizationSessionRevocationService)
+                .revokeByPrincipalName(
+                        USERNAME);
+    }
+
+    @Test
+    void resetPasswordShouldRejectSamePasswordWithoutRevocation() {
+        UserCredential credential = createCredential(
+                CURRENT_HASH);
+
+        when(userCredentialRepository
+                .findByUser_Id(
+                        USER_ID))
+                .thenReturn(
+                        Optional.of(
+                                credential));
+
+        when(passwordEncoder.matches(
+                NEW_PASSWORD,
+                CURRENT_HASH))
+                .thenReturn(
+                        true);
+
+        assertThatThrownBy(() -> userCredentialService.resetPassword(
+                USER_ID,
+                NEW_PASSWORD))
+                .isInstanceOf(
+                        ValidationException.class);
+
+        verify(passwordEncoder, never())
+                .encode(
+                        anyString());
+
+        verifyNoInteractions(
+                authorizationSessionRevocationService);
+
+        assertThat(credential.getPasswordHash())
+                .isEqualTo(
+                        CURRENT_HASH);
+    }
+
+    @Test
+    void resetPasswordShouldThrowWhenCredentialDoesNotExist() {
+        when(userCredentialRepository
+                .findByUser_Id(
+                        USER_ID))
+                .thenReturn(
+                        Optional.empty());
+
+        assertThatThrownBy(() -> userCredentialService.resetPassword(
+                USER_ID,
+                NEW_PASSWORD))
+                .isInstanceOf(
+                        NotFoundException.class);
+
+        verifyNoInteractions(
+                passwordEncoder,
+                authorizationSessionRevocationService);
+    }
+
+    @Test
+    void resetPasswordShouldRejectInvalidNewPassword() {
+        assertThatThrownBy(() -> userCredentialService.resetPassword(
+                USER_ID,
+                "short"))
+                .isInstanceOf(
+                        ValidationException.class);
+
+        verifyNoInteractions(
+                userRepository,
+                userCredentialRepository,
+                passwordEncoder,
+                authorizationSessionRevocationService);
     }
 
     private User createUser() {

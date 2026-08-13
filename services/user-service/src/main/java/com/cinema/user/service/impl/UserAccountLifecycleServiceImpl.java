@@ -12,6 +12,7 @@ import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.user.entity.User;
 import com.cinema.user.entity.UserCredential;
 import com.cinema.user.exception.UserErrorCode;
+import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
 import com.cinema.user.repository.UserCredentialRepository;
 import com.cinema.user.repository.UserRepository;
 import com.cinema.user.service.UserAccountLifecycleService;
@@ -22,15 +23,19 @@ import com.cinema.user.service.UserAccountLifecycleService;
 public class UserAccountLifecycleServiceImpl implements UserAccountLifecycleService {
 
     private final UserRepository userRepository;
+
     private final UserCredentialRepository userCredentialRepository;
+
+    private final AuthorizationSessionRevocationService authorizationSessionRevocationService;
+
     private final Clock clock;
 
-    public UserAccountLifecycleServiceImpl(
-            UserRepository userRepository,
+    public UserAccountLifecycleServiceImpl(UserRepository userRepository,
             UserCredentialRepository userCredentialRepository,
-            Clock clock) {
+            AuthorizationSessionRevocationService authorizationSessionRevocationService, Clock clock) {
         this.userRepository = userRepository;
         this.userCredentialRepository = userCredentialRepository;
+        this.authorizationSessionRevocationService = authorizationSessionRevocationService;
         this.clock = clock;
     }
 
@@ -45,10 +50,14 @@ public class UserAccountLifecycleServiceImpl implements UserAccountLifecycleServ
     @Override
     @Transactional
     public void lock(UUID userId) {
+
         User user = findUser(userId);
 
         user.lock(
                 OffsetDateTime.now(clock));
+
+        authorizationSessionRevocationService
+                .revokeByPrincipalName(user.getUsername());
     }
 
     @Override
@@ -61,10 +70,15 @@ public class UserAccountLifecycleServiceImpl implements UserAccountLifecycleServ
     @Override
     @Transactional
     public void disable(UUID userId) {
+
         User user = findUser(userId);
 
         user.disable(
                 OffsetDateTime.now(clock));
+
+        authorizationSessionRevocationService
+                .revokeByPrincipalName(
+                        user.getUsername());
     }
 
     @Override

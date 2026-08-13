@@ -29,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.user.entity.User;
 import com.cinema.user.entity.UserCredential;
+import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
 import com.cinema.user.repository.UserCredentialRepository;
 import com.cinema.user.repository.UserRepository;
 
@@ -36,6 +37,8 @@ import com.cinema.user.repository.UserRepository;
 public class UserAccountLifecycleServiceImplTest {
     private static final UUID USER_ID = UUID.fromString(
             "019c4000-0000-7000-8000-000000000001");
+
+    private static final String USERNAME = "member@example.com";
 
     private static final Instant FIXED_INSTANT = Instant.parse("2026-08-07T03:00:00Z");
 
@@ -59,6 +62,9 @@ public class UserAccountLifecycleServiceImplTest {
     @Mock
     private UserCredential credential;
 
+    @Mock
+    private AuthorizationSessionRevocationService authorizationSessionRevocationService;
+
     private UserAccountLifecycleServiceImpl lifecycleService;
 
     @BeforeEach
@@ -66,6 +72,7 @@ public class UserAccountLifecycleServiceImplTest {
         lifecycleService = new UserAccountLifecycleServiceImpl(
                 userRepository,
                 userCredentialRepository,
+                authorizationSessionRevocationService,
                 FIXED_CLOCK);
     }
 
@@ -87,15 +94,32 @@ public class UserAccountLifecycleServiceImplTest {
 
         verifyNoInteractions(
                 userCredentialRepository);
+        verifyNoInteractions(
+                authorizationSessionRevocationService);
     }
 
     @Test
-    void lockShouldUseServerTime() {
+    void lockShouldUseServerTimeAndRevokeAuthorizations() {
         userExists();
 
-        lifecycleService.lock(USER_ID);
+        when(user.getUsername())
+                .thenReturn(
+                        USERNAME);
 
-        verify(user).lock(FIXED_TIME);
+        lifecycleService.lock(
+                USER_ID);
+
+        InOrder order = inOrder(
+                user,
+                authorizationSessionRevocationService);
+
+        order.verify(user)
+                .lock(
+                        FIXED_TIME);
+
+        order.verify(authorizationSessionRevocationService)
+                .revokeByPrincipalName(
+                        USERNAME);
 
         verifyNoInteractions(
                 userCredentialRepository);
@@ -111,15 +135,32 @@ public class UserAccountLifecycleServiceImplTest {
 
         verifyNoInteractions(
                 userCredentialRepository);
+        verifyNoInteractions(
+                authorizationSessionRevocationService);
     }
 
     @Test
-    void disableShouldUseServerTime() {
+    void disableShouldUseServerTimeAndRevokeAuthorizations() {
         userExists();
 
-        lifecycleService.disable(USER_ID);
+        when(user.getUsername())
+                .thenReturn(
+                        USERNAME);
 
-        verify(user).disable(FIXED_TIME);
+        lifecycleService.disable(
+                USER_ID);
+
+        InOrder order = inOrder(
+                user,
+                authorizationSessionRevocationService);
+
+        order.verify(user)
+                .disable(
+                        FIXED_TIME);
+
+        order.verify(authorizationSessionRevocationService)
+                .revokeByPrincipalName(
+                        USERNAME);
 
         verifyNoInteractions(
                 userCredentialRepository);
@@ -135,6 +176,8 @@ public class UserAccountLifecycleServiceImplTest {
 
         verifyNoInteractions(
                 userCredentialRepository);
+        verifyNoInteractions(
+                authorizationSessionRevocationService);
     }
 
     @Test
@@ -171,6 +214,8 @@ public class UserAccountLifecycleServiceImplTest {
 
         verify(userCredentialRepository, never())
                 .save(any());
+        verifyNoInteractions(
+                authorizationSessionRevocationService);
     }
 
     static Stream<Consumer<UserAccountLifecycleServiceImpl>> operationsRequiringUser() {
@@ -197,7 +242,8 @@ public class UserAccountLifecycleServiceImplTest {
                 .isInstanceOf(NotFoundException.class);
 
         verifyNoInteractions(
-                userCredentialRepository);
+                userCredentialRepository,
+                authorizationSessionRevocationService);
     }
 
     @Test
@@ -216,5 +262,7 @@ public class UserAccountLifecycleServiceImplTest {
                 .recordSuccessfulLogin(any());
 
         verifyNoInteractions(credential);
+        verifyNoInteractions(
+                authorizationSessionRevocationService);
     }
 }

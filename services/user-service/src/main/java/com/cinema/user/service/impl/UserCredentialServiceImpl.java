@@ -18,6 +18,7 @@ import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.user.entity.User;
 import com.cinema.user.entity.UserCredential;
 import com.cinema.user.exception.UserErrorCode;
+import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
 import com.cinema.user.repository.UserCredentialRepository;
 import com.cinema.user.repository.UserRepository;
 import com.cinema.user.service.UserCredentialService;
@@ -31,19 +32,30 @@ public class UserCredentialServiceImpl implements UserCredentialService {
     private static final String PASSWORD_ALGORITHM = "bcrypt";
 
     private final UserRepository userRepository;
+
     private final UserCredentialRepository userCredentialRepository;
+
+    private final AuthorizationSessionRevocationService authorizationSessionRevocationService;
+
     private final PasswordEncoder passwordEncoder;
+
     private final Clock clock;
 
     public UserCredentialServiceImpl(
             UserRepository userRepository,
             UserCredentialRepository userCredentialRepository,
+            AuthorizationSessionRevocationService authorizationSessionRevocationService,
             PasswordEncoder passwordEncoder,
             Clock clock) {
 
         this.userRepository = userRepository;
+
         this.userCredentialRepository = userCredentialRepository;
+
+        this.authorizationSessionRevocationService = authorizationSessionRevocationService;
+
         this.passwordEncoder = passwordEncoder;
+
         this.clock = clock;
     }
 
@@ -105,9 +117,51 @@ public class UserCredentialServiceImpl implements UserCredentialService {
         }
 
         credential.changePassword(
-                passwordEncoder.encode(newRawPassword),
+                passwordEncoder.encode(
+                        newRawPassword),
                 PASSWORD_ALGORITHM,
-                OffsetDateTime.now(clock));
+                OffsetDateTime.now(
+                        clock));
+
+        authorizationSessionRevocationService
+                .revokeByPrincipalName(
+                        credential
+                                .getUser()
+                                .getUsername());
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(
+            UUID userId,
+            String newRawPassword) {
+
+        validateNewPassword(
+                newRawPassword);
+
+        UserCredential credential = findCredential(
+                userId);
+
+        if (passwordEncoder.matches(
+                newRawPassword,
+                credential.getPasswordHash())) {
+
+            throw new ValidationException(
+                    UserErrorCode.PASSWORD_MUST_DIFFER);
+        }
+
+        credential.changePassword(
+                passwordEncoder.encode(
+                        newRawPassword),
+                PASSWORD_ALGORITHM,
+                OffsetDateTime.now(
+                        clock));
+
+        authorizationSessionRevocationService
+                .revokeByPrincipalName(
+                        credential
+                                .getUser()
+                                .getUsername());
     }
 
     private User findUser(UUID userId) {

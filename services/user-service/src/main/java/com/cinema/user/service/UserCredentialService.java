@@ -16,6 +16,10 @@ public interface UserCredentialService {
             @NotBlank String currentRawPassword,
             @NotBlank String newRawPassword);
 
+    void resetPassword(
+            @NotNull UUID userId,
+            @NotBlank String newRawPassword);
+
     boolean verifyPassword(
             @NotNull UUID userId,
             @NotBlank String rawPassword);
