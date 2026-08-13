@@ -32,7 +32,8 @@ class UserFlywayIntegrationTest
             "oauth2_registered_client",
             "oauth2_authorization",
             "oauth2_authorization_consent",
-            "oauth2_refresh_token_history");
+            "oauth2_refresh_token_history",
+            "oauth2_revocation_audit_events");
 
     @Autowired
     private Flyway flyway;
@@ -95,7 +96,8 @@ class UserFlywayIntegrationTest
                               'oauth2_registered_client',
                               'oauth2_authorization',
                               'oauth2_authorization_consent',
-                              'oauth2_refresh_token_history'
+                              'oauth2_refresh_token_history',
+                              'oauth2_revocation_audit_events'
                           )
                         ORDER BY table_name
                         """,
@@ -178,10 +180,18 @@ class UserFlywayIntegrationTest
                                     table_name = 'oauth2_refresh_token_history'
                                     AND column_name = 'id'
                                 )
+                                OR
+                                (
+                                    table_name = 'oauth2_revocation_audit_events'
+                                    AND column_name IN (
+                                        'id',
+                                        'actor_user_id'
+                                    )
+                                )
                           )
                         """);
 
-        assertThat(columns).hasSize(16);
+        assertThat(columns).hasSize(18);
 
         assertThat(columns)
                 .allSatisfy(column -> {
@@ -576,6 +586,33 @@ class UserFlywayIntegrationTest
 
         assertThat(defaultValue)
                 .isEqualTo("1");
+    }
+
+    @Test
+    void revocationAuditTableShouldContainExpectedColumns() {
+        List<String> columns = jdbcTemplate.queryForList(
+                """
+                        SELECT column_name
+                        FROM information_schema.columns
+                        WHERE table_schema = DATABASE()
+                          AND table_name =
+                              'oauth2_revocation_audit_events'
+                        """,
+                String.class);
+
+        assertThat(columns)
+                .containsExactlyInAnyOrder(
+                        "id",
+                        "version",
+                        "target_type",
+                        "target_reference",
+                        "reason",
+                        "actor_user_id",
+                        "actor_name",
+                        "revoked_authorization_count",
+                        "occurred_at",
+                        "created_at",
+                        "updated_at");
     }
 
     private int permissionCountForRole(String roleName) {

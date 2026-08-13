@@ -224,7 +224,12 @@ public final class UserErrorCode implements ErrorCode {
             ErrorCategory.VALIDATION,
             "USER_ID_REQUIRED",
             "User identifier is required");
-            
+
+    public static final UserErrorCode OAUTH2_REVOCATION_AUDIT_INVALID = new UserErrorCode(
+            ErrorCategory.VALIDATION,
+            "USER_OAUTH2_REVOCATION_AUDIT_INVALID",
+            "OAuth2 revocation audit data is invalid");
+
     final ErrorCategory category;
     private final String code;
     private final String message;

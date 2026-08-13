@@ -1,0 +1,13 @@
+package com.cinema.user.oauth2.audit;
+
+public enum RevocationReason {
+
+    ACCOUNT_LOCKED,
+    ACCOUNT_DISABLED,
+    PASSWORD_CHANGED,
+    PASSWORD_RESET,
+    CLIENT_DEACTIVATED,
+    CLIENT_SECRET_ROTATED,
+    ADMIN_USER_REVOCATION,
+    ADMIN_CLIENT_REVOCATION
+}
