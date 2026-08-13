@@ -1147,6 +1147,7 @@ R25.11.3 — Refresh-token rotation protocol integration             DONE
 R25.11.4 — Hashed refresh-token history and persistence model      DONE
 R25.11.5 — Issuance and rotation history tracking                  DONE
 R25.11.6 — Rotated-token reuse detection and family invalidation   DONE
+R25.11.7 — Logout and explicit token revocation                    DONE
 ```
 
 Implemented behavior:
@@ -1161,21 +1162,30 @@ Implemented behavior:
 - Rotated-token reuse revokes active family records and invalidates the current
   authorization access and refresh tokens.
 - Unknown tokens remain non-oracular and return `invalid_grant`.
+- Authenticated clients can explicitly revoke tokens through `/oauth2/revoke`.
+- Explicit refresh-token revocation invalidates the authorization metadata, changes
+  applicable refresh-token history to `REVOKED` and prevents subsequent refresh.
+- OpenID Connect RP-Initiated Logout is exposed through `/connect/logout`.
+- OIDC logout validates the ID-token hint, registered post-logout redirect URI and
+  hashed `sid` session claim.
+- Successful OIDC logout invalidates the HTTP session and applicable authorization
+  tokens, revokes refresh-token history and preserves redirect `state`.
+- Invalid logout requests and unknown revocation tokens do not expose internal
+  authorization, session or token-history state.
 - Unit, Flyway, repository and end-to-end MySQL integration tests cover the implemented
   behavior.
 
 Remaining checkpoints:
 
 ```text
-R25.11.7 — Logout and explicit token revocation                    NEXT
-R25.11.8 — Account, password-reset and client revocation triggers  PLANNED
+R25.11.8 — Account, password-reset and client revocation triggers  NEXT
 R25.11.9 — Durable security-event recording                        PLANNED
 R25.11.10 — Concurrent refresh and reuse verification              PLANNED
 R25.11.11 — Cleanup, full verification and documentation closure   PLANNED
 ```
 
-R25.11 remains in progress until these remaining revocation, audit, concurrency and
-closure requirements pass.
+R25.11 remains in progress until the remaining sensitive-change revocation, durable
+audit, concurrency and closure requirements pass.
 
 #### ⏳ R25.12 — profile and account lifecycle
 
@@ -1495,15 +1505,9 @@ R24 — Inventory Service
 ```
 
 The latest completed checkpoint is:
-
-```text
-R25.8 — Spring Authorization Server foundation
-```
+R25.11.7 — Logout and explicit token revocation
 
 The active checkpoint is:
-
-```text
-R25.9 — OAuth2 clients and grant types
-```
+R25.11.8 — Account, password-reset and client revocation triggers
 
 ADR-013 selects User Service with Spring Authorization Server as the authoritative issuer. R25 implementation is in progress.

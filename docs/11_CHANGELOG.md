@@ -1,8 +1,8 @@
 # Changelog
 
 **Version:** 0.6
-**Current baseline:** R25.1–R25.8 completed; R25.9 OAuth2 clients and grant types active
-**Last reviewed:** 2026-08-10
+**Current baseline:** R25.1–R25.10 and R25.11.1–R25.11.7 completed; R25.11.8 active
+**Last reviewed:** 2026-08-13
 
 ---
 
@@ -42,6 +42,65 @@ R26-R28  Planned
 ---
 
 # Unreleased
+
+## 2026-08-13
+
+### Completed
+
+- Completed R25.11.7 logout and explicit token revocation.
+- Added OAuth2 explicit token revocation through `/oauth2/revoke`.
+- Added OpenID Connect RP-Initiated Logout through `/connect/logout`.
+- Verified the affected User Service and root Maven reactor tests.
+
+### OAuth2 Explicit Token Revocation
+
+- Added authenticated token revocation for approved confidential clients.
+- Invalidated applicable OAuth2 authorization token metadata.
+- Synchronized refresh-token history from `ACTIVE` to `REVOKED`.
+- Rejected subsequent use of revoked refresh tokens with `invalid_grant`.
+- Kept unknown token revocation non-oracular.
+- Rejected revocation requests with missing or invalid client authentication.
+
+### OpenID Connect Logout
+
+- Enabled the OIDC provider configuration and advertised the
+  `/connect/logout` end-session endpoint.
+- Added a shared `SessionRegistry` for authorization-code issuance and logout
+  validation.
+- Added stable `CinemaUserDetails` equality based on immutable UUID identity so a
+  JDBC-deserialized authorization principal can resolve its authenticated session.
+- Added and validated the hashed OIDC `sid` claim.
+- Validated ID-token hints and exact registered post-logout redirect URIs.
+- Preserved the approved logout `state` in the post-logout redirect.
+- Invalidated the HTTP session and applicable access, refresh and ID-token metadata
+  after successful logout.
+- Reused the authorization-service tracking path to revoke refresh-token history.
+- Rejected refresh attempts after OIDC logout.
+- Kept invalid ID-token hints and unregistered redirect URIs from exposing session,
+  authorization or token-history state.
+
+### Logging
+
+- Classified expected validation, authentication, authorization, conflict, locking
+  and not-found business exceptions as warnings without stack traces.
+- Retained error-level stack traces for unexpected and internal failures.
+
+### Verification
+
+- Added end-to-end MySQL integration coverage for explicit revocation and OIDC
+  logout.
+- Verified session invalidation, authorization-token invalidation, refresh-history
+  revocation and rejection of revoked refresh tokens.
+- Verified OIDC discovery metadata, session-principal equality and security failure
+  cases.
+- Verified `git diff --check` and `mvn clean verify`.
+
+### Remaining R25.11 Work
+
+- Account, password-reset and OAuth2 client revocation triggers.
+- Durable auditable security-event recording.
+- Concurrent refresh and reuse verification.
+- Expired-history cleanup, retention policy and final documentation closure.
 
 ## 2026-08-12
 
@@ -93,7 +152,9 @@ R26-R28  Planned
 - Verified OAuth2 persistence uses JDBC and raw history tokens are not stored.
 - Verified the root reactor with `mvn clean verify`.
 
-### Remaining R25.11 Work
+### Remaining R25.11 Work at This Checkpoint
+
+At the end of the 2026-08-12 checkpoint, the remaining work was:
 
 - Logout and explicit token revocation.
 - Revocation triggered by account disablement, password reset/change and client
@@ -101,6 +162,8 @@ R26-R28  Planned
 - Durable auditable security-event publication for refresh-token reuse.
 - Concurrent refresh/reuse integration verification.
 - Expired-history cleanup, retention policy and final documentation closure.
+
+Logout and explicit token revocation were completed on 2026-08-13.
 
 ## 2026-08-10
 

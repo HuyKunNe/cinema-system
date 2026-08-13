@@ -221,17 +221,27 @@ persistence.
 
 Gateway and every protected business service remain independent Resource Servers.
 
-Implementation status through R25.11.6: User Service provides separate Authorization
+Implementation status through R25.11.7: User Service provides separate Authorization
 Server and application security chains, canonical issuer and OIDC configuration,
 account-status-aware DAO authentication, JDBC registered-client, authorization and
 consent persistence, RS256 signing, JWK publication and customized JWT claims.
 Authorization Code with S256 PKCE is verified for public clients without refresh
 tokens; controlled confidential BFF clients use Authorization Code with PKCE and
 rotating opaque refresh tokens; service clients use Client Credentials. Refresh-token
-history stores only SHA-256 hashes, records ACTIVE, ROTATED, REUSED and REVOKED
-states, detects reuse of rotated tokens and invalidates the affected authorization
-family. Logout, account/password/client revocation, durable security-event publication
-and concurrent refresh hardening remain active R25.11 work.
+history stores only SHA-256 hashes, records `ACTIVE`, `ROTATED`, `REUSED` and
+`REVOKED` states, detects reuse of rotated tokens and invalidates the affected
+authorization family.
+
+OAuth2 explicit token revocation is available through `/oauth2/revoke`. OpenID Connect
+RP-Initiated Logout is available through `/connect/logout` and validates the ID-token
+hint, registered post-logout redirect URI and hashed `sid` session claim. Successful
+OIDC logout invalidates the HTTP session, clears the applicable authorization tokens,
+revokes refresh-token history and prevents subsequent refresh-token use. Unknown
+tokens and invalid logout hints do not reveal internal token or authorization state.
+
+Account, password-reset and client revocation triggers, durable security-event
+publication, concurrent refresh hardening and operational cleanup remain active
+R25.11 work.
 
 ---
 
@@ -360,10 +370,21 @@ Implemented R25.11 baseline:
   `invalid_grant`.
 - Unknown token values remain non-oracular and return the protocol error without
   revealing history state.
+- Authenticated clients can explicitly revoke access or refresh tokens through the
+  OAuth2 revocation endpoint.
+- Explicit refresh-token revocation invalidates the authorization token metadata,
+  changes applicable refresh-token history from `ACTIVE` to `REVOKED` and prevents
+  later token refresh.
+- OpenID Connect RP-Initiated Logout validates the registered client, ID-token hint,
+  post-logout redirect URI and hashed `sid` claim before ending the session.
+- Successful OIDC logout invalidates the HTTP session and applicable authorization
+  tokens, revokes refresh-token history and preserves the approved redirect `state`.
+- Unknown revocation tokens and invalid logout hints do not expose authorization,
+  client, session or token-history state.
 
-Remaining R25.11 work includes logout and explicit revocation endpoints, revocation
-triggered by sensitive account or credential changes, durable security-event
-publication, concurrent refresh verification and operational cleanup policy.
+Remaining R25.11 work includes revocation triggered by sensitive account, password
+reset and client changes, durable security-event publication, concurrent refresh and
+reuse verification, and operational cleanup policy.
 
 ---
 

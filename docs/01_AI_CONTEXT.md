@@ -123,13 +123,16 @@ R25.5 — roles and permissions — DONE
 R25.6 — password authentication foundation — DONE
 R25.7 — account lifecycle and email verification — DONE
 R25.8 — Spring Authorization Server foundation — DONE
+R25.9 — OAuth2 clients and grant types — DONE
+R25.10 — JWT claims and JWK signing — DONE
+R25.11.1–R25.11.7 — refresh security, revocation and OIDC logout — DONE
 ```
 
 Active checkpoint:
 
-```text
-R25.9 — OAuth2 clients and grant types — IN PROGRESS
-```
+R25.11.8 — account, password-reset and client revocation triggers — IN PROGRESS
+
+````
 
 ADR-013 accepts the following decisions:
 
@@ -141,6 +144,15 @@ ADR-013 accepts the following decisions:
 - JWT access tokens use RS256, UUID v7 subjects and the `cinema-api` audience.
 - Initial access-token lifetime is 15 minutes.
 - Refresh tokens are opaque, rotate after use and have an initial maximum lifetime of 30 days.
+- Refresh-token history stores SHA-256 hashes and tracks `ACTIVE`, `ROTATED`,
+  `REUSED` and `REVOKED`.
+- Rotated-token reuse invalidates the affected authorization family.
+- Explicit OAuth2 token revocation is exposed through `/oauth2/revoke`.
+- OIDC RP-Initiated Logout is exposed through `/connect/logout`.
+- OIDC logout validates the ID-token hint, registered post-logout redirect URI and
+  hashed session `sid`.
+- Successful OIDC logout invalidates the HTTP session and applicable authorization
+  tokens and revokes refresh-token history.
 - User Service owns private signing keys and publishes public keys through JWK Set.
 - Gateway and protected business services validate tokens independently.
 - Production privileged access requires MFA or an approved external control.
@@ -149,7 +161,7 @@ Authoritative decision record:
 
 ```text
 docs/decisions/ADR-013-spring-authorization-server.md
-```
+````
 
 ---
 
@@ -615,8 +627,9 @@ explicitly requested.
 Movie Service and Inventory Service have completed their implementation,
 testing and verification requirements.
 
-User Service is the active business-service round. R25.1–R25.8 are complete.
-R25.9 OAuth2 clients and grant types is the active checkpoint.
+User Service is the active business-service round. R25.1–R25.10 and
+R25.11.1–R25.11.7 are complete. R25.11.8 account, password-reset and client
+revocation triggers is the active checkpoint.
 
 ---
 
@@ -761,13 +774,22 @@ R24 met all completion requirements on 2026-08-04.
 
 # Current Next Step
 
-Complete R25.9 — OAuth2 clients and grant types:
+Complete R25.11.8 — account, password-reset and client revocation triggers:
 
-1. Preserve the implemented JDBC registered-client persistence and controlled registration service.
-2. Preserve public-client PKCE, exact redirect URI, consent and non-reusable refresh-token policy.
-3. Preserve confidential service-client secret encoding, restricted scopes and five-minute access-token policy.
-4. Preserve the implemented grant metadata, S256 PKCE/consent and client-authentication protocol tests.
-5. Complete successful token issuance and end-to-end grant verification together with R25.10 RSA/JWK support.
-6. Keep production RSA/JWK signing and JWT claim customization in R25.10.
+1. Preserve the implemented OAuth2 explicit revocation and OIDC logout behavior.
+2. Identify every sensitive account, credential and client lifecycle transition that
+   must revoke active authorizations.
+3. Revoke applicable authorization sessions when an account is disabled or locked
+   according to the approved lifecycle policy.
+4. Revoke applicable authorization sessions after successful password reset and other
+   approved credential-compromise transitions.
+5. Revoke client-owned authorizations when an OAuth2 client is deactivated or its
+   authentication secret is rotated.
+6. Reuse the existing authorization-service and refresh-history synchronization path
+   instead of updating token history through duplicate business logic.
+7. Keep revocation transactional, non-oracular and covered by MySQL integration tests.
+8. Do not begin durable security-event recording, concurrent-refresh hardening or
+   cleanup work before the corresponding R25.11.9–R25.11.11 checkpoints.
 
-Do not modify completed R24 or R25.1–R25.8 behavior unless addressing a verified defect.
+Do not modify completed R24 or R25.1–R25.11.7 behavior unless addressing a verified
+defect.

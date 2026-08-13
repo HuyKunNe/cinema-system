@@ -100,13 +100,15 @@ R25.5 — roles and permissions — DONE
 R25.6 — password authentication foundation — DONE
 R25.7 — account lifecycle and email verification — DONE
 R25.8 — Spring Authorization Server foundation — DONE
+R25.9 — OAuth2 clients and grant types — DONE
+R25.10 — JWT claims and JWK signing — DONE
+R25.11.1–R25.11.7 — refresh security, revocation and OIDC logout — DONE
 ```
 
 Active R25 checkpoint:
+R25.11.8 — account, password-reset and client revocation triggers — IN PROGRESS
 
-```text
-R25.9 — OAuth2 clients and grant types — IN PROGRESS
-```
+````
 
 Accepted authentication decision:
 
@@ -117,13 +119,19 @@ Accepted authentication decision:
 - Authorization Code with PKCE, Refresh Token and Client Credentials are approved.
 - Resource Owner Password Credentials is prohibited.
 - Refresh tokens are opaque, rotated and revocable.
+- Rotated refresh-token reuse invalidates the affected authorization family.
+- Explicit token revocation is available through `/oauth2/revoke`.
+- OIDC RP-Initiated Logout is available through `/connect/logout` and validates the
+  ID-token hint, registered redirect URI and hashed session `sid`.
+- Successful OIDC logout invalidates the applicable session and authorization tokens
+  and revokes refresh-token history.
 - Production privileged access requires MFA or an approved external control.
 
 Architecture decision:
 
 ```text
 docs/decisions/ADR-013-spring-authorization-server.md
-```
+````
 
 ## Not Started
 
@@ -200,23 +208,34 @@ Active round:
 Latest completed checkpoint:
 
 ```text
-R25.1–R25.8 — security, persistence, authentication and Authorization Server foundations
+R25.11.7 — Logout and explicit token revocation
 ```
 
 Active checkpoint:
 
 ```text
-R25.9 — OAuth2 clients and grant types
+R25.11.8 — Account, password-reset and client revocation triggers
 ```
 
 ADR-013 selects User Service with Spring Authorization Server as the authoritative
 issuer. The issuer, audience, RS256/JWK ownership, approved grant types, access-token
 lifetime, refresh-token lifecycle, service identity and privileged-account boundary
-are confirmed. User Service persistence, password authentication, account
-lifecycle and email-verification foundations are implemented. OAuth2/OIDC
-foundation, OIDC configuration, JDBC registered-client persistence and controlled
-public/service client registration are implemented. Completing and verifying the
-approved protocol grant flows remains the active work.
+are confirmed.
+
+User Service persistence, password authentication, account lifecycle, email
+verification, controlled OAuth2 client registration, approved grant flows, RS256
+signing, JWK publication and JWT claims are implemented. OAuth2 authorization and
+consent state is stored through JDBC. Confidential BFF refresh tokens rotate after
+use, and hashed history records issuance, rotation, reuse and revocation.
+
+Rotated-token reuse invalidates the affected authorization family. Explicit OAuth2
+token revocation and OIDC RP-Initiated Logout are implemented and verified. Successful
+OIDC logout validates the ID-token hint, registered redirect URI and hashed session
+`sid`, invalidates the HTTP session and applicable authorization tokens, and revokes
+refresh-token history.
+
+R25.11.8 is the active checkpoint for revocation triggered by sensitive account,
+password-reset and OAuth2 client lifecycle changes.
 
 ---
 

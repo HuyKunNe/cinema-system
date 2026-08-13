@@ -43,15 +43,15 @@ implemented.
 
 # Current Status
 
-| Scope                                                  | Status      |
-| ------------------------------------------------------ | ----------- |
-| R1-R24                                                 | Completed   |
-| R25.1 — `common-security` hardening                    | Completed   |
-| R25.2–R25.8 — User Service foundations                | Completed   |
-| R25.9 — OAuth2 clients and grant types                 | In progress |
-| R26 — Booking Service                                  | Planned     |
-| R27 — Payment Service                                  | Planned     |
-| R28 — Notification Service                             | Planned     |
+| Scope                                                       | Status      |
+| ----------------------------------------------------------- | ----------- |
+| R1-R24                                                      | Completed   |
+| R25.1–R25.10 — User Service security and OAuth2 foundations | Completed   |
+| R25.11.1–R25.11.7 — Refresh security and revocation         | Completed   |
+| R25.11.8 — Sensitive-change revocation triggers             | In progress |
+| R26 — Booking Service                                       | Planned     |
+| R27 — Payment Service                                       | Planned     |
+| R28 — Notification Service                                  | Planned     |
 
 Latest completed runtime service:
 
@@ -59,11 +59,11 @@ Latest completed runtime service:
 
 Latest completed User Service checkpoint:
 
-> **R25.8 — Spring Authorization Server foundation**
+> **R25.11.7 — Logout and explicit token revocation**
 
 Active checkpoint:
 
-> **R25.9 — OAuth2 clients and grant types**
+> **R25.11.8 — Account, password-reset and client revocation triggers**
 
 See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 
@@ -147,10 +147,12 @@ Administrative availability includes controlled transitions to and from
 - Controlled public PKCE and confidential service-client registration
 - Encoded client secrets and strict redirect URI/scope validation
 
-R25.9 now verifies approved grant metadata, S256 PKCE through the consent
-boundary and client authentication/isolation. Successful token issuance and
-end-to-end grant verification remain coupled to R25.10 RSA/JWK signing and JWT
-claim customization.
+R25.9 and R25.10 completed controlled OAuth2 client policies, approved grant-flow
+verification, RS256 signing, JWK publication and JWT claim customization. R25.11
+now provides JDBC authorization persistence, rotating opaque refresh tokens, hashed
+refresh-token history, reuse detection, explicit token revocation and secure OIDC
+RP-Initiated Logout. R25.11.8 is adding revocation triggers for sensitive account,
+password-reset and client lifecycle changes.
 
 ---
 
@@ -234,33 +236,34 @@ Resource Owner Password Credentials must not be implemented.
 `common-security` does not issue tokens, store refresh tokens, own OAuth2
 clients, or contain signing private keys.
 
-R25.1 hardened this shared boundary. The User Service Authorization Server and
-OIDC foundation is implemented; R25.9 is completing OAuth2 clients and approved
-grant-flow verification.
+R25.1 hardened this shared boundary. User Service now implements controlled OAuth2
+clients, approved grant flows, RS256/JWK signing, rotating refresh tokens, reuse
+detection, explicit token revocation and secure OIDC RP-Initiated Logout. Sensitive
+account, password-reset and client revocation triggers remain active R25.11 work.
 
 ---
 
 # Technology Stack
 
-| Category               | Technology                                                                       |
-| ---------------------- | -------------------------------------------------------------------------------- |
-| Language               | Java 21                                                                          |
-| Framework              | Spring Boot 3.5.16                                                               |
-| Cloud                  | Spring Cloud 2025.0.2                                                            |
-| Build                  | Apache Maven multi-module reactor                                                |
-| Database               | MySQL 8                                                                          |
-| Persistence            | Spring Data JPA and Hibernate                                                    |
-| Migration              | Flyway 12.0.0                                                                    |
-| Messaging              | Apache Kafka and Spring for Apache Kafka                                         |
-| Cache and coordination | Redis and Redisson 3.50.0                                                        |
-| Mapping                | MapStruct 1.6.3                                                                  |
-| JSON                   | Jackson                                                                          |
-| Security               | Spring Security, OAuth2 Resource Server, and Spring Authorization Server         |
-| API documentation      | OpenAPI 3 and Swagger UI                                                         |
-| Search                 | Elasticsearch 8.18.1                                                             |
-| Storage                | MinIO SDK 8.5.17                                                                 |
-| Observability          | Actuator, Micrometer, and OpenTelemetry                                          |
-| Testing                | JUnit Jupiter, Mockito, Spring Test, and Testcontainers 1.21.3                   |
+| Category               | Technology                                                               |
+| ---------------------- | ------------------------------------------------------------------------ |
+| Language               | Java 21                                                                  |
+| Framework              | Spring Boot 3.5.16                                                       |
+| Cloud                  | Spring Cloud 2025.0.2                                                    |
+| Build                  | Apache Maven multi-module reactor                                        |
+| Database               | MySQL 8                                                                  |
+| Persistence            | Spring Data JPA and Hibernate                                            |
+| Migration              | Flyway 12.0.0                                                            |
+| Messaging              | Apache Kafka and Spring for Apache Kafka                                 |
+| Cache and coordination | Redis and Redisson 3.50.0                                                |
+| Mapping                | MapStruct 1.6.3                                                          |
+| JSON                   | Jackson                                                                  |
+| Security               | Spring Security, OAuth2 Resource Server, and Spring Authorization Server |
+| API documentation      | OpenAPI 3 and Swagger UI                                                 |
+| Search                 | Elasticsearch 8.18.1                                                     |
+| Storage                | MinIO SDK 8.5.17                                                         |
+| Observability          | Actuator, Micrometer, and OpenTelemetry                                  |
+| Testing                | JUnit Jupiter, Mockito, Spring Test, and Testcontainers 1.21.3           |
 
 Docker and Docker Compose are approved deployment technologies, but the
 repository does not yet contain a verified root Compose topology.
@@ -456,16 +459,18 @@ resolve durable architectural decisions.
 - R22 API Gateway
 - R23 Movie Service
 - R24 Inventory Service
-- R25.1–R25.8 security, identity, account lifecycle, and Authorization Server foundations
+- R25.1–R25.10 security, identity, OAuth2 client, grant, JWT and JWK foundations
+- R25.11.1–R25.11.7 refresh rotation, reuse detection, explicit revocation and OIDC logout
 
 ## Active
 
-- R25.9 OAuth2 clients and grant types
+- R25.11.8 account, password-reset and client revocation triggers
 
 ## Next
 
-- Complete R25.9 protocol grant-flow verification
-- R25.10 JWT claims and JWK signing
+- R25.11.9 durable security-event recording
+- R25.11.10 concurrent refresh and reuse verification
+- R25.11.11 cleanup, full verification and documentation closure
 
 ## Planned
 
