@@ -1,8 +1,12 @@
 package com.cinema.user.oauth2.token;
 
-import java.time.Clock;
-import java.time.OffsetDateTime;
-import java.util.Objects;
+import com.cinema.user.entity.RefreshTokenHistory;
+import com.cinema.user.repository.RefreshTokenHistoryRepository;
+import com.cinema.user.security.audit.SecurityAuditEventType;
+import com.cinema.user.security.audit.SecurityAuditOutcome;
+import com.cinema.user.security.audit.SecurityAuditRecord;
+import com.cinema.user.security.audit.SecurityAuditRecorder;
+import com.cinema.user.security.audit.SecurityAuditTargetType;
 
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2RefreshToken;
@@ -11,28 +15,35 @@ import org.springframework.security.oauth2.server.authorization.OAuth2Authorizat
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.cinema.user.entity.RefreshTokenHistory;
-import com.cinema.user.repository.RefreshTokenHistoryRepository;
+import java.time.Clock;
+import java.time.OffsetDateTime;
+import java.util.Objects;
 
 @Service
 @Transactional(readOnly = true)
-public class RefreshTokenReuseServiceImpl
-        implements RefreshTokenReuseService {
+public class RefreshTokenReuseServiceImpl implements RefreshTokenReuseService {
+
+    private static final String REFRESH_TOKEN_REUSE_REASON = "ROTATED_REFRESH_TOKEN_REUSED";
 
     private final RefreshTokenHistoryRepository refreshTokenHistoryRepository;
 
     private final RefreshTokenHasher refreshTokenHasher;
+
+    private final SecurityAuditRecorder securityAuditRecorder;
 
     private final Clock clock;
 
     public RefreshTokenReuseServiceImpl(
             RefreshTokenHistoryRepository refreshTokenHistoryRepository,
             RefreshTokenHasher refreshTokenHasher,
+            SecurityAuditRecorder securityAuditRecorder,
             Clock clock) {
 
         this.refreshTokenHistoryRepository = refreshTokenHistoryRepository;
 
         this.refreshTokenHasher = refreshTokenHasher;
+
+        this.securityAuditRecorder = securityAuditRecorder;
 
         this.clock = clock;
     }
@@ -40,30 +51,23 @@ public class RefreshTokenReuseServiceImpl
     @Override
     @Transactional
     public boolean detectAndRevoke(
-            String rawRefreshToken,
-            OAuth2AuthorizationService authorizationService) {
+            String rawRefreshToken, OAuth2AuthorizationService authorizationService) {
 
-        Objects.requireNonNull(
-                authorizationService);
+        Objects.requireNonNull(authorizationService);
 
-        String tokenHash = refreshTokenHasher.hash(
-                rawRefreshToken);
+        String tokenHash = refreshTokenHasher.hash(rawRefreshToken);
 
-        RefreshTokenHistory reusedHistory = refreshTokenHistoryRepository
-                .findByTokenHashForUpdate(
-                        tokenHash)
-                .orElse(null);
+        RefreshTokenHistory reusedHistory =
+                refreshTokenHistoryRepository.findByTokenHashForUpdate(tokenHash).orElse(null);
 
-        if (reusedHistory == null
-                || !reusedHistory.isRotated()) {
+        if (reusedHistory == null || !reusedHistory.isRotated()) {
 
             return false;
         }
 
         OffsetDateTime now = OffsetDateTime.now(clock);
 
-        String authorizationId = reusedHistory
-                .getAuthorizationId();
+        String authorizationId = reusedHistory.getAuthorizationId();
 
         /*
          * Flush REUSED before executing the bulk revoke query.
@@ -71,68 +75,57 @@ public class RefreshTokenReuseServiceImpl
          */
         reusedHistory.markReused(now);
 
-        refreshTokenHistoryRepository
-                .saveAndFlush(
-                        reusedHistory);
+        refreshTokenHistoryRepository.saveAndFlush(reusedHistory);
 
-        refreshTokenHistoryRepository
-                .revokeActiveTokensByAuthorizationId(
-                        authorizationId,
-                        RefreshTokenStatus.ACTIVE,
-                        RefreshTokenStatus.REVOKED,
-                        now);
+        refreshTokenHistoryRepository.revokeActiveTokensByAuthorizationId(
+                authorizationId, RefreshTokenStatus.ACTIVE, RefreshTokenStatus.REVOKED, now);
 
-        OAuth2Authorization authorization = authorizationService.findById(
-                authorizationId);
+        OAuth2Authorization authorization = authorizationService.findById(authorizationId);
 
         if (authorization != null) {
-            OAuth2Authorization invalidated = invalidateAuthorization(
-                    authorization);
+            OAuth2Authorization invalidated = invalidateAuthorization(authorization);
 
-            authorizationService.save(
-                    invalidated);
+            authorizationService.save(invalidated);
         }
+
+        securityAuditRecorder.record(
+                new SecurityAuditRecord(
+                        SecurityAuditEventType.REFRESH_TOKEN_REUSE_DETECTED,
+                        SecurityAuditTargetType.AUTHORIZATION_SESSION,
+                        authorizationId,
+                        SecurityAuditOutcome.SUCCESS,
+                        REFRESH_TOKEN_REUSE_REASON,
+                        null));
 
         return true;
     }
 
-    private static OAuth2Authorization invalidateAuthorization(
-            OAuth2Authorization authorization) {
+    private static OAuth2Authorization invalidateAuthorization(OAuth2Authorization authorization) {
 
-        OAuth2Authorization.Builder builder = OAuth2Authorization.from(
-                authorization);
+        OAuth2Authorization.Builder builder = OAuth2Authorization.from(authorization);
 
-        OAuth2Authorization.Token<OAuth2AccessToken> accessToken = authorization
-                .getAccessToken();
+        OAuth2Authorization.Token<OAuth2AccessToken> accessToken = authorization.getAccessToken();
 
         if (accessToken != null) {
             builder.token(
                     accessToken.getToken(),
                     metadata -> {
-                        metadata.putAll(
-                                accessToken
-                                        .getMetadata());
+                        metadata.putAll(accessToken.getMetadata());
 
-                        metadata.put(
-                                OAuth2Authorization.Token.INVALIDATED_METADATA_NAME,
-                                true);
+                        metadata.put(OAuth2Authorization.Token.INVALIDATED_METADATA_NAME, true);
                     });
         }
 
-        OAuth2Authorization.Token<OAuth2RefreshToken> refreshToken = authorization
-                .getRefreshToken();
+        OAuth2Authorization.Token<OAuth2RefreshToken> refreshToken =
+                authorization.getRefreshToken();
 
         if (refreshToken != null) {
             builder.token(
                     refreshToken.getToken(),
                     metadata -> {
-                        metadata.putAll(
-                                refreshToken
-                                        .getMetadata());
+                        metadata.putAll(refreshToken.getMetadata());
 
-                        metadata.put(
-                                OAuth2Authorization.Token.INVALIDATED_METADATA_NAME,
-                                true);
+                        metadata.put(OAuth2Authorization.Token.INVALIDATED_METADATA_NAME, true);
                     });
         }
 
