@@ -255,15 +255,15 @@ Recommended claims:
 
 ```json
 {
-    "iss": "https://identity.cinema.example",
-    "sub": "019c1234-1111-7abc-8def-0123456789ab",
-    "aud": ["cinema-api"],
-    "iat": 1784795415,
-    "nbf": 1784795415,
-    "exp": 1784796315,
-    "jti": "019c1234-2222-7abc-8def-0123456789ab",
-    "scope": "booking:read booking:create",
-    "roles": ["USER"]
+  "iss": "https://identity.cinema.example",
+  "sub": "019c1234-1111-7abc-8def-0123456789ab",
+  "aud": ["cinema-api"],
+  "iat": 1784795415,
+  "nbf": 1784795415,
+  "exp": 1784796315,
+  "jti": "019c1234-2222-7abc-8def-0123456789ab",
+  "scope": "booking:read booking:create",
+  "roles": ["USER"]
 }
 ```
 
@@ -1143,19 +1143,19 @@ Example configuration:
 
 ```yaml
 spring:
-    datasource:
-        url: ${BOOKING_DB_URL}
-        username: ${BOOKING_DB_USERNAME}
-        password: ${BOOKING_DB_PASSWORD}
+  datasource:
+    url: ${BOOKING_DB_URL}
+    username: ${BOOKING_DB_USERNAME}
+    password: ${BOOKING_DB_PASSWORD}
 ```
 
 Unsafe configuration:
 
 ```yaml
 spring:
-    datasource:
-        username: root
-        password: root
+  datasource:
+    username: root
+    password: root
 ```
 
 Environment variables are configuration delivery mechanisms, not a complete secret
@@ -1717,11 +1717,11 @@ Example response:
 
 ```json
 {
-    "success": false,
-    "code": "AUTHENTICATION_REQUIRED",
-    "message": "Authentication is required",
-    "timestamp": "2026-07-23T08:30:15.123456Z",
-    "path": "/api/v1/bookings"
+  "success": false,
+  "code": "AUTHENTICATION_REQUIRED",
+  "message": "Authentication is required",
+  "timestamp": "2026-07-23T08:30:15.123456Z",
+  "path": "/api/v1/bookings"
 }
 ```
 
@@ -1917,10 +1917,10 @@ Unsafe production configuration:
 
 ```yaml
 management:
-    endpoints:
-        web:
-            exposure:
-                include: "*"
+  endpoints:
+    web:
+      exposure:
+        include: "*"
 ```
 
 ---
@@ -1944,11 +1944,11 @@ Example security scheme:
 
 ```yaml
 components:
-    securitySchemes:
-        bearerAuth:
-            type: http
-            scheme: bearer
-            bearerFormat: JWT
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
 ```
 
 ---
@@ -2282,7 +2282,8 @@ When required security dependencies fail:
 - Missing authorization data must deny access.
 - Failed webhook signature verification must reject processing.
 - Failed secret retrieval must not use committed fallback credentials.
-- Failed security audit publication must follow an explicit operational policy.
+- Failed required security-audit persistence must fail the audited transactional
+  mutation; authentication handlers must not silently discard recording failures.
 
 Availability handling must not convert authentication failures into anonymous access.
 
@@ -2485,6 +2486,32 @@ Rules:
 
 ---
 
+## Durable Security-Audit Recording
+
+User Service persists general security activity in `security_audit_events`.
+
+Implemented records include:
+
+- form-authentication success and failure;
+- refresh-token reuse detection;
+- user-role assignment and revocation;
+- role-permission assignment and revocation;
+- OAuth2 client registration;
+- OAuth2 client deactivation;
+- OAuth2 client-secret rotation.
+
+Authentication failure reasons are bounded codes such as `BAD_CREDENTIALS`,
+`ACCOUNT_LOCKED` and `ACCOUNT_DISABLED`. Exception messages and credentials are not
+persisted.
+
+Transactional triggers record the audit row in the same transaction as the state
+change. Audit persistence failure rolls back role, permission, client and
+refresh-token mutations.
+
+Security-audit activity remains internal User Service persistence. It is not published
+through Kafka or the business outbox without a separate approved ADR and consumer
+requirement.
+
 # Security Configuration Ownership
 
 Conceptual ownership:
@@ -2612,9 +2639,9 @@ Inventory Service owns `show_seats`.
 
 ```yaml
 spring:
-    datasource:
-        username: root
-        password: root
+  datasource:
+    username: root
+    password: root
 ```
 
 ---
@@ -2631,9 +2658,9 @@ Kafka UI exposed publicly with broker administration enabled
 
 ```json
 {
-    "bookingId": "...",
-    "accessToken": "...",
-    "paymentApiKey": "..."
+  "bookingId": "...",
+  "accessToken": "...",
+  "paymentApiKey": "..."
 }
 ```
 

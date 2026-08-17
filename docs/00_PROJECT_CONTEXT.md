@@ -102,12 +102,12 @@ R25.7 — account lifecycle and email verification — DONE
 R25.8 — Spring Authorization Server foundation — DONE
 R25.9 — OAuth2 clients and grant types — DONE
 R25.10 — JWT claims and JWK signing — DONE
-R25.11.1–R25.11.8 — refresh security and sensitive-change revocation — DONE
+R25.11.1–R25.11.9 — refresh security, revocation and durable auditing — DONE
 ```
 
 Active R25 checkpoint:
 
-R25.11.9 — durable security-event recording — NEXT
+R25.11.10 — concurrent refresh and reuse verification — NEXT
 
 ````
 
@@ -136,6 +136,20 @@ Accepted authentication decision:
   safe targets, explicit reason codes and the number of authorizations invalidated.
 - Audit persistence participates in the same transaction as the sensitive change
   and authorization revocation.
+  - General security activity is persisted in the append-oriented
+  `security_audit_events` table.
+- Implemented durable event triggers cover form-authentication success and failure,
+  refresh-token reuse detection, user-role changes, role-permission changes, OAuth2
+  client registration, client deactivation and client-secret rotation.
+- Security-audit actors resolve as `SYSTEM`, `USER` or `CLIENT`; request correlation
+  uses the MDC correlation identifier and then the trace identifier.
+- Audit records use safe target references, bounded reason codes and approved metadata.
+  They never contain raw passwords, password hashes, refresh tokens, token hashes,
+  client secrets, authentication credentials or unrestricted request bodies.
+- Audit persistence failure rolls back audited role, permission, OAuth2 client and
+  refresh-token mutations.
+- General security audit records remain internal User Service persistence and are not
+  Kafka business events.
 Architecture decision:
 
 ```text

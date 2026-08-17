@@ -466,7 +466,8 @@ password_reset_tokens
 oauth2_registered_client
 oauth2_authorization
 oauth2_authorization_consent
-refresh_tokens
+oauth2_refresh_token_history
+oauth2_revocation_audit_events
 user_mfa_methods
 security_audit_events
 ```
@@ -484,6 +485,33 @@ role_permissions
 email_verification_tokens
 oauth2_registered_client
 ```
+
+`security_audit_events` stores append-oriented general security activity. Its columns
+are:
+
+````text
+id
+version
+event_type
+actor_type
+actor_reference
+target_type
+target_reference
+outcome
+correlation_id
+reason
+metadata
+occurred_at
+created_at
+updated_at
+
+target_type and target_reference must either both be present or both be absent.
+Actor and target references are intentionally not foreign keys so that audit history
+survives identity or client lifecycle changes.
+
+metadata is bounded approved metadata, not an unrestricted JSON request or response
+body. Raw passwords, hashes, OAuth2 tokens, refresh-token hashes, client secrets, MFA
+secrets, authorization headers and private signing material are prohibited.
 
 `email_verification_tokens` stores a lowercase 64-character SHA-256 hash, never
 the raw 43-character URL-safe token. It records expiration, use and revocation
@@ -515,7 +543,7 @@ last_login_at
 created_at
 updated_at
 version
-```
+````
 
 Requirements:
 
@@ -1782,9 +1810,9 @@ Required JPA configuration:
 
 ```yaml
 spring:
-    jpa:
-        hibernate:
-            ddl-auto: validate
+  jpa:
+    hibernate:
+      ddl-auto: validate
 ```
 
 Do not use:
@@ -1844,10 +1872,10 @@ Example:
 
 ```yaml
 spring:
-    datasource:
-        url: ${MOVIE_DB_URL}
-        username: ${MOVIE_DB_USERNAME:cinema_movie}
-        password: ${MOVIE_DB_PASSWORD}
+  datasource:
+    url: ${MOVIE_DB_URL}
+    username: ${MOVIE_DB_USERNAME:cinema_movie}
+    password: ${MOVIE_DB_PASSWORD}
 ```
 
 Password variables must not contain real committed defaults.
@@ -1856,9 +1884,9 @@ Not allowed:
 
 ```yaml
 spring:
-    datasource:
-        username: root
-        password: root
+  datasource:
+    username: root
+    password: root
 ```
 
 Also not allowed:
@@ -1998,39 +2026,41 @@ The service must distinguish between:
 
 # Schema Ownership Summary
 
-| Table                          | Owning service         |
-| ------------------------------ | ---------------------- |
-| `movies`                       | Movie Service          |
-| `genres`                       | Movie Service          |
-| `movie_genres`                 | Movie Service          |
-| `users`                        | User Service           |
-| `user_profiles`                | User Service           |
-| `user_credentials`             | User Service           |
-| `roles`                        | User Service           |
-| `permissions`                  | User Service           |
-| `user_roles`                   | User Service           |
-| `role_permissions`             | User Service           |
-| `email_verification_tokens`    | User Service           |
-| `password_reset_tokens`        | User Service           |
-| `oauth2_registered_client`     | User Service           |
-| `oauth2_authorization`         | User Service           |
-| `oauth2_authorization_consent` | User Service           |
-| `refresh_tokens`               | User Service           |
-| `user_mfa_methods`             | User Service           |
-| `security_audit_events`        | User Service           |
-| `cinemas`                      | Inventory Service      |
-| `rooms`                        | Inventory Service      |
-| `seats`                        | Inventory Service      |
-| `showtimes`                    | Inventory Service      |
-| `show_seats`                   | Inventory Service      |
-| `bookings`                     | Booking Service        |
-| `booking_seats`                | Booking Service        |
-| `payments`                     | Payment Service        |
-| `payment_transactions`         | Payment Service        |
-| `notifications`                | Notification Service   |
-| `notification_deliveries`      | Notification Service   |
-| `outbox_events`                | The publishing service |
-| `processed_events`             | The consuming service  |
+| Table                            | Owning service         |
+| -------------------------------- | ---------------------- |
+| `movies`                         | Movie Service          |
+| `genres`                         | Movie Service          |
+| `movie_genres`                   | Movie Service          |
+| `users`                          | User Service           |
+| `user_profiles`                  | User Service           |
+| `user_credentials`               | User Service           |
+| `roles`                          | User Service           |
+| `permissions`                    | User Service           |
+| `user_roles`                     | User Service           |
+| `role_permissions`               | User Service           |
+| `email_verification_tokens`      | User Service           |
+| `password_reset_tokens`          | User Service           |
+| `oauth2_registered_client`       | User Service           |
+| `oauth2_authorization`           | User Service           |
+| `oauth2_authorization_consent`   | User Service           |
+| `refresh_tokens`                 | User Service           |
+| `user_mfa_methods`               | User Service           |
+| `security_audit_events`          | User Service           |
+| `cinemas`                        | Inventory Service      |
+| `rooms`                          | Inventory Service      |
+| `seats`                          | Inventory Service      |
+| `showtimes`                      | Inventory Service      |
+| `show_seats`                     | Inventory Service      |
+| `bookings`                       | Booking Service        |
+| `booking_seats`                  | Booking Service        |
+| `payments`                       | Payment Service        |
+| `payment_transactions`           | Payment Service        |
+| `notifications`                  | Notification Service   |
+| `notification_deliveries`        | Notification Service   |
+| `outbox_events`                  | The publishing service |
+| `processed_events`               | The consuming service  |
+| `oauth2_refresh_token_history`   | User Service           |
+| `oauth2_revocation_audit_events` | User Service           |
 
 The same technical table name may exist in multiple service databases.
 
@@ -2084,9 +2114,9 @@ A single shared business database removes service ownership and is not approved.
 
 ```yaml
 spring:
-    jpa:
-        hibernate:
-            ddl-auto: update
+  jpa:
+    hibernate:
+      ddl-auto: update
 ```
 
 This bypasses the required Flyway migration process.
@@ -2118,9 +2148,9 @@ Flyway and entity UUID mappings must use the same representation.
 
 ```yaml
 spring:
-    datasource:
-        username: root
-        password: root
+  datasource:
+    username: root
+    password: root
 ```
 
 Credentials must come from environment variables or approved secret storage.

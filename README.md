@@ -49,6 +49,7 @@ implemented.
 | R25.1–R25.10 — User Service security and OAuth2 foundations | Completed |
 | R25.11.1–R25.11.7 — Refresh security and revocation         | Completed |
 | R25.11.8 — Sensitive-change revocation triggers             | Completed |
+| R25.11.9 — Durable security-event recording                 | Completed |
 | R26 — Booking Service                                       | Planned   |
 | R27 — Payment Service                                       | Planned   |
 | R28 — Notification Service                                  | Planned   |
@@ -59,11 +60,11 @@ Latest completed runtime service:
 
 Latest completed User Service checkpoint:
 
-> **R25.11.8 — Account, password-reset and client revocation triggers**
+> **R25.11.9 — Durable security-event recording**
 
 Active checkpoint:
 
-> **R25.11.9 — Durable security-event recording**
+> **R25.11.10 — Concurrent refresh and reuse verification**
 
 See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 
@@ -156,6 +157,17 @@ disablement, password change or reset, OAuth2 client deactivation or secret rota
 and authorized administrative revocation. These operations record durable revocation
 audit events with resolved actors, explicit non-sensitive reason codes, safe target
 references and the number of authorizations actually invalidated.
+
+R25.11.9 adds the append-oriented `security_audit_events` model with resolved
+`SYSTEM`, `USER` or `CLIENT` actors, safe targets, outcomes, bounded reason codes,
+approved metadata and correlation or trace identifiers. Durable records are emitted
+for refresh-token reuse detection, role and permission assignment changes, OAuth2
+client registration and lifecycle changes, and form-authentication outcomes.
+
+Security-audit persistence participates in the same transaction as audited role,
+permission, OAuth2 client and refresh-token mutations. Recording failure rolls those
+mutations back. Authentication audit records exclude passwords, credentials,
+exception details and unrestricted request data.
 
 ---
 
@@ -463,15 +475,14 @@ resolve durable architectural decisions.
 - R23 Movie Service
 - R24 Inventory Service
 - R25.1–R25.10 security, identity, OAuth2 client, grant, JWT and JWK foundations
-- R25.11.1–R25.11.7 refresh rotation, reuse detection, explicit revocation and OIDC logout
+- R25.11.1–R25.11.9 refresh security, revocation and durable security auditing
 
 ## Active
 
-- R25.11.8 account, password-reset and client revocation triggers
+- R25.11.10 concurrent refresh and reuse verification
 
 ## Next
 
-- R25.11.9 durable security-event recording
 - R25.11.10 concurrent refresh and reuse verification
 - R25.11.11 cleanup, full verification and documentation closure
 

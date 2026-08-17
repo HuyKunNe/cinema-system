@@ -61,6 +61,23 @@ R26-R28  Planned
 - Added integration coverage for all revocation reasons and rollback coverage for audit
   persistence failure.
 
+### Durable Security-Event Recording
+
+- Completed R25.11.9 durable security-event recording.
+- Added `security_audit_events` through Flyway migration V11.
+- Added append-oriented audit entities, enums, repository and durable recorder.
+- Resolved audit actors from Spring Security as `SYSTEM`, `USER` or `CLIENT`.
+- Resolved request correlation from MDC correlation or trace identifiers.
+- Recorded refresh-token reuse, role and permission changes, OAuth2 client
+  registration and lifecycle changes, and form-authentication outcomes.
+- Preserved the specialized `oauth2_revocation_audit_events` model.
+- Kept security audit data internal to User Service rather than publishing it as a
+  Kafka business event.
+- Excluded passwords, hashes, raw tokens, token hashes, client secrets, credential
+  material and unrestricted request data.
+- Added transaction rollback verification for assignment, client lifecycle,
+  registration and refresh-token reuse audit failures.
+
 ### Verification
 
 - User Service clean verification passes.
@@ -70,7 +87,6 @@ R26-R28  Planned
 ### Remaining R25.11 Work
 
 ````text
-R25.11.9  — Durable security-event recording
 R25.11.10 — Concurrent refresh and reuse verification
 R25.11.11 — Cleanup, full verification and documentation closure
 

@@ -849,7 +849,8 @@ request when only one saleable seat remains.
 - ✅ R24.5.7 — Concurrency verification.
 - ✅ R24.5.8 — Full quality-gate verification.
 - ✅ R24.5.9 — Documentation synchronization and R24 closure.
-- ✅ R25.11.8 — Account, password-reset and client revocation triggers DONE
+- ✅ R25.11.8 — Account, password-reset and client revocation triggers.
+- ✅ R25.11.9 — Durable security-event recording.
 
 Completion status:
 
@@ -1149,6 +1150,8 @@ R25.11.4 — Hashed refresh-token history and persistence model      DONE
 R25.11.5 — Issuance and rotation history tracking                  DONE
 R25.11.6 — Rotated-token reuse detection and family invalidation   DONE
 R25.11.7 — Logout and explicit token revocation                    DONE
+R25.11.8 — Account, password-reset and client revocation triggers  DONE
+R25.11.9 — Durable security-event recording                        DONE
 ```
 
 Implemented behavior:
@@ -1191,11 +1194,26 @@ Implemented behavior:
 - Unit, MySQL integration and rollback tests cover all sensitive-change revocation
   triggers.
 
+R25.11.9 completed durable security-event recording:
+
+- added Flyway migration `V11__create_security_audit_events.sql`;
+- added append-oriented `SecurityAuditEvent` persistence and repository;
+- added `SYSTEM`, `USER` and `CLIENT` actor resolution;
+- added MDC correlation/trace resolution;
+- added durable recorder participation in caller transactions;
+- audited refresh-token reuse detection;
+- audited user-role and role-permission changes;
+- audited OAuth2 client registration, deactivation and secret rotation;
+- audited form-login success and failure;
+- preserved specialized OAuth2 revocation audit records;
+- prohibited raw passwords, hashes, tokens and client secrets from audit records;
+- verified persistence, privacy and rollback behavior with unit and MySQL integration
+  tests.
+
 Remaining checkpoints:
 
 ```text
-R25.11.9 — Durable security-event recording                        NEXT
-R25.11.10 — Concurrent refresh and reuse verification              PLANNED
+R25.11.10 — Concurrent refresh and reuse verification              NEXT
 R25.11.11 — Cleanup, full verification and documentation closure   PLANNED
 ```
 

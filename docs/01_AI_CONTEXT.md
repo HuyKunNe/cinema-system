@@ -110,7 +110,7 @@ Verified endpoint authorization:
 Current next checkpoint:
 
 ```text
-R25.11.9 — Durable security-event recording — NEXT
+R25.11.10 — Concurrent refresh and reuse verification — NEXT
 
 > **R25 — User Service**
 
@@ -129,7 +129,7 @@ R25.7 — account lifecycle and email verification — DONE
 R25.8 — Spring Authorization Server foundation — DONE
 R25.9 — OAuth2 clients and grant types — DONE
 R25.10 — JWT claims and JWK signing — DONE
-R25.11.1–R25.11.8 — refresh security and sensitive-change revocation — DONE
+R25.11.1–R25.11.9 — refresh security, revocation and durable auditing — DONE
 ```
 
 Active checkpoint:
@@ -778,10 +778,21 @@ R24 met all completion requirements on 2026-08-04.
 
 # Current Next Step
 
-R25.11.9 — Durable security-event recording
+R25.11.10 — Concurrent refresh and reuse verification
 
-R25.11.8 is complete. Do not reimplement its account, credential, OAuth2 client,
-administrative revocation or revocation-audit behavior.
+R25.11.9 is complete. Do not reimplement its schema, actor/context resolution,
+recorder or trigger wiring unless addressing a verified defect.
 
-Do not modify completed R24 or R25.1–R25.11.7 behavior unless addressing a verified
-defect.
+Accepted durable security-audit behavior:
+
+- `security_audit_events` is append-oriented User Service persistence.
+- It does not replace the specialized `oauth2_revocation_audit_events` model.
+- Actors resolve to `SYSTEM`, `USER` or `CLIENT`.
+- Correlation resolution prefers MDC `correlationId`, then `traceId`.
+- Implemented triggers cover refresh-token reuse, role and permission assignment,
+  OAuth2 client registration and lifecycle changes, and form-login outcomes.
+- Audit failures propagate and roll back transactional sensitive mutations.
+- Authentication audit records preserve standard Spring Security login redirects.
+- Passwords, hashes, raw tokens, token hashes, client secrets, exception messages and
+  unrestricted request bodies are prohibited from audit data.
+- User Service security audit records are not Kafka business integration events.

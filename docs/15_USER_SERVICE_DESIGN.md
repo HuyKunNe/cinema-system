@@ -633,6 +633,39 @@ A failure to persist a revocation audit event fails the surrounding sensitive op
 so that account, credential, client and authorization state cannot commit without its
 required audit record.
 
+The general durable security-audit model is implemented separately in
+`security_audit_events`. It does not replace `oauth2_revocation_audit_events`.
+
+General security audit rows contain:
+
+- event type;
+- actor type `SYSTEM`, `USER` or `CLIENT`;
+- bounded actor reference;
+- optional paired target type and reference;
+- `SUCCESS` or `FAILURE` outcome;
+- optional correlation or trace identifier;
+- optional bounded non-sensitive reason;
+- optional approved bounded metadata;
+- occurrence and persistence timestamps.
+
+Implemented triggers are:
+
+- authentication success and failure;
+- refresh-token reuse detection;
+- user-role assignment and revocation;
+- role-permission assignment and revocation;
+- OAuth2 client registration;
+- OAuth2 client deactivation;
+- OAuth2 client-secret rotation.
+
+Role metadata contains only the role enum. Permission metadata contains only the
+permission code. OAuth2 client registration metadata contains only the approved client
+type. Authentication records contain neither passwords nor exception messages.
+
+Recorder failure propagates to the caller. For transactional assignment, OAuth2 client
+and refresh-token operations, this rolls back both the sensitive mutation and its
+required audit record.
+
 ---
 
 ## 20. Test Strategy
