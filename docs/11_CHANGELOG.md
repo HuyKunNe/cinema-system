@@ -89,6 +89,7 @@ R26-R28  Planned
 ```text
 R25.11.10 — Concurrent refresh and reuse verification
 R25.11.11 — Cleanup, full verification and documentation closure
+```
 
 ## 2026-08-13
 
