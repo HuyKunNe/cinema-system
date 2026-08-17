@@ -2,9 +2,9 @@ package com.cinema.user.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
+
+import jakarta.persistence.EntityManagerFactory;
 
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationInfo;
@@ -13,50 +13,44 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
-import jakarta.persistence.EntityManagerFactory;
+class UserFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
 
-class UserFlywayIntegrationTest
-        extends AbstractMySqlIntegrationTest {
+    private static final List<String> EXPECTED_TABLES =
+            List.of(
+                    "users",
+                    "user_profiles",
+                    "user_credentials",
+                    "roles",
+                    "permissions",
+                    "user_roles",
+                    "email_verification_tokens",
+                    "role_permissions",
+                    "oauth2_registered_client",
+                    "oauth2_authorization",
+                    "oauth2_authorization_consent",
+                    "oauth2_refresh_token_history",
+                    "oauth2_revocation_audit_events",
+                    "security_audit_events");
 
-    private static final List<String> EXPECTED_TABLES = List.of(
-            "users",
-            "user_profiles",
-            "user_credentials",
-            "roles",
-            "permissions",
-            "user_roles",
-            "email_verification_tokens",
-            "role_permissions",
-            "oauth2_registered_client",
-            "oauth2_authorization",
-            "oauth2_authorization_consent",
-            "oauth2_refresh_token_history",
-            "oauth2_revocation_audit_events");
+    @Autowired private Flyway flyway;
 
-    @Autowired
-    private Flyway flyway;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
-
-    @Autowired
-    private EntityManagerFactory entityManagerFactory;
+    @Autowired private EntityManagerFactory entityManagerFactory;
 
     @Test
     void flywayShouldApplyAllMigrationsSuccessfully() {
         MigrationInfoService migrationInfo = flyway.info();
 
-        assertThat(migrationInfo.pending())
-                .isEmpty();
+        assertThat(migrationInfo.pending()).isEmpty();
 
-        assertThat(migrationInfo.all())
-                .filteredOn(info -> info.getState().isFailed())
-                .isEmpty();
+        assertThat(migrationInfo.all()).filteredOn(info -> info.getState().isFailed()).isEmpty();
 
-        assertThat(migrationInfo.applied())
-                .isNotEmpty();
+        assertThat(migrationInfo.applied()).isNotEmpty();
 
         assertThat(migrationInfo.applied())
                 .extracting(MigrationInfo::getVersion)
@@ -65,22 +59,24 @@ class UserFlywayIntegrationTest
 
     @Test
     void flywaySchemaHistoryShouldContainSuccessfulMigrations() {
-        Integer count = jdbcTemplate.queryForObject(
-                """
+        Integer count =
+                jdbcTemplate.queryForObject(
+                        """
                         SELECT COUNT(*)
                         FROM flyway_schema_history
-                        WHERE version IN ('1', '2', '3', '4', '5', '6', '7')
+                        WHERE version IN ('1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11')
                           AND success = TRUE
                         """,
-                Integer.class);
+                        Integer.class);
 
-        assertThat(count).isEqualTo(7);
+        assertThat(count).isEqualTo(11);
     }
 
     @Test
     void migrationShouldCreateAllUserServiceTables() {
-        List<String> tables = jdbcTemplate.queryForList(
-                """
+        List<String> tables =
+                jdbcTemplate.queryForList(
+                        """
                         SELECT table_name
                         FROM information_schema.tables
                         WHERE table_schema = DATABASE()
@@ -97,21 +93,21 @@ class UserFlywayIntegrationTest
                               'oauth2_authorization',
                               'oauth2_authorization_consent',
                               'oauth2_refresh_token_history',
-                              'oauth2_revocation_audit_events'
+                              'oauth2_revocation_audit_events',
+                              'security_audit_events'
                           )
                         ORDER BY table_name
                         """,
-                String.class);
+                        String.class);
 
-        assertThat(tables)
-                .containsExactlyInAnyOrderElementsOf(
-                        EXPECTED_TABLES);
+        assertThat(tables).containsExactlyInAnyOrderElementsOf(EXPECTED_TABLES);
     }
 
     @Test
     void uuidColumnsShouldUseBinarySixteen() {
-        List<Map<String, Object>> columns = jdbcTemplate.queryForList(
-                """
+        List<Map<String, Object>> columns =
+                jdbcTemplate.queryForList(
+                        """
                         SELECT table_name,
                                column_name,
                                data_type,
@@ -188,29 +184,35 @@ class UserFlywayIntegrationTest
                                         'actor_user_id'
                                     )
                                 )
+                                OR
+                                (
+                                    table_name = 'security_audit_events'
+                                    AND column_name = 'id'
+                                )
                           )
                         """);
 
-        assertThat(columns).hasSize(18);
+        assertThat(columns).hasSize(19);
 
         assertThat(columns)
-                .allSatisfy(column -> {
-                    assertThat(column.get("data_type"))
-                            .asString()
-                            .isEqualToIgnoringCase("binary");
+                .allSatisfy(
+                        column -> {
+                            assertThat(column.get("data_type"))
+                                    .asString()
+                                    .isEqualToIgnoringCase("binary");
 
-                    assertThat(
-                            ((Number) column.get(
-                                    "character_maximum_length"))
-                                    .longValue())
-                            .isEqualTo(16L);
-                });
+                            assertThat(
+                                            ((Number) column.get("character_maximum_length"))
+                                                    .longValue())
+                                    .isEqualTo(16L);
+                        });
     }
 
     @Test
     void migrationShouldCreateExpectedUniqueConstraints() {
-        List<String> constraints = jdbcTemplate.queryForList(
-                """
+        List<String> constraints =
+                jdbcTemplate.queryForList(
+                        """
                         SELECT constraint_name
                         FROM information_schema.table_constraints
                         WHERE constraint_schema = DATABASE()
@@ -226,7 +228,7 @@ class UserFlywayIntegrationTest
                               'uk_oauth2_refresh_token_history_hash'
                           )
                         """,
-                String.class);
+                        String.class);
 
         assertThat(constraints)
                 .containsExactlyInAnyOrder(
@@ -242,8 +244,9 @@ class UserFlywayIntegrationTest
 
     @Test
     void migrationShouldCreateExpectedForeignKeys() {
-        List<String> constraints = jdbcTemplate.queryForList(
-                """
+        List<String> constraints =
+                jdbcTemplate.queryForList(
+                        """
                         SELECT constraint_name
                         FROM information_schema.table_constraints
                         WHERE constraint_schema = DATABASE()
@@ -261,7 +264,7 @@ class UserFlywayIntegrationTest
                               'fk_oauth2_refresh_token_history_authorization'
                           )
                         """,
-                String.class);
+                        String.class);
 
         assertThat(constraints)
                 .containsExactlyInAnyOrder(
@@ -279,8 +282,9 @@ class UserFlywayIntegrationTest
 
     @Test
     void migrationShouldCreateExpectedChecks() {
-        List<String> constraints = jdbcTemplate.queryForList(
-                """
+        List<String> constraints =
+                jdbcTemplate.queryForList(
+                        """
                         SELECT constraint_name
                         FROM information_schema.table_constraints
                         WHERE constraint_schema = DATABASE()
@@ -298,10 +302,11 @@ class UserFlywayIntegrationTest
                                 'chk_oauth2_refresh_token_history_transition_time',
                                 'chk_oauth2_refresh_token_history_rotated_time',
                                 'chk_oauth2_refresh_token_history_revoked_time',
-                                'chk_oauth2_refresh_token_history_reused_time'
+                                'chk_oauth2_refresh_token_history_reused_time',
+                                'chk_security_audit_target_pair'
                           )
                         """,
-                String.class);
+                        String.class);
 
         assertThat(constraints)
                 .containsExactlyInAnyOrder(
@@ -317,30 +322,37 @@ class UserFlywayIntegrationTest
                         "chk_oauth2_refresh_token_history_transition_time",
                         "chk_oauth2_refresh_token_history_rotated_time",
                         "chk_oauth2_refresh_token_history_revoked_time",
-                        "chk_oauth2_refresh_token_history_reused_time");
+                        "chk_oauth2_refresh_token_history_reused_time",
+                        "chk_security_audit_target_pair");
     }
 
     @Test
     void migrationShouldCreateCriticalIndexes() {
-        List<String> indexes = jdbcTemplate.queryForList(
-                """
+        List<String> indexes =
+                jdbcTemplate.queryForList(
+                        """
                         SELECT DISTINCT index_name
                         FROM information_schema.statistics
                         WHERE table_schema = DATABASE()
                           AND index_name IN (
-                              'idx_users_status',
-                              'idx_user_roles_role',
-                              'idx_user_roles_assigned_by',
-                              'idx_role_permissions_permission',
-                              'idx_role_permissions_assigned_by',
-                              'idx_email_verification_tokens_user_active',
-                              'idx_email_verification_tokens_expires_at',
-                              'idx_oauth2_refresh_token_history_authorization',
-                              'idx_oauth2_refresh_token_history_client_principal',
-                              'idx_oauth2_refresh_token_history_status_expires'
+                                'idx_users_status',
+                                'idx_user_roles_role',
+                                'idx_user_roles_assigned_by',
+                                'idx_role_permissions_permission',
+                                'idx_role_permissions_assigned_by',
+                                'idx_email_verification_tokens_user_active',
+                                'idx_email_verification_tokens_expires_at',
+                                'idx_oauth2_refresh_token_history_authorization',
+                                'idx_oauth2_refresh_token_history_client_principal',
+                                'idx_oauth2_refresh_token_history_status_expires',
+                                'idx_security_audit_event_time',
+                                'idx_security_audit_actor',
+                                'idx_security_audit_target',
+                                'idx_security_audit_outcome',
+                                'idx_security_audit_correlation'
                           )
                         """,
-                String.class);
+                        String.class);
 
         assertThat(indexes)
                 .containsExactlyInAnyOrder(
@@ -353,31 +365,39 @@ class UserFlywayIntegrationTest
                         "idx_email_verification_tokens_expires_at",
                         "idx_oauth2_refresh_token_history_authorization",
                         "idx_oauth2_refresh_token_history_client_principal",
-                        "idx_oauth2_refresh_token_history_status_expires");
+                        "idx_oauth2_refresh_token_history_status_expires",
+                        "idx_security_audit_event_time",
+                        "idx_security_audit_actor",
+                        "idx_security_audit_target",
+                        "idx_security_audit_outcome",
+                        "idx_security_audit_correlation");
     }
 
     @Test
     void migrationShouldSeedAuthorityCatalog() {
-        Integer roleCount = jdbcTemplate.queryForObject(
-                """
+        Integer roleCount =
+                jdbcTemplate.queryForObject(
+                        """
                         SELECT COUNT(*)
                         FROM roles
                         """,
-                Integer.class);
+                        Integer.class);
 
-        Integer permissionCount = jdbcTemplate.queryForObject(
-                """
+        Integer permissionCount =
+                jdbcTemplate.queryForObject(
+                        """
                         SELECT COUNT(*)
                         FROM permissions
                         """,
-                Integer.class);
+                        Integer.class);
 
-        Integer assignmentCount = jdbcTemplate.queryForObject(
-                """
+        Integer assignmentCount =
+                jdbcTemplate.queryForObject(
+                        """
                         SELECT COUNT(*)
                         FROM role_permissions
                         """,
-                Integer.class);
+                        Integer.class);
 
         assertThat(roleCount).isEqualTo(4);
         assertThat(permissionCount).isEqualTo(9);
@@ -386,23 +406,20 @@ class UserFlywayIntegrationTest
 
     @Test
     void migrationShouldSeedExpectedRolePermissionCounts() {
-        assertThat(permissionCountForRole("USER"))
-                .isEqualTo(3);
+        assertThat(permissionCountForRole("USER")).isEqualTo(3);
 
-        assertThat(permissionCountForRole("STAFF"))
-                .isEqualTo(7);
+        assertThat(permissionCountForRole("STAFF")).isEqualTo(7);
 
-        assertThat(permissionCountForRole("ADMIN"))
-                .isEqualTo(9);
+        assertThat(permissionCountForRole("ADMIN")).isEqualTo(9);
 
-        assertThat(permissionCountForRole("SERVICE"))
-                .isZero();
+        assertThat(permissionCountForRole("SERVICE")).isZero();
     }
 
     @Test
     void seededAuthorityIdsShouldUseUuidVersionSeven() {
-        List<String> identifiers = jdbcTemplate.queryForList(
-                """
+        List<String> identifiers =
+                jdbcTemplate.queryForList(
+                        """
                         SELECT BIN_TO_UUID(id)
                         FROM roles
 
@@ -411,26 +428,26 @@ class UserFlywayIntegrationTest
                         SELECT BIN_TO_UUID(id)
                         FROM permissions
                         """,
-                String.class);
+                        String.class);
 
         assertThat(identifiers).hasSize(13);
 
         assertThat(identifiers)
-                .allSatisfy(identifier -> assertThat(
-                        UUID.fromString(identifier).version())
-                        .isEqualTo(7));
+                .allSatisfy(
+                        identifier ->
+                                assertThat(UUID.fromString(identifier).version()).isEqualTo(7));
     }
 
     @Test
     void hibernateShouldValidateFlywaySchema() {
-        assertThat(entityManagerFactory.isOpen())
-                .isTrue();
+        assertThat(entityManagerFactory.isOpen()).isTrue();
     }
 
     @Test
     void migrationShouldCreateRegisteredClientUniqueConstraint() {
-        List<String> constraints = jdbcTemplate.queryForList(
-                """
+        List<String> constraints =
+                jdbcTemplate.queryForList(
+                        """
                         SELECT constraint_name
                         FROM information_schema.table_constraints
                         WHERE constraint_schema = DATABASE()
@@ -438,24 +455,23 @@ class UserFlywayIntegrationTest
                               'oauth2_registered_client'
                           AND constraint_type = 'UNIQUE'
                         """,
-                String.class);
+                        String.class);
 
-        assertThat(constraints)
-                .contains(
-                        "uk_oauth2_registered_client_client_id");
+        assertThat(constraints).contains("uk_oauth2_registered_client_client_id");
     }
 
     @Test
     void registeredClientTableShouldContainExpectedColumns() {
-        List<String> columns = jdbcTemplate.queryForList(
-                """
+        List<String> columns =
+                jdbcTemplate.queryForList(
+                        """
                         SELECT column_name
                         FROM information_schema.columns
                         WHERE table_schema = DATABASE()
                           AND table_name =
                               'oauth2_registered_client'
                         """,
-                String.class);
+                        String.class);
 
         assertThat(columns)
                 .containsExactlyInAnyOrder(
@@ -477,14 +493,15 @@ class UserFlywayIntegrationTest
 
     @Test
     void authorizationTableShouldContainExpectedColumns() {
-        List<String> columns = jdbcTemplate.queryForList(
-                """
+        List<String> columns =
+                jdbcTemplate.queryForList(
+                        """
                         SELECT column_name
                         FROM information_schema.columns
                         WHERE table_schema = DATABASE()
                           AND table_name = 'oauth2_authorization'
                         """,
-                String.class);
+                        String.class);
 
         assertThat(columns)
                 .containsExactlyInAnyOrder(
@@ -525,34 +542,33 @@ class UserFlywayIntegrationTest
 
     @Test
     void authorizationConsentTableShouldContainExpectedColumns() {
-        List<String> columns = jdbcTemplate.queryForList(
-                """
+        List<String> columns =
+                jdbcTemplate.queryForList(
+                        """
                         SELECT column_name
                         FROM information_schema.columns
                         WHERE table_schema = DATABASE()
                           AND table_name =
                               'oauth2_authorization_consent'
                         """,
-                String.class);
+                        String.class);
 
         assertThat(columns)
-                .containsExactlyInAnyOrder(
-                        "registered_client_id",
-                        "principal_name",
-                        "authorities");
+                .containsExactlyInAnyOrder("registered_client_id", "principal_name", "authorities");
     }
 
     @Test
     void refreshTokenHistoryTableShouldContainExpectedColumns() {
-        List<String> columns = jdbcTemplate.queryForList(
-                """
+        List<String> columns =
+                jdbcTemplate.queryForList(
+                        """
                         SELECT column_name
                         FROM information_schema.columns
                         WHERE table_schema = DATABASE()
                           AND table_name =
                               'oauth2_refresh_token_history'
                         """,
-                String.class);
+                        String.class);
 
         assertThat(columns)
                 .containsExactlyInAnyOrder(
@@ -574,31 +590,32 @@ class UserFlywayIntegrationTest
 
     @Test
     void registeredClientStatusShouldDefaultToActive() {
-        String defaultValue = jdbcTemplate.queryForObject(
-                """
+        String defaultValue =
+                jdbcTemplate.queryForObject(
+                        """
                         SELECT column_default
                         FROM information_schema.columns
                         WHERE table_schema = DATABASE()
                           AND table_name = 'oauth2_registered_client'
                           AND column_name = 'active'
                         """,
-                String.class);
+                        String.class);
 
-        assertThat(defaultValue)
-                .isEqualTo("1");
+        assertThat(defaultValue).isEqualTo("1");
     }
 
     @Test
     void revocationAuditTableShouldContainExpectedColumns() {
-        List<String> columns = jdbcTemplate.queryForList(
-                """
+        List<String> columns =
+                jdbcTemplate.queryForList(
+                        """
                         SELECT column_name
                         FROM information_schema.columns
                         WHERE table_schema = DATABASE()
                           AND table_name =
                               'oauth2_revocation_audit_events'
                         """,
-                String.class);
+                        String.class);
 
         assertThat(columns)
                 .containsExactlyInAnyOrder(
@@ -615,17 +632,48 @@ class UserFlywayIntegrationTest
                         "updated_at");
     }
 
+    @Test
+    void securityAuditTableShouldContainExpectedColumns() {
+        List<String> columns =
+                jdbcTemplate.queryForList(
+                        """
+                        SELECT column_name
+                        FROM information_schema.columns
+                        WHERE table_schema = DATABASE()
+                          AND table_name = 'security_audit_events'
+                        """,
+                        String.class);
+
+        assertThat(columns)
+                .containsExactlyInAnyOrder(
+                        "id",
+                        "version",
+                        "event_type",
+                        "actor_type",
+                        "actor_reference",
+                        "target_type",
+                        "target_reference",
+                        "outcome",
+                        "correlation_id",
+                        "reason",
+                        "metadata",
+                        "occurred_at",
+                        "created_at",
+                        "updated_at");
+    }
+
     private int permissionCountForRole(String roleName) {
-        Integer count = jdbcTemplate.queryForObject(
-                """
+        Integer count =
+                jdbcTemplate.queryForObject(
+                        """
                         SELECT COUNT(role_permissions.permission_id)
                         FROM roles
                         LEFT JOIN role_permissions
                             ON role_permissions.role_id = roles.id
                         WHERE roles.name = ?
                         """,
-                Integer.class,
-                roleName);
+                        Integer.class,
+                        roleName);
 
         return count == null ? 0 : count;
     }
