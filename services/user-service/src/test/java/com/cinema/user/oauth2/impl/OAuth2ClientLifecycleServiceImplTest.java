@@ -26,6 +26,7 @@ import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
+import com.cinema.user.oauth2.audit.RevocationReason;
 
 @ExtendWith(MockitoExtension.class)
 class OAuth2ClientLifecycleServiceImplTest {
@@ -85,7 +86,9 @@ class OAuth2ClientLifecycleServiceImplTest {
 
         order.verify(authorizationSessionRevocationService)
                 .revokeByRegisteredClientId(
-                        REGISTERED_CLIENT_ID);
+                        REGISTERED_CLIENT_ID,
+                        CLIENT_ID,
+                        RevocationReason.CLIENT_DEACTIVATED);
 
         order.verify(jdbcOperations)
                 .update(
@@ -168,7 +171,9 @@ class OAuth2ClientLifecycleServiceImplTest {
 
         verify(authorizationSessionRevocationService)
                 .revokeByRegisteredClientId(
-                        REGISTERED_CLIENT_ID);
+                        REGISTERED_CLIENT_ID,
+                        CLIENT_ID,
+                        RevocationReason.CLIENT_DEACTIVATED);
     }
 
     @Test
@@ -205,7 +210,9 @@ class OAuth2ClientLifecycleServiceImplTest {
 
         order.verify(authorizationSessionRevocationService)
                 .revokeByRegisteredClientId(
-                        REGISTERED_CLIENT_ID);
+                        REGISTERED_CLIENT_ID,
+                        CLIENT_ID,
+                        RevocationReason.CLIENT_SECRET_ROTATED);
 
         order.verify(jdbcOperations)
                 .update(
@@ -294,7 +301,9 @@ class OAuth2ClientLifecycleServiceImplTest {
 
         verify(authorizationSessionRevocationService)
                 .revokeByRegisteredClientId(
-                        REGISTERED_CLIENT_ID);
+                        REGISTERED_CLIENT_ID,
+                        CLIENT_ID,
+                        RevocationReason.CLIENT_SECRET_ROTATED);
     }
 
     private static RegisteredClient confidentialClient() {

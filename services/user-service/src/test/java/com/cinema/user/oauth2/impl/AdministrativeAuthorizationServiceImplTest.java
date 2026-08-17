@@ -23,26 +23,22 @@ import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.user.entity.User;
 import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
 import com.cinema.user.oauth2.OAuth2ClientLifecycleService;
+import com.cinema.user.oauth2.audit.RevocationReason;
 import com.cinema.user.repository.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
 class AdministrativeAuthorizationServiceImplTest {
 
-    private static final UUID USER_ID =
-            UUID.fromString(
-                    "019c5000-0000-7000-8000-000000000601");
+    private static final UUID USER_ID = UUID.fromString(
+            "019c5000-0000-7000-8000-000000000601");
 
-    private static final String USERNAME =
-            "admin-target";
+    private static final String USERNAME = "admin-target";
 
-    private static final String REGISTERED_CLIENT_ID =
-            "019c5000-0000-7000-8000-000000000602";
+    private static final String REGISTERED_CLIENT_ID = "019c5000-0000-7000-8000-000000000602";
 
-    private static final String CLIENT_ID =
-            "inventory-service";
+    private static final String CLIENT_ID = "inventory-service";
 
-    private static final String NEW_RAW_CLIENT_SECRET =
-            "new-administrative-client-secret";
+    private static final String NEW_RAW_CLIENT_SECRET = "new-administrative-client-secret";
 
     @Mock
     private UserRepository userRepository;
@@ -51,8 +47,7 @@ class AdministrativeAuthorizationServiceImplTest {
     private RegisteredClientRepository registeredClientRepository;
 
     @Mock
-    private AuthorizationSessionRevocationService
-            authorizationSessionRevocationService;
+    private AuthorizationSessionRevocationService authorizationSessionRevocationService;
 
     @Mock
     private OAuth2ClientLifecycleService clientLifecycleService;
@@ -64,12 +59,11 @@ class AdministrativeAuthorizationServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service =
-                new AdministrativeAuthorizationServiceImpl(
-                        userRepository,
-                        registeredClientRepository,
-                        authorizationSessionRevocationService,
-                        clientLifecycleService);
+        service = new AdministrativeAuthorizationServiceImpl(
+                userRepository,
+                registeredClientRepository,
+                authorizationSessionRevocationService,
+                clientLifecycleService);
     }
 
     @Test
@@ -88,7 +82,8 @@ class AdministrativeAuthorizationServiceImplTest {
 
         verify(authorizationSessionRevocationService)
                 .revokeByPrincipalName(
-                        USERNAME);
+                        USERNAME,
+                        RevocationReason.ADMIN_USER_REVOCATION);
 
         verifyNoInteractions(
                 registeredClientRepository,
@@ -102,9 +97,8 @@ class AdministrativeAuthorizationServiceImplTest {
                 .thenReturn(
                         Optional.empty());
 
-        assertThatThrownBy(() ->
-                service.revokeUserAuthorizations(
-                        USER_ID))
+        assertThatThrownBy(() -> service.revokeUserAuthorizations(
+                USER_ID))
                 .isInstanceOf(
                         NotFoundException.class);
 
@@ -116,9 +110,8 @@ class AdministrativeAuthorizationServiceImplTest {
 
     @Test
     void revokeUserAuthorizationsShouldRejectNullUserId() {
-        assertThatThrownBy(() ->
-                service.revokeUserAuthorizations(
-                        null))
+        assertThatThrownBy(() -> service.revokeUserAuthorizations(
+                null))
                 .isInstanceOf(
                         ValidationException.class);
 
@@ -131,8 +124,7 @@ class AdministrativeAuthorizationServiceImplTest {
 
     @Test
     void revokeClientAuthorizationsShouldResolveInternalIdAndRevoke() {
-        RegisteredClient registeredClient =
-                registeredClient();
+        RegisteredClient registeredClient = registeredClient();
 
         when(registeredClientRepository.findByClientId(
                 CLIENT_ID))
@@ -144,7 +136,9 @@ class AdministrativeAuthorizationServiceImplTest {
 
         verify(authorizationSessionRevocationService)
                 .revokeByRegisteredClientId(
-                        REGISTERED_CLIENT_ID);
+                        REGISTERED_CLIENT_ID,
+                        CLIENT_ID,
+                        RevocationReason.ADMIN_CLIENT_REVOCATION);
 
         verifyNoInteractions(
                 userRepository,
@@ -153,8 +147,7 @@ class AdministrativeAuthorizationServiceImplTest {
 
     @Test
     void revokeClientAuthorizationsShouldTrimClientId() {
-        RegisteredClient registeredClient =
-                registeredClient();
+        RegisteredClient registeredClient = registeredClient();
 
         when(registeredClientRepository.findByClientId(
                 CLIENT_ID))
@@ -170,7 +163,9 @@ class AdministrativeAuthorizationServiceImplTest {
 
         verify(authorizationSessionRevocationService)
                 .revokeByRegisteredClientId(
-                        REGISTERED_CLIENT_ID);
+                        REGISTERED_CLIENT_ID,
+                        CLIENT_ID,
+                        RevocationReason.ADMIN_CLIENT_REVOCATION);
     }
 
     @Test
@@ -180,9 +175,8 @@ class AdministrativeAuthorizationServiceImplTest {
                 .thenReturn(
                         null);
 
-        assertThatThrownBy(() ->
-                service.revokeClientAuthorizations(
-                        CLIENT_ID))
+        assertThatThrownBy(() -> service.revokeClientAuthorizations(
+                CLIENT_ID))
                 .isInstanceOf(
                         NotFoundException.class);
 
@@ -194,9 +188,8 @@ class AdministrativeAuthorizationServiceImplTest {
 
     @Test
     void revokeClientAuthorizationsShouldRejectBlankClientId() {
-        assertThatThrownBy(() ->
-                service.revokeClientAuthorizations(
-                        "   "))
+        assertThatThrownBy(() -> service.revokeClientAuthorizations(
+                "   "))
                 .isInstanceOf(
                         ValidationException.class);
 
@@ -250,11 +243,9 @@ class AdministrativeAuthorizationServiceImplTest {
                 .clientName(
                         "Inventory Service")
                 .clientAuthenticationMethod(
-                        ClientAuthenticationMethod
-                                .CLIENT_SECRET_BASIC)
+                        ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(
-                        AuthorizationGrantType
-                                .CLIENT_CREDENTIALS)
+                        AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .scope(
                         "inventory:read")
                 .build();

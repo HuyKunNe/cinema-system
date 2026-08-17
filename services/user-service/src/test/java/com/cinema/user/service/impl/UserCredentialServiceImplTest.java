@@ -32,6 +32,7 @@ import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.user.entity.User;
 import com.cinema.user.entity.UserCredential;
 import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
+import com.cinema.user.oauth2.audit.RevocationReason;
 import com.cinema.user.repository.UserCredentialRepository;
 import com.cinema.user.repository.UserRepository;
 
@@ -271,7 +272,8 @@ class UserCredentialServiceImplTest {
 
         verify(authorizationSessionRevocationService)
                 .revokeByPrincipalName(
-                        USERNAME);
+                        USERNAME,
+                        RevocationReason.PASSWORD_CHANGED);
     }
 
     @Test
@@ -517,7 +519,8 @@ class UserCredentialServiceImplTest {
 
         verify(authorizationSessionRevocationService)
                 .revokeByPrincipalName(
-                        USERNAME);
+                        USERNAME,
+                        RevocationReason.PASSWORD_RESET);
     }
 
     @Test

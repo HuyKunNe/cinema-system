@@ -15,6 +15,7 @@ import com.cinema.user.exception.UserErrorCode;
 import com.cinema.user.oauth2.AdministrativeAuthorizationService;
 import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
 import com.cinema.user.oauth2.OAuth2ClientLifecycleService;
+import com.cinema.user.oauth2.audit.RevocationReason;
 import com.cinema.user.repository.UserRepository;
 
 @Service
@@ -50,46 +51,42 @@ public class AdministrativeAuthorizationServiceImpl
     @Override
     @Transactional
     @PreAuthorize(USER_MANAGE)
-    public void revokeUserAuthorizations(
-            UUID userId) {
+    public void revokeUserAuthorizations(UUID userId) {
 
         if (userId == null) {
-            throw new ValidationException(
-                    UserErrorCode.USER_ID_REQUIRED);
+            throw new ValidationException(UserErrorCode.USER_ID_REQUIRED);
         }
 
         User user = userRepository.findById(
                 userId)
-                .orElseThrow(() -> new NotFoundException(
-                        UserErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(UserErrorCode.USER_NOT_FOUND));
 
         authorizationSessionRevocationService
                 .revokeByPrincipalName(
-                        user.getUsername());
+                        user.getUsername(),
+                        RevocationReason.ADMIN_USER_REVOCATION);
     }
 
     @Override
     @Transactional
     @PreAuthorize(USER_MANAGE)
-    public void revokeClientAuthorizations(
-            String clientId) {
+    public void revokeClientAuthorizations(String clientId) {
 
-        RegisteredClient client = findActiveClient(
-                clientId);
+        RegisteredClient client = findActiveClient(clientId);
 
         authorizationSessionRevocationService
                 .revokeByRegisteredClientId(
-                        client.getId());
+                        client.getId(),
+                        client.getClientId(),
+                        RevocationReason.ADMIN_CLIENT_REVOCATION);
     }
 
     @Override
     @Transactional
     @PreAuthorize(USER_MANAGE)
-    public void deactivateClient(
-            String clientId) {
+    public void deactivateClient(String clientId) {
 
-        clientLifecycleService.deactivate(
-                clientId);
+        clientLifecycleService.deactivate(clientId);
     }
 
     @Override
@@ -104,23 +101,18 @@ public class AdministrativeAuthorizationServiceImpl
                 newRawClientSecret);
     }
 
-    private RegisteredClient findActiveClient(
-            String clientId) {
+    private RegisteredClient findActiveClient(String clientId) {
 
-        if (clientId == null
-                || clientId.isBlank()) {
+        if (clientId == null || clientId.isBlank()) {
 
-            throw new ValidationException(
-                    UserErrorCode.OAUTH2_CLIENT_ID_REQUIRED);
+            throw new ValidationException(UserErrorCode.OAUTH2_CLIENT_ID_REQUIRED);
         }
 
         RegisteredClient client = registeredClientRepository
-                .findByClientId(
-                        clientId.trim());
+                .findByClientId(clientId.trim());
 
         if (client == null) {
-            throw new NotFoundException(
-                    UserErrorCode.OAUTH2_CLIENT_NOT_FOUND);
+            throw new NotFoundException(UserErrorCode.OAUTH2_CLIENT_NOT_FOUND);
         }
 
         return client;

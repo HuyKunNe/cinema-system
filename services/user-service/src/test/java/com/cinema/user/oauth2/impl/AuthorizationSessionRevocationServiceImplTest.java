@@ -28,11 +28,16 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 
 import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
 import com.cinema.user.oauth2.OAuth2AuthorizationQueryRepository;
+import com.cinema.user.oauth2.audit.RevocationAuditRecorder;
+import com.cinema.user.oauth2.audit.RevocationAuditTargetType;
+import com.cinema.user.oauth2.audit.RevocationReason;
 
 @ExtendWith(MockitoExtension.class)
 class AuthorizationSessionRevocationServiceImplTest {
 
     private static final String AUTHORIZATION_ID = "authorization-001";
+
+    private static final String SECOND_AUTHORIZATION_ID = "authorization-002";
 
     private static final String REGISTERED_CLIENT_ID = "registered-client-001";
 
@@ -44,8 +49,7 @@ class AuthorizationSessionRevocationServiceImplTest {
 
     private static final String SCOPE = "booking:read";
 
-    private static final Instant ISSUED_AT = Instant.parse(
-            "2026-08-13T08:00:00Z");
+    private static final Instant ISSUED_AT = Instant.parse("2026-08-13T08:00:00Z");
 
     @Mock
     private OAuth2AuthorizationQueryRepository queryRepository;
@@ -53,213 +57,248 @@ class AuthorizationSessionRevocationServiceImplTest {
     @Mock
     private OAuth2AuthorizationService authorizationService;
 
+    @Mock
+    private RevocationAuditRecorder auditRecorder;
+
     private AuthorizationSessionRevocationService revocationService;
 
     @BeforeEach
     void setUp() {
         revocationService = new AuthorizationSessionRevocationServiceImpl(
                 queryRepository,
-                authorizationService);
+                authorizationService,
+                auditRecorder);
     }
 
     @Test
-    void shouldRevokeAuthorizationTokensByPrincipalName() {
-        OAuth2Authorization authorization = createAuthorization();
+    void shouldRevokeAuthorizationTokensByPrincipalNameAndRecordAudit() {
+        OAuth2Authorization authorization = createAuthorization(AUTHORIZATION_ID);
 
         when(queryRepository.findIdsByPrincipalName(
                 PRINCIPAL_NAME))
-                .thenReturn(
-                        List.of(
-                                AUTHORIZATION_ID));
+                .thenReturn(List.of(AUTHORIZATION_ID));
 
         when(authorizationService.findById(
                 AUTHORIZATION_ID))
-                .thenReturn(
-                        authorization);
+                .thenReturn(authorization);
 
         revocationService.revokeByPrincipalName(
-                PRINCIPAL_NAME);
+                PRINCIPAL_NAME,
+                RevocationReason.ACCOUNT_LOCKED);
 
-        ArgumentCaptor<OAuth2Authorization> captor = ArgumentCaptor.forClass(
-                OAuth2Authorization.class);
+        ArgumentCaptor<OAuth2Authorization> captor = ArgumentCaptor.forClass(OAuth2Authorization.class);
 
         verify(authorizationService)
-                .save(
-                        captor.capture());
+                .save(captor.capture());
 
-        assertInvalidated(
-                captor.getValue());
+        assertInvalidated(captor.getValue());
+
+        verify(auditRecorder)
+                .record(
+                        RevocationAuditTargetType.USER,
+                        PRINCIPAL_NAME,
+                        RevocationReason.ACCOUNT_LOCKED,
+                        1);
     }
 
     @Test
-    void shouldRevokeAuthorizationTokensByRegisteredClientId() {
-        OAuth2Authorization authorization = createAuthorization();
+    void shouldRevokeAuthorizationTokensByRegisteredClientIdAndRecordAudit() {
+        OAuth2Authorization authorization = createAuthorization(AUTHORIZATION_ID);
 
         when(queryRepository.findIdsByRegisteredClientId(
                 REGISTERED_CLIENT_ID))
-                .thenReturn(
-                        List.of(
-                                AUTHORIZATION_ID));
+                .thenReturn(List.of(AUTHORIZATION_ID));
 
         when(authorizationService.findById(
                 AUTHORIZATION_ID))
-                .thenReturn(
-                        authorization);
+                .thenReturn(authorization);
 
         revocationService.revokeByRegisteredClientId(
-                REGISTERED_CLIENT_ID);
+                REGISTERED_CLIENT_ID,
+                CLIENT_ID,
+                RevocationReason.CLIENT_DEACTIVATED);
 
         ArgumentCaptor<OAuth2Authorization> captor = ArgumentCaptor.forClass(
                 OAuth2Authorization.class);
 
         verify(authorizationService)
-                .save(
-                        captor.capture());
+                .save(captor.capture());
 
-        assertInvalidated(
-                captor.getValue());
+        assertInvalidated(captor.getValue());
+
+        verify(auditRecorder)
+                .record(
+                        RevocationAuditTargetType.CLIENT,
+                        CLIENT_ID,
+                        RevocationReason.CLIENT_DEACTIVATED,
+                        1);
     }
 
     @Test
-    void shouldIgnoreAuthorizationRemovedDuringRevocation() {
-        when(queryRepository.findIdsByPrincipalName(
-                PRINCIPAL_NAME))
-                .thenReturn(
-                        List.of(
-                                AUTHORIZATION_ID));
+    void shouldCountOnlyAuthorizationsChangedByRevocation() {
+        OAuth2Authorization activeAuthorization = createAuthorization(AUTHORIZATION_ID);
 
-        when(authorizationService.findById(
-                AUTHORIZATION_ID))
-                .thenReturn(
-                        null);
-
-        revocationService.revokeByPrincipalName(
-                PRINCIPAL_NAME);
-
-        verify(authorizationService, never())
-                .save(
-                        org.mockito.ArgumentMatchers.any());
-    }
-
-    @Test
-    void shouldNotSaveAlreadyRevokedAuthorization() {
         OAuth2Authorization revokedAuthorization = invalidateAll(
-                createAuthorization());
+                createAuthorization(SECOND_AUTHORIZATION_ID));
 
         when(queryRepository.findIdsByPrincipalName(
                 PRINCIPAL_NAME))
                 .thenReturn(
                         List.of(
-                                AUTHORIZATION_ID));
+                                AUTHORIZATION_ID,
+                                SECOND_AUTHORIZATION_ID));
 
         when(authorizationService.findById(
                 AUTHORIZATION_ID))
-                .thenReturn(
-                        revokedAuthorization);
+                .thenReturn(activeAuthorization);
+
+        when(authorizationService.findById(
+                SECOND_AUTHORIZATION_ID))
+                .thenReturn(revokedAuthorization);
 
         revocationService.revokeByPrincipalName(
-                PRINCIPAL_NAME);
+                PRINCIPAL_NAME,
+                RevocationReason.PASSWORD_CHANGED);
 
-        verify(authorizationService, never())
-                .save(
-                        org.mockito.ArgumentMatchers.any());
+        verify(authorizationService)
+                .save(org.mockito.ArgumentMatchers.any(OAuth2Authorization.class));
+
+        verify(auditRecorder)
+                .record(
+                        RevocationAuditTargetType.USER,
+                        PRINCIPAL_NAME,
+                        RevocationReason.PASSWORD_CHANGED,
+                        1);
     }
 
     @Test
-    void shouldDoNothingWhenNoAuthorizationMatches() {
+    void shouldIgnoreAuthorizationRemovedDuringRevocationAndRecordZeroCount() {
+        when(queryRepository.findIdsByPrincipalName(
+                PRINCIPAL_NAME))
+                .thenReturn(List.of(AUTHORIZATION_ID));
+
+        when(authorizationService.findById(
+                AUTHORIZATION_ID))
+                .thenReturn(null);
+
+        revocationService.revokeByPrincipalName(
+                PRINCIPAL_NAME,
+                RevocationReason.ACCOUNT_DISABLED);
+
+        verify(authorizationService, never())
+                .save(org.mockito.ArgumentMatchers.any());
+
+        verify(auditRecorder)
+                .record(
+                        RevocationAuditTargetType.USER,
+                        PRINCIPAL_NAME,
+                        RevocationReason.ACCOUNT_DISABLED,
+                        0);
+    }
+
+    @Test
+    void shouldNotSaveAlreadyRevokedAuthorizationAndRecordZeroCount() {
+        OAuth2Authorization revokedAuthorization = invalidateAll(
+                createAuthorization(AUTHORIZATION_ID));
+
         when(queryRepository.findIdsByPrincipalName(
                 PRINCIPAL_NAME))
                 .thenReturn(
-                        List.of());
+                        List.of(AUTHORIZATION_ID));
+
+        when(authorizationService.findById(
+                AUTHORIZATION_ID))
+                .thenReturn(revokedAuthorization);
 
         revocationService.revokeByPrincipalName(
-                PRINCIPAL_NAME);
+                PRINCIPAL_NAME,
+                RevocationReason.PASSWORD_RESET);
 
         verify(authorizationService, never())
-                .findById(
-                        org.mockito.ArgumentMatchers.anyString());
+                .save(org.mockito.ArgumentMatchers.any());
 
-        verify(authorizationService, never())
-                .save(
-                        org.mockito.ArgumentMatchers.any());
+        verify(auditRecorder)
+                .record(
+                        RevocationAuditTargetType.USER,
+                        PRINCIPAL_NAME,
+                        RevocationReason.PASSWORD_RESET,
+                        0);
     }
 
-    private OAuth2Authorization createAuthorization() {
+    @Test
+    void shouldRecordAuditWhenNoAuthorizationMatches() {
+        when(queryRepository.findIdsByPrincipalName(PRINCIPAL_NAME))
+                .thenReturn(List.of());
+
+        revocationService.revokeByPrincipalName(
+                PRINCIPAL_NAME,
+                RevocationReason.ADMIN_USER_REVOCATION);
+
+        verify(authorizationService, never())
+                .findById(org.mockito.ArgumentMatchers.anyString());
+
+        verify(authorizationService, never())
+                .save(org.mockito.ArgumentMatchers.any());
+
+        verify(auditRecorder)
+                .record(
+                        RevocationAuditTargetType.USER,
+                        PRINCIPAL_NAME,
+                        RevocationReason.ADMIN_USER_REVOCATION,
+                        0);
+    }
+
+    private OAuth2Authorization createAuthorization(String authorizationId) {
+
         RegisteredClient registeredClient = RegisteredClient
-                .withId(
-                        REGISTERED_CLIENT_ID)
-                .clientId(
-                        CLIENT_ID)
-                .clientSecret(
-                        "{bcrypt}encoded-secret")
-                .clientAuthenticationMethod(
-                        ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(
-                        AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(
-                        AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri(
-                        REDIRECT_URI)
-                .scope(
-                        SCOPE)
+                .withId(REGISTERED_CLIENT_ID)
+                .clientId(CLIENT_ID)
+                .clientSecret("{bcrypt}encoded-secret")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .redirectUri(REDIRECT_URI)
+                .scope(SCOPE)
                 .build();
 
         OAuth2AccessToken accessToken = new OAuth2AccessToken(
                 OAuth2AccessToken.TokenType.BEARER,
-                "access-token-001",
+                "access-token-" + authorizationId,
                 ISSUED_AT,
-                ISSUED_AT.plus(
-                        Duration.ofMinutes(
-                                15)),
-                Set.of(
-                        SCOPE));
+                ISSUED_AT.plus(Duration.ofMinutes(15)),
+                Set.of(SCOPE));
 
         OAuth2RefreshToken refreshToken = new OAuth2RefreshToken(
-                "refresh-token-001",
+                "refresh-token-" + authorizationId,
                 ISSUED_AT,
-                ISSUED_AT.plus(
-                        Duration.ofDays(
-                                30)));
+                ISSUED_AT.plus(Duration.ofDays(30)));
 
         OidcIdToken idToken = new OidcIdToken(
-                "id-token-001",
+                "id-token-" + authorizationId,
                 ISSUED_AT,
-                ISSUED_AT.plus(
-                        Duration.ofMinutes(
-                                15)),
+                ISSUED_AT.plus(Duration.ofMinutes(15)),
                 Map.of(
                         "sub",
                         PRINCIPAL_NAME,
                         "aud",
-                        List.of(
-                                CLIENT_ID)));
+                        List.of(CLIENT_ID)));
 
         return OAuth2Authorization
-                .withRegisteredClient(
-                        registeredClient)
-                .id(
-                        AUTHORIZATION_ID)
-                .principalName(
-                        PRINCIPAL_NAME)
-                .authorizationGrantType(
-                        AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizedScopes(
-                        Set.of(
-                                SCOPE))
-                .accessToken(
-                        accessToken)
-                .refreshToken(
-                        refreshToken)
-                .token(
-                        idToken)
+                .withRegisteredClient(registeredClient)
+                .id(authorizationId)
+                .principalName(PRINCIPAL_NAME)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizedScopes(Set.of(SCOPE))
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .token(idToken)
                 .build();
     }
 
     private OAuth2Authorization invalidateAll(
             OAuth2Authorization authorization) {
 
-        OAuth2Authorization.Builder builder = OAuth2Authorization.from(
-                authorization);
+        OAuth2Authorization.Builder builder = OAuth2Authorization.from(authorization);
 
         builder.invalidate(
                 authorization
@@ -273,8 +312,7 @@ class AuthorizationSessionRevocationServiceImplTest {
 
         builder.invalidate(
                 authorization
-                        .getToken(
-                                OidcIdToken.class)
+                        .getToken(OidcIdToken.class)
                         .getToken());
 
         return builder.build();

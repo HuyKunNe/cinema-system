@@ -30,6 +30,7 @@ import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.user.entity.User;
 import com.cinema.user.entity.UserCredential;
 import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
+import com.cinema.user.oauth2.audit.RevocationReason;
 import com.cinema.user.repository.UserCredentialRepository;
 import com.cinema.user.repository.UserRepository;
 
@@ -119,7 +120,8 @@ public class UserAccountLifecycleServiceImplTest {
 
         order.verify(authorizationSessionRevocationService)
                 .revokeByPrincipalName(
-                        USERNAME);
+                        USERNAME,
+                        RevocationReason.ACCOUNT_LOCKED);
 
         verifyNoInteractions(
                 userCredentialRepository);
@@ -160,7 +162,8 @@ public class UserAccountLifecycleServiceImplTest {
 
         order.verify(authorizationSessionRevocationService)
                 .revokeByPrincipalName(
-                        USERNAME);
+                        USERNAME,
+                        RevocationReason.ACCOUNT_DISABLED);
 
         verifyNoInteractions(
                 userCredentialRepository);

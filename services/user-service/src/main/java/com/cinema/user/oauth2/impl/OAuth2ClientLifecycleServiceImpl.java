@@ -14,6 +14,7 @@ import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.user.exception.UserErrorCode;
 import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
 import com.cinema.user.oauth2.OAuth2ClientLifecycleService;
+import com.cinema.user.oauth2.audit.RevocationReason;
 
 @Service
 @Transactional(readOnly = true)
@@ -60,23 +61,22 @@ public class OAuth2ClientLifecycleServiceImpl
 
     @Override
     @Transactional
-    public void deactivate(
-            String clientId) {
+    public void deactivate(String clientId) {
 
-        RegisteredClient client = findActiveClient(
-                clientId);
+        RegisteredClient client = findActiveClient(clientId);
 
         authorizationSessionRevocationService
                 .revokeByRegisteredClientId(
-                        client.getId());
+                        client.getId(),
+                        client.getClientId(),
+                        RevocationReason.CLIENT_DEACTIVATED);
 
         int updated = jdbcOperations.update(
                 DEACTIVATE_SQL,
                 client.getId());
 
         if (updated != 1) {
-            throw new ConflictException(
-                    UserErrorCode.OAUTH2_CLIENT_ALREADY_INACTIVE);
+            throw new ConflictException(UserErrorCode.OAUTH2_CLIENT_ALREADY_INACTIVE);
         }
     }
 
@@ -86,25 +86,22 @@ public class OAuth2ClientLifecycleServiceImpl
             String clientId,
             String newRawClientSecret) {
 
-        validateSecret(
-                newRawClientSecret);
+        validateSecret(newRawClientSecret);
 
-        RegisteredClient client = findActiveClient(
-                clientId);
+        RegisteredClient client = findActiveClient(clientId);
 
-        if (!supportsClientSecret(
-                client)) {
+        if (!supportsClientSecret(client)) {
 
-            throw new ConflictException(
-                    UserErrorCode.OAUTH2_CLIENT_SECRET_ROTATION_NOT_ALLOWED);
+            throw new ConflictException(UserErrorCode.OAUTH2_CLIENT_SECRET_ROTATION_NOT_ALLOWED);
         }
 
-        String encodedSecret = passwordEncoder.encode(
-                newRawClientSecret);
+        String encodedSecret = passwordEncoder.encode(newRawClientSecret);
 
         authorizationSessionRevocationService
                 .revokeByRegisteredClientId(
-                        client.getId());
+                        client.getId(),
+                        client.getClientId(),
+                        RevocationReason.CLIENT_SECRET_ROTATED);
 
         int updated = jdbcOperations.update(
                 ROTATE_SECRET_SQL,
@@ -112,41 +109,32 @@ public class OAuth2ClientLifecycleServiceImpl
                 client.getId());
 
         if (updated != 1) {
-            throw new ConflictException(
-                    UserErrorCode.OAUTH2_CLIENT_ALREADY_INACTIVE);
+            throw new ConflictException(UserErrorCode.OAUTH2_CLIENT_ALREADY_INACTIVE);
         }
     }
 
-    private RegisteredClient findActiveClient(
-            String clientId) {
+    private RegisteredClient findActiveClient(String clientId) {
 
-        if (clientId == null
-                || clientId.isBlank()) {
+        if (clientId == null || clientId.isBlank()) {
 
-            throw new ValidationException(
-                    UserErrorCode.OAUTH2_CLIENT_ID_REQUIRED);
+            throw new ValidationException(UserErrorCode.OAUTH2_CLIENT_ID_REQUIRED);
         }
 
         RegisteredClient client = registeredClientRepository
-                .findByClientId(
-                        clientId.trim());
+                .findByClientId(clientId.trim());
 
         if (client == null) {
-            throw new NotFoundException(
-                    UserErrorCode.OAUTH2_CLIENT_NOT_FOUND);
+            throw new NotFoundException(UserErrorCode.OAUTH2_CLIENT_NOT_FOUND);
         }
 
         return client;
     }
 
-    private static void validateSecret(
-            String rawClientSecret) {
+    private static void validateSecret(String rawClientSecret) {
 
-        if (rawClientSecret == null
-                || rawClientSecret.isBlank()) {
+        if (rawClientSecret == null || rawClientSecret.isBlank()) {
 
-            throw new ValidationException(
-                    UserErrorCode.OAUTH2_CLIENT_SECRET_REQUIRED);
+            throw new ValidationException(UserErrorCode.OAUTH2_CLIENT_SECRET_REQUIRED);
         }
     }
 

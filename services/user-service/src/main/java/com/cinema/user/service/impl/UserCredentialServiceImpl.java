@@ -19,6 +19,7 @@ import com.cinema.user.entity.User;
 import com.cinema.user.entity.UserCredential;
 import com.cinema.user.exception.UserErrorCode;
 import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
+import com.cinema.user.oauth2.audit.RevocationReason;
 import com.cinema.user.repository.UserCredentialRepository;
 import com.cinema.user.repository.UserRepository;
 import com.cinema.user.service.UserCredentialService;
@@ -26,9 +27,13 @@ import com.cinema.user.service.UserCredentialService;
 @Service
 @Validated
 @Transactional(readOnly = true)
-public class UserCredentialServiceImpl implements UserCredentialService {
+public class UserCredentialServiceImpl
+        implements UserCredentialService {
+
     private static final int MIN_PASSWORD_LENGTH = 12;
+
     private static final int MAX_BCRYPT_BYTES = 72;
+
     private static final String PASSWORD_ALGORITHM = "bcrypt";
 
     private final UserRepository userRepository;
@@ -70,8 +75,8 @@ public class UserCredentialServiceImpl implements UserCredentialService {
         User user = findUser(userId);
 
         if (userCredentialRepository.existsByUser_Id(userId)) {
-            throw new ConflictException(
-                    UserErrorCode.USER_CREDENTIAL_ALREADY_EXISTS);
+
+            throw new ConflictException(UserErrorCode.USER_CREDENTIAL_ALREADY_EXISTS);
         }
 
         UserCredential credential = new UserCredential(
@@ -104,30 +109,27 @@ public class UserCredentialServiceImpl implements UserCredentialService {
                 currentRawPassword,
                 credential.getPasswordHash())) {
 
-            throw new UnauthorizedException(
-                    UserErrorCode.INVALID_CREDENTIALS);
+            throw new UnauthorizedException(UserErrorCode.INVALID_CREDENTIALS);
         }
 
         if (passwordEncoder.matches(
                 newRawPassword,
                 credential.getPasswordHash())) {
 
-            throw new ValidationException(
-                    UserErrorCode.PASSWORD_MUST_DIFFER);
+            throw new ValidationException(UserErrorCode.PASSWORD_MUST_DIFFER);
         }
 
         credential.changePassword(
-                passwordEncoder.encode(
-                        newRawPassword),
+                passwordEncoder.encode(newRawPassword),
                 PASSWORD_ALGORITHM,
-                OffsetDateTime.now(
-                        clock));
+                OffsetDateTime.now(clock));
 
         authorizationSessionRevocationService
                 .revokeByPrincipalName(
                         credential
                                 .getUser()
-                                .getUsername());
+                                .getUsername(),
+                        RevocationReason.PASSWORD_CHANGED);
     }
 
     @Override
@@ -136,63 +138,59 @@ public class UserCredentialServiceImpl implements UserCredentialService {
             UUID userId,
             String newRawPassword) {
 
-        validateNewPassword(
-                newRawPassword);
+        validateNewPassword(newRawPassword);
 
-        UserCredential credential = findCredential(
-                userId);
+        UserCredential credential = findCredential(userId);
 
         if (passwordEncoder.matches(
                 newRawPassword,
                 credential.getPasswordHash())) {
 
-            throw new ValidationException(
-                    UserErrorCode.PASSWORD_MUST_DIFFER);
+            throw new ValidationException(UserErrorCode.PASSWORD_MUST_DIFFER);
         }
 
         credential.changePassword(
-                passwordEncoder.encode(
-                        newRawPassword),
+                passwordEncoder.encode(newRawPassword),
                 PASSWORD_ALGORITHM,
-                OffsetDateTime.now(
-                        clock));
+                OffsetDateTime.now(clock));
 
         authorizationSessionRevocationService
                 .revokeByPrincipalName(
                         credential
                                 .getUser()
-                                .getUsername());
+                                .getUsername(),
+                        RevocationReason.PASSWORD_RESET);
     }
 
     private User findUser(UUID userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException(
-                        UserErrorCode.USER_NOT_FOUND));
+
+        return userRepository.findById(
+                userId)
+                .orElseThrow(() -> new NotFoundException(UserErrorCode.USER_NOT_FOUND));
     }
 
     private UserCredential findCredential(UUID userId) {
+
         return userCredentialRepository
-                .findByUser_Id(userId)
-                .orElseThrow(() -> new NotFoundException(
-                        UserErrorCode.USER_CREDENTIAL_NOT_FOUND));
+                .findByUser_Id(
+                        userId)
+                .orElseThrow(() -> new NotFoundException(UserErrorCode.USER_CREDENTIAL_NOT_FOUND));
     }
 
-    private static void validateNewPassword(
-            String rawPassword) {
+    private static void validateNewPassword(String rawPassword) {
 
         if (rawPassword == null || rawPassword.isBlank()) {
-            throw new ValidationException(
-                    UserErrorCode.PASSWORD_REQUIRED);
+
+            throw new ValidationException(UserErrorCode.PASSWORD_REQUIRED);
         }
 
         if (rawPassword.length() < MIN_PASSWORD_LENGTH) {
-            throw new ValidationException(
-                    UserErrorCode.PASSWORD_TOO_SHORT);
+            throw new ValidationException(UserErrorCode.PASSWORD_TOO_SHORT);
         }
 
         if (utf8Length(rawPassword) > MAX_BCRYPT_BYTES) {
-            throw new ValidationException(
-                    UserErrorCode.PASSWORD_TOO_LONG);
+
+            throw new ValidationException(UserErrorCode.PASSWORD_TOO_LONG);
         }
     }
 
@@ -212,8 +210,11 @@ public class UserCredentialServiceImpl implements UserCredentialService {
                 encodedPassword);
     }
 
-    private static int utf8Length(String value) {
-        return value.getBytes(StandardCharsets.UTF_8).length;
+    private static int utf8Length(
+            String value) {
+
+        return value.getBytes(
+                StandardCharsets.UTF_8).length;
     }
 
     @Override
@@ -223,8 +224,10 @@ public class UserCredentialServiceImpl implements UserCredentialService {
             String rawPassword) {
 
         UserCredential credential = userCredentialRepository
-                .findByUser_Id(userId)
-                .orElse(null);
+                .findByUser_Id(
+                        userId)
+                .orElse(
+                        null);
 
         if (credential == null
                 || !matchesCandidate(
@@ -238,9 +241,11 @@ public class UserCredentialServiceImpl implements UserCredentialService {
                 credential.getPasswordHash())) {
 
             credential.changePassword(
-                    passwordEncoder.encode(rawPassword),
+                    passwordEncoder.encode(
+                            rawPassword),
                     PASSWORD_ALGORITHM,
-                    OffsetDateTime.now(clock));
+                    OffsetDateTime.now(
+                            clock));
         }
 
         return true;

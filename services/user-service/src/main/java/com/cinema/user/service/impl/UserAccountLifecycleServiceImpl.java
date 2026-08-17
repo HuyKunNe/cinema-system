@@ -13,6 +13,7 @@ import com.cinema.user.entity.User;
 import com.cinema.user.entity.UserCredential;
 import com.cinema.user.exception.UserErrorCode;
 import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
+import com.cinema.user.oauth2.audit.RevocationReason;
 import com.cinema.user.repository.UserCredentialRepository;
 import com.cinema.user.repository.UserRepository;
 import com.cinema.user.service.UserAccountLifecycleService;
@@ -20,7 +21,8 @@ import com.cinema.user.service.UserAccountLifecycleService;
 @Service
 @Validated
 @Transactional(readOnly = true)
-public class UserAccountLifecycleServiceImpl implements UserAccountLifecycleService {
+public class UserAccountLifecycleServiceImpl
+        implements UserAccountLifecycleService {
 
     private final UserRepository userRepository;
 
@@ -30,21 +32,32 @@ public class UserAccountLifecycleServiceImpl implements UserAccountLifecycleServ
 
     private final Clock clock;
 
-    public UserAccountLifecycleServiceImpl(UserRepository userRepository,
+    public UserAccountLifecycleServiceImpl(
+            UserRepository userRepository,
             UserCredentialRepository userCredentialRepository,
-            AuthorizationSessionRevocationService authorizationSessionRevocationService, Clock clock) {
+            AuthorizationSessionRevocationService authorizationSessionRevocationService,
+            Clock clock) {
+
         this.userRepository = userRepository;
+
         this.userCredentialRepository = userCredentialRepository;
+
         this.authorizationSessionRevocationService = authorizationSessionRevocationService;
+
         this.clock = clock;
     }
 
     @Override
     @Transactional
-    public void verifyEmail(UUID userId) {
-        User user = findUser(userId);
+    public void verifyEmail(
+            UUID userId) {
 
-        user.verifyEmail(OffsetDateTime.now(clock));
+        User user = findUser(
+                userId);
+
+        user.verifyEmail(
+                OffsetDateTime.now(
+                        clock));
     }
 
     @Override
@@ -53,17 +66,20 @@ public class UserAccountLifecycleServiceImpl implements UserAccountLifecycleServ
 
         User user = findUser(userId);
 
-        user.lock(
-                OffsetDateTime.now(clock));
+        user.lock(OffsetDateTime.now(clock));
 
         authorizationSessionRevocationService
-                .revokeByPrincipalName(user.getUsername());
+                .revokeByPrincipalName(
+                        user.getUsername(),
+                        RevocationReason.ACCOUNT_LOCKED);
     }
 
     @Override
     @Transactional
     public void unlock(UUID userId) {
+
         User user = findUser(userId);
+
         user.unlock();
     }
 
@@ -73,40 +89,42 @@ public class UserAccountLifecycleServiceImpl implements UserAccountLifecycleServ
 
         User user = findUser(userId);
 
-        user.disable(
-                OffsetDateTime.now(clock));
+        user.disable(OffsetDateTime.now(clock));
 
         authorizationSessionRevocationService
                 .revokeByPrincipalName(
-                        user.getUsername());
+                        user.getUsername(),
+                        RevocationReason.ACCOUNT_DISABLED);
     }
 
     @Override
     @Transactional
     public void enable(UUID userId) {
+
         User user = findUser(userId);
+
         user.enable();
     }
 
     @Override
     @Transactional
     public void recordSuccessfulLogin(UUID userId) {
+
         User user = findUser(userId);
 
         UserCredential credential = userCredentialRepository
                 .findByUser_Id(userId)
-                .orElseThrow(() -> new NotFoundException(
-                        UserErrorCode.USER_CREDENTIAL_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(UserErrorCode.USER_CREDENTIAL_NOT_FOUND));
 
-        user.recordSuccessfulLogin(
-                OffsetDateTime.now(clock));
+        user.recordSuccessfulLogin(OffsetDateTime.now(clock));
 
         credential.clearFailedAttempts();
     }
 
-    private User findUser(UUID userId) {
+    private User findUser(
+            UUID userId) {
+
         return userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException(
-                        UserErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(UserErrorCode.USER_NOT_FOUND));
     }
 }
