@@ -1,17 +1,5 @@
 package com.cinema.user.service.impl;
 
-import java.time.Clock;
-import java.time.OffsetDateTime;
-import java.util.Collections;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.UUID;
-
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.validation.annotation.Validated;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.user.entity.Permission;
@@ -25,18 +13,35 @@ import com.cinema.user.repository.PermissionRepository;
 import com.cinema.user.repository.RolePermissionRepository;
 import com.cinema.user.repository.RoleRepository;
 import com.cinema.user.repository.UserRepository;
+import com.cinema.user.security.audit.SecurityAuditEventType;
+import com.cinema.user.security.audit.SecurityAuditOutcome;
+import com.cinema.user.security.audit.SecurityAuditRecord;
+import com.cinema.user.security.audit.SecurityAuditRecorder;
+import com.cinema.user.security.audit.SecurityAuditTargetType;
 import com.cinema.user.service.RolePermissionAssignmentService;
+
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
+
+import java.time.Clock;
+import java.time.OffsetDateTime;
+import java.util.Collections;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.UUID;
 
 @Service
 @Validated
 @Transactional(readOnly = true)
-public class RolePermissionAssignmentServiceImpl
-        implements RolePermissionAssignmentService {
+public class RolePermissionAssignmentServiceImpl implements RolePermissionAssignmentService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
+    private final SecurityAuditRecorder securityAuditRecorder;
     private final Clock clock;
 
     public RolePermissionAssignmentServiceImpl(
@@ -44,21 +49,26 @@ public class RolePermissionAssignmentServiceImpl
             RoleRepository roleRepository,
             PermissionRepository permissionRepository,
             RolePermissionRepository rolePermissionRepository,
+            SecurityAuditRecorder securityAuditRecorder,
             Clock clock) {
 
         this.userRepository = userRepository;
+
         this.roleRepository = roleRepository;
+
         this.permissionRepository = permissionRepository;
+
         this.rolePermissionRepository = rolePermissionRepository;
+
+        this.securityAuditRecorder = securityAuditRecorder;
+
         this.clock = clock;
     }
 
     @Override
     @Transactional
     public void assignPermission(
-            RoleName roleName,
-            PermissionCode permissionCode,
-            UUID assignedByUserId) {
+            RoleName roleName, PermissionCode permissionCode, UUID assignedByUserId) {
 
         if (roleName == RoleName.SERVICE) {
             throw new ConflictException(UserErrorCode.SERVICE_ROLE_PERMISSION_NOT_ALLOWED);
@@ -69,33 +79,34 @@ public class RolePermissionAssignmentServiceImpl
 
         User assignedBy = findUser(assignedByUserId);
 
-        if (rolePermissionRepository
-                .existsByRole_IdAndPermission_Id(
-                        role.getId(),
-                        permission.getId())) {
+        if (rolePermissionRepository.existsByRole_IdAndPermission_Id(
+                role.getId(), permission.getId())) {
 
             throw new ConflictException(UserErrorCode.ROLE_PERMISSION_ALREADY_ASSIGNED);
         }
 
-        RolePermission assignment = new RolePermission(
-                role,
-                permission,
-                OffsetDateTime.now(clock),
-                assignedBy);
+        RolePermission assignment =
+                new RolePermission(role, permission, OffsetDateTime.now(clock), assignedBy);
 
         try {
             rolePermissionRepository.saveAndFlush(assignment);
         } catch (DataIntegrityViolationException exception) {
             throw new ConflictException(UserErrorCode.ROLE_PERMISSION_ALREADY_ASSIGNED, exception);
         }
+        securityAuditRecorder.record(
+                new SecurityAuditRecord(
+                        SecurityAuditEventType.ROLE_PERMISSION_ASSIGNED,
+                        SecurityAuditTargetType.ROLE,
+                        role.getName().name(),
+                        SecurityAuditOutcome.SUCCESS,
+                        null,
+                        permissionMetadata(permission.getCode())));
     }
 
     @Override
     @Transactional
     public void revokePermission(
-            RoleName roleName,
-            PermissionCode permissionCode,
-            UUID performedByUserId) {
+            RoleName roleName, PermissionCode permissionCode, UUID performedByUserId) {
 
         Role role = findRole(roleName);
         Permission permission = findPermission(permissionCode);
@@ -103,16 +114,24 @@ public class RolePermissionAssignmentServiceImpl
         // Validate that the administrative actor exists.
         findUser(performedByUserId);
 
-        long deleted = rolePermissionRepository
-                .deleteByRole_IdAndPermission_Id(
-                        role.getId(),
-                        permission.getId());
+        long deleted =
+                rolePermissionRepository.deleteByRole_IdAndPermission_Id(
+                        role.getId(), permission.getId());
 
         if (deleted == 0) {
             throw new ConflictException(UserErrorCode.ROLE_PERMISSION_NOT_ASSIGNED);
         }
 
         rolePermissionRepository.flush();
+
+        securityAuditRecorder.record(
+                new SecurityAuditRecord(
+                        SecurityAuditEventType.ROLE_PERMISSION_REVOKED,
+                        SecurityAuditTargetType.ROLE,
+                        role.getName().name(),
+                        SecurityAuditOutcome.SUCCESS,
+                        null,
+                        permissionMetadata(permission.getCode())));
     }
 
     @Override
@@ -121,9 +140,7 @@ public class RolePermissionAssignmentServiceImpl
 
         TreeSet<String> permissions = new TreeSet<>();
 
-        rolePermissionRepository
-                .findAllByRole_Id(role.getId())
-                .stream()
+        rolePermissionRepository.findAllByRole_Id(role.getId()).stream()
                 .map(RolePermission::getPermission)
                 .map(Permission::getCode)
                 .forEach(permissions::add);
@@ -135,31 +152,35 @@ public class RolePermissionAssignmentServiceImpl
     public Set<String> findEffectivePermissions(UUID userId) {
         User user = findUser(userId);
 
-        TreeSet<String> permissions = new TreeSet<>(
-                rolePermissionRepository
-                        .findEffectivePermissionCodesByUserId(
+        TreeSet<String> permissions =
+                new TreeSet<>(
+                        rolePermissionRepository.findEffectivePermissionCodesByUserId(
                                 user.getId()));
 
         return Collections.unmodifiableSet(permissions);
     }
 
+    private static String permissionMetadata(String permissionCode) {
+
+        return "permission=" + permissionCode;
+    }
+
     private User findUser(UUID userId) {
-        return userRepository.findById(userId)
+        return userRepository
+                .findById(userId)
                 .orElseThrow(() -> new NotFoundException(UserErrorCode.USER_NOT_FOUND));
     }
 
     private Role findRole(RoleName roleName) {
-        return roleRepository.findByName(roleName)
-                .orElseThrow(
-                        () -> new NotFoundException(UserErrorCode.ROLE_NOT_FOUND));
+        return roleRepository
+                .findByName(roleName)
+                .orElseThrow(() -> new NotFoundException(UserErrorCode.ROLE_NOT_FOUND));
     }
 
-    private Permission findPermission(
-            PermissionCode permissionCode) {
+    private Permission findPermission(PermissionCode permissionCode) {
 
         return permissionRepository
                 .findByCode(permissionCode.getCode())
-                .orElseThrow(
-                        () -> new NotFoundException(UserErrorCode.PERMISSION_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(UserErrorCode.PERMISSION_NOT_FOUND));
     }
 }

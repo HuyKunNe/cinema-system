@@ -1,13 +1,5 @@
 package com.cinema.user.service.impl;
 
-import java.time.Clock;
-import java.time.OffsetDateTime;
-import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.validation.annotation.Validated;
-
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.user.entity.User;
 import com.cinema.user.entity.UserCredential;
@@ -18,11 +10,18 @@ import com.cinema.user.repository.UserCredentialRepository;
 import com.cinema.user.repository.UserRepository;
 import com.cinema.user.service.UserAccountLifecycleService;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
+
+import java.time.Clock;
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
 @Service
 @Validated
 @Transactional(readOnly = true)
-public class UserAccountLifecycleServiceImpl
-        implements UserAccountLifecycleService {
+public class UserAccountLifecycleServiceImpl implements UserAccountLifecycleService {
 
     private final UserRepository userRepository;
 
@@ -49,15 +48,11 @@ public class UserAccountLifecycleServiceImpl
 
     @Override
     @Transactional
-    public void verifyEmail(
-            UUID userId) {
+    public void verifyEmail(UUID userId) {
 
-        User user = findUser(
-                userId);
+        User user = findUser(userId);
 
-        user.verifyEmail(
-                OffsetDateTime.now(
-                        clock));
+        user.verifyEmail(OffsetDateTime.now(clock));
     }
 
     @Override
@@ -68,10 +63,8 @@ public class UserAccountLifecycleServiceImpl
 
         user.lock(OffsetDateTime.now(clock));
 
-        authorizationSessionRevocationService
-                .revokeByPrincipalName(
-                        user.getUsername(),
-                        RevocationReason.ACCOUNT_LOCKED);
+        authorizationSessionRevocationService.revokeByPrincipalName(
+                user.getUsername(), RevocationReason.ACCOUNT_LOCKED);
     }
 
     @Override
@@ -91,10 +84,8 @@ public class UserAccountLifecycleServiceImpl
 
         user.disable(OffsetDateTime.now(clock));
 
-        authorizationSessionRevocationService
-                .revokeByPrincipalName(
-                        user.getUsername(),
-                        RevocationReason.ACCOUNT_DISABLED);
+        authorizationSessionRevocationService.revokeByPrincipalName(
+                user.getUsername(), RevocationReason.ACCOUNT_DISABLED);
     }
 
     @Override
@@ -112,19 +103,23 @@ public class UserAccountLifecycleServiceImpl
 
         User user = findUser(userId);
 
-        UserCredential credential = userCredentialRepository
-                .findByUser_Id(userId)
-                .orElseThrow(() -> new NotFoundException(UserErrorCode.USER_CREDENTIAL_NOT_FOUND));
+        UserCredential credential =
+                userCredentialRepository
+                        .findByUser_Id(userId)
+                        .orElseThrow(
+                                () ->
+                                        new NotFoundException(
+                                                UserErrorCode.USER_CREDENTIAL_NOT_FOUND));
 
         user.recordSuccessfulLogin(OffsetDateTime.now(clock));
 
         credential.clearFailedAttempts();
     }
 
-    private User findUser(
-            UUID userId) {
+    private User findUser(UUID userId) {
 
-        return userRepository.findById(userId)
+        return userRepository
+                .findById(userId)
                 .orElseThrow(() -> new NotFoundException(UserErrorCode.USER_NOT_FOUND));
     }
 }
