@@ -9,7 +9,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import java.util.Set;
+import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.user.oauth2.RegisteredClientFactory;
+import com.cinema.user.oauth2.model.ConfidentialUserClientRegistration;
+import com.cinema.user.oauth2.model.PublicClientRegistration;
+import com.cinema.user.oauth2.model.RegisteredClientRegistrationResult;
+import com.cinema.user.oauth2.model.ServiceClientRegistration;
+import com.cinema.user.security.audit.SecurityAuditEventType;
+import com.cinema.user.security.audit.SecurityAuditOutcome;
+import com.cinema.user.security.audit.SecurityAuditRecord;
+import com.cinema.user.security.audit.SecurityAuditRecorder;
+import com.cinema.user.security.audit.SecurityAuditTargetType;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,11 +30,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 
-import com.cinema.common.exception.exception.ConflictException;
-import com.cinema.user.oauth2.RegisteredClientFactory;
-import com.cinema.user.oauth2.model.PublicClientRegistration;
-import com.cinema.user.oauth2.model.RegisteredClientRegistrationResult;
-import com.cinema.user.oauth2.model.ServiceClientRegistration;
+import java.util.Set;
 
 @ExtendWith(MockitoExtension.class)
 class OAuth2ClientRegistrationServiceImplTest {
@@ -39,23 +45,27 @@ class OAuth2ClientRegistrationServiceImplTest {
 
     private static final String SERVICE_CLIENT_NAME = "Inventory Service";
 
+    private static final String CONFIDENTIAL_CLIENT_ID = "cinema-bff";
+
+    private static final String CONFIDENTIAL_CLIENT_NAME = "Cinema BFF";
+
     private static final String RAW_CLIENT_SECRET = "local-service-secret-for-testing-only";
 
     private static final String ENCODED_CLIENT_SECRET = "{bcrypt}encoded-service-secret";
 
-    @Mock
-    private RegisteredClientFactory registeredClientFactory;
+    @Mock private RegisteredClientFactory registeredClientFactory;
 
-    @Mock
-    private RegisteredClientRepository registeredClientRepository;
+    @Mock private RegisteredClientRepository registeredClientRepository;
+
+    @Mock private SecurityAuditRecorder securityAuditRecorder;
 
     private OAuth2ClientRegistrationServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new OAuth2ClientRegistrationServiceImpl(
-                registeredClientFactory,
-                registeredClientRepository);
+        service =
+                new OAuth2ClientRegistrationServiceImpl(
+                        registeredClientFactory, registeredClientRepository, securityAuditRecorder);
     }
 
     @Test
@@ -64,27 +74,29 @@ class OAuth2ClientRegistrationServiceImplTest {
 
         RegisteredClient registeredClient = publicRegisteredClient();
 
-        when(registeredClientRepository
-                .findByClientId(PUBLIC_CLIENT_ID))
-                .thenReturn(null);
+        when(registeredClientRepository.findByClientId(PUBLIC_CLIENT_ID)).thenReturn(null);
 
-        when(registeredClientFactory
-                .createPublicClient(registration))
-                .thenReturn(registeredClient);
+        when(registeredClientFactory.createPublicClient(registration)).thenReturn(registeredClient);
 
         RegisteredClientRegistrationResult result = service.registerPublicClient(registration);
 
-        verify(registeredClientRepository)
-                .save(registeredClient);
+        verify(registeredClientRepository).save(registeredClient);
 
-        assertThat(result.id())
-                .isEqualTo(REGISTERED_CLIENT_ID);
+        verify(securityAuditRecorder)
+                .record(
+                        new SecurityAuditRecord(
+                                SecurityAuditEventType.OAUTH2_CLIENT_REGISTERED,
+                                SecurityAuditTargetType.OAUTH2_CLIENT,
+                                PUBLIC_CLIENT_ID,
+                                SecurityAuditOutcome.SUCCESS,
+                                null,
+                                "clientType=PUBLIC"));
 
-        assertThat(result.clientId())
-                .isEqualTo(PUBLIC_CLIENT_ID);
+        assertThat(result.id()).isEqualTo(REGISTERED_CLIENT_ID);
 
-        assertThat(result.clientName())
-                .isEqualTo(PUBLIC_CLIENT_NAME);
+        assertThat(result.clientId()).isEqualTo(PUBLIC_CLIENT_ID);
+
+        assertThat(result.clientName()).isEqualTo(PUBLIC_CLIENT_NAME);
     }
 
     @Test
@@ -93,35 +105,70 @@ class OAuth2ClientRegistrationServiceImplTest {
 
         RegisteredClient registeredClient = serviceRegisteredClient();
 
-        when(registeredClientRepository
-                .findByClientId(SERVICE_CLIENT_ID))
-                .thenReturn(null);
+        when(registeredClientRepository.findByClientId(SERVICE_CLIENT_ID)).thenReturn(null);
 
-        when(registeredClientFactory
-                .createServiceClient(registration))
+        when(registeredClientFactory.createServiceClient(registration))
                 .thenReturn(registeredClient);
 
         RegisteredClientRegistrationResult result = service.registerServiceClient(registration);
 
-        verify(registeredClientRepository)
-                .save(registeredClient);
+        verify(registeredClientRepository).save(registeredClient);
 
-        assertThat(result.id())
-                .isEqualTo(REGISTERED_CLIENT_ID);
+        verify(securityAuditRecorder)
+                .record(
+                        new SecurityAuditRecord(
+                                SecurityAuditEventType.OAUTH2_CLIENT_REGISTERED,
+                                SecurityAuditTargetType.OAUTH2_CLIENT,
+                                SERVICE_CLIENT_ID,
+                                SecurityAuditOutcome.SUCCESS,
+                                null,
+                                "clientType=SERVICE"));
 
-        assertThat(result.clientId())
-                .isEqualTo(SERVICE_CLIENT_ID);
+        assertThat(result.id()).isEqualTo(REGISTERED_CLIENT_ID);
 
-        assertThat(result.clientName())
-                .isEqualTo(SERVICE_CLIENT_NAME);
+        assertThat(result.clientId()).isEqualTo(SERVICE_CLIENT_ID);
+
+        assertThat(result.clientName()).isEqualTo(SERVICE_CLIENT_NAME);
+    }
+
+    @Test
+    void registerConfidentialClientShouldRecordSecurityAudit() {
+        ConfidentialUserClientRegistration registration = confidentialRegistration();
+
+        RegisteredClient registeredClient = confidentialRegisteredClient();
+
+        when(registeredClientRepository.findByClientId(CONFIDENTIAL_CLIENT_ID)).thenReturn(null);
+
+        when(registeredClientFactory.createConfidentialUserClient(registration))
+                .thenReturn(registeredClient);
+
+        RegisteredClientRegistrationResult result =
+                service.registerConfidentialUserClient(registration);
+
+        verify(registeredClientRepository).save(registeredClient);
+
+        verify(securityAuditRecorder)
+                .record(
+                        new SecurityAuditRecord(
+                                SecurityAuditEventType.OAUTH2_CLIENT_REGISTERED,
+                                SecurityAuditTargetType.OAUTH2_CLIENT,
+                                CONFIDENTIAL_CLIENT_ID,
+                                SecurityAuditOutcome.SUCCESS,
+                                null,
+                                "clientType=CONFIDENTIAL_USER"));
+
+        assertThat(result.id()).isEqualTo(REGISTERED_CLIENT_ID);
+
+        assertThat(result.clientId()).isEqualTo(CONFIDENTIAL_CLIENT_ID);
+
+        assertThat(result.clientName()).isEqualTo(CONFIDENTIAL_CLIENT_NAME);
     }
 
     @Test
     void registerPublicClientShouldRejectExistingClientId() {
         PublicClientRegistration registration = publicRegistration();
 
-        when(registeredClientRepository
-                .findByClientId(PUBLIC_CLIENT_ID))
+        when(registeredClientRepository.findByClientId(PUBLIC_CLIENT_ID))
                 .thenReturn(publicRegisteredClient());
 
         assertThatThrownBy(() -> service.registerPublicClient(registration))
@@ -129,16 +176,16 @@ class OAuth2ClientRegistrationServiceImplTest {
 
         verifyNoInteractions(registeredClientFactory);
 
-        verify(registeredClientRepository, never())
-                .save(any());
+        verify(registeredClientRepository, never()).save(any());
+
+        verifyNoInteractions(securityAuditRecorder);
     }
 
     @Test
     void registerServiceClientShouldRejectExistingClientId() {
         ServiceClientRegistration registration = serviceRegistration();
 
-        when(registeredClientRepository
-                .findByClientId(SERVICE_CLIENT_ID))
+        when(registeredClientRepository.findByClientId(SERVICE_CLIENT_ID))
                 .thenReturn(serviceRegisteredClient());
 
         assertThatThrownBy(() -> service.registerServiceClient(registration))
@@ -146,8 +193,9 @@ class OAuth2ClientRegistrationServiceImplTest {
 
         verifyNoInteractions(registeredClientFactory);
 
-        verify(registeredClientRepository, never())
-                .save(any());
+        verify(registeredClientRepository, never()).save(any());
+
+        verifyNoInteractions(securityAuditRecorder);
     }
 
     @Test
@@ -156,21 +204,18 @@ class OAuth2ClientRegistrationServiceImplTest {
 
         RegisteredClient registeredClient = publicRegisteredClient();
 
-        when(registeredClientRepository
-                .findByClientId(PUBLIC_CLIENT_ID))
-                .thenReturn(null);
+        when(registeredClientRepository.findByClientId(PUBLIC_CLIENT_ID)).thenReturn(null);
 
-        when(registeredClientFactory
-                .createPublicClient(registration))
-                .thenReturn(registeredClient);
+        when(registeredClientFactory.createPublicClient(registration)).thenReturn(registeredClient);
 
-        doThrow(new IllegalArgumentException(
-                "Registered client must be unique"))
+        doThrow(new IllegalArgumentException("Registered client must be unique"))
                 .when(registeredClientRepository)
                 .save(registeredClient);
 
         assertThatThrownBy(() -> service.registerPublicClient(registration))
                 .isInstanceOf(ConflictException.class);
+
+        verifyNoInteractions(securityAuditRecorder);
     }
 
     @Test
@@ -179,21 +224,19 @@ class OAuth2ClientRegistrationServiceImplTest {
 
         RegisteredClient registeredClient = serviceRegisteredClient();
 
-        when(registeredClientRepository
-                .findByClientId(SERVICE_CLIENT_ID))
-                .thenReturn(null);
+        when(registeredClientRepository.findByClientId(SERVICE_CLIENT_ID)).thenReturn(null);
 
-        when(registeredClientFactory
-                .createServiceClient(registration))
+        when(registeredClientFactory.createServiceClient(registration))
                 .thenReturn(registeredClient);
 
-        doThrow(new DataIntegrityViolationException(
-                "duplicate client_id"))
+        doThrow(new DataIntegrityViolationException("duplicate client_id"))
                 .when(registeredClientRepository)
                 .save(registeredClient);
 
         assertThatThrownBy(() -> service.registerServiceClient(registration))
                 .isInstanceOf(ConflictException.class);
+
+        verifyNoInteractions(securityAuditRecorder);
     }
 
     @Test
@@ -202,12 +245,9 @@ class OAuth2ClientRegistrationServiceImplTest {
 
         RegisteredClient registeredClient = serviceRegisteredClient();
 
-        when(registeredClientRepository
-                .findByClientId(SERVICE_CLIENT_ID))
-                .thenReturn(null);
+        when(registeredClientRepository.findByClientId(SERVICE_CLIENT_ID)).thenReturn(null);
 
-        when(registeredClientFactory
-                .createServiceClient(registration))
+        when(registeredClientFactory.createServiceClient(registration))
                 .thenReturn(registeredClient);
 
         RegisteredClientRegistrationResult result = service.registerServiceClient(registration);
@@ -222,14 +262,9 @@ class OAuth2ClientRegistrationServiceImplTest {
         return new PublicClientRegistration(
                 PUBLIC_CLIENT_ID,
                 PUBLIC_CLIENT_NAME,
-                Set.of(
-                        "http://127.0.0.1:3000/callback"),
-                Set.of(
-                        "http://127.0.0.1:3000"),
-                Set.of(
-                        "openid",
-                        "profile",
-                        "booking:read"));
+                Set.of("http://127.0.0.1:3000/callback"),
+                Set.of("http://127.0.0.1:3000"),
+                Set.of("openid", "profile", "booking:read"));
     }
 
     private static ServiceClientRegistration serviceRegistration() {
@@ -241,34 +276,64 @@ class OAuth2ClientRegistrationServiceImplTest {
                 Set.of("inventory:write"));
     }
 
+    private static ConfidentialUserClientRegistration confidentialRegistration() {
+
+        return new ConfidentialUserClientRegistration(
+                CONFIDENTIAL_CLIENT_ID,
+                CONFIDENTIAL_CLIENT_NAME,
+                RAW_CLIENT_SECRET,
+                Set.of("http://127.0.0.1:8080/login/oauth2/code/cinema"),
+                Set.of("http://127.0.0.1:8080"),
+                Set.of("openid", "profile", "booking:read"));
+    }
+
     private static RegisteredClient publicRegisteredClient() {
 
-        return RegisteredClient
-                .withId(REGISTERED_CLIENT_ID)
+        return RegisteredClient.withId(REGISTERED_CLIENT_ID)
                 .clientId(PUBLIC_CLIENT_ID)
                 .clientName(PUBLIC_CLIENT_NAME)
                 .clientAuthenticationMethod(
                         org.springframework.security.oauth2.core.ClientAuthenticationMethod.NONE)
                 .authorizationGrantType(
-                        org.springframework.security.oauth2.core.AuthorizationGrantType.AUTHORIZATION_CODE)
-                .redirectUri(
-                        "http://127.0.0.1:3000/callback")
+                        org.springframework.security.oauth2.core.AuthorizationGrantType
+                                .AUTHORIZATION_CODE)
+                .redirectUri("http://127.0.0.1:3000/callback")
                 .scope("openid")
                 .build();
     }
 
     private static RegisteredClient serviceRegisteredClient() {
 
-        return RegisteredClient
-                .withId(REGISTERED_CLIENT_ID)
+        return RegisteredClient.withId(REGISTERED_CLIENT_ID)
                 .clientId(SERVICE_CLIENT_ID)
                 .clientSecret(ENCODED_CLIENT_SECRET)
                 .clientName(SERVICE_CLIENT_NAME)
                 .clientAuthenticationMethod(
-                        org.springframework.security.oauth2.core.ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                        org.springframework.security.oauth2.core.ClientAuthenticationMethod
+                                .CLIENT_SECRET_BASIC)
                 .authorizationGrantType(
-                        org.springframework.security.oauth2.core.AuthorizationGrantType.CLIENT_CREDENTIALS)
+                        org.springframework.security.oauth2.core.AuthorizationGrantType
+                                .CLIENT_CREDENTIALS)
                 .scope("inventory:write")
+                .build();
+    }
+
+    private static RegisteredClient confidentialRegisteredClient() {
+        return RegisteredClient.withId(REGISTERED_CLIENT_ID)
+                .clientId(CONFIDENTIAL_CLIENT_ID)
+                .clientSecret(ENCODED_CLIENT_SECRET)
+                .clientName(CONFIDENTIAL_CLIENT_NAME)
+                .clientAuthenticationMethod(
+                        org.springframework.security.oauth2.core.ClientAuthenticationMethod
+                                .CLIENT_SECRET_BASIC)
+                .authorizationGrantType(
+                        org.springframework.security.oauth2.core.AuthorizationGrantType
+                                .AUTHORIZATION_CODE)
+                .authorizationGrantType(
+                        org.springframework.security.oauth2.core.AuthorizationGrantType
+                                .REFRESH_TOKEN)
+                .redirectUri("http://127.0.0.1:8080/login/oauth2/code/cinema")
+                .scope("openid")
                 .build();
     }
 }

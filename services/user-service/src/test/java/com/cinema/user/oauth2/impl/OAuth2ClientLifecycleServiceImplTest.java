@@ -4,10 +4,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+
+import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.NotFoundException;
+import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
+import com.cinema.user.oauth2.audit.RevocationReason;
+import com.cinema.user.security.audit.SecurityAuditEventType;
+import com.cinema.user.security.audit.SecurityAuditOutcome;
+import com.cinema.user.security.audit.SecurityAuditRecord;
+import com.cinema.user.security.audit.SecurityAuditRecorder;
+import com.cinema.user.security.audit.SecurityAuditTargetType;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,12 +32,6 @@ import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 
-import com.cinema.common.exception.exception.ConflictException;
-import com.cinema.common.exception.exception.NotFoundException;
-import com.cinema.common.exception.exception.ValidationException;
-import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
-import com.cinema.user.oauth2.audit.RevocationReason;
-
 @ExtendWith(MockitoExtension.class)
 class OAuth2ClientLifecycleServiceImplTest {
 
@@ -41,306 +45,244 @@ class OAuth2ClientLifecycleServiceImplTest {
 
     private static final String NEW_ENCODED_SECRET = "{bcrypt}new-secret";
 
-    @Mock
-    private RegisteredClientRepository registeredClientRepository;
+    @Mock private RegisteredClientRepository registeredClientRepository;
 
-    @Mock
-    private AuthorizationSessionRevocationService authorizationSessionRevocationService;
+    @Mock private AuthorizationSessionRevocationService authorizationSessionRevocationService;
 
-    @Mock
-    private PasswordEncoder passwordEncoder;
+    @Mock private PasswordEncoder passwordEncoder;
 
-    @Mock
-    private JdbcOperations jdbcOperations;
+    @Mock private JdbcOperations jdbcOperations;
+
+    @Mock private SecurityAuditRecorder securityAuditRecorder;
 
     private OAuth2ClientLifecycleServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new OAuth2ClientLifecycleServiceImpl(
-                registeredClientRepository,
-                authorizationSessionRevocationService,
-                passwordEncoder,
-                jdbcOperations);
+        service =
+                new OAuth2ClientLifecycleServiceImpl(
+                        registeredClientRepository,
+                        authorizationSessionRevocationService,
+                        passwordEncoder,
+                        jdbcOperations,
+                        securityAuditRecorder);
     }
 
     @Test
     void deactivateShouldRevokeBeforeMarkingClientInactive() {
         RegisteredClient client = confidentialClient();
 
-        when(registeredClientRepository.findByClientId(
-                CLIENT_ID))
-                .thenReturn(client);
+        when(registeredClientRepository.findByClientId(CLIENT_ID)).thenReturn(client);
 
-        when(jdbcOperations.update(
-                anyString(),
-                eq(REGISTERED_CLIENT_ID)))
-                .thenReturn(1);
+        when(jdbcOperations.update(anyString(), eq(REGISTERED_CLIENT_ID))).thenReturn(1);
 
-        service.deactivate(
-                CLIENT_ID);
+        service.deactivate(CLIENT_ID);
 
-        InOrder order = inOrder(
-                authorizationSessionRevocationService,
-                jdbcOperations);
+        InOrder order =
+                inOrder(
+                        authorizationSessionRevocationService,
+                        jdbcOperations,
+                        securityAuditRecorder);
 
         order.verify(authorizationSessionRevocationService)
                 .revokeByRegisteredClientId(
-                        REGISTERED_CLIENT_ID,
-                        CLIENT_ID,
-                        RevocationReason.CLIENT_DEACTIVATED);
+                        REGISTERED_CLIENT_ID, CLIENT_ID, RevocationReason.CLIENT_DEACTIVATED);
 
-        order.verify(jdbcOperations)
-                .update(
-                        anyString(),
-                        eq(REGISTERED_CLIENT_ID));
+        order.verify(jdbcOperations).update(anyString(), eq(REGISTERED_CLIENT_ID));
 
-        verifyNoInteractions(
-                passwordEncoder);
+        order.verify(securityAuditRecorder)
+                .record(
+                        new SecurityAuditRecord(
+                                SecurityAuditEventType.OAUTH2_CLIENT_DEACTIVATED,
+                                SecurityAuditTargetType.OAUTH2_CLIENT,
+                                CLIENT_ID,
+                                SecurityAuditOutcome.SUCCESS,
+                                null,
+                                null));
+
+        verifyNoInteractions(passwordEncoder);
     }
 
     @Test
     void deactivateShouldTrimClientId() {
         RegisteredClient client = confidentialClient();
 
-        when(registeredClientRepository.findByClientId(
-                CLIENT_ID))
-                .thenReturn(client);
+        when(registeredClientRepository.findByClientId(CLIENT_ID)).thenReturn(client);
 
-        when(jdbcOperations.update(
-                anyString(),
-                eq(REGISTERED_CLIENT_ID)))
-                .thenReturn(1);
+        when(jdbcOperations.update(anyString(), eq(REGISTERED_CLIENT_ID))).thenReturn(1);
 
-        service.deactivate(
-                "  " + CLIENT_ID + "  ");
+        service.deactivate("  " + CLIENT_ID + "  ");
 
-        verify(registeredClientRepository)
-                .findByClientId(
-                        CLIENT_ID);
+        verify(registeredClientRepository).findByClientId(CLIENT_ID);
     }
 
     @Test
     void deactivateShouldRejectMissingClient() {
-        when(registeredClientRepository.findByClientId(
-                CLIENT_ID))
-                .thenReturn(null);
+        when(registeredClientRepository.findByClientId(CLIENT_ID)).thenReturn(null);
 
-        assertThatThrownBy(() -> service.deactivate(
-                CLIENT_ID))
-                .isInstanceOf(
-                        NotFoundException.class);
+        assertThatThrownBy(() -> service.deactivate(CLIENT_ID))
+                .isInstanceOf(NotFoundException.class);
 
         verifyNoInteractions(
                 authorizationSessionRevocationService,
                 passwordEncoder,
-                jdbcOperations);
+                jdbcOperations,
+                securityAuditRecorder);
     }
 
     @Test
     void deactivateShouldRejectBlankClientIdBeforeLookup() {
-        assertThatThrownBy(() -> service.deactivate(
-                "   "))
-                .isInstanceOf(
-                        ValidationException.class);
+        assertThatThrownBy(() -> service.deactivate("   ")).isInstanceOf(ValidationException.class);
 
         verifyNoInteractions(
                 registeredClientRepository,
                 authorizationSessionRevocationService,
                 passwordEncoder,
-                jdbcOperations);
+                jdbcOperations,
+                securityAuditRecorder);
     }
 
     @Test
     void deactivateShouldFailWhenConcurrentUpdateChangesNoRows() {
         RegisteredClient client = confidentialClient();
 
-        when(registeredClientRepository.findByClientId(
-                CLIENT_ID))
-                .thenReturn(client);
+        when(registeredClientRepository.findByClientId(CLIENT_ID)).thenReturn(client);
 
-        when(jdbcOperations.update(
-                anyString(),
-                eq(REGISTERED_CLIENT_ID)))
-                .thenReturn(0);
+        when(jdbcOperations.update(anyString(), eq(REGISTERED_CLIENT_ID))).thenReturn(0);
 
-        assertThatThrownBy(() -> service.deactivate(
-                CLIENT_ID))
-                .isInstanceOf(
-                        ConflictException.class);
+        assertThatThrownBy(() -> service.deactivate(CLIENT_ID))
+                .isInstanceOf(ConflictException.class);
 
         verify(authorizationSessionRevocationService)
                 .revokeByRegisteredClientId(
-                        REGISTERED_CLIENT_ID,
-                        CLIENT_ID,
-                        RevocationReason.CLIENT_DEACTIVATED);
+                        REGISTERED_CLIENT_ID, CLIENT_ID, RevocationReason.CLIENT_DEACTIVATED);
+
+        verifyNoInteractions(securityAuditRecorder);
     }
 
     @Test
     void rotateSecretShouldRevokeBeforeUpdatingEncodedSecret() {
         RegisteredClient client = confidentialClient();
 
-        when(registeredClientRepository.findByClientId(
-                CLIENT_ID))
-                .thenReturn(client);
+        when(registeredClientRepository.findByClientId(CLIENT_ID)).thenReturn(client);
 
-        when(passwordEncoder.encode(
-                NEW_RAW_SECRET))
-                .thenReturn(
-                        NEW_ENCODED_SECRET);
+        when(passwordEncoder.encode(NEW_RAW_SECRET)).thenReturn(NEW_ENCODED_SECRET);
 
-        when(jdbcOperations.update(
-                anyString(),
-                eq(NEW_ENCODED_SECRET),
-                eq(REGISTERED_CLIENT_ID)))
+        when(jdbcOperations.update(anyString(), eq(NEW_ENCODED_SECRET), eq(REGISTERED_CLIENT_ID)))
                 .thenReturn(1);
 
-        service.rotateSecret(
-                CLIENT_ID,
-                NEW_RAW_SECRET);
+        service.rotateSecret(CLIENT_ID, NEW_RAW_SECRET);
 
-        InOrder order = inOrder(
-                passwordEncoder,
-                authorizationSessionRevocationService,
-                jdbcOperations);
+        InOrder order =
+                inOrder(
+                        passwordEncoder,
+                        authorizationSessionRevocationService,
+                        jdbcOperations,
+                        securityAuditRecorder);
 
-        order.verify(passwordEncoder)
-                .encode(
-                        NEW_RAW_SECRET);
+        order.verify(passwordEncoder).encode(NEW_RAW_SECRET);
 
         order.verify(authorizationSessionRevocationService)
                 .revokeByRegisteredClientId(
-                        REGISTERED_CLIENT_ID,
-                        CLIENT_ID,
-                        RevocationReason.CLIENT_SECRET_ROTATED);
+                        REGISTERED_CLIENT_ID, CLIENT_ID, RevocationReason.CLIENT_SECRET_ROTATED);
 
         order.verify(jdbcOperations)
-                .update(
-                        anyString(),
-                        eq(NEW_ENCODED_SECRET),
-                        eq(REGISTERED_CLIENT_ID));
+                .update(anyString(), eq(NEW_ENCODED_SECRET), eq(REGISTERED_CLIENT_ID));
+
+        order.verify(securityAuditRecorder)
+                .record(
+                        new SecurityAuditRecord(
+                                SecurityAuditEventType.OAUTH2_CLIENT_SECRET_ROTATED,
+                                SecurityAuditTargetType.OAUTH2_CLIENT,
+                                CLIENT_ID,
+                                SecurityAuditOutcome.SUCCESS,
+                                null,
+                                null));
     }
 
     @Test
     void rotateSecretShouldRejectPublicClient() {
         RegisteredClient client = publicClient();
 
-        when(registeredClientRepository.findByClientId(
-                CLIENT_ID))
-                .thenReturn(client);
+        when(registeredClientRepository.findByClientId(CLIENT_ID)).thenReturn(client);
 
-        assertThatThrownBy(() -> service.rotateSecret(
-                CLIENT_ID,
-                NEW_RAW_SECRET))
-                .isInstanceOf(
-                        ConflictException.class);
+        assertThatThrownBy(() -> service.rotateSecret(CLIENT_ID, NEW_RAW_SECRET))
+                .isInstanceOf(ConflictException.class);
 
         verifyNoInteractions(
                 passwordEncoder,
                 authorizationSessionRevocationService,
-                jdbcOperations);
+                jdbcOperations,
+                securityAuditRecorder);
     }
 
     @Test
     void rotateSecretShouldRejectMissingClient() {
-        when(registeredClientRepository.findByClientId(
-                CLIENT_ID))
-                .thenReturn(null);
+        when(registeredClientRepository.findByClientId(CLIENT_ID)).thenReturn(null);
 
-        assertThatThrownBy(() -> service.rotateSecret(
-                CLIENT_ID,
-                NEW_RAW_SECRET))
-                .isInstanceOf(
-                        NotFoundException.class);
+        assertThatThrownBy(() -> service.rotateSecret(CLIENT_ID, NEW_RAW_SECRET))
+                .isInstanceOf(NotFoundException.class);
 
         verifyNoInteractions(
                 passwordEncoder,
                 authorizationSessionRevocationService,
-                jdbcOperations);
+                jdbcOperations,
+                securityAuditRecorder);
     }
 
     @Test
     void rotateSecretShouldRejectBlankSecretBeforeLookup() {
-        assertThatThrownBy(() -> service.rotateSecret(
-                CLIENT_ID,
-                "   "))
-                .isInstanceOf(
-                        ValidationException.class);
+        assertThatThrownBy(() -> service.rotateSecret(CLIENT_ID, "   "))
+                .isInstanceOf(ValidationException.class);
 
         verifyNoInteractions(
                 registeredClientRepository,
                 passwordEncoder,
                 authorizationSessionRevocationService,
-                jdbcOperations);
+                jdbcOperations,
+                securityAuditRecorder);
     }
 
     @Test
     void rotateSecretShouldFailWhenConcurrentUpdateChangesNoRows() {
         RegisteredClient client = confidentialClient();
 
-        when(registeredClientRepository.findByClientId(
-                CLIENT_ID))
-                .thenReturn(client);
+        when(registeredClientRepository.findByClientId(CLIENT_ID)).thenReturn(client);
 
-        when(passwordEncoder.encode(
-                NEW_RAW_SECRET))
-                .thenReturn(
-                        NEW_ENCODED_SECRET);
+        when(passwordEncoder.encode(NEW_RAW_SECRET)).thenReturn(NEW_ENCODED_SECRET);
 
-        when(jdbcOperations.update(
-                anyString(),
-                eq(NEW_ENCODED_SECRET),
-                eq(REGISTERED_CLIENT_ID)))
+        when(jdbcOperations.update(anyString(), eq(NEW_ENCODED_SECRET), eq(REGISTERED_CLIENT_ID)))
                 .thenReturn(0);
 
-        assertThatThrownBy(() -> service.rotateSecret(
-                CLIENT_ID,
-                NEW_RAW_SECRET))
-                .isInstanceOf(
-                        ConflictException.class);
+        assertThatThrownBy(() -> service.rotateSecret(CLIENT_ID, NEW_RAW_SECRET))
+                .isInstanceOf(ConflictException.class);
 
         verify(authorizationSessionRevocationService)
                 .revokeByRegisteredClientId(
-                        REGISTERED_CLIENT_ID,
-                        CLIENT_ID,
-                        RevocationReason.CLIENT_SECRET_ROTATED);
+                        REGISTERED_CLIENT_ID, CLIENT_ID, RevocationReason.CLIENT_SECRET_ROTATED);
+
+        verifyNoInteractions(securityAuditRecorder);
     }
 
     private static RegisteredClient confidentialClient() {
-        return RegisteredClient
-                .withId(
-                        REGISTERED_CLIENT_ID)
-                .clientId(
-                        CLIENT_ID)
-                .clientSecret(
-                        CURRENT_ENCODED_SECRET)
-                .clientName(
-                        "Inventory Service")
-                .clientAuthenticationMethod(
-                        ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(
-                        AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .scope(
-                        "inventory:read")
+        return RegisteredClient.withId(REGISTERED_CLIENT_ID)
+                .clientId(CLIENT_ID)
+                .clientSecret(CURRENT_ENCODED_SECRET)
+                .clientName("Inventory Service")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                .scope("inventory:read")
                 .build();
     }
 
     private static RegisteredClient publicClient() {
-        return RegisteredClient
-                .withId(
-                        REGISTERED_CLIENT_ID)
-                .clientId(
-                        CLIENT_ID)
-                .clientName(
-                        "Cinema Web")
-                .clientAuthenticationMethod(
-                        ClientAuthenticationMethod.NONE)
-                .authorizationGrantType(
-                        AuthorizationGrantType.AUTHORIZATION_CODE)
-                .redirectUri(
-                        "http://127.0.0.1:3000/callback")
-                .scope(
-                        "openid")
+        return RegisteredClient.withId(REGISTERED_CLIENT_ID)
+                .clientId(CLIENT_ID)
+                .clientName("Cinema Web")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .redirectUri("http://127.0.0.1:3000/callback")
+                .scope("openid")
                 .build();
     }
 }

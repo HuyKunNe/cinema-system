@@ -1,5 +1,18 @@
 package com.cinema.user.oauth2.impl;
 
+import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.NotFoundException;
+import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.user.exception.UserErrorCode;
+import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
+import com.cinema.user.oauth2.OAuth2ClientLifecycleService;
+import com.cinema.user.oauth2.audit.RevocationReason;
+import com.cinema.user.security.audit.SecurityAuditEventType;
+import com.cinema.user.security.audit.SecurityAuditOutcome;
+import com.cinema.user.security.audit.SecurityAuditRecord;
+import com.cinema.user.security.audit.SecurityAuditRecorder;
+import com.cinema.user.security.audit.SecurityAuditTargetType;
+
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
@@ -8,27 +21,20 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.cinema.common.exception.exception.ConflictException;
-import com.cinema.common.exception.exception.NotFoundException;
-import com.cinema.common.exception.exception.ValidationException;
-import com.cinema.user.exception.UserErrorCode;
-import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
-import com.cinema.user.oauth2.OAuth2ClientLifecycleService;
-import com.cinema.user.oauth2.audit.RevocationReason;
-
 @Service
 @Transactional(readOnly = true)
-public class OAuth2ClientLifecycleServiceImpl
-        implements OAuth2ClientLifecycleService {
+public class OAuth2ClientLifecycleServiceImpl implements OAuth2ClientLifecycleService {
 
-    private static final String DEACTIVATE_SQL = """
+    private static final String DEACTIVATE_SQL =
+            """
             UPDATE oauth2_registered_client
             SET active = FALSE
             WHERE id = ?
               AND active = TRUE
             """;
 
-    private static final String ROTATE_SECRET_SQL = """
+    private static final String ROTATE_SECRET_SQL =
+            """
             UPDATE oauth2_registered_client
             SET client_secret = ?,
                 client_secret_expires_at = NULL
@@ -42,13 +48,16 @@ public class OAuth2ClientLifecycleServiceImpl
 
     private final PasswordEncoder passwordEncoder;
 
+    private final SecurityAuditRecorder securityAuditRecorder;
+
     private final JdbcOperations jdbcOperations;
 
     public OAuth2ClientLifecycleServiceImpl(
             RegisteredClientRepository registeredClientRepository,
             AuthorizationSessionRevocationService authorizationSessionRevocationService,
             PasswordEncoder passwordEncoder,
-            JdbcOperations jdbcOperations) {
+            JdbcOperations jdbcOperations,
+            SecurityAuditRecorder securityAuditRecorder) {
 
         this.registeredClientRepository = registeredClientRepository;
 
@@ -57,6 +66,8 @@ public class OAuth2ClientLifecycleServiceImpl
         this.passwordEncoder = passwordEncoder;
 
         this.jdbcOperations = jdbcOperations;
+
+        this.securityAuditRecorder = securityAuditRecorder;
     }
 
     @Override
@@ -65,26 +76,27 @@ public class OAuth2ClientLifecycleServiceImpl
 
         RegisteredClient client = findActiveClient(clientId);
 
-        authorizationSessionRevocationService
-                .revokeByRegisteredClientId(
-                        client.getId(),
-                        client.getClientId(),
-                        RevocationReason.CLIENT_DEACTIVATED);
+        authorizationSessionRevocationService.revokeByRegisteredClientId(
+                client.getId(), client.getClientId(), RevocationReason.CLIENT_DEACTIVATED);
 
-        int updated = jdbcOperations.update(
-                DEACTIVATE_SQL,
-                client.getId());
+        int updated = jdbcOperations.update(DEACTIVATE_SQL, client.getId());
 
         if (updated != 1) {
             throw new ConflictException(UserErrorCode.OAUTH2_CLIENT_ALREADY_INACTIVE);
         }
+        securityAuditRecorder.record(
+                new SecurityAuditRecord(
+                        SecurityAuditEventType.OAUTH2_CLIENT_DEACTIVATED,
+                        SecurityAuditTargetType.OAUTH2_CLIENT,
+                        client.getClientId(),
+                        SecurityAuditOutcome.SUCCESS,
+                        null,
+                        null));
     }
 
     @Override
     @Transactional
-    public void rotateSecret(
-            String clientId,
-            String newRawClientSecret) {
+    public void rotateSecret(String clientId, String newRawClientSecret) {
 
         validateSecret(newRawClientSecret);
 
@@ -97,20 +109,22 @@ public class OAuth2ClientLifecycleServiceImpl
 
         String encodedSecret = passwordEncoder.encode(newRawClientSecret);
 
-        authorizationSessionRevocationService
-                .revokeByRegisteredClientId(
-                        client.getId(),
-                        client.getClientId(),
-                        RevocationReason.CLIENT_SECRET_ROTATED);
+        authorizationSessionRevocationService.revokeByRegisteredClientId(
+                client.getId(), client.getClientId(), RevocationReason.CLIENT_SECRET_ROTATED);
 
-        int updated = jdbcOperations.update(
-                ROTATE_SECRET_SQL,
-                encodedSecret,
-                client.getId());
+        int updated = jdbcOperations.update(ROTATE_SECRET_SQL, encodedSecret, client.getId());
 
         if (updated != 1) {
             throw new ConflictException(UserErrorCode.OAUTH2_CLIENT_ALREADY_INACTIVE);
         }
+        securityAuditRecorder.record(
+                new SecurityAuditRecord(
+                        SecurityAuditEventType.OAUTH2_CLIENT_SECRET_ROTATED,
+                        SecurityAuditTargetType.OAUTH2_CLIENT,
+                        client.getClientId(),
+                        SecurityAuditOutcome.SUCCESS,
+                        null,
+                        null));
     }
 
     private RegisteredClient findActiveClient(String clientId) {
@@ -120,8 +134,7 @@ public class OAuth2ClientLifecycleServiceImpl
             throw new ValidationException(UserErrorCode.OAUTH2_CLIENT_ID_REQUIRED);
         }
 
-        RegisteredClient client = registeredClientRepository
-                .findByClientId(clientId.trim());
+        RegisteredClient client = registeredClientRepository.findByClientId(clientId.trim());
 
         if (client == null) {
             throw new NotFoundException(UserErrorCode.OAUTH2_CLIENT_NOT_FOUND);
@@ -138,15 +151,13 @@ public class OAuth2ClientLifecycleServiceImpl
         }
     }
 
-    private static boolean supportsClientSecret(
-            RegisteredClient client) {
+    private static boolean supportsClientSecret(RegisteredClient client) {
 
-        return client
-                .getClientAuthenticationMethods()
-                .stream()
-                .anyMatch(method -> ClientAuthenticationMethod.CLIENT_SECRET_BASIC
-                        .equals(method)
-                        || ClientAuthenticationMethod.CLIENT_SECRET_POST
-                                .equals(method));
+        return client.getClientAuthenticationMethods().stream()
+                .anyMatch(
+                        method ->
+                                ClientAuthenticationMethod.CLIENT_SECRET_BASIC.equals(method)
+                                        || ClientAuthenticationMethod.CLIENT_SECRET_POST.equals(
+                                                method));
     }
 }
