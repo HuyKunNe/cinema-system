@@ -25,22 +25,22 @@ responsibilities into `common-security`, Gateway, or another business service.
 
 ## 2. Accepted Decisions
 
-| Concern | Decision |
-|---|---|
-| Issuer | One canonical User Service issuer per environment |
-| Authorization Server | Spring Authorization Server inside User Service |
-| Interactive flow | Authorization Code with PKCE |
-| Session renewal | Opaque, rotated and revocable refresh token |
-| Service identity | Controlled Client Credentials |
-| Prohibited flow | Resource Owner Password Credentials |
-| Access token | RS256 signed JWT |
-| RSA key size | At least 3072 bits |
-| API audience | `cinema-api` initially |
-| Access-token lifetime | 15 minutes initially |
-| Refresh-token maximum lifetime | 30 days initially |
-| Subject | UUID v7 user or approved service-principal identifier |
-| Resource Server validation | Issuer, signature, audience, lifetime and claims |
-| Shared security boundary | `common-security` validates tokens; it never issues them |
+| Concern                        | Decision                                                 |
+| ------------------------------ | -------------------------------------------------------- |
+| Issuer                         | One canonical User Service issuer per environment        |
+| Authorization Server           | Spring Authorization Server inside User Service          |
+| Interactive flow               | Authorization Code with PKCE                             |
+| Session renewal                | Opaque, rotated and revocable refresh token              |
+| Service identity               | Controlled Client Credentials                            |
+| Prohibited flow                | Resource Owner Password Credentials                      |
+| Access token                   | RS256 signed JWT                                         |
+| RSA key size                   | At least 3072 bits                                       |
+| API audience                   | `cinema-api` initially                                   |
+| Access-token lifetime          | 15 minutes initially                                     |
+| Refresh-token maximum lifetime | 30 days initially                                        |
+| Subject                        | UUID v7 user or approved service-principal identifier    |
+| Resource Server validation     | Issuer, signature, audience, lifetime and claims         |
+| Shared security boundary       | `common-security` validates tokens; it never issues them |
 
 Configuration may shorten token lifetimes by environment. Relaxing an accepted
 security rule requires a new architecture decision.
@@ -201,18 +201,18 @@ administrative APIs.
 
 Initial policy:
 
-| Endpoint group | Access |
-|---|---|
-| Provider metadata and JWK Set | Public |
-| Login UI required by authorization flow | Public entry; authenticated session after login |
-| Registration | Public with abuse controls |
-| Email verification | Public one-time-token operation |
-| Password recovery request | Public, non-enumerating response |
-| Password reset | Public one-time-token operation |
-| Current-user profile | Authenticated user |
-| Password change | Authenticated user with recent-authentication policy |
-| User administration | `user:manage` plus privileged-operation policy |
-| Client administration | Restricted privileged administrator |
+| Endpoint group                          | Access                                               |
+| --------------------------------------- | ---------------------------------------------------- |
+| Provider metadata and JWK Set           | Public                                               |
+| Login UI required by authorization flow | Public entry; authenticated session after login      |
+| Registration                            | Public with abuse controls                           |
+| Email verification                      | Public one-time-token operation                      |
+| Password recovery request               | Public, non-enumerating response                     |
+| Password reset                          | Public one-time-token operation                      |
+| Current-user profile                    | Authenticated user                                   |
+| Password change                         | Authenticated user with recent-authentication policy |
+| User administration                     | `user:manage` plus privileged-operation policy       |
+| Client administration                   | Restricted privileged administrator                  |
 
 CSRF protection remains enabled for browser session endpoints. Disabling CSRF
 globally is prohibited. CORS uses an explicit environment-specific allowlist.
@@ -457,6 +457,15 @@ Applicable sessions are revoked after:
 Short-lived JWT access tokens remain valid until expiry unless emergency key
 rotation or another explicitly designed denylist mechanism is invoked.
 
+The implemented sensitive-change baseline revokes applicable authorizations after
+account lock or disablement, password change or reset, OAuth2 client deactivation or
+secret rotation, and authorized administrative revocation.
+
+Each trigger supplies an explicit non-sensitive reason code. Revocation audit records
+use the username or public client identifier as the safe target reference and store the
+number of authorizations actually invalidated. Audit persistence participates in the
+same transaction as the triggering state change and authorization revocation.
+
 ---
 
 ## 14. Persistence Model
@@ -465,28 +474,28 @@ The User Service database is `cinema_user_db`.
 
 ### 14.1 Domain tables
 
-| Table | Purpose |
-|---|---|
-| `users` | Account identity and status |
-| `user_profiles` | Non-credential profile data |
-| `user_credentials` | Password hash and credential metadata |
-| `roles` | Coarse-grained roles |
-| `permissions` | Fine-grained permissions |
-| `user_roles` | User-role assignments |
-| `role_permissions` | Role-permission assignments |
-| `verification_tokens` | Hashed, expiring verification tokens |
-| `password_reset_tokens` | Hashed, expiring reset tokens |
-| `user_mfa_methods` | Future MFA enrollment metadata |
+| Table                   | Purpose                                |
+| ----------------------- | -------------------------------------- |
+| `users`                 | Account identity and status            |
+| `user_profiles`         | Non-credential profile data            |
+| `user_credentials`      | Password hash and credential metadata  |
+| `roles`                 | Coarse-grained roles                   |
+| `permissions`           | Fine-grained permissions               |
+| `user_roles`            | User-role assignments                  |
+| `role_permissions`      | Role-permission assignments            |
+| `verification_tokens`   | Hashed, expiring verification tokens   |
+| `password_reset_tokens` | Hashed, expiring reset tokens          |
+| `user_mfa_methods`      | Future MFA enrollment metadata         |
 | `security_audit_events` | Append-oriented security audit records |
 
 ### 14.2 Authorization Server tables
 
-| Table | Purpose |
-|---|---|
-| `oauth2_registered_client` | Registered client configuration |
-| `oauth2_authorization` | Authorization and token metadata |
-| `oauth2_authorization_consent` | User consent |
-| `refresh_tokens` | Hashed refresh-token session and rotation state |
+| Table                          | Purpose                                         |
+| ------------------------------ | ----------------------------------------------- |
+| `oauth2_registered_client`     | Registered client configuration                 |
+| `oauth2_authorization`         | Authorization and token metadata                |
+| `oauth2_authorization_consent` | User consent                                    |
+| `refresh_tokens`               | Hashed refresh-token session and rotation state |
 
 Spring Authorization Server-compatible names may be retained, but Flyway owns
 all DDL. Runtime schema initialization is disabled.
@@ -610,6 +619,20 @@ Critical audit events include authentication failures, lock and disable actions,
 password changes and resets, role changes, client changes, session revocation,
 refresh-token reuse and signing-key rotation.
 
+The implemented revocation-audit model records:
+
+- target type `USER` or `CLIENT`;
+- safe target reference;
+- explicit revocation reason;
+- actor user identifier when resolvable;
+- actor name with a system fallback;
+- number of authorizations invalidated;
+- occurrence and persistence timestamps.
+
+A failure to persist a revocation audit event fails the surrounding sensitive operation
+so that account, credential, client and authorization state cannot commit without its
+required audit record.
+
 ---
 
 ## 20. Test Strategy
@@ -664,21 +687,21 @@ fixtures and must not be reusable outside tests.
 
 Runtime work begins only after this R25.2 design is accepted.
 
-| Checkpoint | Scope |
-|---|---|
-| R25.3 | Bootstrap, configuration, persistence foundation and context tests |
-| R25.4 | User, profile, credential and account-status schema |
-| R25.5 | Roles and permissions |
-| R25.6 | Registration and password security |
-| R25.7 | Verification and password recovery |
-| R25.8 | Spring Authorization Server filter chain and OIDC foundation |
-| R25.9 | Registered clients, PKCE, Refresh and Client Credentials grants |
-| R25.10 | RSA keys, JWK publication and JWT claims |
-| R25.11 | Refresh rotation, reuse detection and revocation |
-| R25.12 | Profile and account lifecycle APIs |
-| R25.13 | Gateway and Resource Server integration |
-| R25.14 | Security and protocol verification |
-| R25.15 | Stabilization, documentation and closure |
+| Checkpoint | Scope                                                              |
+| ---------- | ------------------------------------------------------------------ |
+| R25.3      | Bootstrap, configuration, persistence foundation and context tests |
+| R25.4      | User, profile, credential and account-status schema                |
+| R25.5      | Roles and permissions                                              |
+| R25.6      | Registration and password security                                 |
+| R25.7      | Verification and password recovery                                 |
+| R25.8      | Spring Authorization Server filter chain and OIDC foundation       |
+| R25.9      | Registered clients, PKCE, Refresh and Client Credentials grants    |
+| R25.10     | RSA keys, JWK publication and JWT claims                           |
+| R25.11     | Refresh rotation, reuse detection and revocation                   |
+| R25.12     | Profile and account lifecycle APIs                                 |
+| R25.13     | Gateway and Resource Server integration                            |
+| R25.14     | Security and protocol verification                                 |
+| R25.15     | Stabilization, documentation and closure                           |
 
 No checkpoint may temporarily introduce plain-text password or client-secret
 storage, shared private signing keys, raw refresh-token persistence, or Resource

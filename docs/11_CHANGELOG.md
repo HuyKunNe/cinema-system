@@ -43,6 +43,37 @@ R26-R28  Planned
 
 # Unreleased
 
+## 2026-08-17
+
+### Sensitive-Change Authorization Revocation
+
+- Completed R25.11.8 account, credential, OAuth2 client and administrative revocation
+  triggers.
+- Revoked applicable user authorizations after account lock, account disablement,
+  password change and password reset.
+- Revoked applicable client authorizations after client deactivation and client-secret
+  rotation.
+- Enforced `user:manage` for administrative user and client authorization revocation.
+- Added durable revocation audit events with actor resolution, safe target references,
+  explicit reason codes and revoked-authorization counts.
+- Kept revocation audit persistence in the same transaction as the sensitive change and
+  authorization invalidation.
+- Added integration coverage for all revocation reasons and rollback coverage for audit
+  persistence failure.
+
+### Verification
+
+- User Service clean verification passes.
+- Root Maven reactor clean verification passes.
+- `git diff --check` passes.
+
+### Remaining R25.11 Work
+
+````text
+R25.11.9  — Durable security-event recording
+R25.11.10 — Concurrent refresh and reuse verification
+R25.11.11 — Cleanup, full verification and documentation closure
+
 ## 2026-08-13
 
 ### Completed
@@ -564,7 +595,7 @@ AVAILABLE
 HELD
 BOOKED
 UNAVAILABLE
-```
+````
 
 Redis locks are not represented as a `LOCKED` business state.
 

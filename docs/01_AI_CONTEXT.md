@@ -107,6 +107,10 @@ Verified endpoint authorization:
 - blank and duplicate authorities are removed.
 
 ## Active Round
+Current next checkpoint:
+
+```text
+R25.11.9 — Durable security-event recording — NEXT
 
 > **R25 — User Service**
 
@@ -125,7 +129,7 @@ R25.7 — account lifecycle and email verification — DONE
 R25.8 — Spring Authorization Server foundation — DONE
 R25.9 — OAuth2 clients and grant types — DONE
 R25.10 — JWT claims and JWK signing — DONE
-R25.11.1–R25.11.7 — refresh security, revocation and OIDC logout — DONE
+R25.11.1–R25.11.8 — refresh security and sensitive-change revocation — DONE
 ```
 
 Active checkpoint:
@@ -774,22 +778,10 @@ R24 met all completion requirements on 2026-08-04.
 
 # Current Next Step
 
-Complete R25.11.8 — account, password-reset and client revocation triggers:
+R25.11.9 — Durable security-event recording
 
-1. Preserve the implemented OAuth2 explicit revocation and OIDC logout behavior.
-2. Identify every sensitive account, credential and client lifecycle transition that
-   must revoke active authorizations.
-3. Revoke applicable authorization sessions when an account is disabled or locked
-   according to the approved lifecycle policy.
-4. Revoke applicable authorization sessions after successful password reset and other
-   approved credential-compromise transitions.
-5. Revoke client-owned authorizations when an OAuth2 client is deactivated or its
-   authentication secret is rotated.
-6. Reuse the existing authorization-service and refresh-history synchronization path
-   instead of updating token history through duplicate business logic.
-7. Keep revocation transactional, non-oracular and covered by MySQL integration tests.
-8. Do not begin durable security-event recording, concurrent-refresh hardening or
-   cleanup work before the corresponding R25.11.9–R25.11.11 checkpoints.
+R25.11.8 is complete. Do not reimplement its account, credential, OAuth2 client,
+administrative revocation or revocation-audit behavior.
 
 Do not modify completed R24 or R25.1–R25.11.7 behavior unless addressing a verified
 defect.

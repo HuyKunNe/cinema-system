@@ -849,6 +849,7 @@ request when only one saleable seat remains.
 - ✅ R24.5.7 — Concurrency verification.
 - ✅ R24.5.8 — Full quality-gate verification.
 - ✅ R24.5.9 — Documentation synchronization and R24 closure.
+- ✅ R25.11.8 — Account, password-reset and client revocation triggers DONE
 
 Completion status:
 
@@ -1174,12 +1175,26 @@ Implemented behavior:
   authorization, session or token-history state.
 - Unit, Flyway, repository and end-to-end MySQL integration tests cover the implemented
   behavior.
+  - Account lock and disablement revoke applicable user authorizations and refresh-token
+    history within the account-state transaction.
+- Password change and password reset revoke applicable user authorizations and
+  refresh-token history within the credential-change transaction.
+- OAuth2 client deactivation and client-secret rotation revoke applicable client
+  authorizations and refresh-token history.
+- Administrative user and client revocation requires `user:manage`.
+- Revocation triggers use explicit account, credential, client-lifecycle and
+  administrative reason codes.
+- Durable revocation audit rows record actor identity when known, safe target type and
+  reference, reason, occurrence time and the number of authorizations invalidated.
+- Audit-recording failure rolls back the sensitive state change and authorization
+  revocation.
+- Unit, MySQL integration and rollback tests cover all sensitive-change revocation
+  triggers.
 
 Remaining checkpoints:
 
 ```text
-R25.11.8 — Account, password-reset and client revocation triggers  NEXT
-R25.11.9 — Durable security-event recording                        PLANNED
+R25.11.9 — Durable security-event recording                        NEXT
 R25.11.10 — Concurrent refresh and reuse verification              PLANNED
 R25.11.11 — Cleanup, full verification and documentation closure   PLANNED
 ```

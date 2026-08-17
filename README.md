@@ -43,15 +43,15 @@ implemented.
 
 # Current Status
 
-| Scope                                                       | Status      |
-| ----------------------------------------------------------- | ----------- |
-| R1-R24                                                      | Completed   |
-| R25.1–R25.10 — User Service security and OAuth2 foundations | Completed   |
-| R25.11.1–R25.11.7 — Refresh security and revocation         | Completed   |
-| R25.11.8 — Sensitive-change revocation triggers             | In progress |
-| R26 — Booking Service                                       | Planned     |
-| R27 — Payment Service                                       | Planned     |
-| R28 — Notification Service                                  | Planned     |
+| Scope                                                       | Status    |
+| ----------------------------------------------------------- | --------- |
+| R1-R24                                                      | Completed |
+| R25.1–R25.10 — User Service security and OAuth2 foundations | Completed |
+| R25.11.1–R25.11.7 — Refresh security and revocation         | Completed |
+| R25.11.8 — Sensitive-change revocation triggers             | Completed |
+| R26 — Booking Service                                       | Planned   |
+| R27 — Payment Service                                       | Planned   |
+| R28 — Notification Service                                  | Planned   |
 
 Latest completed runtime service:
 
@@ -59,11 +59,11 @@ Latest completed runtime service:
 
 Latest completed User Service checkpoint:
 
-> **R25.11.7 — Logout and explicit token revocation**
+> **R25.11.8 — Account, password-reset and client revocation triggers**
 
 Active checkpoint:
 
-> **R25.11.8 — Account, password-reset and client revocation triggers**
+> **R25.11.9 — Durable security-event recording**
 
 See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 
@@ -151,8 +151,11 @@ R25.9 and R25.10 completed controlled OAuth2 client policies, approved grant-flo
 verification, RS256 signing, JWK publication and JWT claim customization. R25.11
 now provides JDBC authorization persistence, rotating opaque refresh tokens, hashed
 refresh-token history, reuse detection, explicit token revocation and secure OIDC
-RP-Initiated Logout. R25.11.8 is adding revocation triggers for sensitive account,
-password-reset and client lifecycle changes.
+RP-Initiated Logout. R25.11.8 now revokes applicable authorization sessions after account lock or
+disablement, password change or reset, OAuth2 client deactivation or secret rotation,
+and authorized administrative revocation. These operations record durable revocation
+audit events with resolved actors, explicit non-sensitive reason codes, safe target
+references and the number of authorizations actually invalidated.
 
 ---
 

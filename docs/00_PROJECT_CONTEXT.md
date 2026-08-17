@@ -102,11 +102,12 @@ R25.7 — account lifecycle and email verification — DONE
 R25.8 — Spring Authorization Server foundation — DONE
 R25.9 — OAuth2 clients and grant types — DONE
 R25.10 — JWT claims and JWK signing — DONE
-R25.11.1–R25.11.7 — refresh security, revocation and OIDC logout — DONE
+R25.11.1–R25.11.8 — refresh security and sensitive-change revocation — DONE
 ```
 
 Active R25 checkpoint:
-R25.11.8 — account, password-reset and client revocation triggers — IN PROGRESS
+
+R25.11.9 — durable security-event recording — NEXT
 
 ````
 
@@ -126,7 +127,15 @@ Accepted authentication decision:
 - Successful OIDC logout invalidates the applicable session and authorization tokens
   and revokes refresh-token history.
 - Production privileged access requires MFA or an approved external control.
-
+- Account lock and disable operations revoke applicable authorization sessions.
+- Password change and password reset revoke applicable authorization sessions.
+- OAuth2 client deactivation and client-secret rotation revoke applicable client
+  authorizations.
+- Authorized administrators can explicitly revoke user or client authorizations.
+- Sensitive-change revocation records durable audit events with resolved actors,
+  safe targets, explicit reason codes and the number of authorizations invalidated.
+- Audit persistence participates in the same transaction as the sensitive change
+  and authorization revocation.
 Architecture decision:
 
 ```text
