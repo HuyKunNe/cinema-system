@@ -107,6 +107,7 @@ Verified endpoint authorization:
 - blank and duplicate authorities are removed.
 
 ## Active Round
+
 Current next checkpoint:
 
 ```text
@@ -136,7 +137,7 @@ Active checkpoint:
 
 R25.11.8 — account, password-reset and client revocation triggers — IN PROGRESS
 
-````
+```
 
 ADR-013 accepts the following decisions:
 
@@ -165,7 +166,7 @@ Authoritative decision record:
 
 ```text
 docs/decisions/ADR-013-spring-authorization-server.md
-````
+```
 
 ---
 
@@ -543,9 +544,9 @@ Use environment variables:
 
 ```yaml
 spring:
-    datasource:
-        username: ${MOVIE_DB_USERNAME}
-        password: ${MOVIE_DB_PASSWORD}
+  datasource:
+    username: ${MOVIE_DB_USERNAME}
+    password: ${MOVIE_DB_PASSWORD}
 ```
 
 Password environment variables must not have real default values.
@@ -710,9 +711,9 @@ Use:
 
 ```yaml
 spring:
-    jpa:
-        hibernate:
-            ddl-auto: validate
+  jpa:
+    hibernate:
+      ddl-auto: validate
 ```
 
 ---

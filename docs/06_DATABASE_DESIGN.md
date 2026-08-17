@@ -489,7 +489,7 @@ oauth2_registered_client
 `security_audit_events` stores append-oriented general security activity. Its columns
 are:
 
-````text
+```text
 id
 version
 event_type
@@ -543,7 +543,7 @@ last_login_at
 created_at
 updated_at
 version
-````
+```
 
 Requirements:
 
@@ -2043,7 +2043,8 @@ The service must distinguish between:
 | `oauth2_registered_client`       | User Service           |
 | `oauth2_authorization`           | User Service           |
 | `oauth2_authorization_consent`   | User Service           |
-| `refresh_tokens`                 | User Service           |
+| `oauth2_refresh_token_history`   | User Service           |
+| `oauth2_revocation_audit_events` | User Service           |
 | `user_mfa_methods`               | User Service           |
 | `security_audit_events`          | User Service           |
 | `cinemas`                        | Inventory Service      |
@@ -2059,8 +2060,6 @@ The service must distinguish between:
 | `notification_deliveries`        | Notification Service   |
 | `outbox_events`                  | The publishing service |
 | `processed_events`               | The consuming service  |
-| `oauth2_refresh_token_history`   | User Service           |
-| `oauth2_revocation_audit_events` | User Service           |
 
 The same technical table name may exist in multiple service databases.
 

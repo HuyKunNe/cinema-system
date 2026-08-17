@@ -86,7 +86,7 @@ R26-R28  Planned
 
 ### Remaining R25.11 Work
 
-````text
+```text
 R25.11.10 — Concurrent refresh and reuse verification
 R25.11.11 — Cleanup, full verification and documentation closure
 
@@ -611,7 +611,7 @@ AVAILABLE
 HELD
 BOOKED
 UNAVAILABLE
-````
+```
 
 Redis locks are not represented as a `LOCKED` business state.
 

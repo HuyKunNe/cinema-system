@@ -109,7 +109,7 @@ Active R25 checkpoint:
 
 R25.11.10 — concurrent refresh and reuse verification — NEXT
 
-````
+```
 
 Accepted authentication decision:
 
@@ -136,7 +136,7 @@ Accepted authentication decision:
   safe targets, explicit reason codes and the number of authorizations invalidated.
 - Audit persistence participates in the same transaction as the sensitive change
   and authorization revocation.
-  - General security activity is persisted in the append-oriented
+- General security activity is persisted in the append-oriented
   `security_audit_events` table.
 - Implemented durable event triggers cover form-authentication success and failure,
   refresh-token reuse detection, user-role changes, role-permission changes, OAuth2
@@ -154,7 +154,7 @@ Architecture decision:
 
 ```text
 docs/decisions/ADR-013-spring-authorization-server.md
-````
+```
 
 ## Not Started
 
@@ -513,9 +513,9 @@ Database credentials must use environment variables:
 
 ```yaml
 spring:
-    datasource:
-        username: ${MOVIE_DB_USERNAME}
-        password: ${MOVIE_DB_PASSWORD}
+  datasource:
+    username: ${MOVIE_DB_USERNAME}
+    password: ${MOVIE_DB_PASSWORD}
 ```
 
 Rules:
