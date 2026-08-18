@@ -4,6 +4,10 @@ import com.cinema.common.exception.exception.InternalServerException;
 import com.cinema.common.security.error.SecurityErrorCode;
 import com.cinema.common.security.jwt.AudienceValidator;
 import com.cinema.common.security.properties.SecurityProperties;
+import com.cinema.common.security.web.reactive.CinemaServerAccessDeniedHandler;
+import com.cinema.common.security.web.reactive.CinemaServerAuthenticationEntryPoint;
+import com.cinema.common.security.web.reactive.ReactiveSecurityResponseWriter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -42,6 +46,30 @@ public class ReactiveSecurityConfiguration {
                 new DelegatingOAuth2TokenValidator<>(issuerValidator, audienceValidator));
 
         return decoder;
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public ReactiveSecurityResponseWriter reactiveSecurityResponseWriter(
+            ObjectMapper objectMapper) {
+
+        return new ReactiveSecurityResponseWriter(objectMapper);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public CinemaServerAuthenticationEntryPoint cinemaServerAuthenticationEntryPoint(
+            ReactiveSecurityResponseWriter responseWriter) {
+
+        return new CinemaServerAuthenticationEntryPoint(responseWriter);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public CinemaServerAccessDeniedHandler cinemaServerAccessDeniedHandler(
+            ReactiveSecurityResponseWriter responseWriter) {
+
+        return new CinemaServerAccessDeniedHandler(responseWriter);
     }
 
     private static void validateIssuer(String issuerUri) {
