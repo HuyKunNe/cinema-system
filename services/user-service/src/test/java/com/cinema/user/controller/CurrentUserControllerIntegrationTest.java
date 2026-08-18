@@ -2,9 +2,13 @@ package com.cinema.user.controller;
 
 import static org.hamcrest.Matchers.endsWith;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -13,12 +17,14 @@ import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
 import com.cinema.user.dto.response.CurrentUserProfileResponse;
 import com.cinema.user.enums.AccountStatus;
 import com.cinema.user.security.CinemaUserDetails;
+import com.cinema.user.service.UserCredentialService;
 import com.cinema.user.service.UserProfileService;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -40,6 +46,8 @@ class CurrentUserControllerIntegrationTest extends AbstractMySqlIntegrationTest 
     @Autowired private MockMvc mockMvc;
 
     @MockitoBean private UserProfileService userProfileService;
+
+    @MockitoBean private UserCredentialService userCredentialService;
 
     @Test
     void authenticatedUserShouldReadOwnProfile() throws Exception {
@@ -79,6 +87,87 @@ class CurrentUserControllerIntegrationTest extends AbstractMySqlIntegrationTest 
         mockMvc.perform(get("/api/v1/users/me"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(header().string("Location", endsWith("/login")));
+    }
+
+    @Test
+    void authenticatedUserShouldChangeOwnPassword() throws Exception {
+
+        mockMvc.perform(
+                        put("/api/v1/users/me/password")
+                                .with(user(authenticatedPrincipal()))
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                          "currentPassword": "current-password",
+                                          "newPassword": "new-password-value"
+                                        }
+                                        """))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        verify(userCredentialService)
+                .changePassword(USER_ID, "current-password", "new-password-value");
+    }
+
+    @Test
+    void passwordChangeShouldRequireCsrf() throws Exception {
+
+        mockMvc.perform(
+                        put("/api/v1/users/me/password")
+                                .with(user(authenticatedPrincipal()))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                          "currentPassword": "current-password",
+                                          "newPassword": "new-password-value"
+                                        }
+                                        """))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(userCredentialService);
+    }
+
+    @Test
+    void passwordChangeShouldRejectBlankPasswords() throws Exception {
+
+        mockMvc.perform(
+                        put("/api/v1/users/me/password")
+                                .with(user(authenticatedPrincipal()))
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                          "currentPassword": " ",
+                                          "newPassword": " "
+                                        }
+                                        """))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(userCredentialService);
+    }
+
+    @Test
+    void unauthenticatedPasswordChangeShouldUseLoginEntryPoint() throws Exception {
+
+        mockMvc.perform(
+                        put("/api/v1/users/me/password")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                          "currentPassword": "current-password",
+                                          "newPassword": "new-password-value"
+                                        }
+                                        """))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", endsWith("/login")));
+
+        verifyNoInteractions(userCredentialService);
     }
 
     private static CinemaUserDetails authenticatedPrincipal() {

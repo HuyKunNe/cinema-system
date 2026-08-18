@@ -1,8 +1,10 @@
 package com.cinema.user.controller;
 
+import com.cinema.user.dto.request.ChangeCurrentUserPasswordRequest;
 import com.cinema.user.dto.request.UpdateCurrentUserProfileRequest;
 import com.cinema.user.dto.response.CurrentUserProfileResponse;
 import com.cinema.user.security.CinemaUserDetails;
+import com.cinema.user.service.UserCredentialService;
 import com.cinema.user.service.UserProfileService;
 
 import jakarta.validation.Valid;
@@ -21,8 +23,13 @@ public class CurrentUserController {
 
     private final UserProfileService userProfileService;
 
-    public CurrentUserController(UserProfileService userProfileService) {
+    private final UserCredentialService userCredentialService;
+
+    public CurrentUserController(
+            UserProfileService userProfileService, UserCredentialService userCredentialService) {
+
         this.userProfileService = userProfileService;
+        this.userCredentialService = userCredentialService;
     }
 
     @GetMapping
@@ -39,5 +46,16 @@ public class CurrentUserController {
 
         return ResponseEntity.ok(
                 userProfileService.updateCurrentProfile(principal.getUserId(), request));
+    }
+
+    @PutMapping("/password")
+    public ResponseEntity<Void> changePassword(
+            @AuthenticationPrincipal CinemaUserDetails principal,
+            @Valid @RequestBody ChangeCurrentUserPasswordRequest request) {
+
+        userCredentialService.changePassword(
+                principal.getUserId(), request.currentPassword(), request.newPassword());
+
+        return ResponseEntity.noContent().build();
     }
 }
