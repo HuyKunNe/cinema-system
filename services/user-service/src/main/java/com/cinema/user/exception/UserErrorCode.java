@@ -267,6 +267,12 @@ public final class UserErrorCode implements ErrorCode {
                     "USER_SECURITY_AUDIT_EVENT_INVALID",
                     "Security audit event data is invalid");
 
+    public static final UserErrorCode USER_PROFILE_NOT_FOUND =
+            new UserErrorCode(
+                    ErrorCategory.RESOURCE,
+                    "USER_PROFILE_NOT_FOUND",
+                    "User profile not found");
+
     final ErrorCategory category;
     private final String code;
     private final String message;
