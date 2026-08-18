@@ -50,6 +50,7 @@ implemented.
 | R25.11.1–R25.11.7 — Refresh security and revocation         | Completed |
 | R25.11.8 — Sensitive-change revocation triggers             | Completed |
 | R25.11.9 — Durable security-event recording                 | Completed |
+| R25.11.10 — Concurrent refresh and reuse verification       | Completed |
 | R26 — Booking Service                                       | Planned   |
 | R27 — Payment Service                                       | Planned   |
 | R28 — Notification Service                                  | Planned   |
@@ -60,11 +61,11 @@ Latest completed runtime service:
 
 Latest completed User Service checkpoint:
 
-> **R25.11.9 — Durable security-event recording**
+> **R25.11.10 — Concurrent refresh and reuse verification**
 
 Active checkpoint:
 
-> **R25.11.10 — Concurrent refresh and reuse verification**
+> **R25.11.11 — Cleanup, full verification and documentation closure**
 
 See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 
@@ -168,6 +169,15 @@ Security-audit persistence participates in the same transaction as audited role,
 permission, OAuth2 client and refresh-token mutations. Recording failure rolls those
 mutations back. Authentication audit records exclude passwords, credentials,
 exception details and unrestricted request data.
+
+R25.11.10 hardens concurrent refresh rotation by checking token-history state again
+after acquiring the pessimistic row lock. Exactly one concurrent refresh request may
+produce a successor. Losing requests receive the standard OAuth2 `invalid_grant`
+response and cannot commit a second successor.
+
+Concurrent reuse of an already rotated token revokes the affected authorization family
+once, leaves one `REUSED` predecessor and one `REVOKED` successor, and records one
+durable `REFRESH_TOKEN_REUSE_DETECTED` audit event.
 
 ---
 
@@ -475,15 +485,14 @@ resolve durable architectural decisions.
 - R23 Movie Service
 - R24 Inventory Service
 - R25.1–R25.10 security, identity, OAuth2 client, grant, JWT and JWK foundations
-- R25.11.1–R25.11.9 refresh security, revocation and durable security auditing
+- R25.11.1–R25.11.10 refresh security, revocation, durable auditing and concurrency verification
 
 ## Active
 
-- R25.11.10 concurrent refresh and reuse verification
+- R25.11.11 cleanup, full verification and documentation closure
 
 ## Next
 
-- R25.11.10 concurrent refresh and reuse verification
 - R25.11.11 cleanup, full verification and documentation closure
 
 ## Planned

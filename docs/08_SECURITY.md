@@ -382,9 +382,29 @@ Implemented R25.11 baseline:
 - Unknown revocation tokens and invalid logout hints do not expose authorization,
   client, session or token-history state.
 
-Remaining R25.11 work includes revocation triggered by sensitive account, password
-reset and client changes, durable security-event publication, concurrent refresh and
-reuse verification, and operational cleanup policy.
+Durable security-event persistence and concurrent refresh hardening are complete.
+R25.11 operational cleanup and full closure verification remain active.
+
+## Concurrent Refresh and Reuse
+
+Refresh-token history is locked pessimistically during rotation and reuse handling.
+State must be checked after lock acquisition because another transaction may have
+changed an `ACTIVE` token to `ROTATED` while the caller waited.
+
+Only an `ACTIVE` history row may rotate. A caller that observes a non-active row at the
+rotation boundary receives OAuth2 `invalid_grant`; internal state-transition exceptions
+must not escape through the token endpoint.
+
+Required invariants are:
+
+- one active token has at most one committed successor;
+- no concurrent result leaves multiple active successors;
+- the losing transaction cannot commit its candidate authorization or history;
+- concurrent reuse changes the predecessor to `REUSED`;
+- the active successor changes to `REVOKED`;
+- the current authorization access and refresh tokens are invalidated;
+- only one durable reuse audit record is written;
+- error responses, history and audit records never contain raw token values.
 
 ---
 

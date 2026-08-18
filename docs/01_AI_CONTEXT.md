@@ -110,8 +110,8 @@ Verified endpoint authorization:
 
 Current next checkpoint:
 
-```text
-R25.11.10 — Concurrent refresh and reuse verification — NEXT
+````text
+R25.11.11 — Cleanup, full verification and documentation closure — NEXT
 
 > **R25 — User Service**
 
@@ -130,14 +130,14 @@ R25.7 — account lifecycle and email verification — DONE
 R25.8 — Spring Authorization Server foundation — DONE
 R25.9 — OAuth2 clients and grant types — DONE
 R25.10 — JWT claims and JWK signing — DONE
-R25.11.1–R25.11.9 — refresh security, revocation and durable auditing — DONE
-```
+R25.11.1–R25.11.10 — refresh security, auditing and concurrency — DONE
+````
 
 Active checkpoint:
 
 R25.11.8 — account, password-reset and client revocation triggers — IN PROGRESS
 
-```
+````
 
 ADR-013 accepts the following decisions:
 
@@ -166,7 +166,7 @@ Authoritative decision record:
 
 ```text
 docs/decisions/ADR-013-spring-authorization-server.md
-```
+````
 
 ---
 
@@ -779,21 +779,22 @@ R24 met all completion requirements on 2026-08-04.
 
 # Current Next Step
 
-R25.11.10 — Concurrent refresh and reuse verification
+R25.11.11 — Cleanup, full verification and documentation closure
 
-R25.11.9 is complete. Do not reimplement its schema, actor/context resolution,
-recorder or trigger wiring unless addressing a verified defect.
+R25.11.10 is complete. Do not remove the post-lock `ACTIVE` state check or map a
+concurrent rotation race back to a public domain exception.
 
-Accepted durable security-audit behavior:
+Accepted concurrency behavior:
 
-- `security_audit_events` is append-oriented User Service persistence.
-- It does not replace the specialized `oauth2_revocation_audit_events` model.
-- Actors resolve to `SYSTEM`, `USER` or `CLIENT`.
-- Correlation resolution prefers MDC `correlationId`, then `traceId`.
-- Implemented triggers cover refresh-token reuse, role and permission assignment,
-  OAuth2 client registration and lifecycle changes, and form-login outcomes.
-- Audit failures propagate and roll back transactional sensitive mutations.
-- Authentication audit records preserve standard Spring Security login redirects.
-- Passwords, hashes, raw tokens, token hashes, client secrets, exception messages and
-  unrestricted request bodies are prohibited from audit data.
-- User Service security audit records are not Kafka business integration events.
+- refresh-token history uses a pessimistic row lock;
+- history state is checked after lock acquisition;
+- exactly one concurrent request may commit a successor;
+- the losing request receives OAuth2 `invalid_grant`;
+- candidate state from the losing transaction is rolled back;
+- no more than one active successor may exist;
+- concurrent rotated-token reuse revokes the family once;
+- concurrent reuse produces exactly one durable reuse audit record;
+- raw token values never appear in persistence, audit or error responses.
+
+Remaining checkpoints:
+R25.11.11 — Cleanup, full verification and documentation closure   NEXT

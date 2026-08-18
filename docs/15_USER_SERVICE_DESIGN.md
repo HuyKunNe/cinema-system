@@ -490,12 +490,12 @@ The User Service database is `cinema_user_db`.
 
 ### 14.2 Authorization Server tables
 
-| Table                          | Purpose                                         |
-| ------------------------------ | ----------------------------------------------- |
-| `oauth2_registered_client`     | Registered client configuration                 |
-| `oauth2_authorization`         | Authorization and token metadata                |
-| `oauth2_authorization_consent` | User consent                                    |
-| `refresh_tokens`               | Hashed refresh-token session and rotation state |
+| Table                          | Purpose                                        |
+| ------------------------------ | ---------------------------------------------- |
+| `oauth2_registered_client`     | Registered client configuration                |
+| `oauth2_authorization`         | Authorization and token metadata               |
+| `oauth2_authorization_consent` | User consent                                   |
+| `oauth2_refresh_token_history` | Hashed refresh-token family and rotation state |
 
 Spring Authorization Server-compatible names may be retained, but Flyway owns
 all DDL. Runtime schema initialization is disabled.
@@ -781,3 +781,32 @@ checkpoint without reopening the accepted architecture:
 
 Each deferred choice must preserve ADR-013 and the security constraints in this
 document.
+
+### Concurrent Rotation
+
+`findByTokenHashForUpdate` acquires a pessimistic write lock for the predecessor
+history row. The service rechecks `isActive()` after acquiring the lock.
+
+If another transaction rotated the row while the caller waited, the caller receives
+OAuth2 `invalid_grant`. Its candidate OAuth2 authorization update and successor history
+are rolled back.
+
+The verified invariants are:
+
+```text
+concurrent ACTIVE refresh:
+    exactly one success
+    exactly one committed successor
+    at most one ACTIVE successor
+    losing request → invalid_grant
+
+concurrent ROTATED reuse:
+    both requests → invalid_grant
+    predecessor → REUSED
+    successor → REVOKED
+    authorization family → invalidated
+    reuse audit count → 1
+
+The implementation does not expose ConflictException, lock details, token hashes or
+raw token values through OAuth2 responses.
+```

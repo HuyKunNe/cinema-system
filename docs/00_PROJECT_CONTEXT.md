@@ -102,14 +102,14 @@ R25.7 — account lifecycle and email verification — DONE
 R25.8 — Spring Authorization Server foundation — DONE
 R25.9 — OAuth2 clients and grant types — DONE
 R25.10 — JWT claims and JWK signing — DONE
-R25.11.1–R25.11.9 — refresh security, revocation and durable auditing — DONE
+R25.11.1–R25.11.10 — refresh security, auditing and concurrency — DONE
 ```
 
 Active R25 checkpoint:
 
-R25.11.10 — concurrent refresh and reuse verification — NEXT
+R25.11.11 — cleanup, full verification and documentation closure — NEXT
 
-```
+````
 
 Accepted authentication decision:
 
@@ -150,11 +150,23 @@ Accepted authentication decision:
   refresh-token mutations.
 - General security audit records remain internal User Service persistence and are not
   Kafka business events.
+- Concurrent refresh requests for the same active token produce at most one committed
+  successor.
+- Refresh-token history state is checked again after acquiring its pessimistic lock.
+- A request that loses the rotation race returns OAuth2 `invalid_grant`; internal
+  `ConflictException` details are not exposed through the token endpoint.
+- No concurrent outcome may leave more than one active successor.
+- Concurrent reuse of a rotated token changes the predecessor to `REUSED`, revokes the
+  active successor, invalidates the authorization family and writes exactly one durable
+  reuse audit event.
+- Raw predecessor and successor token values remain absent from history, audit records
+  and error responses.
+
 Architecture decision:
 
 ```text
 docs/decisions/ADR-013-spring-authorization-server.md
-```
+````
 
 ## Not Started
 

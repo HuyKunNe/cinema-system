@@ -87,9 +87,20 @@ R26-R28  Planned
 ### Remaining R25.11 Work
 
 ```text
-R25.11.10 — Concurrent refresh and reuse verification
 R25.11.11 — Cleanup, full verification and documentation closure
 ```
+
+### Concurrent Refresh and Reuse Verification
+
+- Completed R25.11.10 concurrent refresh and reuse verification.
+- Rechecked refresh-token history state after acquiring the pessimistic lock.
+- Returned standard OAuth2 `invalid_grant` when a request lost the rotation race.
+- Prevented a losing request from committing a second successor.
+- Verified one successful response and one successor under concurrent refresh.
+- Verified concurrent rotated-token reuse revokes the authorization family once.
+- Verified one `REUSED` history row, one `REVOKED` successor and one durable reuse
+  audit event.
+- Added repeated MySQL concurrency execution to detect timing-dependent failures.
 
 ## 2026-08-13
 
@@ -389,10 +400,10 @@ Logout and explicit token revocation were completed on 2026-08-13.
 ### Changed
 
 - Finalized ShowSeat authorization policy:
-    - approved query endpoints are public;
-    - generation and administrative availability changes require
-      `inventory:manage`;
-    - hold, book and release require `ROLE_SERVICE`.
+  - approved query endpoints are public;
+  - generation and administrative availability changes require
+    `inventory:manage`;
+  - hold, book and release require `ROLE_SERVICE`.
 - JWT roles and permissions are mapped to granted authorities while blank and
   duplicate authorities are removed.
 - Updated the repository baseline from active Inventory implementation to
@@ -430,13 +441,13 @@ Logout and explicit token revocation were completed on 2026-08-13.
 ### Added
 
 - Completed transactional ShowSeat booking transitions:
-    - `AVAILABLE → HELD`;
-    - `HELD → BOOKED`;
-    - `HELD → AVAILABLE`.
+  - `AVAILABLE → HELD`;
+  - `HELD → BOOKED`;
+  - `HELD → AVAILABLE`.
 - Completed administrative availability transitions:
-    - `AVAILABLE → UNAVAILABLE`;
-    - `HELD → UNAVAILABLE`;
-    - `UNAVAILABLE → AVAILABLE`.
+  - `AVAILABLE → UNAVAILABLE`;
+  - `HELD → UNAVAILABLE`;
+  - `UNAVAILABLE → AVAILABLE`.
 - Added ShowSeat hold ownership and expiration validation.
 - Added administrative ShowSeat availability endpoints.
 - Added Inventory-specific error codes for invalid availability transitions.
@@ -480,10 +491,10 @@ Logout and explicit token revocation were completed on 2026-08-13.
 
 - Started R24.4.13.8 — ShowSeat endpoint authorization.
 - The active authorization work covers:
-    - public ShowSeat query operations;
-    - `inventory:manage` for generation and administrative availability changes;
-    - `SERVICE` for hold, book and release operations;
-    - applicable `401`, `403` and successful authorization tests.
+  - public ShowSeat query operations;
+  - `inventory:manage` for generation and administrative availability changes;
+  - `SERVICE` for hold, book and release operations;
+  - applicable `401`, `403` and successful authorization tests.
 
 ### Remaining at This Checkpoint
 

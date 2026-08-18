@@ -1210,11 +1210,25 @@ R25.11.9 completed durable security-event recording:
 - verified persistence, privacy and rollback behavior with unit and MySQL integration
   tests.
 
+R25.11.10 completed concurrent refresh and reuse verification:
+
+- added a post-lock `ACTIVE` state check to refresh-token rotation;
+- translated a lost rotation race to OAuth2 `invalid_grant`;
+- prevented a second successor from committing;
+- verified exactly one successful response under two concurrent refresh requests;
+- verified no more than one active successor;
+- verified concurrent rotated-token reuse returns two `invalid_grant` responses;
+- verified one `REUSED` predecessor and one `REVOKED` successor;
+- verified authorization-family invalidation;
+- verified exactly one durable reuse audit record;
+- repeatedly executed MySQL concurrency integration tests to check stability;
+- preserved token confidentiality in persistence, audit and error responses.
+
 Remaining checkpoints:
 
 ```text
-R25.11.10 — Concurrent refresh and reuse verification              NEXT
-R25.11.11 — Cleanup, full verification and documentation closure   PLANNED
+R25.11.10 — Concurrent refresh and reuse verification              DONE
+R25.11.11 — Cleanup, full verification and documentation closure   NEXT
 ```
 
 R25.11 remains in progress until the remaining sensitive-change revocation, durable
