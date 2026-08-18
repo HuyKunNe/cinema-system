@@ -1,39 +1,45 @@
 server:
-    port: 0
+  port: 0
 
 spring:
-    application:
-        name: gateway-service
+  application:
+    name: gateway-service
 
-    cloud:
-        config:
-            enabled: false
+  cloud:
+    config:
+      enabled: false
 
-        discovery:
-            enabled: false
+    discovery:
+      enabled: false
 
-        gateway:
-            server:
-                webflux:
-                    discovery:
-                        locator:
-                            enabled: false
+    gateway:
+      server:
+        webflux:
+          discovery:
+            locator:
+              enabled: false
 
-                    routes: []
+          routes: []
 
 eureka:
-    client:
-        enabled: false
-        register-with-eureka: false
-        fetch-registry: false
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
 
 management:
-    tracing:
-        enabled: false
+  tracing:
+    enabled: false
 
-    endpoints:
-        web:
-            exposure:
-                include:
-                    - health
-                    - info
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+cinema:
+  security:
+    oauth2:
+      issuer-uri: https://identity.cinema.test
+      jwk-set-uri: https://identity.cinema.test/oauth2/jwks
+      audience: cinema-api
