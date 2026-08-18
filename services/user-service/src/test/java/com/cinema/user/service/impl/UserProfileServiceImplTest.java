@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.user.dto.request.UpdateCurrentUserProfileRequest;
 import com.cinema.user.dto.response.CurrentUserProfileResponse;
 import com.cinema.user.entity.User;
 import com.cinema.user.entity.UserProfile;
@@ -111,5 +112,58 @@ class UserProfileServiceImplTest {
 
         verify(userRepository).findById(USER_ID);
         verify(userProfileRepository).findByUser_Id(USER_ID);
+    }
+
+    @Test
+    void updateCurrentProfileShouldNormalizeAndApplyOwnedProfileData() {
+
+        UpdateCurrentUserProfileRequest request =
+                new UpdateCurrentUserProfileRequest("  Cinema  ", "  Member  ", "  +84901234567  ");
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+
+        when(userProfileRepository.findByUser_Id(USER_ID)).thenReturn(Optional.of(profile));
+
+        when(user.getId()).thenReturn(USER_ID);
+        when(profile.getFirstName()).thenReturn("Cinema");
+        when(profile.getLastName()).thenReturn("Member");
+        when(profile.getPhoneNumber()).thenReturn("+84901234567");
+
+        CurrentUserProfileResponse response =
+                userProfileService.updateCurrentProfile(USER_ID, request);
+
+        verify(profile).update("Cinema", "Member", "+84901234567");
+
+        assertThat(response.id()).isEqualTo(USER_ID);
+        assertThat(response.firstName()).isEqualTo("Cinema");
+        assertThat(response.lastName()).isEqualTo("Member");
+        assertThat(response.phoneNumber()).isEqualTo("+84901234567");
+    }
+
+    @Test
+    void updateCurrentProfileShouldNormalizeBlankValuesToNull() {
+
+        UpdateCurrentUserProfileRequest request =
+                new UpdateCurrentUserProfileRequest(" ", null, "\t");
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+
+        when(userProfileRepository.findByUser_Id(USER_ID)).thenReturn(Optional.of(profile));
+
+        userProfileService.updateCurrentProfile(USER_ID, request);
+
+        verify(profile).update(null, null, null);
+    }
+
+    @Test
+    void updateCurrentProfileShouldRejectMissingUserId() {
+
+        UpdateCurrentUserProfileRequest request =
+                new UpdateCurrentUserProfileRequest("Cinema", "Member", null);
+
+        assertThatThrownBy(() -> userProfileService.updateCurrentProfile(null, request))
+                .isInstanceOf(ValidationException.class);
+
+        verifyNoInteractions(userRepository, userProfileRepository);
     }
 }
