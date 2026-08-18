@@ -1224,15 +1224,14 @@ R25.11.10 completed concurrent refresh and reuse verification:
 - repeatedly executed MySQL concurrency integration tests to check stability;
 - preserved token confidentiality in persistence, audit and error responses.
 
-Remaining checkpoints:
+Completed checkpoints:
 
 ```text
 R25.11.10 — Concurrent refresh and reuse verification              DONE
-R25.11.11 — Cleanup, full verification and documentation closure   NEXT
+R25.11.11 — Cleanup, full verification and documentation closure   DONE
 ```
 
-R25.11 remains in progress until the remaining sensitive-change revocation, durable
-audit, concurrency and closure requirements pass.
+R25.11 is complete. User Service and root Maven reactor clean verification pass, `git diff --check` passes, and the authoritative documentation is synchronized.
 
 #### ⏳ R25.12 — profile and account lifecycle
 

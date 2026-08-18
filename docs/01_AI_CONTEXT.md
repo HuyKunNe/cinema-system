@@ -110,8 +110,8 @@ Verified endpoint authorization:
 
 Current next checkpoint:
 
-```text
-R25.11.11 — Cleanup, full verification and documentation closure — NEXT
+````text
+R25.12 — Profile and account lifecycle — NEXT
 
 **R25 — User Service**
 
@@ -130,12 +130,12 @@ R25.7 — account lifecycle and email verification — DONE
 R25.8 — Spring Authorization Server foundation — DONE
 R25.9 — OAuth2 clients and grant types — DONE
 R25.10 — JWT claims and JWK signing — DONE
-R25.11.1–R25.11.10 — refresh security, auditing and concurrency — DONE
+R25.11.1–R25.11.11 — refresh security, auditing, concurrency and closure — DONE
 
 Active checkpoint:
-R25.11.11 — cleanup, full verification and documentation closure — NEXT
+R25.12 — Profile and account lifecycle — NEXT
 
-```
+````
 
 ADR-013 accepts the following decisions:
 
@@ -164,7 +164,7 @@ Authoritative decision record:
 
 ```text
 docs/decisions/ADR-013-spring-authorization-server.md
-````
+```
 
 ---
 
@@ -630,9 +630,7 @@ explicitly requested.
 Movie Service and Inventory Service have completed their implementation,
 testing and verification requirements.
 
-User Service is the active business-service round. R25.1–R25.10 and
-R25.11.1–R25.11.7 are complete. R25.11.8 account, password-reset and client
-revocation triggers is the active checkpoint.
+User Service is the active business-service round. R25.1–R25.11 are complete. R25.12 profile and account lifecycle is the active checkpoint.
 
 ---
 
@@ -777,9 +775,9 @@ R24 met all completion requirements on 2026-08-04.
 
 # Current Next Step
 
-R25.11.11 — Cleanup, full verification and documentation closure
+R25.12 — Profile and account lifecycle — NEXT
 
-R25.11.10 is complete. Do not remove the post-lock `ACTIVE` state check or map a
+R25.11 is complete. Do not remove the post-lock `ACTIVE` state check or map a
 concurrent rotation race back to a public domain exception.
 
 Accepted concurrency behavior:
@@ -795,4 +793,4 @@ Accepted concurrency behavior:
 - raw token values never appear in persistence, audit or error responses.
 
 Remaining checkpoints:
-R25.11.11 — Cleanup, full verification and documentation closure   NEXT
+R25.11 closure verification completed successfully. Preserve the accepted refresh, reuse, audit, privacy and rollback behavior while implementing R25.12.

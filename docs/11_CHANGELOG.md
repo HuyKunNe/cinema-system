@@ -1,8 +1,6 @@
 # Changelog
 
-**Version:** 0.6
-**Current baseline:** R25.1–R25.10 and R25.11.1–R25.11.7 completed; R25.11.8 active
-**Last reviewed:** 2026-08-13
+**Version:** 0.6 +**Current baseline:** R25.1–R25.11 completed; R25.12 active +**Last reviewed:** 2026-08-1
 
 ---
 
@@ -32,16 +30,30 @@ the roadmap.
 Current status:
 
 ```text
-R1-R24   Completed
-R25.1–R25.10 Completed
-R25.11   Refresh rotation and revocation in progress
-R25.12+  Planned User Service implementation
-R26-R28  Planned
+-R1-R24   Completed
+-R25.1–R25.10 Completed
+-R25.11   Refresh rotation and revocation in progress
+-R25.12+  Planned User Service implementation
+-R25.11   Completed
+-R25.12   Profile and account lifecycle in progress
+-R25.13+  Planned User Service implementation
+-R26-R28  Planned
 ```
 
 ---
 
 # Unreleased
+
+## 2026-08-18
+
+### R25.11 Closure
+
+- Completed R25.11.11 cleanup, full verification and documentation closure.
+- Confirmed User Service and root Maven reactor clean verification pass.
+- Confirmed `git diff --check` passes.
+- Synchronized README, project context, AI context, security guidance, roadmap and
+  changelog.
+- Advanced the active checkpoint to R25.12 profile and account lifecycle.
 
 ## 2026-08-17
 
@@ -95,12 +107,6 @@ R26-R28  Planned
 - User Service clean verification passes.
 - Root Maven reactor clean verification passes.
 - `git diff --check` passes.
-
-### Remaining R25.11 Work
-
-```text
-R25.11.11 — Cleanup, full verification and documentation closure
-```
 
 ## 2026-08-13
 

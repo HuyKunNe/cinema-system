@@ -51,6 +51,7 @@ implemented.
 | R25.11.8 — Sensitive-change revocation triggers             | Completed |
 | R25.11.9 — Durable security-event recording                 | Completed |
 | R25.11.10 — Concurrent refresh and reuse verification       | Completed |
+| R25.11.11 — Cleanup, verification and documentation closure | Completed |
 | R26 — Booking Service                                       | Planned   |
 | R27 — Payment Service                                       | Planned   |
 | R28 — Notification Service                                  | Planned   |
@@ -61,11 +62,11 @@ Latest completed runtime service:
 
 Latest completed User Service checkpoint:
 
-> **R25.11.10 — Concurrent refresh and reuse verification**
+> **R25.11.11 — Cleanup, full verification and documentation closure**
 
 Active checkpoint:
 
-> **R25.11.11 — Cleanup, full verification and documentation closure**
+> **R25.12 — Profile and account lifecycle**
 
 See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 
@@ -485,11 +486,11 @@ resolve durable architectural decisions.
 - R23 Movie Service
 - R24 Inventory Service
 - R25.1–R25.10 security, identity, OAuth2 client, grant, JWT and JWK foundations
-- R25.11.1–R25.11.10 refresh security, revocation, durable auditing and concurrency verification
+- R25.11.1–R25.11.11 refresh security, revocation, durable auditing, concurrency verification and closure
 
 ## Active
 
-- R25.11.11 cleanup, full verification and documentation closure
+- R25.12 profile and account lifecycle
 
 ## Planned
 

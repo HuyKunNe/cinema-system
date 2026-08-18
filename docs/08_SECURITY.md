@@ -239,8 +239,7 @@ OIDC logout invalidates the HTTP session, clears the applicable authorization to
 revokes refresh-token history and prevents subsequent refresh-token use. Unknown
 tokens and invalid logout hints do not reveal internal token or authorization state.
 
-Account, password-reset and client revocation triggers, Durable security-event persistence and concurrent refresh hardening are complete.
-R25.11 operational cleanup and full closure verification remain active.
+Account, password-reset and client revocation triggers, durable security-event persistence, concurrent refresh hardening and R25.11 closure verification are complete.
 
 ---
 
@@ -381,8 +380,8 @@ Implemented R25.11 baseline:
 - Unknown revocation tokens and invalid logout hints do not expose authorization,
   client, session or token-history state.
 
-Durable security-event persistence and concurrent refresh hardening are complete.
-R25.11 operational cleanup and full closure verification remain active.
+Durable security-event persistence, concurrent refresh hardening and R25.11 closure verification are complete.
+
 
 ## Concurrent Refresh and Reuse
 
