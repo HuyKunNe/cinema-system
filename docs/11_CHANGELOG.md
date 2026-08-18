@@ -78,18 +78,6 @@ R26-R28  Planned
 - Added transaction rollback verification for assignment, client lifecycle,
   registration and refresh-token reuse audit failures.
 
-### Verification
-
-- User Service clean verification passes.
-- Root Maven reactor clean verification passes.
-- `git diff --check` passes.
-
-### Remaining R25.11 Work
-
-```text
-R25.11.11 — Cleanup, full verification and documentation closure
-```
-
 ### Concurrent Refresh and Reuse Verification
 
 - Completed R25.11.10 concurrent refresh and reuse verification.
@@ -101,6 +89,18 @@ R25.11.11 — Cleanup, full verification and documentation closure
 - Verified one `REUSED` history row, one `REVOKED` successor and one durable reuse
   audit event.
 - Added repeated MySQL concurrency execution to detect timing-dependent failures.
+
+### Verification
+
+- User Service clean verification passes.
+- Root Maven reactor clean verification passes.
+- `git diff --check` passes.
+
+### Remaining R25.11 Work
+
+```text
+R25.11.11 — Cleanup, full verification and documentation closure
+```
 
 ## 2026-08-13
 

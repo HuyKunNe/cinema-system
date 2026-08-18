@@ -491,10 +491,6 @@ resolve durable architectural decisions.
 
 - R25.11.11 cleanup, full verification and documentation closure
 
-## Next
-
-- R25.11.11 cleanup, full verification and documentation closure
-
 ## Planned
 
 - R26 Booking Service

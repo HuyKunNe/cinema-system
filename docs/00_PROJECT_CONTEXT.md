@@ -109,8 +109,6 @@ Active R25 checkpoint:
 
 R25.11.11 — cleanup, full verification and documentation closure — NEXT
 
-````
-
 Accepted authentication decision:
 
 - User Service integrates Spring Authorization Server.
@@ -166,7 +164,7 @@ Architecture decision:
 
 ```text
 docs/decisions/ADR-013-spring-authorization-server.md
-````
+```
 
 ## Not Started
 
@@ -246,10 +244,11 @@ Latest completed checkpoint:
 R25.11.7 — Logout and explicit token revocation
 ```
 
-Active checkpoint:
+```markdown
+Active R25 checkpoint:
 
 ```text
-R25.11.8 — Account, password-reset and client revocation triggers
+R25.11.11 — cleanup, full verification and documentation closure — NEXT
 ```
 
 ADR-013 selects User Service with Spring Authorization Server as the authoritative

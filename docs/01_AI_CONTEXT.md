@@ -110,15 +110,15 @@ Verified endpoint authorization:
 
 Current next checkpoint:
 
-````text
+```text
 R25.11.11 — Cleanup, full verification and documentation closure — NEXT
 
-> **R25 — User Service**
+**R25 — User Service**
 
 R25 implementation is in progress.
 
 Completed checkpoints:
-
+R25 implementation is in progress.
 ```text
 R25.1 — common-security hardening — DONE
 R25.2 — authentication architecture and roadmap — DONE
@@ -131,13 +131,11 @@ R25.8 — Spring Authorization Server foundation — DONE
 R25.9 — OAuth2 clients and grant types — DONE
 R25.10 — JWT claims and JWK signing — DONE
 R25.11.1–R25.11.10 — refresh security, auditing and concurrency — DONE
-````
 
 Active checkpoint:
+R25.11.11 — cleanup, full verification and documentation closure — NEXT
 
-R25.11.8 — account, password-reset and client revocation triggers — IN PROGRESS
-
-````
+```
 
 ADR-013 accepts the following decisions:
 
