@@ -5,6 +5,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.user.security.audit.SecurityAuditEventType;
+import com.cinema.user.security.audit.SecurityAuditOutcome;
+import com.cinema.user.security.audit.SecurityAuditRecord;
+import com.cinema.user.security.audit.SecurityAuditRecorder;
+import com.cinema.user.security.audit.SecurityAuditTargetType;
 import com.cinema.user.service.UserAccountLifecycleService;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -22,13 +27,16 @@ class AdministrativeUserAccountServiceImplTest {
 
     @Mock private UserAccountLifecycleService userAccountLifecycleService;
 
+    @Mock private SecurityAuditRecorder securityAuditRecorder;
+
     private AdministrativeUserAccountServiceImpl administrativeUserAccountService;
 
     @BeforeEach
     void setUp() {
 
         administrativeUserAccountService =
-                new AdministrativeUserAccountServiceImpl(userAccountLifecycleService);
+                new AdministrativeUserAccountServiceImpl(
+                        userAccountLifecycleService, securityAuditRecorder);
     }
 
     @Test
@@ -37,6 +45,8 @@ class AdministrativeUserAccountServiceImplTest {
         administrativeUserAccountService.lock(USER_ID);
 
         verify(userAccountLifecycleService).lock(USER_ID);
+
+        verifyAudit(SecurityAuditEventType.ACCOUNT_LOCKED);
     }
 
     @Test
@@ -45,6 +55,8 @@ class AdministrativeUserAccountServiceImplTest {
         administrativeUserAccountService.unlock(USER_ID);
 
         verify(userAccountLifecycleService).unlock(USER_ID);
+
+        verifyAudit(SecurityAuditEventType.ACCOUNT_UNLOCKED);
     }
 
     @Test
@@ -53,6 +65,8 @@ class AdministrativeUserAccountServiceImplTest {
         administrativeUserAccountService.disable(USER_ID);
 
         verify(userAccountLifecycleService).disable(USER_ID);
+
+        verifyAudit(SecurityAuditEventType.ACCOUNT_DISABLED);
     }
 
     @Test
@@ -61,6 +75,8 @@ class AdministrativeUserAccountServiceImplTest {
         administrativeUserAccountService.enable(USER_ID);
 
         verify(userAccountLifecycleService).enable(USER_ID);
+
+        verifyAudit(SecurityAuditEventType.ACCOUNT_ENABLED);
     }
 
     @Test
@@ -69,6 +85,19 @@ class AdministrativeUserAccountServiceImplTest {
         assertThatThrownBy(() -> administrativeUserAccountService.lock(null))
                 .isInstanceOf(ValidationException.class);
 
-        verifyNoInteractions(userAccountLifecycleService);
+        verifyNoInteractions(userAccountLifecycleService, securityAuditRecorder);
+    }
+
+    private void verifyAudit(SecurityAuditEventType eventType) {
+
+        verify(securityAuditRecorder)
+                .record(
+                        new SecurityAuditRecord(
+                                eventType,
+                                SecurityAuditTargetType.USER,
+                                USER_ID.toString(),
+                                SecurityAuditOutcome.SUCCESS,
+                                null,
+                                null));
     }
 }

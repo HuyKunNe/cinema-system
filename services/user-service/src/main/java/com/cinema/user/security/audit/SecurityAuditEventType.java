@@ -1,12 +1,13 @@
 package com.cinema.user.security.audit;
 
 public enum SecurityAuditEventType {
-
     AUTHENTICATION_SUCCEEDED,
     AUTHENTICATION_FAILED,
 
     ACCOUNT_LOCKED,
+    ACCOUNT_UNLOCKED,
     ACCOUNT_DISABLED,
+    ACCOUNT_ENABLED,
 
     PASSWORD_CHANGED,
     PASSWORD_RESET,
