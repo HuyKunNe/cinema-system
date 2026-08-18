@@ -103,11 +103,12 @@ R25.8 — Spring Authorization Server foundation — DONE
 R25.9 — OAuth2 clients and grant types — DONE
 R25.10 — JWT claims and JWK signing — DONE
 R25.11.1–R25.11.11 — refresh security, auditing, concurrency and closure — DONE
+R25.12 — profile and account lifecycle APIs — DONE
 ```
 
 Active R25 checkpoint:
 
-R25.12 — profile and account lifecycle — NEXT
+- R25.13 Gateway and Resource Server integration — NEXT
 
 Accepted authentication decision:
 
@@ -241,15 +242,16 @@ Active round:
 Latest completed checkpoint:
 
 ```text
-R25.11.11 — Cleanup, full verification and documentation closure
+R25.12 — Profile and account lifecycle APIs
 ```
 
-```markdown
+````markdown
 Active R25 checkpoint:
 
 ```text
-R25.12 — profile and account lifecycle — NEXT
+R25.13 Gateway and Resource Server integration
 ```
+````
 
 ADR-013 selects User Service with Spring Authorization Server as the authoritative
 issuer. The issuer, audience, RS256/JWK ownership, approved grant types, access-token
@@ -268,7 +270,11 @@ OIDC logout validates the ID-token hint, registered redirect URI and hashed sess
 `sid`, invalidates the HTTP session and applicable authorization tokens, and revokes
 refresh-token history.
 
-+R25.11 refresh security, revocation, durable auditing, concurrency verification and documentation closure are complete. R25.12 profile and account lifecycle is active
+R25.11 refresh security, revocation, durable auditing, concurrency verification and
+documentation closure are complete. R25.12 profile and account lifecycle APIs,
+ownership enforcement and privileged-operation auditing are complete. R25.13 Gateway
+and Resource Server integration is active.
+
 ---
 
 # Project Goals

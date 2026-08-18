@@ -1138,7 +1138,7 @@ Completed scope:
 
 Status: DONE.
 
-#### 🚧 R25.11 — refresh rotation and revocation
+#### ✅ R25.11 — refresh rotation and revocation
 
 Completed checkpoints:
 
@@ -1233,13 +1233,24 @@ R25.11.11 — Cleanup, full verification and documentation closure   DONE
 
 R25.11 is complete. User Service and root Maven reactor clean verification pass, `git diff --check` passes, and the authoritative documentation is synchronized.
 
-#### ⏳ R25.12 — profile and account lifecycle
+#### ✅ R25.12 — profile and account lifecycle
 
-- current-user profile operations;
-- password change;
-- account lock, unlock and disable;
-- administrative operations;
-- ownership enforcement and privileged-operation auditing.
+- ✅ current-user profile read and replacement operations;
+- ✅ current-user password change using current-password verification;
+- ✅ authenticated-principal ownership enforcement;
+- ✅ account lock, unlock, disable and enable transitions;
+- ✅ `user:manage` HTTP and method-security enforcement;
+- ✅ CSRF protection for session-based mutations;
+- ✅ authorization revocation after applicable sensitive changes;
+- ✅ durable privileged-operation audit events;
+- ✅ transaction rollback when audit persistence fails;
+- ✅ unit, controller, security, MySQL persistence and rollback verification;
+- ✅ User Service and root Maven reactor clean verification;
+- ✅ documentation synchronization.
+
+R25.12 is complete. Current-user ownership, password secrecy, account-state
+transitions, administrative authorization, revocation, durable auditing and rollback
+behavior are verified
 
 #### ⏳ R25.13 — Gateway and Resource Server integration
 

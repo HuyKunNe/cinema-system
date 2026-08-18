@@ -1,6 +1,8 @@
 # Changelog
 
-**Version:** 0.6 +**Current baseline:** R25.1–R25.11 completed; R25.12 active +**Last reviewed:** 2026-08-1
+**Version:** 0.6
+**Current baseline:** R25.1–R25.12 completed; R25.13 active
+**Last reviewed:** 2026-08-18
 
 ---
 
@@ -30,14 +32,13 @@ the roadmap.
 Current status:
 
 ```text
--R1-R24   Completed
--R25.1–R25.10 Completed
--R25.11   Refresh rotation and revocation in progress
--R25.12+  Planned User Service implementation
--R25.11   Completed
--R25.12   Profile and account lifecycle in progress
--R25.13+  Planned User Service implementation
--R26-R28  Planned
+R1-R24         Completed
+R25.1–R25.10   Completed
+R25.11         Completed
+R25.12         Completed
+R25.13         Gateway and Resource Server integration in progress
+R25.14+        Planned User Service implementation
+R26-R28        Planned
 ```
 
 ---
@@ -45,6 +46,22 @@ Current status:
 # Unreleased
 
 ## 2026-08-18
+
+### Profile and Account Lifecycle
+
+- Completed R25.12 profile and account lifecycle APIs.
+- Added authenticated current-user profile read and replacement endpoints.
+- Enforced ownership through the authenticated principal rather than client-supplied
+  user identifiers.
+- Added current-user password change with current-password verification, CSRF
+  protection and authorization revocation.
+- Added administrative lock, unlock, disable and enable endpoints.
+- Enforced `user:manage` at HTTP and method-security boundaries.
+- Added durable privileged lifecycle audit events with safe actor and target data.
+- Verified rollback of account transitions when durable audit recording fails.
+- Verified unit, controller, method-security, MySQL persistence and rollback tests.
+- Confirmed root Maven reactor clean verification passes.
+- Advanced the active checkpoint to R25.13 Gateway and Resource Server integration.
 
 ### R25.11 Closure
 

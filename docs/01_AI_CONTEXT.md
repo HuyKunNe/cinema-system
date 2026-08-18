@@ -110,8 +110,8 @@ Verified endpoint authorization:
 
 Current next checkpoint:
 
-````text
-R25.12 — Profile and account lifecycle — NEXT
+```text
+R25.13 — Gateway and Resource Server integration — NEXT
 
 **R25 — User Service**
 
@@ -131,11 +131,12 @@ R25.8 — Spring Authorization Server foundation — DONE
 R25.9 — OAuth2 clients and grant types — DONE
 R25.10 — JWT claims and JWK signing — DONE
 R25.11.1–R25.11.11 — refresh security, auditing, concurrency and closure — DONE
+R25.12 — profile and account lifecycle APIs — DONE
 
 Active checkpoint:
-R25.12 — Profile and account lifecycle — NEXT
+R25.13 — Gateway and Resource Server integration — NEXT
 
-````
+```
 
 ADR-013 accepts the following decisions:
 
@@ -630,7 +631,10 @@ explicitly requested.
 Movie Service and Inventory Service have completed their implementation,
 testing and verification requirements.
 
-User Service is the active business-service round. R25.1–R25.11 are complete. R25.12 profile and account lifecycle is the active checkpoint.
+User Service is the active business-service round.
+  R25.1–R25.12 are complete.
+  R25.13 Gateway and Resource Server integration is the active checkpoint.
+
 
 ---
 
@@ -775,7 +779,7 @@ R24 met all completion requirements on 2026-08-04.
 
 # Current Next Step
 
-R25.12 — Profile and account lifecycle — NEXT
+R25.13 — Gateway and Resource Server integration — NEXT
 
 R25.11 is complete. Do not remove the post-lock `ACTIVE` state check or map a
 concurrent rotation race back to a public domain exception.
@@ -793,4 +797,6 @@ Accepted concurrency behavior:
 - raw token values never appear in persistence, audit or error responses.
 
 Remaining checkpoints:
-R25.11 closure verification completed successfully. Preserve the accepted refresh, reuse, audit, privacy and rollback behavior while implementing R25.12.
+R25.12 is complete. Preserve current-user ownership, password secrecy, CSRF
+protection, `user:manage` enforcement, account-transition revocation and durable
+privileged-operation auditing while implementing R25.13.

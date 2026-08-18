@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
+import com.cinema.user.dto.request.UpdateCurrentUserProfileRequest;
 import com.cinema.user.dto.response.CurrentUserProfileResponse;
 import com.cinema.user.enums.AccountStatus;
 import com.cinema.user.security.CinemaUserDetails;
@@ -168,6 +169,82 @@ class CurrentUserControllerIntegrationTest extends AbstractMySqlIntegrationTest 
                 .andExpect(header().string("Location", endsWith("/login")));
 
         verifyNoInteractions(userCredentialService);
+    }
+
+    @Test
+    void authenticatedUserShouldUpdateOwnProfile() throws Exception {
+
+        UpdateCurrentUserProfileRequest request =
+                new UpdateCurrentUserProfileRequest("Updated", "Member", "+84907654321");
+
+        CurrentUserProfileResponse response =
+                new CurrentUserProfileResponse(
+                        USER_ID,
+                        "member@example.com",
+                        "member",
+                        AccountStatus.ACTIVE,
+                        "Updated",
+                        "Member",
+                        "+84907654321",
+                        OffsetDateTime.parse("2026-08-18T01:30:00Z"),
+                        OffsetDateTime.parse("2026-08-18T01:00:00Z"),
+                        OffsetDateTime.parse("2026-08-18T02:00:00Z"));
+
+        when(userProfileService.updateCurrentProfile(USER_ID, request)).thenReturn(response);
+
+        mockMvc.perform(
+                        put("/api/v1/users/me")
+                                .with(user(authenticatedPrincipal()))
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                          "firstName": "Updated",
+                                          "lastName": "Member",
+                                          "phoneNumber": "+84907654321"
+                                        }
+                                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(USER_ID.toString()))
+                .andExpect(jsonPath("$.firstName").value("Updated"))
+                .andExpect(jsonPath("$.lastName").value("Member"))
+                .andExpect(jsonPath("$.phoneNumber").value("+84907654321"));
+
+        verify(userProfileService).updateCurrentProfile(USER_ID, request);
+    }
+
+    @Test
+    void profileUpdateShouldRequireCsrf() throws Exception {
+
+        mockMvc.perform(
+                        put("/api/v1/users/me")
+                                .with(user(authenticatedPrincipal()))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{}"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(userProfileService);
+    }
+
+    @Test
+    void profileUpdateShouldRejectOversizedFields() throws Exception {
+
+        mockMvc.perform(
+                        put("/api/v1/users/me")
+                                .with(user(authenticatedPrincipal()))
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                          "firstName": "%s"
+                                        }
+                                        """
+                                                .formatted("x".repeat(101))))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(userProfileService);
     }
 
     private static CinemaUserDetails authenticatedPrincipal() {

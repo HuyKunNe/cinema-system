@@ -243,6 +243,26 @@ Account, password-reset and client revocation triggers, durable security-event p
 
 ---
 
+## Profile and Account Lifecycle Security
+
+R25.12 profile and account lifecycle verification is complete.
+
+- `GET /api/v1/users/me` returns only the authenticated user's safe account and
+  profile data.
+- `PUT /api/v1/users/me` derives ownership from the authenticated principal and
+  cannot modify email, username, account status or another user's profile.
+- `PUT /api/v1/users/me/password` requires the current password, preserves CSRF
+  protection, returns no credential material and revokes applicable authorization
+  sessions after success.
+- Administrative lock, unlock, disable and enable operations require
+  `user:manage` at both HTTP and method-security boundaries.
+- Controllers do not mutate account entities directly.
+- Privileged lifecycle operations write durable `ACCOUNT_LOCKED`,
+  `ACCOUNT_UNLOCKED`, `ACCOUNT_DISABLED` and `ACCOUNT_ENABLED` events.
+- Audit records contain a resolved actor, user UUID target and successful outcome,
+  without profile, password, credential or token data.
+- Audit failure rolls back the associated account transition.
+
 # Access Token Requirements
 
 Access tokens must be short-lived.
@@ -381,7 +401,6 @@ Implemented R25.11 baseline:
   client, session or token-history state.
 
 Durable security-event persistence, concurrent refresh hardening and R25.11 closure verification are complete.
-
 
 ## Concurrent Refresh and Reuse
 

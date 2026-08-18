@@ -52,6 +52,7 @@ implemented.
 | R25.11.9 — Durable security-event recording                 | Completed |
 | R25.11.10 — Concurrent refresh and reuse verification       | Completed |
 | R25.11.11 — Cleanup, verification and documentation closure | Completed |
+| R25.12 — Profile and account lifecycle APIs                 | Completed |
 | R26 — Booking Service                                       | Planned   |
 | R27 — Payment Service                                       | Planned   |
 | R28 — Notification Service                                  | Planned   |
@@ -62,11 +63,11 @@ Latest completed runtime service:
 
 Latest completed User Service checkpoint:
 
-> **R25.11.11 — Cleanup, full verification and documentation closure**
+> **R25.12 — Profile and account lifecycle APIs**
 
 Active checkpoint:
 
-> **R25.12 — Profile and account lifecycle**
+> **R25.13 — Gateway and Resource Server integration**
 
 See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 
@@ -487,10 +488,11 @@ resolve durable architectural decisions.
 - R24 Inventory Service
 - R25.1–R25.10 security, identity, OAuth2 client, grant, JWT and JWK foundations
 - R25.11.1–R25.11.11 refresh security, revocation, durable auditing, concurrency verification and closure
+- R25.12 profile and account lifecycle APIs, ownership enforcement and privileged auditing
 
 ## Active
 
-- R25.12 profile and account lifecycle
+- R25.13 Gateway and Resource Server integration
 
 ## Planned
 

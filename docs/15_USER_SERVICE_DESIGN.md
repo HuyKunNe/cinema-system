@@ -535,6 +535,18 @@ Rules:
   tokens after their short expiry unless emergency revocation is required;
 - privileged production accounts require MFA before R25 can close.
 
+R25.12 implementation status:
+
+- current-user profile read and replacement APIs are implemented;
+- profile ownership is derived from the authenticated principal;
+- password change requires the current password and revokes applicable sessions;
+- administrative lock, unlock, disable and enable operations require `user:manage`;
+- HTTP authorization and method security provide independent administrative
+  boundaries;
+- privileged lifecycle operations write durable security audit events;
+- audit failure rolls back the associated account transition;
+- controller, service, security, persistence and rollback behavior is verified.
+
 ---
 
 ## 16. API and Privacy Rules
