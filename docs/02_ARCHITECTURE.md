@@ -1074,20 +1074,38 @@ eventVersion: 1
 
 API Gateway is the single external entry point for client traffic.
 
-Responsibilities may include:
+Implemented responsibilities include:
 
-- Request routing
-- Authentication token forwarding
-- Authorization integration
+- Explicit request routing through service-discovery names
+- Reactive OAuth2 Resource Server authentication
+- RS256 signature, issuer, timestamp and audience validation
+- Bearer-token forwarding after successful edge authentication
+- Stateless and fail-closed route security
+- Shared JSON `401 Unauthorized` and `403 Forbidden` responses
 - Correlation ID propagation
 - CORS handling
-- Request and response logging
-- Rate limiting when introduced by the approved roadmap
-- Circuit breaker integration when explicitly configured
+- Protection of undeclared routes
+
+Future edge capabilities may include:
+
+- Rate limiting
+- Request-size enforcement
+- Circuit breakers
+- Additional approved security headers
 
 API Gateway must not contain business-domain logic.
 
 It must not directly access business-service databases.
+
+Automatic Discovery Locator routes are disabled. Gateway exposes only routes
+declared in centralized configuration.
+
+Public catalog reads are explicitly listed. Remaining `/api/**` requests require
+authentication, while requests outside the declared edge policy are denied.
+
+Gateway authenticates the caller but does not decide service-owned resource access.
+Movie, Inventory, Booking, Payment, Notification and User services remain responsible
+for their own authorization boundaries.
 
 ---
 
@@ -1127,9 +1145,9 @@ Example:
 
 ```yaml
 spring:
-    datasource:
-        username: ${MOVIE_DB_USERNAME}
-        password: ${MOVIE_DB_PASSWORD}
+  datasource:
+    username: ${MOVIE_DB_USERNAME}
+    password: ${MOVIE_DB_PASSWORD}
 ```
 
 Passwords must not have real committed default values.
@@ -1261,9 +1279,9 @@ Required setting:
 
 ```yaml
 spring:
-    jpa:
-        hibernate:
-            ddl-auto: validate
+  jpa:
+    hibernate:
+      ddl-auto: validate
 ```
 
 Do not use Hibernate schema generation as the production migration strategy.

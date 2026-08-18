@@ -47,6 +47,28 @@ R26-R28        Planned
 
 ## 2026-08-18
 
+### Gateway Reactive Resource Server Security
+
+- Completed R25.13.2 Gateway reactive Resource Server security.
+- Added shared reactive JWT decoding with signature, issuer, timestamp and required
+  `cinema-api` audience validation.
+- Added shared reactive JSON responses for authentication and access-denied failures.
+- Configured the Gateway with a stateless, fail-closed `SecurityWebFilterChain`.
+- Explicitly permitted approved public catalog reads, health and information endpoints,
+  and OPTIONS requests.
+- Required authentication for remaining `/api/**` requests and denied undeclared
+  exchanges.
+- Disabled automatic Discovery Locator routes so service-registration names cannot
+  create undeclared external paths.
+- Synchronized explicit Gateway routes with Movie, Genre, Cinema, Room, Showtime,
+  Seat, ShowSeat, User, Booking, Payment and Notification API boundaries.
+- Externalized the trusted issuer, JWK Set URI and required audience.
+- Verified a valid RS256 token through the real reactive decoder and local test JWK Set.
+- Verified rejection of untrusted signatures, incorrect issuers, incorrect audiences,
+  expired tokens and tokens used before their `nbf` time.
+- Preserved defense in depth: downstream services remain responsible for independent
+  token validation and domain authorization.
+
 ### Profile and Account Lifecycle
 
 - Completed R25.12 profile and account lifecycle APIs.

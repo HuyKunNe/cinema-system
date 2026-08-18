@@ -24,21 +24,25 @@ deployable. Only completed roadmap checkpoints define operational capability.
 
 # Current Deployment Status
 
-| Component            | Round | Status                                                              |
-| -------------------- | ----- | ------------------------------------------------------------------- |
-| Config Server        | R20   | Implemented                                                         |
-| Discovery Server     | R21   | Implemented                                                         |
-| API Gateway          | R22   | Implemented; Resource Server integration remains R25 work           |
-| Movie Service        | R23   | Implemented                                                         |
-| Inventory Service    | R24   | Implemented; protected runtime requires issuer/JWK configuration    |
-| User Service         | R25   | R25.8 foundation implemented; R25.9 client/grant work in progress    |
-| Booking Service      | R26   | Not implemented                                                     |
-| Payment Service      | R27   | Not implemented                                                     |
-| Notification Service | R28   | Not implemented                                                     |
+| Component            | Round    | Status                                                            |
+| -------------------- | -------- | ----------------------------------------------------------------- | --- |
+| Config Server        | R20      | Implemented                                                       |
+| Discovery Server     | R21      | Implemented                                                       |
+| API Gateway          | R25.13.2 | Reactive Resource Server security and explicit routes implemented |     |
+| Movie Service        | R23      | Implemented                                                       |
+| Inventory Service    | R24      | Implemented; protected runtime requires issuer/JWK configuration  |
+| User Service         | R25      | R25.8 foundation implemented; R25.9 client/grant work in progress |
+| Booking Service      | R26      | Not implemented                                                   |
+| Payment Service      | R27      | Not implemented                                                   |
+| Notification Service | R28      | Not implemented                                                   |
 
-The Gateway currently provides routing and infrastructure behavior. Do not
-claim that it validates bearer tokens until its reactive Resource Server
-configuration is implemented and tested.
+The Gateway validates bearer access tokens as a reactive OAuth2 Resource Server.
+It validates signature, issuer, timestamps and the required `cinema-api` audience
+before protected API requests are routed.
+
+Gateway validation does not replace service-level authentication or authorization.
+Direct access to protected services must remain network-restricted or equivalently
+secured.
 
 ---
 
@@ -110,6 +114,24 @@ client secrets, or signing private keys.
 Some service configurations use `EUREKA_URL`, while infrastructure
 configuration uses `EUREKA_SERVER_URL`. Preserve the variable expected by the
 target application until configuration naming is intentionally standardized.
+
+## API Gateway
+
+| Variable                      | Required                  | Development default             |
+| ----------------------------- | ------------------------- | ------------------------------- |
+| `GATEWAY_SERVICE_PORT`        | No                        | `8080`                          |
+| `EUREKA_SERVER_URL`           | No                        | `http://localhost:8761/eureka/` |
+| `CINEMA_AUTH_ISSUER`          | Yes for protected runtime | None                            |
+| `CINEMA_AUTH_JWK_SET_URI`     | Yes for protected runtime | None                            |
+| `CINEMA_AUTH_AUDIENCE`        | No                        | `cinema-api`                    |
+| `CORS_ALLOWED_ORIGIN_PATTERN` | No                        | `http://localhost:*`            |
+
+The issuer must exactly match the `iss` claim produced by User Service. The JWK
+Set URI must expose the corresponding public verification keys. Gateway must
+never receive or store the Authorization Server private signing key.
+
+Automatic Gateway Discovery Locator routing is disabled. External service paths
+must be declared explicitly in `gateway-service.yml`.
 
 ## Movie Service
 
@@ -233,12 +255,12 @@ Flyway owns schema evolution. Hibernate validates the result:
 
 ```yaml
 spring:
-    jpa:
-        hibernate:
-            ddl-auto: validate
-    flyway:
-        enabled: true
-        validate-on-migrate: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    validate-on-migrate: true
 ```
 
 Never edit an applied migration in a shared environment. Add a new versioned
@@ -399,22 +421,36 @@ Service must never access its tables or locks.
 
 # Run API Gateway
 
+Supply the trusted Authorization Server configuration before starting Gateway.
+
+Bash:
+
 ```bash
+export CINEMA_AUTH_ISSUER='http://localhost:8082'
+export CINEMA_AUTH_JWK_SET_URI='http://localhost:8082/oauth2/jwks'
+export CINEMA_AUTH_AUDIENCE='cinema-api'
+```
+
 mvn -pl infrastructure/gateway-service -am spring-boot:run
+
+```PowerShell:
+$env:CINEMA_AUTH_ISSUER = "http://localhost:8082"
+$env:CINEMA_AUTH_JWK_SET_URI = "http://localhost:8082/oauth2/jwks"
+$env:CINEMA_AUTH_AUDIENCE = "cinema-api"
+./mvnw -pl infrastructure/gateway-service -am spring-boot:run
 ```
 
-Verify:
+Verify the public health endpoint: http://localhost:8080/actuator/health
 
-```text
-http://localhost:8080/actuator/health
-```
+Protected API requests require a valid bearer access token. The token must have:
+-an RS256 signature trusted through the configured JWK Set;
+-an issuer exactly matching CINEMA_AUTH_ISSUER;
+-the cinema-api audience;
+-valid expiration and not-before timestamps.
 
-Use the centralized route configuration for end-to-end API verification.
-
-Current limitation: Gateway has not yet completed the R25 reactive OAuth2
-Resource Server integration. It may forward an `Authorization` header, but
-token forwarding is not evidence of edge validation. Business services remain
-responsible for validating their own tokens.
+The Gateway forwards an accepted bearer token to the selected downstream service.
+The downstream service must independently validate the token and enforce its owned
+authorization rules.
 
 ---
 

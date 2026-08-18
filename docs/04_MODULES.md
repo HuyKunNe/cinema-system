@@ -162,13 +162,14 @@ business services:
 - Resource Server security configuration
 - Servlet security configuration
 - Issuer and JWK-based `JwtDecoder` construction
+- Reactive issuer and JWK-based `ReactiveJwtDecoder` construction
 - Signature, issuer, timestamp, and audience validation
 - Required `cinema-api` audience validation
 - Shared JWT role and permission conversion
 - `AuthenticationUser` and current-user access
 - Security-context utilities
 - Permission evaluation
-- Standard JSON `401 Unauthorized` and `403 Forbidden` responses
+- Standard servlet and reactive JSON `401 Unauthorized` and `403 Forbidden` responses
 - Shared security properties and constants
 
 `common-security` does not issue tokens and is not an Authorization Server. It
@@ -318,16 +319,25 @@ depend on hard-coded instance addresses.
 
 ## gateway-service
 
-Provides the external routing boundary:
+Provides the external routing and reactive security boundary:
 
-- Route resolution
-- Request-ID propagation
-- Edge CORS and approved edge policies
-- OAuth2 Resource Server token validation
+- Explicit route resolution through service discovery
+- Disabled automatic Discovery Locator routes
+- Request-ID and correlation-ID propagation
+- Edge CORS and approved public-route policies
+- Stateless reactive OAuth2 Resource Server authentication
+- RS256 signature, issuer, timestamp and `cinema-api` audience validation
+- Shared reactive JSON `401 Unauthorized` and `403 Forbidden` responses
 - Bearer-token forwarding
+- Fail-closed handling for undeclared exchanges
+
+Gateway uses `common-security` and does not own signing keys, users, roles,
+permissions or domain authorization data.
 
 Gateway is not the sole authorization boundary and must not contain
-business-domain logic or access business-service databases.
+business-domain logic or access business-service databases. Protected downstream
+services must independently validate tokens and enforce their owned authorization
+rules.
 
 ---
 

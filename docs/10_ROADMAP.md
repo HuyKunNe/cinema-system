@@ -1254,10 +1254,31 @@ behavior are verified
 
 #### ⏳ R25.13 — Gateway and Resource Server integration
 
-- Gateway issuer, audience and JWK validation;
-- standard reactive `401` and `403` responses;
-- route security policy;
-- Movie and Inventory Resource Server integration;
+##### ✅ R25.13.2 — Gateway reactive Resource Server security
+
+- added shared reactive JWT decoder configuration;
+- added shared reactive JSON `401 Unauthorized` and `403 Forbidden` responses;
+- configured a stateless Gateway `SecurityWebFilterChain`;
+- explicitly permitted approved public catalog reads and CORS preflight requests;
+- required authentication for remaining `/api/**` requests;
+- denied exchanges outside the declared edge policy by default;
+- configured Gateway issuer, JWK Set and `cinema-api` audience validation;
+- disabled automatic Discovery Locator routes;
+- synchronized explicit Movie, Genre, Cinema, Room, Showtime, Seat and ShowSeat
+  routes with service-owned controller paths;
+- verified valid RS256 access tokens with a real reactive decoder and test JWK Set;
+- verified rejection of untrusted signatures, incorrect issuers, incorrect audiences,
+  expired tokens and tokens used before their `nbf` time;
+- verified Gateway module tests and the root Maven reactor.
+
+Gateway security is complete for the current R25.13 scope. The Gateway validates
+bearer tokens and forwards them to downstream services, but it is not the sole
+authorization boundary.
+
+Remaining R25.13 scope:
+
+- Movie Service Resource Server integration;
+- remaining Inventory Service Resource Server verification;
 - service-token and cross-service security tests.
 
 #### ⏳ R25.14 — security and protocol verification

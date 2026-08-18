@@ -706,6 +706,24 @@ Rules:
 
 API Gateway is the public entry point for business APIs.
 
+The R25.13.2 implementation configures Gateway as a reactive OAuth2 Resource
+Server. It uses the shared `common-security` trust contract and validates bearer
+tokens before protected API requests are routed downstream.
+
+The implemented edge policy is stateless and fail closed:
+
+- `/actuator/health` and `/actuator/info` are public;
+- OPTIONS requests are permitted for preflight processing;
+- approved GET Movie, Genre, Cinema, Room, Seat, Showtime and ShowSeat paths are
+  public;
+- remaining `/api/**` requests require authentication;
+- exchanges outside the declared policy are denied;
+- form login, HTTP Basic, logout, request caching, CSRF session semantics and
+  server-side security-context persistence are disabled;
+- automatic Discovery Locator routes are disabled;
+- only explicit service routes are externally reachable through Gateway
+  configuration.
+
 Responsibilities include:
 
 - TLS termination or participation in approved end-to-end TLS
@@ -760,6 +778,22 @@ Gateway validates the token
 Service validates the token again
 Service enforces resource authorization
 ```
+
+The implemented Gateway forwards the original bearer token after successful edge
+validation. It does not replace the token with client-supplied identity headers and
+does not treat successful Gateway validation as proof of domain authorization.
+
+Gateway validation currently verifies:
+
+- RS256 signature against the configured public JWK Set;
+- exact issuer match;
+- required `cinema-api` audience;
+- expiration time;
+- not-before time;
+- shared role and permission claim conversion.
+
+Gateway tests exercise the real reactive decoder and an HTTP-served test JWK Set.
+They do not rely solely on mocked JWT authentication.
 
 Benefits:
 
@@ -2747,15 +2781,15 @@ Before marking a security round complete, verify:
 - [ ] Authentication architecture follows accepted ADR-013
 - [ ] User Service is the single authoritative issuer per environment
 - [ ] Access tokens are short-lived
-- [ ] JWT signatures are validated
-- [ ] JWT issuer is validated
-- [ ] JWT audience is validated
+- [x] JWT signatures are validated at Gateway
+- [x] JWT issuer is validated at Gateway
+- [x] JWT audience is validated at Gateway
 - [ ] RS256 is enforced and JWK key identifiers are validated
 - [ ] Opaque refresh tokens rotate and reuse revokes the affected session
 - [ ] Passwords use an approved adaptive hash
 - [ ] Authentication endpoints are rate-limited
 - [ ] Privileged accounts use MFA or an approved external control
-- [ ] Gateway routes deny access by default
+- [x] Gateway routes deny access by default
 - [ ] Business services validate authentication
 - [ ] Business services enforce resource ownership
 - [ ] Administrative endpoints require explicit authority
