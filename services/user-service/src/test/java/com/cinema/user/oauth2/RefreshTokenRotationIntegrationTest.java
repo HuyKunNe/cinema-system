@@ -68,6 +68,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 @SpringBootTest(
@@ -270,6 +275,173 @@ class RefreshTokenRotationIntegrationTest extends AbstractMySqlIntegrationTest {
                         authorizationService.findByToken(
                                 firstRefreshToken, OAuth2TokenType.REFRESH_TOKEN))
                 .isNull();
+    }
+
+    @Test
+    void concurrentRefreshShouldAllowOnlyOneSuccessfulResponse() throws Exception {
+
+        ConcurrentRefreshFixture fixture = createConcurrentRefreshFixture();
+
+        List<MvcResult> results = performConcurrentRefresh(fixture.refreshToken());
+
+        assertThat(results).hasSize(2);
+
+        List<MvcResult> successfulResults =
+                results.stream().filter(result -> result.getResponse().getStatus() == 200).toList();
+
+        List<MvcResult> rejectedResults =
+                results.stream().filter(result -> result.getResponse().getStatus() == 400).toList();
+
+        assertThat(successfulResults).hasSize(1);
+
+        assertThat(rejectedResults).hasSize(1);
+
+        JsonNode successfulResponse =
+                objectMapper.readTree(
+                        successfulResults.getFirst().getResponse().getContentAsString());
+
+        String successorRefreshToken = successfulResponse.required("refresh_token").asText();
+
+        assertThat(successorRefreshToken).isNotBlank().isNotEqualTo(fixture.refreshToken());
+
+        assertThat(rejectedResults.getFirst().getResponse().getContentAsString())
+                .contains("\"error\":\"invalid_grant\"")
+                .doesNotContain(fixture.refreshToken(), successorRefreshToken);
+
+        List<RefreshTokenHistory> history =
+                refreshTokenHistoryRepository.findAllByAuthorizationId(fixture.authorizationId());
+
+        assertThat(history).hasSize(2);
+
+        assertThat(history)
+                .filteredOn(token -> token.getStatus() == RefreshTokenStatus.ACTIVE)
+                .hasSizeLessThanOrEqualTo(1);
+
+        assertThat(history)
+                .filteredOn(
+                        token ->
+                                token.getTokenHash()
+                                        .equals(refreshTokenHasher.hash(successorRefreshToken)))
+                .singleElement();
+
+        assertThat(history)
+                .allSatisfy(
+                        token ->
+                                assertThat(token.getTokenHash())
+                                        .doesNotContain(
+                                                fixture.refreshToken(), successorRefreshToken));
+    }
+
+    @Test
+    void concurrentRotatedTokenReuseShouldRevokeFamilyOnce() throws Exception {
+
+        ConcurrentRefreshFixture fixture = createConcurrentRefreshFixture();
+
+        JsonNode rotatedResponse = refreshAccessToken(fixture.refreshToken());
+
+        String successorRefreshToken = rotatedResponse.required("refresh_token").asText();
+
+        assertThat(successorRefreshToken).isNotEqualTo(fixture.refreshToken());
+
+        RefreshTokenHistory rotatedBeforeReuse =
+                refreshTokenHistoryRepository
+                        .findByTokenHash(refreshTokenHasher.hash(fixture.refreshToken()))
+                        .orElseThrow();
+
+        RefreshTokenHistory activeBeforeReuse =
+                refreshTokenHistoryRepository
+                        .findByTokenHash(refreshTokenHasher.hash(successorRefreshToken))
+                        .orElseThrow();
+
+        assertThat(rotatedBeforeReuse.getStatus()).isEqualTo(RefreshTokenStatus.ROTATED);
+
+        assertThat(activeBeforeReuse.getStatus()).isEqualTo(RefreshTokenStatus.ACTIVE);
+
+        List<MvcResult> results = performConcurrentRefresh(fixture.refreshToken());
+
+        assertThat(results)
+                .hasSize(2)
+                .allSatisfy(
+                        result -> {
+                            assertThat(result.getResponse().getStatus()).isEqualTo(400);
+
+                            assertThat(result.getResponse().getContentAsString())
+                                    .contains("\"error\":\"invalid_grant\"")
+                                    .doesNotContain(fixture.refreshToken(), successorRefreshToken);
+                        });
+
+        RefreshTokenHistory reusedHistory =
+                refreshTokenHistoryRepository
+                        .findByTokenHash(refreshTokenHasher.hash(fixture.refreshToken()))
+                        .orElseThrow();
+
+        RefreshTokenHistory revokedHistory =
+                refreshTokenHistoryRepository
+                        .findByTokenHash(refreshTokenHasher.hash(successorRefreshToken))
+                        .orElseThrow();
+
+        assertThat(reusedHistory.getStatus()).isEqualTo(RefreshTokenStatus.REUSED);
+
+        assertThat(reusedHistory.getReusedAt()).isNotNull();
+
+        assertThat(revokedHistory.getStatus()).isEqualTo(RefreshTokenStatus.REVOKED);
+
+        assertThat(revokedHistory.getRevokedAt()).isNotNull();
+
+        assertThat(
+                        refreshTokenHistoryRepository.findAllByAuthorizationId(
+                                fixture.authorizationId()))
+                .hasSize(2)
+                .extracting(RefreshTokenHistory::getStatus)
+                .containsExactlyInAnyOrder(RefreshTokenStatus.REUSED, RefreshTokenStatus.REVOKED);
+
+        OAuth2Authorization authorization =
+                authorizationService.findById(fixture.authorizationId());
+
+        assertThat(authorization).isNotNull();
+
+        assertThat(authorization.getAccessToken()).isNotNull();
+
+        assertThat(authorization.getAccessToken().isInvalidated()).isTrue();
+
+        assertThat(authorization.getRefreshToken()).isNotNull();
+
+        assertThat(authorization.getRefreshToken().isInvalidated()).isTrue();
+
+        List<SecurityAuditEvent> auditEvents =
+                securityAuditEventRepository
+                        .findAllByTargetTypeAndTargetReferenceOrderByOccurredAtDesc(
+                                SecurityAuditTargetType.AUTHORIZATION_SESSION,
+                                fixture.authorizationId());
+
+        assertThat(auditEvents)
+                .singleElement()
+                .satisfies(
+                        event -> {
+                            assertThat(event.getEventType())
+                                    .isEqualTo(SecurityAuditEventType.REFRESH_TOKEN_REUSE_DETECTED);
+
+                            assertThat(event.getActorType())
+                                    .isEqualTo(SecurityAuditActorType.CLIENT);
+
+                            assertThat(event.getActorReference()).isEqualTo(CLIENT_ID);
+
+                            assertThat(event.getTargetType())
+                                    .isEqualTo(SecurityAuditTargetType.AUTHORIZATION_SESSION);
+
+                            assertThat(event.getTargetReference())
+                                    .isEqualTo(fixture.authorizationId());
+
+                            assertThat(event.getOutcome()).isEqualTo(SecurityAuditOutcome.SUCCESS);
+
+                            assertThat(event.getReason()).isEqualTo("ROTATED_REFRESH_TOKEN_REUSED");
+
+                            assertThat(event.getMetadata()).isNull();
+
+                            assertThat(event.getCorrelationId()).isNotBlank();
+
+                            assertThat(event.getOccurredAt()).isNotNull();
+                        });
     }
 
     @Test
@@ -492,6 +664,91 @@ class RefreshTokenRotationIntegrationTest extends AbstractMySqlIntegrationTest {
         authorizationConsentService.save(consent);
     }
 
+    private ConcurrentRefreshFixture createConcurrentRefreshFixture() throws Exception {
+
+        User user = createActiveUser();
+
+        RegisteredClient client = registerConfidentialClient();
+
+        saveConsent(client, user);
+
+        MockHttpSession session = login(user);
+
+        String authorizationCode = authorize(session, createCodeChallenge(CODE_VERIFIER));
+
+        JsonNode initialResponse = exchangeAuthorizationCode(authorizationCode, CODE_VERIFIER);
+
+        String refreshToken = initialResponse.required("refresh_token").asText();
+
+        OAuth2Authorization authorization =
+                authorizationService.findByToken(refreshToken, OAuth2TokenType.REFRESH_TOKEN);
+
+        assertThat(authorization).isNotNull();
+
+        return new ConcurrentRefreshFixture(refreshToken, authorization.getId());
+    }
+
+    private List<MvcResult> performConcurrentRefresh(String refreshToken) throws Exception {
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        CountDownLatch ready = new CountDownLatch(2);
+
+        CountDownLatch start = new CountDownLatch(1);
+
+        try {
+            Future<MvcResult> first =
+                    executor.submit(
+                            () -> {
+                                ready.countDown();
+
+                                if (!start.await(10, TimeUnit.SECONDS)) {
+
+                                    throw new IllegalStateException(
+                                            "Concurrent refresh start timed out");
+                                }
+
+                                return performRefreshRequest(refreshToken);
+                            });
+
+            Future<MvcResult> second =
+                    executor.submit(
+                            () -> {
+                                ready.countDown();
+
+                                if (!start.await(10, TimeUnit.SECONDS)) {
+
+                                    throw new IllegalStateException(
+                                            "Concurrent refresh start timed out");
+                                }
+
+                                return performRefreshRequest(refreshToken);
+                            });
+
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+
+            start.countDown();
+
+            return List.of(first.get(30, TimeUnit.SECONDS), second.get(30, TimeUnit.SECONDS));
+        } finally {
+            start.countDown();
+            executor.shutdownNow();
+
+            assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        }
+    }
+
+    private MvcResult performRefreshRequest(String refreshToken) throws Exception {
+
+        return mockMvc.perform(
+                        post("/oauth2/token")
+                                .with(httpBasic(CLIENT_ID, RAW_CLIENT_SECRET))
+                                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                .param("grant_type", "refresh_token")
+                                .param("refresh_token", refreshToken))
+                .andReturn();
+    }
+
     private MockHttpSession login(User user) throws Exception {
 
         MvcResult result =
@@ -644,4 +901,6 @@ class RefreshTokenRotationIntegrationTest extends AbstractMySqlIntegrationTest {
 
         return Objects.requireNonNull(transactionTemplate.execute(status -> operation.get()));
     }
+
+    private record ConcurrentRefreshFixture(String refreshToken, String authorizationId) {}
 }
