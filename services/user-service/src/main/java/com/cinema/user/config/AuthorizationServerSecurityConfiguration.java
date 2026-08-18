@@ -8,6 +8,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplicat
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.session.SessionRegistry;
@@ -89,6 +90,13 @@ public class AuthorizationServerSecurityConfiguration {
                 .authorizeHttpRequests(
                         authorize ->
                                 authorize
+                                        .requestMatchers(
+                                                HttpMethod.PATCH,
+                                                "/api/v1/users/*/lock",
+                                                "/api/v1/users/*/unlock",
+                                                "/api/v1/users/*/disable",
+                                                "/api/v1/users/*/enable")
+                                        .hasAuthority("user:manage")
                                         .requestMatchers(
                                                 "/actuator/health", "/actuator/info", "/error")
                                         .permitAll()
