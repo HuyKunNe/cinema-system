@@ -1,2 +1,3 @@
 com.cinema.common.security.config.SecurityConfiguration
 com.cinema.common.security.config.ServletSecurityConfiguration
+com.cinema.common.security.config.ReactiveSecurityConfiguration
