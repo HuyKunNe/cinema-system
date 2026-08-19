@@ -3,6 +3,7 @@ package com.cinema.common.security.config;
 import com.cinema.common.exception.exception.InternalServerException;
 import com.cinema.common.security.error.SecurityErrorCode;
 import com.cinema.common.security.jwt.AudienceValidator;
+import com.cinema.common.security.jwt.SubjectValidator;
 import com.cinema.common.security.properties.SecurityProperties;
 import com.cinema.common.security.web.reactive.CinemaServerAccessDeniedHandler;
 import com.cinema.common.security.web.reactive.CinemaServerAuthenticationEntryPoint;
@@ -31,7 +32,9 @@ public class ReactiveSecurityConfiguration {
             prefix = "cinema.security.oauth2",
             name = {"issuer-uri", "jwk-set-uri", "audience"})
     public ReactiveJwtDecoder cinemaReactiveJwtDecoder(
-            SecurityProperties properties, AudienceValidator audienceValidator) {
+            SecurityProperties properties,
+            AudienceValidator audienceValidator,
+            SubjectValidator subjectValidator) {
 
         validateIssuer(properties.issuerUri());
         validateJwkSetUri(properties.jwkSetUri());
@@ -43,7 +46,8 @@ public class ReactiveSecurityConfiguration {
                 JwtValidators.createDefaultWithIssuer(properties.issuerUri().trim());
 
         decoder.setJwtValidator(
-                new DelegatingOAuth2TokenValidator<>(issuerValidator, audienceValidator));
+                new DelegatingOAuth2TokenValidator<>(
+                        issuerValidator, audienceValidator, subjectValidator));
 
         return decoder;
     }

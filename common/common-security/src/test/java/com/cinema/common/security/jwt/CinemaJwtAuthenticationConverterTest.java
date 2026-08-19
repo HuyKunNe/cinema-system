@@ -1,19 +1,20 @@
 package com.cinema.common.security.jwt;
 
-import java.time.Instant;
-import java.util.List;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.oauth2.jwt.Jwt;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import java.time.Instant;
+import java.util.List;
 
 class CinemaJwtAuthenticationConverterTest {
 
     private static final String USER_ID = "019c1234-1111-7abc-8def-0123456789ab";
 
-    private final CinemaJwtAuthenticationConverter converter = new CinemaJwtAuthenticationConverter();
+    private final CinemaJwtAuthenticationConverter converter =
+            new CinemaJwtAuthenticationConverter();
 
     @Test
     void shouldUseSubjectAsPrincipalName() {
@@ -34,9 +35,36 @@ class CinemaJwtAuthenticationConverterTest {
 
         assertThat(authentication.getAuthorities())
                 .extracting("authority")
-                .containsExactlyInAnyOrder(
-                        "ROLE_USER",
-                        "booking:create");
+                .containsExactlyInAnyOrder("ROLE_USER", "booking:create");
+    }
+
+    @Test
+    void shouldUseServiceClientIdAsPrincipalName() {
+
+        Instant now = Instant.now();
+
+        Jwt jwt =
+                Jwt.withTokenValue("service-token")
+                        .header("alg", "RS256")
+                        .subject("booking-service")
+                        .claim("permissions", List.of("inventory:write"))
+                        .issuedAt(now)
+                        .expiresAt(now.plusSeconds(300))
+                        .build();
+
+        AbstractAuthenticationToken authentication = converter.convert(jwt);
+
+        assertThat(authentication).isNotNull();
+
+        assertThat(authentication.getName()).isEqualTo("booking-service");
+
+        assertThat(authentication.getAuthorities())
+                .extracting("authority")
+                .containsExactly("inventory:write");
+
+        assertThat(authentication.getAuthorities())
+                .extracting("authority")
+                .doesNotContain("ROLE_SERVICE");
     }
 
     private Jwt jwt() {

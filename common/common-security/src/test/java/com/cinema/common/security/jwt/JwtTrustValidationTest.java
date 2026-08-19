@@ -43,12 +43,15 @@ class JwtTrustValidationTest {
 
         AudienceValidator audienceValidator = new AudienceValidator(TEST_ISSUER.audience());
 
+        SubjectValidator subjectValidator = new SubjectValidator();
+
         servletDecoder =
-                new SecurityConfiguration().cinemaJwtDecoder(properties, audienceValidator);
+                new SecurityConfiguration()
+                        .cinemaJwtDecoder(properties, audienceValidator, subjectValidator);
 
         reactiveDecoder =
                 new ReactiveSecurityConfiguration()
-                        .cinemaReactiveJwtDecoder(properties, audienceValidator);
+                        .cinemaReactiveJwtDecoder(properties, audienceValidator, subjectValidator);
     }
 
     @AfterAll
@@ -148,6 +151,22 @@ class JwtTrustValidationTest {
                                 claims.subject(SUBJECT)
                                         .notBeforeTime(Date.from(now.plusSeconds(300)))
                                         .expirationTime(Date.from(now.plusSeconds(600))));
+
+        assertRejectedByBothDecoders(token);
+    }
+
+    @Test
+    void jwtWithoutSubjectShouldBeRejected() {
+
+        String token = TEST_ISSUER.token(claims -> claims.subject(null));
+
+        assertRejectedByBothDecoders(token);
+    }
+
+    @Test
+    void jwtWithBlankSubjectShouldBeRejected() {
+
+        String token = TEST_ISSUER.token(claims -> claims.subject("   "));
 
         assertRejectedByBothDecoders(token);
     }

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.cinema.common.security.jwt.AudienceValidator;
 import com.cinema.common.security.jwt.CinemaJwtAuthenticationConverter;
 import com.cinema.common.security.jwt.CinemaJwtGrantedAuthoritiesConverter;
+import com.cinema.common.security.jwt.SubjectValidator;
 import com.cinema.common.security.properties.SecurityProperties;
 
 import org.junit.jupiter.api.Test;
@@ -50,6 +51,8 @@ class SecurityConfigurationTest {
 
                             assertThat(properties.jwkSetUri())
                                     .isEqualTo("https://identity.cinema.test/oauth2/jwks");
+
+                            assertThat(context).hasSingleBean(SubjectValidator.class);
                         });
     }
 
@@ -62,6 +65,8 @@ class SecurityConfigurationTest {
                     assertThat(context).hasSingleBean(CinemaJwtAuthenticationConverter.class);
 
                     assertThat(context).doesNotHaveBean(JwtDecoder.class);
+
+                    assertThat(context).hasSingleBean(SubjectValidator.class);
                 });
     }
 }

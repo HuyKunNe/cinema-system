@@ -5,6 +5,7 @@ import com.cinema.common.security.error.SecurityErrorCode;
 import com.cinema.common.security.jwt.AudienceValidator;
 import com.cinema.common.security.jwt.CinemaJwtAuthenticationConverter;
 import com.cinema.common.security.jwt.CinemaJwtGrantedAuthoritiesConverter;
+import com.cinema.common.security.jwt.SubjectValidator;
 import com.cinema.common.security.properties.SecurityProperties;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -48,13 +49,22 @@ public class SecurityConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean
+    public SubjectValidator subjectValidator() {
+
+        return new SubjectValidator();
+    }
+
+    @Bean
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
     @ConditionalOnMissingBean(JwtDecoder.class)
     @ConditionalOnProperty(
             prefix = "cinema.security.oauth2",
             name = {"issuer-uri", "jwk-set-uri", "audience"})
     public JwtDecoder cinemaJwtDecoder(
-            SecurityProperties properties, AudienceValidator audienceValidator) {
+            SecurityProperties properties,
+            AudienceValidator audienceValidator,
+            SubjectValidator subjectValidator) {
 
         validateIssuer(properties.issuerUri());
         validateJwkSetUri(properties.jwkSetUri());
@@ -66,7 +76,8 @@ public class SecurityConfiguration {
                 JwtValidators.createDefaultWithIssuer(properties.issuerUri().trim());
 
         OAuth2TokenValidator<Jwt> validator =
-                new DelegatingOAuth2TokenValidator<>(issuerValidator, audienceValidator);
+                new DelegatingOAuth2TokenValidator<>(
+                        issuerValidator, audienceValidator, subjectValidator);
 
         decoder.setJwtValidator(validator);
 
