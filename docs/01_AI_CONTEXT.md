@@ -812,4 +812,4 @@ Remaining checkpoints:
 
 R25.13 is complete. Preserve the implemented identity, Gateway and independent
 Resource Server boundaries while performing R25.14 security and protocol
-verification
+verification.
