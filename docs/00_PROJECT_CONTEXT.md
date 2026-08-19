@@ -104,11 +104,12 @@ R25.9 — OAuth2 clients and grant types — DONE
 R25.10 — JWT claims and JWK signing — DONE
 R25.11.1–R25.11.11 — refresh security, auditing, concurrency and closure — DONE
 R25.12 — profile and account lifecycle APIs — DONE
+R25.13 — Gateway and Resource Server integration — DONE
 ```
 
 Active R25 checkpoint:
 
-- R25.13 Gateway and Resource Server integration — NEXT
+- R25.14 security and protocol verification — NEXT
 
 Accepted authentication decision:
 
@@ -211,11 +212,17 @@ Verified security policy:
 
 - ShowSeat queries follow the approved public-access policy;
 - generation and availability administration require `inventory:manage`;
-- hold, book and release require `ROLE_SERVICE`;
+- hold, book and release require `inventory:write`;
 - authorization behavior is covered by applicable `401`, `403` and
   successful-access tests;
 - JWT role and permission claims are mapped to granted authorities;
 - blank and duplicate authorities are removed.
+- Gateway validates bearer tokens through a reactive Resource Server chain.
+- Movie and Inventory services independently validate bearer tokens.
+- Gateway removes client-supplied identity headers before routing.
+- Service clients receive permissions from authorized Client Credentials scopes.
+- `inventory:write` authorizes hold, book and release operations.
+- `inventory:manage` does not implicitly replace `inventory:write`.
 
 R24 completion evidence:
 

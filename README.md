@@ -53,6 +53,8 @@ implemented.
 | R25.11.10 — Concurrent refresh and reuse verification       | Completed |
 | R25.11.11 — Cleanup, verification and documentation closure | Completed |
 | R25.12 — Profile and account lifecycle APIs                 | Completed |
+| R25.13 — Gateway and Resource Server integration            | Completed |
+| R25.14 — Security and protocol verification                 | Active    |
 | R26 — Booking Service                                       | Planned   |
 | R27 — Payment Service                                       | Planned   |
 | R28 — Notification Service                                  | Planned   |
@@ -61,13 +63,13 @@ Latest completed runtime service:
 
 > **R24 — Inventory Service**
 
-Latest completed User Service checkpoint:
+Latest completed integration checkpoint:
 
-> **R25.12 — Profile and account lifecycle APIs**
+> **R25.13 — Gateway and Resource Server integration**
 
 Active checkpoint:
 
-> **R25.13 — Gateway and Resource Server integration**
+> **R25.14 — Security and protocol verification**
 
 See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 
@@ -99,9 +101,17 @@ See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 - Config Server
 - Eureka Discovery Server
 - Spring Cloud Gateway routing
+- Reactive Gateway OAuth2 Resource Server security
+- Explicit fail-closed routes with automatic Discovery Locator disabled
+- Removal of client-supplied identity headers
+- Bearer-token forwarding after successful edge validation
 
-Gateway OAuth2 Resource Server integration remains R25 work. Token forwarding
-must not be mistaken for token validation.
+Gateway is a reactive OAuth2 Resource Server. It validates signature, issuer,
+timestamps and the required `cinema-api` audience before routing protected
+requests.
+
+Movie and Inventory services independently validate bearer tokens. Gateway
+validation does not replace downstream authorization.
 
 ## Movie Service
 

@@ -49,23 +49,27 @@ Cinema Booking System uses:
 
 ```mermaid
 flowchart TD
-    Client[Client Applications] --> Gateway[API Gateway]
-
-    Gateway --> Movie[Movie Service]
-    Gateway --> User[User Service]
-    Gateway --> Inventory[Inventory Service]
-    Gateway --> Booking[Booking Service]
-
-    Booking --> Kafka[Kafka Event Bus]
-    Inventory --> Kafka
-    Payment[Payment Service] --> Kafka
-    Notification[Notification Service] --> Kafka
-
-    Kafka --> Booking
-    Kafka --> Inventory
-    Kafka --> Payment
-    Kafka --> Notification
+    Client[Client application] -->|Authorize or obtain token| User[User Service / Authorization Server]
+    User -->|RS256 access token| Client
+    Client -->|Bearer access token| Gateway[API Gateway / Resource Server]
+    Gateway -->|Forward bearer token| Service[Business Service / Resource Server]
+    Gateway -.->|Discover keys| Jwks[User Service JWK Set]
+    Service -.->|Discover keys| Jwks
 ```
+
+The same original bearer token crosses the Gateway-to-service boundary. Gateway
+does not mint a replacement token and does not send identity headers as a substitute
+for downstream authentication.
+
+Gateway and downstream services independently verify:
+
+- RS256 signature through the configured public JWK Set;
+- exact canonical issuer;
+- token expiration and not-before timestamps;
+- required `cinema-api` audience.
+
+Gateway removes client-supplied identity headers before forwarding. Downstream
+services derive principals and authorities only from the validated access token.
 
 Clients access business services through API Gateway.
 
@@ -1080,9 +1084,10 @@ Implemented responsibilities include:
 - Reactive OAuth2 Resource Server authentication
 - RS256 signature, issuer, timestamp and audience validation
 - Bearer-token forwarding after successful edge authentication
+- Removal of untrusted client-supplied identity headers
 - Stateless and fail-closed route security
 - Shared JSON `401 Unauthorized` and `403 Forbidden` responses
-- Correlation ID propagation
+- Request ID and correlation ID propagation
 - CORS handling
 - Protection of undeclared routes
 
@@ -1102,6 +1107,19 @@ declared in centralized configuration.
 
 Public catalog reads are explicitly listed. Remaining `/api/**` requests require
 authentication, while requests outside the declared edge policy are denied.
+
+Before routing a request, Gateway removes the following client-controlled identity
+headers:
+
+```text
+X-User-Id
+X-Roles
+X-Permissions
+X-Client-Id
+```
+
+Gateway preserves the original `Authorization: Bearer ...` header after successful
+edge validation. It does not replace the bearer token with identity headers.
 
 Gateway authenticates the caller but does not decide service-owned resource access.
 Movie, Inventory, Booking, Payment, Notification and User services remain responsible
@@ -1161,10 +1179,13 @@ issuer for the cinema platform. It integrates Spring Authorization Server and
 owns user authentication, registered clients, authorization grants, consent,
 and token lifecycle state.
 
-API Gateway and protected business services are OAuth2 Resource Servers. They
-must validate access tokens independently through the shared `common-security`
-module. Passing through API Gateway does not replace service-level token
-validation or authorization.
+API Gateway, Movie Service and Inventory Service are implemented OAuth2 Resource
+Servers. They validate access tokens independently through the shared
+`common-security` module.
+
+Passing through API Gateway does not replace service-level token validation or
+authorization. A token accepted by Gateway is validated again by the selected
+downstream service.
 
 Conceptual flow:
 
@@ -1183,6 +1204,47 @@ Approved authorization grants:
 - Authorization Code with PKCE for interactive clients
 - Refresh Token for session continuity
 - Client Credentials for approved service-to-service clients
+
+## Service-Token Authorization
+
+Approved internal services use the Client Credentials grant.
+
+A Client Credentials access token:
+
+- uses the registered client ID as `sub`;
+- contains the required `cinema-api` audience;
+- contains only authorized scopes in the `permissions` claim;
+- does not contain a human username;
+- does not automatically receive human roles;
+- remains short-lived and independently validated by the target service.
+
+Example claims:
+
+```json
+{
+  "sub": "booking-service",
+  "aud": ["cinema-api"],
+  "permissions": ["inventory:write"]
+}
+```
+
+Inventory Service requires `inventory:write` for ShowSeat hold, book and release
+operations.
+
+The following authorities have separate responsibilities:
+
+| Authority          | Responsibility                                       |
+| ------------------ | ---------------------------------------------------- |
+| `inventory:read`   | Approved service read access where required          |
+| `inventory:write`  | ShowSeat hold, book and release                      |
+| `inventory:manage` | Inventory generation and availability administration |
+| `showtime:manage`  | Showtime lifecycle administration                    |
+
+`inventory:manage` does not implicitly replace `inventory:write`. A registered
+client receives only its approved scopes.
+
+Client-supplied headers such as `X-Client-Id`, `X-Roles` or `X-Permissions` cannot
+replace a Client Credentials bearer token.
 
 Resource Owner Password Credentials must not be introduced.
 
@@ -1205,12 +1267,13 @@ Token trust contract:
 
 Security ownership:
 
-| Component         | Security responsibility                                                                                                                      |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| User Service      | Authentication, OAuth2/OIDC endpoints, clients, grants, consent, key ownership, and token issuance/revocation                                |
+| Component | Security |responsibility |
+| Movie Service | Independent token validation, public catalog reads and `movie:manage` enforcement for catalog mutations |
+| User Service | Authentication, OAuth2/OIDC endpoints, clients, grants, consent, key ownership, and token issuance/revocation |
+| Inventory Service | Independent token validation, inventory/showtime administration and `inventory:write` enforcement for booking transitions |
 | `common-security` | Reusable Resource Server configuration, JWT validation, claim-to-authority mapping, security context helpers, and standard 401/403 responses |
-| API Gateway       | Edge token validation, routing, CORS, and edge policies without becoming the sole authorization boundary                                     |
-| Business service  | Token validation plus endpoint- and domain-level authorization for its owned resources                                                       |
+| API Gateway | Reactive token validation, explicit routing, identity-header sanitization, bearer forwarding, CORS and fail-closed edge policy | |
+| Business service | Token validation plus endpoint- and domain-level authorization for its owned resources |
 
 Security principles:
 

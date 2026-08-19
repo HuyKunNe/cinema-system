@@ -101,7 +101,7 @@ Verified endpoint authorization:
 
 - approved ShowSeat query endpoints are public;
 - generation and availability administration require `inventory:manage`;
-- hold, book and release require `ROLE_SERVICE`;
+- hold, book and release require the Client Credentials scope `inventory:write`;
 - unauthenticated, forbidden and successful-access cases are tested;
 - JWT role and permission claims are mapped to granted authorities;
 - blank and duplicate authorities are removed.
@@ -111,7 +111,7 @@ Verified endpoint authorization:
 Current next checkpoint:
 
 ```text
-R25.13 — Gateway and Resource Server integration — NEXT
+R25.14 — Security and protocol verification — NEXT
 
 **R25 — User Service**
 
@@ -132,11 +132,23 @@ R25.9 — OAuth2 clients and grant types — DONE
 R25.10 — JWT claims and JWK signing — DONE
 R25.11.1–R25.11.11 — refresh security, auditing, concurrency and closure — DONE
 R25.12 — profile and account lifecycle APIs — DONE
+R25.13 — Gateway and Resource Server integration — DONE
 
 Active checkpoint:
-R25.13 — Gateway and Resource Server integration — NEXT
+R25.14 — Security and protocol verification — NEXT
 
 ```
+
+R25.13 completed:
+
+- Gateway uses reactive JWT validation and shared reactive `401`/`403` responses.
+- Gateway exposes only explicit routes and disables Discovery Locator routes.
+- Gateway removes untrusted identity headers while preserving bearer tokens.
+- Movie Service requires `movie:manage` for catalog mutations.
+- Inventory administration requires `inventory:manage`.
+- Showtime administration requires `showtime:manage`.
+- ShowSeat hold, book and release require `inventory:write`.
+- Gateway, Movie Service and Inventory Service validate tokens independently.
 
 ADR-013 accepts the following decisions:
 
@@ -778,8 +790,7 @@ R24 met all completion requirements on 2026-08-04.
 ---
 
 # Current Next Step
-
-R25.13 — Gateway and Resource Server integration — NEXT
+- R25.14 security and protocol verification — NEXT
 
 R25.11 is complete. Do not remove the post-lock `ACTIVE` state check or map a
 concurrent rotation race back to a public domain exception.

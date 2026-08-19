@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
 import org.springframework.boot.test.context.runner.ReactiveWebApplicationContextRunner;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 
 class ReactiveSecurityConfigurationTest {
@@ -19,7 +20,7 @@ class ReactiveSecurityConfigurationTest {
                                     ReactiveSecurityConfiguration.class));
 
     @Test
-    void shouldConfigureReactiveDecoderFromSharedSecurityContract() {
+    void shouldConfigureOnlyReactiveDecoderFromSharedSecurityContract() {
 
         contextRunner
                 .withPropertyValues(
@@ -27,7 +28,12 @@ class ReactiveSecurityConfigurationTest {
                         "cinema.security.oauth2.jwk-set-uri="
                                 + "https://identity.cinema.test/oauth2/jwks",
                         "cinema.security.oauth2.audience=" + "cinema-api")
-                .run(context -> assertThat(context).hasSingleBean(ReactiveJwtDecoder.class));
+                .run(
+                        context -> {
+                            assertThat(context).hasSingleBean(ReactiveJwtDecoder.class);
+
+                            assertThat(context).doesNotHaveBean(JwtDecoder.class);
+                        });
     }
 
     @Test

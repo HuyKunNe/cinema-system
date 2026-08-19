@@ -1,7 +1,7 @@
 # Changelog
 
 **Version:** 0.6
-**Current baseline:** R25.1–R25.12 completed; R25.13 active
+**Current baseline:** R25.1–R25.13 completed; R25.14 active
 **Last reviewed:** 2026-08-18
 
 ---
@@ -36,14 +36,34 @@ R1-R24         Completed
 R25.1–R25.10   Completed
 R25.11         Completed
 R25.12         Completed
-R25.13         Gateway and Resource Server integration in progress
-R25.14+        Planned User Service implementation
+R25.13         Completed
+R25.14         Security and protocol verification in progress
 R26-R28        Planned
 ```
 
 ---
 
 # Unreleased
+
+## 2026-08-19
+
+### Gateway and Resource Server Integration
+
+- Completed R25.13 Gateway and Resource Server integration.
+- Configured Gateway as a stateless reactive OAuth2 Resource Server.
+- Added shared reactive JWT decoding and JSON `401`/`403` responses.
+- Disabled automatic Discovery Locator routes and declared explicit service paths.
+- Secured Movie mutations with `movie:manage`.
+- Secured Inventory administration with `inventory:manage`.
+- Secured Showtime lifecycle operations with `showtime:manage`.
+- Secured ShowSeat hold, book and release with `inventory:write`.
+- Verified real JWT decoding independently in Gateway, Movie and Inventory.
+- Verified Client Credentials service-token authorization.
+- Preserved bearer tokens while removing untrusted client identity headers.
+- Verified invalid bearer tokens do not reach downstream routes.
+- Isolated blocking and reactive decoder creation by application type.
+- Removed redundant Inventory Resource Server dependency.
+- Advanced the active checkpoint to R25.14 security and protocol verification.
 
 ## 2026-08-18
 

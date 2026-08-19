@@ -330,6 +330,9 @@ Provides the external routing and reactive security boundary:
 - Shared reactive JSON `401 Unauthorized` and `403 Forbidden` responses
 - Bearer-token forwarding
 - Fail-closed handling for undeclared exchanges
+- Removal of untrusted client identity headers
+- Preservation of bearer tokens for independent downstream validation
+- Cross-service routing verification with invalid tokens blocked at the edge
 
 Gateway uses `common-security` and does not own signing keys, users, roles,
 permissions or domain authorization data.
@@ -345,9 +348,19 @@ rules.
 
 ## movie-service
 
+- Public Movie and Genre reads
+- `movie:manage` enforcement for Movie and Genre mutations
+- Independent servlet JWT validation
+
 Owns movies, genres, movie lifecycle, and movie-query APIs.
 
 ## inventory-service
+
+- Public inventory and showtime reads
+- `inventory:manage` enforcement for inventory administration
+- `showtime:manage` enforcement for showtime lifecycle operations
+- `inventory:write` enforcement for ShowSeat hold, book and release
+- Independent servlet JWT and service-token validation
 
 Owns cinemas, rooms, seats, showtimes, show-seat inventory, seat state
 transitions, and seat concurrency control. No other service may directly
@@ -465,7 +478,7 @@ resource ownership, allowed state transitions, and privileged operations.
 - [ ] No business service accesses another service's datasource
 - [ ] Inventory Service remains the sole owner of show-seat writes and locks
 - [ ] User Service remains the sole Authorization Server and signing-key owner
-- [ ] Gateway and protected services use `common-security` as Resource Servers
+- [x] Gateway and protected services use `common-security` as Resource Servers
 - [ ] `common-security` contains no token issuer or refresh-token persistence
 - [ ] Domain failures use `common-exception`, not `IllegalArgumentException`
 - [ ] MapStruct implementations are generated in focused and root reactor builds

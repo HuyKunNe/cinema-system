@@ -24,17 +24,17 @@ deployable. Only completed roadmap checkpoints define operational capability.
 
 # Current Deployment Status
 
-| Component            | Round    | Status                                                            |
-| -------------------- | -------- | ----------------------------------------------------------------- | --- |
-| Config Server        | R20      | Implemented                                                       |
-| Discovery Server     | R21      | Implemented                                                       |
-| API Gateway          | R25.13.2 | Reactive Resource Server security and explicit routes implemented |     |
-| Movie Service        | R23      | Implemented                                                       |
-| Inventory Service    | R24      | Implemented; protected runtime requires issuer/JWK configuration  |
-| User Service         | R25      | R25.8 foundation implemented; R25.9 client/grant work in progress |
-| Booking Service      | R26      | Not implemented                                                   |
-| Payment Service      | R27      | Not implemented                                                   |
-| Notification Service | R28      | Not implemented                                                   |
+| Component            | Round  | Status                                                            |
+| -------------------- | ------ | ----------------------------------------------------------------- |
+| Config Server        | R20    | Implemented                                                       |
+| Discovery Server     | R21    | Implemented                                                       |
+| API Gateway          | R25.13 | Reactive Resource Server security and explicit routes implemented |
+| Movie Service        | R23    | Implemented with independent Resource Server security             |
+| Inventory Service    | R24    | Implemented with hardened independent Resource Server security    |
+| User Service         | R25.13 | Identity platform and integration through R25.13 implemented      |
+| Booking Service      | R26    | Not implemented                                                   |
+| Payment Service      | R27    | Not implemented                                                   |
+| Notification Service | R28    | Not implemented                                                   |
 
 The Gateway validates bearer access tokens as a reactive OAuth2 Resource Server.
 It validates signature, issuer, timestamps and the required `cinema-api` audience
@@ -411,8 +411,12 @@ Confirm:
 - JWT issuer, JWK Set, and `cinema-api` audience configuration.
 - Public ShowSeat endpoints behave as documented.
 - Management operations require `inventory:manage`.
-- Hold, book, and release operations require `ROLE_SERVICE`.
+- Hold, book, and release operations require `inventory:write`.
 - Standard JSON `401` and `403` responses are returned.
+- Client-supplied identity headers are removed.
+- The original bearer token is forwarded.
+- Invalid bearer tokens do not reach downstream routes.
+- Movie and Inventory services validate forwarded tokens independently.
 
 Inventory Service owns ShowSeat transitions and concurrency control. Booking
 Service must never access its tables or locks.

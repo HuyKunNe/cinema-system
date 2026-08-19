@@ -2628,18 +2628,52 @@ The implemented ShowSeat endpoint policy is:
 | Query ShowSeats               | Public             |
 | Generate ShowSeats            | `inventory:manage` |
 | Mark available or unavailable | `inventory:manage` |
-| Hold, book or release         | `ROLE_SERVICE`     |
+| Hold, book or release         | `inventory:write`  |
 
-Inventory Service maps:
+Inventory Service uses the shared authority converter:
 
-- `roles: ["SERVICE"]` to `ROLE_SERVICE`;
-- already-prefixed roles without adding another prefix;
-- values from `permissions` directly to granted authorities.
+- role claims are mapped with the `ROLE_` prefix;
+- already-prefixed roles do not receive a duplicate prefix;
+- values from `permissions` are mapped directly to granted authorities.
+
+Client Credentials tokens use registered scopes as permissions. ShowSeat hold,
+book and release require `inventory:write`; they do not depend on a service role.
 
 Blank and duplicate authorities are removed.
 
 Authorization tests cover applicable unauthenticated, forbidden and
 successful-access cases.
+
+## Cross-Service Bearer Security
+
+The implemented cross-service contract is:
+
+1. The caller obtains a signed access token from User Service.
+2. Gateway independently validates the token.
+3. Gateway removes client-supplied identity headers.
+4. Gateway preserves and forwards the bearer token.
+5. The downstream service independently validates the token.
+6. The downstream service enforces its owned authority and business rules.
+
+The following client-supplied headers are removed at Gateway:
+
+```text
+X-User-Id
+X-Roles
+X-Permissions
+X-Client-Id
+
+These headers cannot replace bearer authentication.
+
+Client Credentials tokens:
+
+- use the registered client ID as subject;
+- contain the required cinema-api audience;
+- contain authorized scopes in permissions;
+- do not contain a username;
+- do not automatically receive human roles;
+- are accepted only for endpoint-specific authorized scopes.
+```
 
 ## Plain-text password storage
 

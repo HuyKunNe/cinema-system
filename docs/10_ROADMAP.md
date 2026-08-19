@@ -1252,7 +1252,7 @@ R25.12 is complete. Current-user ownership, password secrecy, account-state
 transitions, administrative authorization, revocation, durable auditing and rollback
 behavior are verified
 
-#### ⏳ R25.13 — Gateway and Resource Server integration
+#### ✅ R25.13 — Gateway and Resource Server integration
 
 ##### ✅ R25.13.2 — Gateway reactive Resource Server security
 
@@ -1275,11 +1275,50 @@ Gateway security is complete for the current R25.13 scope. The Gateway validates
 bearer tokens and forwards them to downstream services, but it is not the sole
 authorization boundary.
 
-Remaining R25.13 scope:
+##### ✅ R25.13.3 — Movie Service Resource Server security
 
-- Movie Service Resource Server integration;
-- remaining Inventory Service Resource Server verification;
-- service-token and cross-service security tests.
+- public Movie and Genre reads;
+- `movie:manage` for catalog mutations;
+- stateless servlet JWT validation;
+- shared JSON `401` and `403` responses;
+- fail-closed endpoint policy.
+
+##### ✅ R25.13.4 — Inventory Resource Server hardening
+
+- public inventory and showtime reads;
+- `inventory:manage` for inventory administration;
+- `showtime:manage` for showtime lifecycle changes;
+- fail-closed endpoint policy.
+
+##### ✅ R25.13.5 — Independent Resource Server verification
+
+- real servlet JWT decoding in Movie and Inventory services;
+- independent signature, issuer, audience and timestamp validation;
+- no trust in forwarded identity headers.
+
+##### ✅ R25.13.6 — Service-token security verification
+
+- Client Credentials scopes mapped through the `permissions` claim;
+- `inventory:write` required for hold, book and release;
+- read-only, administrative and spoofed identities rejected;
+- service tokens do not automatically receive broad roles.
+
+##### ✅ R25.13.7 — Cross-service security verification
+
+- Gateway preserves validated bearer tokens;
+- invalid tokens do not reach downstream routes;
+- client-supplied identity headers are removed;
+- downstream services remain independent authorization boundaries.
+
+##### ✅ R25.13.8 — Integration cleanup and documentation
+
+- servlet and reactive decoders are conditionally isolated;
+- duplicate Resource Server dependencies are removed;
+- root verification and documentation synchronization are complete.
+
+R25.13 is complete. Gateway, Movie Service and Inventory Service use shared
+Resource Server mechanics while maintaining independent authentication and
+authorization boundaries.
 
 #### ⏳ R25.14 — security and protocol verification
 

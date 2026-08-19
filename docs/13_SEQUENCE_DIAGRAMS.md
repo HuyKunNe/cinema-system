@@ -8,16 +8,16 @@ Version: R25
 
 This document visualizes implemented interactions and approved target flows.
 
-| Flow                                                    | Status                                             |
-| ------------------------------------------------------- | -------------------------------------------------- |
-| Inventory ShowSeat transitions and database concurrency | Implemented in R24                                 |
-| Shared servlet Resource Server responses                | Implemented for Inventory in R25.1                 |
-| Booking, Payment, and Notification Saga                 | Target for R26-R28                                 |
-| User account lifecycle and email verification           | Implemented through R25.7                          |
-| User Service Authorization Server/OIDC foundation       | Implemented in R25.8                               |
+| Flow                                                    | Status                                               |
+| ------------------------------------------------------- | ---------------------------------------------------- |
+| Inventory ShowSeat transitions and database concurrency | Implemented in R24                                   |
+| Shared servlet Resource Server responses                | Implemented for Inventory in R25.1                   |
+| Booking, Payment, and Notification Saga                 | Target for R26-R28                                   |
+| User account lifecycle and email verification           | Implemented through R25.7                            |
+| User Service Authorization Server/OIDC foundation       | Implemented in R25.8                                 |
 | OAuth2 registered clients and approved grant flows      | Partially implemented in R25.9; protocol flow target |
-| Gateway reactive Resource Server                        | Target for R25.13                                  |
-| Hardened multi-instance Outbox retry/claim              | Target; not implemented by current `common-outbox` |
+| Gateway reactive Resource Server                        | Implemented in R25.13                                |
+| Hardened multi-instance Outbox retry/claim              | Target; not implemented by current `common-outbox`   |
 
 A target diagram is an approved interaction contract, not proof that every
 participant currently exists.
@@ -65,7 +65,7 @@ sequenceDiagram
     participant DB as Inventory Database
 
     Caller->>Inventory: POST ShowSeat hold with bearer token
-    Inventory->>Security: Validate JWT and ROLE_SERVICE
+    Inventory->>Security: Validate JWT and inventory:write
     Security-->>Inventory: UUID principal and authorities
     Inventory->>DB: Load ShowSeat with PESSIMISTIC_WRITE
 
@@ -82,6 +82,26 @@ Inventory Service is the only owner of the ShowSeat transaction. The caller's
 booking ID is an external UUID reference and has no cross-database foreign key.
 
 ---
+
+# Implemented Cross-Service Security Flow
+
+```mermaid
+sequenceDiagram
+    participant Client as Service Client
+    participant User as User Service
+    participant Gateway as API Gateway
+    participant Inventory as Inventory Service
+
+    Client->>User: Client Credentials with inventory:write
+    User-->>Client: RS256 bearer token
+    Client->>Gateway: Request with bearer and untrusted headers
+    Gateway->>Gateway: Validate signature, issuer, time and audience
+    Gateway->>Gateway: Remove untrusted identity headers
+    Gateway->>Inventory: Forward original bearer token
+    Inventory->>Inventory: Validate token independently
+    Inventory->>Inventory: Require inventory:write
+    Inventory-->>Client: Authorized response
+```
 
 # Implemented Inventory Book and Release Flow
 
@@ -502,10 +522,10 @@ rejected.
 - [ ] User Service is the sole token issuer and signing-key owner
 - [ ] Authorization Code uses PKCE
 - [ ] Resource Owner Password Credentials is absent
-- [ ] Resource Servers validate signature, issuer, timestamps, and `cinema-api`
+- [x] Resource Servers validate signature, issuer, timestamps, and `cinema-api`
       audience
 - [ ] Refresh rotation and reuse handling are atomic and tested when implemented
-- [ ] Gateway reactive security remains planned until R25.13 passes
+- [x] Gateway reactive security is implemented and verified
 - [ ] No password, token, client secret, MFA material, or private key appears in
       events or logs
 - [ ] `mvn clean verify` passes
