@@ -1,9 +1,5 @@
 package com.cinema.inventory.config;
 
-import com.cinema.common.security.jwt.CinemaJwtAuthenticationConverter;
-import com.cinema.common.security.web.CinemaAccessDeniedHandler;
-import com.cinema.common.security.web.CinemaAuthenticationEntryPoint;
-
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,6 +8,10 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+
+import com.cinema.common.security.jwt.CinemaJwtAuthenticationConverter;
+import com.cinema.common.security.web.CinemaAccessDeniedHandler;
+import com.cinema.common.security.web.CinemaAuthenticationEntryPoint;
 
 @Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
@@ -76,7 +76,7 @@ public class InventorySecurityConfig {
                                                 "/api/v1/show-seats/*/hold",
                                                 "/api/v1/show-seats/*/book",
                                                 "/api/v1/show-seats/*/release")
-                                        .hasRole("SERVICE")
+                                        .hasAuthority("inventory:write")
                                         .requestMatchers(SHOWTIME_MANAGEMENT_ENDPOINTS)
                                         .hasAuthority("showtime:manage")
                                         .requestMatchers(INVENTORY_MANAGEMENT_ENDPOINTS)
