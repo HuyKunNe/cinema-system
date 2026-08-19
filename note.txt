@@ -28,6 +28,8 @@ $env:USER_JWT_PUBLIC_KEY_LOCATION = "file:E:/java/cinema-system/.local/keys/user
 $env:CINEMA_AUTH_ISSUER = "http://localhost:8082"
 $env:CINEMA_AUTH_JWK_SET_URI = "http://localhost:8082/oauth2/jwks"
 $env:CINEMA_AUTH_AUDIENCE = "cinema-api"
+$env:CONFIG_SERVER_URL = "http://localhost:8888"
+$env:EUREKA_SERVER_URL = "http://localhost:8761/eureka/"
 
 mvn -pl infrastructure/config-service spring-boot:run
 mvn -pl infrastructure/discovery-service spring-boot:run
