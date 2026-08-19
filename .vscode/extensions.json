@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "editorconfig.editorconfig",
+    "esbenp.prettier-vscode",
+    "redhat.java",
+    "JoseVSeb.google-java-format-for-vs-code"
+  ]
+}

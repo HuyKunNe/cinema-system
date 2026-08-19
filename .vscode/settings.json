@@ -1,0 +1,56 @@
+{
+  "java.compile.nullAnalysis.mode": "disabled",
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "java.autobuild.enabled": false,
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "never"
+  },
+
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "editor.wordWrap": "wordWrapColumn",
+    "editor.wordWrapColumn": 100,
+    "editor.rulers": [100]
+  },
+
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+
+  "[yaml]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+
+  "[java]": {
+    "editor.defaultFormatter": "JoseVSeb.google-java-format-for-vs-code",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": false
+  },
+
+  "java.format.enabled": true,
+  "java.format.settings.url": "",
+  "java.format.settings.profile": "",
+  "java.format.settings.google.style": "aosp",
+  "java.format.settings.google.extra": "--aosp",
+
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  "prettier.useEditorConfig": true,
+  "prettier.proseWrap": "always",
+  "prettier.printWidth": 100,
+  "prettier.tabWidth": 4,
+  "prettier.useTabs": false
+}

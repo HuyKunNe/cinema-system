@@ -1,6 +1,6 @@
 target/
 .idea/
-.vscode/
+# .vscode/
 *.iml
 
 logs/
@@ -11,5 +11,5 @@ logs/
 .DS_Store
 Thumbs.db
 
-.local/
+# .local/
 *.pem
