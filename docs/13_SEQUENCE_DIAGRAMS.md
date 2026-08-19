@@ -447,7 +447,7 @@ sequenceDiagram
     Auth->>Auth: Validate encoded secret and allowed scopes
     Auth-->>ServiceClient: Short-lived RS256 service access token
     ServiceClient->>API: Bearer token
-    API->>API: Validate JWT and ROLE_SERVICE or permission
+    API->>API: Validate JWT and required permission
     API-->>ServiceClient: Authorized service operation
 ```
 

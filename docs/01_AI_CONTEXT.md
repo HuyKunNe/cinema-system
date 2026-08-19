@@ -644,8 +644,9 @@ Movie Service and Inventory Service have completed their implementation,
 testing and verification requirements.
 
 User Service is the active business-service round.
-  R25.1–R25.12 are complete.
-  R25.13 Gateway and Resource Server integration is the active checkpoint.
+
+R25.1–R25.13 are complete. R25.14 security and protocol verification is the
+active checkpoint.
 
 
 ---
@@ -808,6 +809,7 @@ Accepted concurrency behavior:
 - raw token values never appear in persistence, audit or error responses.
 
 Remaining checkpoints:
-R25.12 is complete. Preserve current-user ownership, password secrecy, CSRF
-protection, `user:manage` enforcement, account-transition revocation and durable
-privileged-operation auditing while implementing R25.13.
+
+R25.13 is complete. Preserve the implemented identity, Gateway and independent
+Resource Server boundaries while performing R25.14 security and protocol
+verification

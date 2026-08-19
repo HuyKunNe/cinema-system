@@ -280,7 +280,8 @@ refresh-token history.
 R25.11 refresh security, revocation, durable auditing, concurrency verification and
 documentation closure are complete. R25.12 profile and account lifecycle APIs,
 ownership enforcement and privileged-operation auditing are complete. R25.13 Gateway
-and Resource Server integration is active.
+and Resource Server integration is complete. R25.14 security and protocol verification
+is active.
 
 ---
 

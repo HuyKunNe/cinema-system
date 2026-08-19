@@ -413,10 +413,6 @@ Confirm:
 - Management operations require `inventory:manage`.
 - Hold, book, and release operations require `inventory:write`.
 - Standard JSON `401` and `403` responses are returned.
-- Client-supplied identity headers are removed.
-- The original bearer token is forwarded.
-- Invalid bearer tokens do not reach downstream routes.
-- Movie and Inventory services validate forwarded tokens independently.
 
 Inventory Service owns ShowSeat transitions and concurrency control. Booking
 Service must never access its tables or locks.
@@ -433,24 +429,40 @@ Bash:
 export CINEMA_AUTH_ISSUER='http://localhost:8082'
 export CINEMA_AUTH_JWK_SET_URI='http://localhost:8082/oauth2/jwks'
 export CINEMA_AUTH_AUDIENCE='cinema-api'
+
+mvn -pl infrastructure/gateway-service spring-boot:run
 ```
 
-mvn -pl infrastructure/gateway-service -am spring-boot:run
+PowerShell:
 
-```PowerShell:
+```powershell
 $env:CINEMA_AUTH_ISSUER = "http://localhost:8082"
 $env:CINEMA_AUTH_JWK_SET_URI = "http://localhost:8082/oauth2/jwks"
 $env:CINEMA_AUTH_AUDIENCE = "cinema-api"
-./mvnw -pl infrastructure/gateway-service -am spring-boot:run
+
+./mvnw -pl infrastructure/gateway-service spring-boot:run
 ```
 
-Verify the public health endpoint: http://localhost:8080/actuator/health
+Verify the public health endpoint:
+
+```text
+http://localhost:8080/actuator/health
+```
 
 Protected API requests require a valid bearer access token. The token must have:
--an RS256 signature trusted through the configured JWK Set;
--an issuer exactly matching CINEMA_AUTH_ISSUER;
--the cinema-api audience;
--valid expiration and not-before timestamps.
+
+- an RS256 signature trusted through the configured JWK Set;
+- an issuer exactly matching `CINEMA_AUTH_ISSUER`;
+- the `cinema-api` audience;
+- valid expiration and not-before timestamps.
+
+Confirm:
+
+- Client-supplied identity headers are removed.
+- The original bearer token is forwarded.
+- Invalid bearer tokens do not reach downstream routes.
+- Movie and Inventory services validate forwarded tokens independently.
+- Downstream services enforce their owned permissions.
 
 The Gateway forwards an accepted bearer token to the selected downstream service.
 The downstream service must independently validate the token and enforce its owned
