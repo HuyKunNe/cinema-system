@@ -24,24 +24,22 @@ import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
 import com.cinema.user.oauth2.model.PublicClientRegistration;
 import com.cinema.user.oauth2.model.ServiceClientRegistration;
 
-@SpringBootTest(properties = {
-        "spring.main.web-application-type=servlet",
-        "cinema.user.authorization-server.issuer=http://localhost:8082"
-})
+@SpringBootTest(
+        properties = {
+            "spring.main.web-application-type=servlet",
+            "cinema.user.authorization-server.issuer=http://localhost:8082"
+        })
 @AutoConfigureMockMvc
 @Transactional
-class OAuth2ProtocolPolicyIntegrationTest
-        extends AbstractMySqlIntegrationTest {
+class OAuth2ProtocolPolicyIntegrationTest extends AbstractMySqlIntegrationTest {
 
     private static final String REDIRECT_URI = "http://127.0.0.1:3000/callback";
 
     private static final String CODE_CHALLENGE = "bUJ6xqg2lMgH-s1pPyg09ykKDquC9hYQXLa3kT6UUXI";
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Autowired private MockMvc mockMvc;
 
-    @Autowired
-    private OAuth2ClientRegistrationService registrationService;
+    @Autowired private OAuth2ClientRegistrationService registrationService;
 
     private String publicClientId;
 
@@ -60,9 +58,7 @@ class OAuth2ProtocolPolicyIntegrationTest
                         "Protocol Web",
                         Set.of(REDIRECT_URI),
                         Set.of(),
-                        Set.of(
-                                "openid",
-                                "booking:read")));
+                        Set.of("openid", "booking:read")));
 
         registrationService.registerServiceClient(
                 new ServiceClientRegistration(
@@ -73,111 +69,173 @@ class OAuth2ProtocolPolicyIntegrationTest
     }
 
     @Test
-    void metadataShouldAdvertiseApprovedGrantTypes()
-            throws Exception {
+    void metadataShouldAdvertiseApprovedGrantTypes() throws Exception {
 
-        mockMvc.perform(get(
-                "/.well-known/oauth-authorization-server"))
+        mockMvc.perform(get("/.well-known/oauth-authorization-server"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath(
-                        "$.grant_types_supported[*]",
-                        containsInAnyOrder(
-                                "authorization_code",
-                                "client_credentials",
-                                "refresh_token")))
-                .andExpect(jsonPath(
-                        "$.code_challenge_methods_supported[*]",
-                        containsInAnyOrder("S256")));
+                .andExpect(
+                        jsonPath(
+                                "$.grant_types_supported[*]",
+                                containsInAnyOrder(
+                                        "authorization_code",
+                                        "client_credentials",
+                                        "refresh_token")))
+                .andExpect(
+                        jsonPath(
+                                "$.code_challenge_methods_supported[*]",
+                                containsInAnyOrder("S256")));
     }
 
     @Test
-    void publicAuthorizationShouldRejectMissingPkceChallenge()
-            throws Exception {
+    void publicAuthorizationShouldRejectMissingPkceChallenge() throws Exception {
 
-        mockMvc.perform(get("/oauth2/authorize")
-                .with(user("protocol-user"))
-                .queryParam("response_type", "code")
-                .queryParam("client_id", publicClientId)
-                .queryParam("redirect_uri", REDIRECT_URI)
-                .queryParam("scope", "booking:read")
-                .queryParam("state", "missing-pkce"))
+        mockMvc.perform(
+                        get("/oauth2/authorize")
+                                .with(user("protocol-user"))
+                                .queryParam("response_type", "code")
+                                .queryParam("client_id", publicClientId)
+                                .queryParam("redirect_uri", REDIRECT_URI)
+                                .queryParam("scope", "booking:read")
+                                .queryParam("state", "missing-pkce"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrlPattern(
-                        REDIRECT_URI
-                                + "?error=invalid_request*code_challenge*"));
+                .andExpect(
+                        redirectedUrlPattern(
+                                REDIRECT_URI + "?error=invalid_request*code_challenge*"));
     }
 
     @Test
-    void publicAuthorizationWithS256PkceShouldReachConsent()
-            throws Exception {
+    void publicAuthorizationWithS256PkceShouldReachConsent() throws Exception {
 
-        mockMvc.perform(get("/oauth2/authorize")
-                .with(user("protocol-user"))
-                .queryParam("response_type", "code")
-                .queryParam("client_id", publicClientId)
-                .queryParam("redirect_uri", REDIRECT_URI)
-                .queryParam("scope", "booking:read")
-                .queryParam("state", "valid-pkce")
-                .queryParam("code_challenge", CODE_CHALLENGE)
-                .queryParam("code_challenge_method", "S256"))
+        mockMvc.perform(
+                        get("/oauth2/authorize")
+                                .with(user("protocol-user"))
+                                .queryParam("response_type", "code")
+                                .queryParam("client_id", publicClientId)
+                                .queryParam("redirect_uri", REDIRECT_URI)
+                                .queryParam("scope", "booking:read")
+                                .queryParam("state", "valid-pkce")
+                                .queryParam("code_challenge", CODE_CHALLENGE)
+                                .queryParam("code_challenge_method", "S256"))
                 .andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith(
-                        "text/html"))
-                .andExpect(content().string(
-                        org.hamcrest.Matchers.allOf(
-                                org.hamcrest.Matchers.containsString(
-                                        "Consent required"),
-                                org.hamcrest.Matchers.containsString(
-                                        publicClientId),
-                                org.hamcrest.Matchers.containsString(
-                                        "booking:read"))));
+                .andExpect(content().contentTypeCompatibleWith("text/html"))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.allOf(
+                                                org.hamcrest.Matchers.containsString(
+                                                        "Consent required"),
+                                                org.hamcrest.Matchers.containsString(
+                                                        publicClientId),
+                                                org.hamcrest.Matchers.containsString(
+                                                        "booking:read"))));
     }
 
     @Test
-    void serviceClientShouldNotUseAuthorizationCodeEndpoint()
-            throws Exception {
+    void serviceClientShouldNotUseAuthorizationCodeEndpoint() throws Exception {
 
-        mockMvc.perform(get("/oauth2/authorize")
-                .with(user("protocol-user"))
-                .queryParam("response_type", "code")
-                .queryParam("client_id", serviceClientId)
-                .queryParam("redirect_uri", REDIRECT_URI)
-                .queryParam("scope", "inventory:write")
-                .queryParam("state", "service-code"))
+        mockMvc.perform(
+                        get("/oauth2/authorize")
+                                .with(user("protocol-user"))
+                                .queryParam("response_type", "code")
+                                .queryParam("client_id", serviceClientId)
+                                .queryParam("redirect_uri", REDIRECT_URI)
+                                .queryParam("scope", "inventory:write")
+                                .queryParam("state", "service-code"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void clientCredentialsShouldRejectIncorrectSecret()
-            throws Exception {
+    void clientCredentialsShouldRejectIncorrectSecret() throws Exception {
 
-        mockMvc.perform(post("/oauth2/token")
-                .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors
-                        .httpBasic(
-                                serviceClientId,
-                                "incorrect-secret"))
-                .param("grant_type", "client_credentials")
-                .param("scope", "inventory:write"))
+        mockMvc.perform(
+                        post("/oauth2/token")
+                                .with(
+                                        org.springframework.security.test.web.servlet.request
+                                                .SecurityMockMvcRequestPostProcessors.httpBasic(
+                                                serviceClientId, "incorrect-secret"))
+                                .param("grant_type", "client_credentials")
+                                .param("scope", "inventory:write"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error")
-                        .value("invalid_client"));
+                .andExpect(jsonPath("$.error").value("invalid_client"));
     }
 
     @Test
-    void publicClientShouldNotAuthenticateWithClientSecret()
-            throws Exception {
+    void publicClientShouldNotAuthenticateWithClientSecret() throws Exception {
 
-        mockMvc.perform(post("/oauth2/token")
-                .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors
-                        .httpBasic(
-                                publicClientId,
-                                "invented-secret"))
-                .param("grant_type", "authorization_code")
-                .param("code", "not-a-code")
-                .param("redirect_uri", REDIRECT_URI)
-                .param("code_verifier", "not-a-verifier"))
+        mockMvc.perform(
+                        post("/oauth2/token")
+                                .with(
+                                        org.springframework.security.test.web.servlet.request
+                                                .SecurityMockMvcRequestPostProcessors.httpBasic(
+                                                publicClientId, "invented-secret"))
+                                .param("grant_type", "authorization_code")
+                                .param("code", "not-a-code")
+                                .param("redirect_uri", REDIRECT_URI)
+                                .param("code_verifier", "not-a-verifier"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error")
-                        .value("invalid_client"));
+                .andExpect(jsonPath("$.error").value("invalid_client"));
+    }
+
+    @Test
+    void publicAuthorizationShouldRejectPlainPkceMethod() throws Exception {
+
+        mockMvc.perform(
+                        get("/oauth2/authorize")
+                                .with(user("protocol-user"))
+                                .queryParam("response_type", "code")
+                                .queryParam("client_id", publicClientId)
+                                .queryParam("redirect_uri", REDIRECT_URI)
+                                .queryParam("scope", "booking:read")
+                                .queryParam("state", "plain-pkce")
+                                .queryParam("code_challenge", CODE_CHALLENGE)
+                                .queryParam("code_challenge_method", "plain"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern(REDIRECT_URI + "?error=invalid_request*"));
+    }
+
+    @Test
+    void publicClientShouldNotUseClientCredentials() throws Exception {
+
+        mockMvc.perform(
+                        post("/oauth2/token")
+                                .contentType("application/x-www-form-urlencoded")
+                                .param("grant_type", "client_credentials")
+                                .param("client_id", publicClientId)
+                                .param("scope", "booking:read"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("invalid_client"));
+    }
+
+    @Test
+    void serviceClientShouldNotUseRefreshTokenGrant() throws Exception {
+
+        mockMvc.perform(
+                        post("/oauth2/token")
+                                .with(
+                                        org.springframework.security.test.web.servlet.request
+                                                .SecurityMockMvcRequestPostProcessors.httpBasic(
+                                                serviceClientId, "protocol-service-secret"))
+                                .contentType("application/x-www-form-urlencoded")
+                                .param("grant_type", "refresh_token")
+                                .param("refresh_token", "invented-refresh-token"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("invalid_grant"));
+    }
+
+    @Test
+    void passwordGrantShouldBeUnsupported() throws Exception {
+
+        mockMvc.perform(
+                        post("/oauth2/token")
+                                .with(
+                                        org.springframework.security.test.web.servlet.request
+                                                .SecurityMockMvcRequestPostProcessors.httpBasic(
+                                                serviceClientId, "protocol-service-secret"))
+                                .contentType("application/x-www-form-urlencoded")
+                                .param("grant_type", "password")
+                                .param("username", "user@example.com")
+                                .param("password", "password"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("unsupported_grant_type"));
     }
 }
