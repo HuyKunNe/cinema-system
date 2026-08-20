@@ -26,6 +26,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -57,6 +59,7 @@ import com.cinema.user.entity.Role;
 import com.cinema.user.entity.SecurityAuditEvent;
 import com.cinema.user.entity.User;
 import com.cinema.user.entity.UserRole;
+import com.cinema.user.enums.AccountStatus;
 import com.cinema.user.enums.RoleName;
 import com.cinema.user.oauth2.model.ConfidentialUserClientRegistration;
 import com.cinema.user.oauth2.token.RefreshTokenHasher;
@@ -70,6 +73,7 @@ import com.cinema.user.security.audit.SecurityAuditActorType;
 import com.cinema.user.security.audit.SecurityAuditEventType;
 import com.cinema.user.security.audit.SecurityAuditOutcome;
 import com.cinema.user.security.audit.SecurityAuditTargetType;
+import com.cinema.user.service.UserAccountLifecycleService;
 import com.cinema.user.service.UserCredentialService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -133,6 +137,8 @@ class RefreshTokenRotationIntegrationTest extends AbstractMySqlIntegrationTest {
     @Autowired private PlatformTransactionManager transactionManager;
 
     @Autowired private SecurityAuditEventRepository securityAuditEventRepository;
+
+    @Autowired private UserAccountLifecycleService userAccountLifecycleService;
 
     @DynamicPropertySource
     static void configureSigningProperties(DynamicPropertyRegistry registry) {
@@ -866,6 +872,124 @@ class RefreshTokenRotationIntegrationTest extends AbstractMySqlIntegrationTest {
                 .andExpect(jsonPath("$.error").value("invalid_client"));
     }
 
+    @ParameterizedTest
+    @EnumSource(
+            value = AccountStatus.class,
+            names = {"LOCKED", "DISABLED"})
+    void lockedOrDisabledUserShouldNotRefreshExistingAuthorization(AccountStatus accountStatus)
+            throws Exception {
+
+        ConcurrentRefreshFixture fixture = createConcurrentRefreshFixture();
+
+        String refreshToken = fixture.refreshToken();
+
+        String refreshTokenHash = refreshTokenHasher.hash(refreshToken);
+
+        OAuth2Authorization authorizationBeforeTransition =
+                authorizationService.findById(fixture.authorizationId());
+
+        assertThat(authorizationBeforeTransition).isNotNull();
+
+        assertThat(authorizationBeforeTransition.getAccessToken()).isNotNull();
+
+        assertThat(authorizationBeforeTransition.getAccessToken().isInvalidated()).isFalse();
+
+        assertThat(authorizationBeforeTransition.getRefreshToken()).isNotNull();
+
+        assertThat(authorizationBeforeTransition.getRefreshToken().isInvalidated()).isFalse();
+
+        RefreshTokenHistory historyBeforeTransition =
+                refreshTokenHistoryRepository.findByTokenHash(refreshTokenHash).orElseThrow();
+
+        assertThat(historyBeforeTransition.getStatus()).isEqualTo(RefreshTokenStatus.ACTIVE);
+
+        assertThat(historyBeforeTransition.getRevokedAt()).isNull();
+
+        switch (accountStatus) {
+            case LOCKED -> userAccountLifecycleService.lock(fixture.userId());
+
+            case DISABLED -> userAccountLifecycleService.disable(fixture.userId());
+
+            default ->
+                    throw new IllegalArgumentException(
+                            "Unsupported account status: " + accountStatus);
+        }
+
+        User transitionedUser = userRepository.findById(fixture.userId()).orElseThrow();
+
+        assertThat(transitionedUser.getStatus()).isEqualTo(accountStatus);
+
+        RefreshTokenHistory historyAfterTransition =
+                refreshTokenHistoryRepository.findByTokenHash(refreshTokenHash).orElseThrow();
+
+        assertThat(historyAfterTransition.getStatus()).isEqualTo(RefreshTokenStatus.REVOKED);
+
+        assertThat(historyAfterTransition.getRevokedAt()).isNotNull();
+
+        OAuth2Authorization authorizationAfterTransition =
+                authorizationService.findById(fixture.authorizationId());
+
+        assertThat(authorizationAfterTransition).isNotNull();
+
+        assertThat(authorizationAfterTransition.getAccessToken()).isNotNull();
+
+        assertThat(authorizationAfterTransition.getAccessToken().isInvalidated()).isTrue();
+
+        assertThat(authorizationAfterTransition.getRefreshToken()).isNotNull();
+
+        assertThat(authorizationAfterTransition.getRefreshToken().isInvalidated()).isTrue();
+
+        MvcResult refreshResult =
+                mockMvc.perform(
+                                post("/oauth2/token")
+                                        .with(httpBasic(CLIENT_ID, RAW_CLIENT_SECRET))
+                                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                        .param("grant_type", "refresh_token")
+                                        .param("refresh_token", refreshToken))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(jsonPath("$.error").value("invalid_grant"))
+                        .andReturn();
+
+        String responseBody = refreshResult.getResponse().getContentAsString();
+
+        assertThat(responseBody)
+                .doesNotContain(
+                        refreshToken, refreshTokenHash, "\"access_token\"", "\"refresh_token\"");
+
+        RefreshTokenHistory historyAfterRejectedRefresh =
+                refreshTokenHistoryRepository.findByTokenHash(refreshTokenHash).orElseThrow();
+
+        assertThat(historyAfterRejectedRefresh.getStatus()).isEqualTo(RefreshTokenStatus.REVOKED);
+
+        assertThat(historyAfterRejectedRefresh.getReusedAt()).isNull();
+
+        assertThat(
+                        refreshTokenHistoryRepository.findAllByAuthorizationId(
+                                fixture.authorizationId()))
+                .singleElement()
+                .satisfies(
+                        history -> {
+                            assertThat(history.getStatus()).isEqualTo(RefreshTokenStatus.REVOKED);
+
+                            assertThat(history.getRevokedAt()).isNotNull();
+
+                            assertThat(history.getReusedAt()).isNull();
+
+                            assertThat(history.getTokenHash())
+                                    .isEqualTo(refreshTokenHash)
+                                    .doesNotContain(refreshToken);
+                        });
+
+        OAuth2Authorization authorizationAfterRejectedRefresh =
+                authorizationService.findById(fixture.authorizationId());
+
+        assertThat(authorizationAfterRejectedRefresh).isNotNull();
+
+        assertThat(authorizationAfterRejectedRefresh.getAccessToken().isInvalidated()).isTrue();
+
+        assertThat(authorizationAfterRejectedRefresh.getRefreshToken().isInvalidated()).isTrue();
+    }
+
     private User createActiveUser() {
         return executeInTransaction(
                 () -> {
@@ -951,7 +1075,7 @@ class RefreshTokenRotationIntegrationTest extends AbstractMySqlIntegrationTest {
 
         assertThat(authorization).isNotNull();
 
-        return new ConcurrentRefreshFixture(refreshToken, authorization.getId());
+        return new ConcurrentRefreshFixture(user.getId(), refreshToken, authorization.getId());
     }
 
     private List<MvcResult> performConcurrentRefresh(String refreshToken) throws Exception {
@@ -1168,5 +1292,6 @@ class RefreshTokenRotationIntegrationTest extends AbstractMySqlIntegrationTest {
         return Objects.requireNonNull(transactionTemplate.execute(status -> operation.get()));
     }
 
-    private record ConcurrentRefreshFixture(String refreshToken, String authorizationId) {}
+    private record ConcurrentRefreshFixture(
+            UUID userId, String refreshToken, String authorizationId) {}
 }
