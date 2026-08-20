@@ -88,6 +88,24 @@ public final class BookingErrorCode implements ErrorCode {
                     "BOOKING_SEAT_SNAPSHOT_ALREADY_COMPLETED",
                     "Booking seat snapshot has already been completed");
 
+    public static final BookingErrorCode REQUEST_FINGERPRINT_REQUIRED =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_REQUEST_FINGERPRINT_REQUIRED",
+                    "Booking request fingerprint is required");
+
+    public static final BookingErrorCode CLIENT_REQUEST_ID_PAYLOAD_MISMATCH =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_CLIENT_REQUEST_ID_PAYLOAD_MISMATCH",
+                    "Client request ID has already been used with a different request");
+
+    public static final BookingErrorCode REQUEST_FINGERPRINT_GENERATION_FAILED =
+            new BookingErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "BOOKING_REQUEST_FINGERPRINT_GENERATION_FAILED",
+                    "Booking request fingerprint could not be generated");
+
     private final ErrorCategory category;
 
     private final String code;

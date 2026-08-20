@@ -40,6 +40,14 @@ public class Booking extends BaseEntity {
     @Column(name = "client_request_id", nullable = false, length = 100)
     private String clientRequestId;
 
+    @Column(
+            name = "request_fingerprint",
+            nullable = false,
+            updatable = false,
+            length = 64,
+            columnDefinition = "CHAR(64)")
+    private String requestFingerprint;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 50)
     private BookingStatus status = BookingStatus.PENDING;
@@ -68,17 +76,20 @@ public class Booking extends BaseEntity {
             UUID userId,
             UUID showtimeId,
             String clientRequestId,
+            String requestFingerprint,
             OffsetDateTime expiresAt,
             OffsetDateTime now) {
 
         validateUserId(userId);
         validateShowtimeId(showtimeId);
         validateClientRequestId(clientRequestId);
+        validateRequestFingerprint(requestFingerprint);
         validateExpiration(expiresAt, now);
 
         this.userId = userId;
         this.showtimeId = showtimeId;
         this.clientRequestId = clientRequestId.trim();
+        this.requestFingerprint = requestFingerprint;
         this.status = BookingStatus.PENDING;
         this.expiresAt = expiresAt;
     }
@@ -93,6 +104,10 @@ public class Booking extends BaseEntity {
 
     public String getClientRequestId() {
         return clientRequestId;
+    }
+
+    public String getRequestFingerprint() {
+        return requestFingerprint;
     }
 
     public BookingStatus getStatus() {
@@ -155,6 +170,14 @@ public class Booking extends BaseEntity {
 
         if (!expiresAt.isAfter(now)) {
             throw new ValidationException(BookingErrorCode.INVALID_EXPIRATION);
+        }
+    }
+
+    private static void validateRequestFingerprint(String requestFingerprint) {
+
+        if (requestFingerprint == null || requestFingerprint.length() != 64) {
+
+            throw new ValidationException(BookingErrorCode.REQUEST_FINGERPRINT_REQUIRED);
         }
     }
 }

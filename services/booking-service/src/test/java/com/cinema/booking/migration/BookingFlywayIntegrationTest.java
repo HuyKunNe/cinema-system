@@ -226,4 +226,40 @@ class BookingFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                         "idx_bookings_status_expiration",
                         "idx_booking_seats_booking");
     }
+
+    @Test
+    void requestFingerprintShouldBeRequiredSha256HexColumn() {
+        Map<String, Object> column =
+                jdbcTemplate.queryForMap(
+                        """
+                        SELECT data_type,
+                               character_maximum_length,
+                               is_nullable
+                        FROM information_schema.columns
+                        WHERE table_schema = DATABASE()
+                          AND table_name = 'bookings'
+                          AND column_name = 'request_fingerprint'
+                        """);
+
+        assertThat(column.get("data_type")).asString().isEqualToIgnoringCase("char");
+
+        assertThat(((Number) column.get("character_maximum_length")).longValue()).isEqualTo(64L);
+
+        assertThat(column.get("is_nullable")).asString().isEqualToIgnoringCase("NO");
+    }
+
+    @Test
+    void flywaySchemaHistoryShouldContainSuccessfulVersionsOneAndTwo() {
+        Integer count =
+                jdbcTemplate.queryForObject(
+                        """
+                        SELECT COUNT(*)
+                        FROM flyway_schema_history
+                        WHERE version IN ('1', '2')
+                          AND success = TRUE
+                        """,
+                        Integer.class);
+
+        assertThat(count).isEqualTo(2);
+    }
 }
