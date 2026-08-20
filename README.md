@@ -60,10 +60,6 @@ implemented.
 | R27 — Payment Service                                       | Planned   |
 | R28 — Notification Service                                  | Planned   |
 
-Latest completed runtime service:
-
-> **R25 — User Service**
-
 Latest completed service round:
 
 > **R25 — User Service**
@@ -276,8 +272,7 @@ clients, or contain signing private keys.
 
 R25.1 hardened this shared boundary. User Service now implements controlled OAuth2
 clients, approved grant flows, RS256/JWK signing, rotating refresh tokens, reuse
-detection, explicit token revocation and secure OIDC RP-Initiated Logout. Sensitive
-account, password-reset and client revocation triggers remain active R25.11 work.
+detection, explicit token revocation and secure OIDC RP-Initiated Logout. Sensitive account, password-reset and client revocation triggers are implemented and verified.
 
 ---
 

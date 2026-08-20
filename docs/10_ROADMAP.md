@@ -1,8 +1,8 @@
 # Project Roadmap
 
-**Version:** R25 In Progress
-**Current target:** R25.11 — refresh rotation and revocation
-**Last updated:** 2026-08-12
+**Version:** R25 Completed
+**Current target:** R26 — Booking Service
+**Last updated:** 2026-08-20
 
 ---
 
@@ -1342,10 +1342,10 @@ rejection; and MySQL 8.4 Testcontainers execution.
 - dependency, ownership, security, secret, API and architecture reviews;
 - documentation synchronization;
 - R25 exit-criteria verification.
-R25.15 is complete. The root Maven reactor and repository formatting checks
-pass. Dependency, ownership, security, secret, API and architecture boundaries
-were reviewed, documentation was synchronized, and all applicable R25 exit
-criteria were verified.
+  R25.15 is complete. The root Maven reactor and repository formatting checks
+  pass. Dependency, ownership, security, secret, API and architecture boundaries
+  were reviewed, documentation was synchronized, and all applicable R25 exit
+  criteria were verified.
 
 ### R25 exit criteria
 
@@ -1373,9 +1373,11 @@ R25 is complete. User Service is the authoritative OAuth2/OpenID Connect issuer,
 and the verified authentication, authorization, JWT, refresh-token, revocation,
 account-lifecycle, audit and Resource Server boundaries form the accepted R25
 baseline.
+
 ---
 
 ## 🚧 R26 — Booking Service
+
 R26 is the next implementation round.
 Booking Service will own:
 
@@ -1616,29 +1618,28 @@ Do not:
 
 # Current Snapshot
 
-| Phase                   | Rounds         | Status                                                             |
-| ----------------------- | -------------- | ------------------------------------------------------------------ |
-| Foundation Layer        | R1–R10         | ✅ Completed                                                       |
-| Common Infrastructure   | R11–R19        | ✅ Completed rounds; documented hardening gaps remain where stated |
-| Infrastructure Services | R20–R22        | ✅ Completed                                                       |
-| Movie Service           | R23            | ✅ Completed                                                       |
-| Inventory Service       | R24            | ✅ Completed                                                       |
-| User Service            | R25            | 🚧 In progress                                                     |
-| Booking Service         | R26            | ⏳ Planned                                                         |
-| Payment Service         | R27            | ⏳ Planned                                                         |
-| Notification Service    | R28            | ⏳ Planned                                                         |
-| Production Readiness    | To be assigned | ⏳ Planned                                                         |
+| Phase | Rounds |status |
 
+| Foundation Layer | R1–R10 | ✅ Completed |
+| Common Infrastructure | R11–R19 | ✅ Completed |
+| Infrastructure Services | R20–R22 | ✅ Completed |
+| Movie Service | R23 | ✅ Completed |
+| Inventory Service | R24 | ✅ Completed |
+| User Service | R25 | ✅ Completed |
+| Booking Service | R26 | 🚧 Active |
+| Payment Service | R27 | ⏳ Planned |
+| Notification Service | R28 | ⏳ Planned |
+| Production Readiness | To be assigned | ⏳ Planned |
+
+```markdown
 The latest completed service round is:
 
 ```text
-R24 — Inventory Service
-```
+R25 — User Service
 
-The latest completed checkpoint is:
-R25.11.7 — Logout and explicit token revocation
+The active implementation round is:
 
-The active checkpoint is:
-R25.11.8 — Account, password-reset and client revocation triggers
+```text
+R26 — Booking Service
 
-ADR-013 selects User Service with Spring Authorization Server as the authoritative issuer. R25 implementation is in progress.
+ADR-013 selects User Service with Spring Authorization Server as the authoritative issuer. R26 implementation is in progress.

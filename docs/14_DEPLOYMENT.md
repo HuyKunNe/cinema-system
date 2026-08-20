@@ -11,9 +11,10 @@ supported by the Cinema Booking System repository.
 
 Current baseline:
 
-- R1-R24 are completed.
-- R25.1–R25.8 are completed.
-- R25.9 OAuth2 clients and grant types is active.
+- R1–R25 are completed.
+- User Service is the authoritative OAuth2/OpenID Connect issuer.
+- Gateway, Movie Service and Inventory Service are verified Resource Servers.
+- R26 Booking Service is the active implementation round.
 - User Service has its Spring Authorization Server/OIDC foundation and
   controlled JDBC-backed registered-client configuration.
 

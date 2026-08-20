@@ -1,6 +1,6 @@
 # Cinema Booking System
 
-Version: 0.6 (R25 User Service In Progress)
+Version: 0.6 (R25 User Service Completed; R26 Booking Service Active)
 
 ---
 
@@ -251,23 +251,16 @@ R24 completion evidence:
 - Maven verification passes.
 - Documentation is synchronized.
 
-Active round:
+Thay bằng:
+
+```markdown
+Latest completed round:
 
 > **R25 — User Service**
 
-Latest completed checkpoint:
+Active round:
 
-```text
-R25.12 — Profile and account lifecycle APIs
-```
-
-````markdown
-Active R25 checkpoint:
-
-```text
-R25.13 Gateway and Resource Server integration
-```
-````
+> **R26 — Booking Service**
 
 ADR-013 selects User Service with Spring Authorization Server as the authoritative
 issuer. The issuer, audience, RS256/JWK ownership, approved grant types, access-token
@@ -289,8 +282,7 @@ refresh-token history.
 R25.11 refresh security, revocation, durable auditing, concurrency verification and
 documentation closure are complete. R25.12 profile and account lifecycle APIs,
 ownership enforcement and privileged-operation auditing are complete. R25.13 Gateway
-and Resource Server integration is complete. R25.14 security and protocol verification
-is active.
+and Resource Server integration is complete. R25.14 security and protocol verification and R25.15 stabilization and closure are complete. R25 User Service is closed, and R26 Booking Service is active.
 
 ---
 

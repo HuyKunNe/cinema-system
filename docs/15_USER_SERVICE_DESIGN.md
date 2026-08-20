@@ -1,8 +1,8 @@
 # User Service Design
 
-**Status:** R25.9 implementation in progress
+**Status:** R25 User Service completed
 
-**Runtime status:** R25.3–R25.8 implemented; R25.9 partially implemented
+**Runtime status:** R25.1–R25.15 implemented and verified
 
 **Architecture decision:** `docs/decisions/ADR-013-spring-authorization-server.md`
 

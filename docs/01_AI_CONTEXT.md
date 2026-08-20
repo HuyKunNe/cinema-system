@@ -794,7 +794,7 @@ R24 met all completion requirements on 2026-08-04.
 
 # Current Next Step
 
-- R25.14 security and protocol verification — NEXT
+- R26 Booking Service — NEXT
 
 R25.11 is complete. Do not remove the post-lock `ACTIVE` state check or map a
 concurrent rotation race back to a public domain exception.
