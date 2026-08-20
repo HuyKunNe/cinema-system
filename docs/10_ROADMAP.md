@@ -1618,28 +1618,28 @@ Do not:
 
 # Current Snapshot
 
-| Phase | Rounds |status |
+| Phase                   | Rounds         | Status                    |
+| ----------------------- | -------------- | ------------------------------------------------------------------ |
+| Foundation Layer        | R1–R10         | ✅ Completed                                                       |
+| Common Infrastructure   | R11–R19        | ✅ Completed rounds; documented hardening gaps remain where stated |
+| Infrastructure Services | R20–R22        | ✅ Completed                                                       |
+| Movie Service           | R23            | ✅ Completed                                                       |
+| Inventory Service       | R24            | ✅ Completed                                                       |
+| User Service            | R25            | ✅ Completed                                                       |
+| Booking Service         | R26            | 🚧 Active                                                          |
+| Payment Service         | R27            | ⏳ Planned                                                         |
+| Notification Service    | R28            | ⏳ Planned                                                         |
+| Production Readiness    | To be assigned | ⏳ Planned                                                         |
 
-| Foundation Layer | R1–R10 | ✅ Completed |
-| Common Infrastructure | R11–R19 | ✅ Completed |
-| Infrastructure Services | R20–R22 | ✅ Completed |
-| Movie Service | R23 | ✅ Completed |
-| Inventory Service | R24 | ✅ Completed |
-| User Service | R25 | ✅ Completed |
-| Booking Service | R26 | 🚧 Active |
-| Payment Service | R27 | ⏳ Planned |
-| Notification Service | R28 | ⏳ Planned |
-| Production Readiness | To be assigned | ⏳ Planned |
-
-```markdown
 The latest completed service round is:
 
-```text
+````text
 R25 — User Service
 
 The active implementation round is:
 
-```text
 R26 — Booking Service
 
-ADR-013 selects User Service with Spring Authorization Server as the authoritative issuer. R26 implementation is in progress.
+ADR-013 selects User Service with Spring Authorization Server as the
+authoritative issuer. R25 implementation is complete, and R26 implementation
+is in progress.

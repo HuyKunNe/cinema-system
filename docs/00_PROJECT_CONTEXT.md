@@ -251,8 +251,6 @@ R24 completion evidence:
 - Maven verification passes.
 - Documentation is synchronized.
 
-Thay bằng:
-
 ```markdown
 Latest completed round:
 

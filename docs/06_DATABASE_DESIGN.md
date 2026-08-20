@@ -2177,7 +2177,7 @@ Before marking a service round complete, verify:
 - [x] Flyway starts on an empty MySQL database
 - [x] Hibernate `ddl-auto` is `validate`
 - [x] MySQL Testcontainers integration tests pass
-- [ ] No committed database password exists
+- [x] No committed database password exists
 - [x] User normalized email and username uniqueness is database-enforced
 - [x] Passwords and confidential-client secrets use approved one-way hashes
 - [x] Raw verification, reset, and refresh tokens are not persisted
@@ -2189,7 +2189,7 @@ Before marking a service round complete, verify:
 - [x] Signing private keys are not stored in service business tables or Config
       Server configuration
 - [x] `mvn clean verify` passes
-- [ ] Documentation matches implemented migrations
+- [x] Documentation matches implemented migrations
 
 ---
 

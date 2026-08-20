@@ -8,15 +8,16 @@ Version: R25
 
 This document visualizes implemented interactions and approved target flows.
 
-| Flow | Status |
-| Inventory ShowSeat transitions and database concurrency | Implemented in R24 |
-| Shared servlet Resource Server responses | Implemented for Inventory in R25.1 |
-| Booking, Payment, and Notification Saga | Target for R26-R28 |
-| User account lifecycle and email verification | Implemented through R25.7 |
-| User Service Authorization Server/OIDC foundation | Implemented in R25.8 |
-| OAuth2 registered clients and approved grant flows | Implemented and verified through R25.14 |
-| Gateway reactive Resource Server | Implemented in R25.13 |
-| Hardened multi-instance Outbox retry/claim | Target; not implemented by current `common-outbox` |
+| Flow                                                    | Status                                             |
+| ------------------------------------------------------- | -------------------------------------------------- |
+| Inventory ShowSeat transitions and database concurrency | Implemented in R24                                 |
+| Shared servlet Resource Server responses                | Implemented for Inventory in R25.1                 |
+| Booking, Payment, and Notification Saga                 | Target for R26-R28                                 |
+| User account lifecycle and email verification           | Implemented through R25.7                          |
+| User Service Authorization Server/OIDC foundation       | Implemented in R25.8                               |
+| OAuth2 registered clients and approved grant flows      | Implemented and verified through R25.14            |
+| Gateway reactive Resource Server                        | Implemented in R25.13                              |
+| Hardened multi-instance Outbox retry/claim              | Target; not implemented by current `common-outbox` |
 
 A target diagram is an approved interaction contract, not proof that every
 participant currently exists.
