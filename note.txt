@@ -24,7 +24,7 @@ $env:USER_JWT_SIGNING_KEY_ID = "cinema-user-local-2026-01"
 $env:USER_JWT_PRIVATE_KEY_LOCATION = "file:E:/java/cinema-system/.local/keys/user-service-private.pem"
 $env:USER_JWT_PUBLIC_KEY_LOCATION = "file:E:/java/cinema-system/.local/keys/user-service-public.pem"
 
-###run config
+###run gateway-service config
 $env:CINEMA_AUTH_ISSUER = "http://localhost:8082"
 $env:CINEMA_AUTH_JWK_SET_URI = "http://localhost:8082/oauth2/jwks"
 $env:CINEMA_AUTH_AUDIENCE = "cinema-api"
