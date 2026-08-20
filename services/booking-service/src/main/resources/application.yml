@@ -1,0 +1,80 @@
+server:
+  port: ${BOOKING_SERVICE_PORT:8084}
+
+spring:
+  application:
+    name: booking-service
+
+  config:
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+
+  datasource:
+    url: ${BOOKING_DB_URL:jdbc:mysql://localhost:3306/cinema_booking_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${BOOKING_DB_USERNAME}
+    password: ${BOOKING_DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - metrics
+          - prometheus
+
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    com.cinema.booking: INFO
+    com.netflix.discovery: INFO
+    org.hibernate.SQL: DEBUG
+
+cinema:
+  booking:
+    reservation-expiration: ${BOOKING_RESERVATION_EXPIRATION:10m}
+    max-seats-per-booking: ${BOOKING_MAX_SEATS_PER_BOOKING:10}
+
+  security:
+    oauth2:
+      issuer-uri: ${CINEMA_AUTH_ISSUER}
+      jwk-set-uri: ${CINEMA_AUTH_JWK_SET_URI}
+      audience: ${CINEMA_AUTH_AUDIENCE:cinema-api}

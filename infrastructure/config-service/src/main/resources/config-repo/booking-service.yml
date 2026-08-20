@@ -1,6 +1,7 @@
 server:
-    port: ${BOOKING_SERVICE_PORT:8084}
+  port: ${BOOKING_SERVICE_PORT:8084}
 
 cinema:
-    booking:
-        reservation-expiration: 10m
+  booking:
+    reservation-expiration: ${BOOKING_RESERVATION_EXPIRATION:10m}
+    max-seats-per-booking: ${BOOKING_MAX_SEATS_PER_BOOKING:10}

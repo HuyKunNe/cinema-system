@@ -111,7 +111,7 @@ Verified endpoint authorization:
 Current next checkpoint:
 
 ````text
-R26 — Booking Service — NEXT
+R26.1 — Booking architecture and contract closure — IN PROGRESS
 
 **R25 — User Service**
 
@@ -794,25 +794,24 @@ R24 met all completion requirements on 2026-08-04.
 
 # Current Next Step
 
-- R26 Booking Service — NEXT
+- R26.1 — Booking architecture and contract closure
 
-R25.11 is complete. Do not remove the post-lock `ACTIVE` state check or map a
-concurrent rotation race back to a public domain exception.
+Preserve all completed R25 identity, OAuth2/OIDC, Gateway and independent
+Resource Server boundaries.
 
-Accepted concurrency behavior:
+Booking Service must:
 
-- refresh-token history uses a pessimistic row lock;
-- history state is checked after lock acquisition;
-- exactly one concurrent request may commit a successor;
-- the losing request receives OAuth2 `invalid_grant`;
-- candidate state from the losing transaction is rolled back;
-- no more than one active successor may exist;
-- concurrent rotated-token reuse revokes the family once;
-- concurrent reuse produces exactly one durable reuse audit record;
-- raw token values never appear in persistence, audit or error responses.
+- obtain ownership from the authenticated UUID subject;
+- never accept an arbitrary request `userId`;
+- never access Inventory persistence;
+- store cross-service references as UUID values;
+- coordinate through approved integration events;
+- use Transactional Outbox for reliable publication;
+- use processed-event records for state-changing consumers;
+- validate every Booking state transition;
+- provide client request idempotency using the authenticated user boundary.
 
-Remaining checkpoints:
+Authoritative Booking design:
 
-R25 is complete. Preserve the verified User Service, JWT, OAuth2/OIDC,
-refresh-token, account-state, audit, Gateway and independent Resource Server
-boundaries while implementing R26 Booking Service.
+```text
+docs/16_BOOKING_SERVICE_DESIGN.md

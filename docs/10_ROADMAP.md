@@ -1409,6 +1409,57 @@ Booking Service must not:
 - receive Payment provider credentials;
 - mark a Booking confirmed without validated current state.
 
+### Implementation checkpoints
+
+#### 🚧 R26.1 — Booking architecture and contract closure
+
+- define Booking ownership and service boundaries;
+- define authenticated ownership extraction;
+- define the initial Booking aggregate;
+- resolve pending seat-snapshot nullability;
+- define client request idempotency;
+- define the Booking lifecycle;
+- define Outbox hardening requirements;
+- define the initial API contract;
+- define the R26 implementation order.
+
+Authoritative design:
+
+```test
+## docs/16_BOOKING_SERVICE_DESIGN.md
+```
+
+#### ⏳ R26.2 — Booking Service bootstrap and security
+
+- Spring Boot application bootstrap;
+- service configuration;
+- Flyway and JPA baseline;
+- Config and Discovery clients;
+- OAuth2 Resource Server;
+- shared API, Jackson, logging and tracing integration.
+
+#### ⏳ R26.3 — Booking aggregate and database schema
+
+#### ⏳ R26.4 — Authenticated create and query APIs
+
+#### ⏳ R26.5 — Client request idempotency
+
+#### ⏳ R26.6 — Transactional Outbox contract hardening
+
+#### ⏳ R26.7 — Seat reservation request publication
+
+#### ⏳ R26.8 — Inventory event integration
+
+#### ⏳ R26.9 — Reservation result handling
+
+#### ⏳ R26.10 — Expiration and cancellation
+
+#### ⏳ R26.11 — Payment event preparation
+
+#### ⏳ R26.12 — Integration and concurrency verification
+
+#### ⏳ R26.13 — Stabilization and closure
+
 ---
 
 ## ⏳ R27 — Payment Service
@@ -1618,7 +1669,7 @@ Do not:
 
 # Current Snapshot
 
-| Phase                   | Rounds         | Status                    |
+| Phase                   | Rounds         | Status                                                             |
 | ----------------------- | -------------- | ------------------------------------------------------------------ |
 | Foundation Layer        | R1–R10         | ✅ Completed                                                       |
 | Common Infrastructure   | R11–R19        | ✅ Completed rounds; documented hardening gaps remain where stated |

@@ -50,6 +50,18 @@ R27-R28         Planned
 
 ## 2026-08-20
 
+### R26 Booking Service Design
+
+- started R26 Booking Service;
+- added the authoritative Booking Service design;
+- defined authenticated Booking ownership through the JWT UUID subject;
+- defined Booking and Inventory service boundaries;
+- defined the initial Booking lifecycle;
+- resolved pending seat-snapshot nullability;
+- defined `(user_id, client_request_id)` idempotency;
+- defined Booking Outbox and processed-event requirements;
+- defined the R26 implementation checkpoints.
+
 ### User Service Stabilization and Closure
 
 - Completed R25.15 stabilization and closure.
