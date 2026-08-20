@@ -2188,7 +2188,7 @@ Before marking a service round complete, verify:
 - [x] Security audit records contain no credentials or raw tokens
 - [x] Signing private keys are not stored in service business tables or Config
       Server configuration
-- [ ] `mvn clean verify` passes
+- [x] `mvn clean verify` passes
 - [ ] Documentation matches implemented migrations
 
 ---

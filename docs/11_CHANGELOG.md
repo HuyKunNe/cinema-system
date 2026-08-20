@@ -1,7 +1,7 @@
 # Changelog
 
 **Version:** 0.6
-**Current baseline:** R25.1–R25.14 completed; R25.15 active
+**Current baseline:** R1–R25 completed; R26 active
 **Last reviewed:** 2026-08-20
 
 ---
@@ -38,8 +38,10 @@ R25.11         Completed
 R25.12         Completed
 R25.13         Completed
 R25.14         Completed
-R25.15         Stabilization and closure in progress
-R26-R28        Planned
+R25.15         Completed
+R25             User Service completed
+R26             Booking Service active
+R27-R28         Planned
 ```
 
 ---
@@ -47,6 +49,24 @@ R26-R28        Planned
 # Unreleased
 
 ## 2026-08-20
+
+### User Service Stabilization and Closure
+
+- Completed R25.15 stabilization and closure.
+- Verified the complete Maven reactor with `mvn clean verify`.
+- Verified repository formatting with `git diff --check`.
+- Reviewed dependency, ownership, security, secret, API and architecture
+  boundaries.
+- Confirmed that no production credential, signing private key or raw token is
+  committed.
+- Confirmed that User Service remains the sole OAuth2/OpenID Connect issuer and
+  signing-key owner.
+- Confirmed that Gateway, Movie Service and Inventory Service remain independent
+  Resource Servers.
+- Synchronized the repository documentation with the verified implementation.
+- Completed all applicable R25 exit criteria.
+- Closed R25 User Service implementation.
+- Advanced the active implementation round to R26 Booking Service.
 
 ### Security and Protocol Verification
 

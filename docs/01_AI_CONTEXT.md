@@ -111,14 +111,14 @@ Verified endpoint authorization:
 Current next checkpoint:
 
 ````text
-R25.15 — Stabilization and closure — NEXT
+R26 — Booking Service — NEXT
 
 **R25 — User Service**
 
-R25 implementation is in progress.
+R25 implementation is done.
 
 Completed checkpoints:
-R25 implementation is in progress.
+R25 implementation is done.
 ```text
 R25.1 — common-security hardening — DONE
 R25.2 — authentication architecture and roadmap — DONE
@@ -134,9 +134,11 @@ R25.11.1–R25.11.11 — refresh security, auditing, concurrency and closure —
 R25.12 — profile and account lifecycle APIs — DONE
 R25.13 — Gateway and Resource Server integration — DONE
 R25.14 — Security and protocol verification — DONE
+R25.15 — Stabilization and closure — DONE
+R25 — User Service — DONE
 
 Active checkpoint:
-R25.15 — Stabilization and closure — NEXT
+R26 — Booking Service — NEXT
 
 ````
 
@@ -636,8 +638,8 @@ explicitly requested.
 | ----- | -------------------- | ----------- |
 | R23   | Movie Service        | DONE        |
 | R24   | Inventory Service    | DONE        |
-| R25   | User Service         | IN PROGRESS |
-| R26   | Booking Service      | NOT STARTED |
+| R25   | User Service         | DONE        |
+| R26   | Booking Service      | NEXT        |
 | R27   | Payment Service      | NOT STARTED |
 | R28   | Notification Service | NOT STARTED |
 
@@ -646,8 +648,8 @@ testing and verification requirements.
 
 User Service is the active business-service round.
 
-R25.1–R25.14 are complete. R25.15 stabilization and closure is the active
-checkpoint.
+R25.1–R25.15 are complete. The User Service round is closed. R26 Booking
+Service is the active implementation round.
 
 ---
 
@@ -811,6 +813,6 @@ Accepted concurrency behavior:
 
 Remaining checkpoints:
 
-R25.14 is complete. Preserve the verified JWT, OAuth2/OIDC, refresh-token,
-account-state, Testcontainers, Gateway and independent Resource Server
-boundaries while performing R25.15 stabilization and closure.
+R25 is complete. Preserve the verified User Service, JWT, OAuth2/OIDC,
+refresh-token, account-state, audit, Gateway and independent Resource Server
+boundaries while implementing R26 Booking Service.

@@ -528,7 +528,7 @@ rejected.
 - [x] Gateway reactive security is implemented and verified
 - [x] No password, token, client secret, MFA material, or private key appears in
       events or logs
-- [ ] `mvn clean verify` passes
+- [x] `mvn clean verify` passes
 
 ---
 

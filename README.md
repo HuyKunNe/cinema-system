@@ -55,22 +55,22 @@ implemented.
 | R25.12 — Profile and account lifecycle APIs                 | Completed |
 | R25.13 — Gateway and Resource Server integration            | Completed |
 | R25.14 — Security and protocol verification                 | Completed |
-| R25.15 — Stabilization and closure                          | Active    |
-| R26 — Booking Service                                       | Planned   |
+| R25.15 — Stabilization and closure                          | Completed |
+| R26 — Booking Service                                       | Active    |
 | R27 — Payment Service                                       | Planned   |
 | R28 — Notification Service                                  | Planned   |
 
 Latest completed runtime service:
 
-> **R24 — Inventory Service**
+> **R25 — User Service**
 
-Latest completed integration checkpoint:
+Latest completed service round:
 
-> **R25.14 — Security and protocol verification**
+> **R25 — User Service**
 
-Active checkpoint:
+Active round:
 
-> **R25.15 — Stabilization and closure**
+> **R26 — Booking Service**
 
 See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 

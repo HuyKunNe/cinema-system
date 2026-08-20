@@ -934,7 +934,7 @@ R24 was marked complete after verifying that:
 
 ---
 
-## 🚧 R25 — User Service
+## ✅ R25 — User Service
 
 User Service is the active implementation target.
 
@@ -1335,13 +1335,17 @@ Authorization Code with S256 PKCE; controlled Client Credentials; refresh-token
 rotation and reuse regression behavior; locked and disabled account token
 rejection; and MySQL 8.4 Testcontainers execution.
 
-#### ⏳ R25.15 — stabilization and closure
+#### ✅ R25.15 — stabilization and closure
 
 - root `mvn clean verify`;
 - `git diff --check`;
 - dependency, ownership, security, secret, API and architecture reviews;
 - documentation synchronization;
 - R25 exit-criteria verification.
+R25.15 is complete. The root Maven reactor and repository formatting checks
+pass. Dependency, ownership, security, secret, API and architecture boundaries
+were reviewed, documentation was synchronized, and all applicable R25 exit
+criteria were verified.
 
 ### R25 exit criteria
 
@@ -1365,10 +1369,14 @@ R25 may be marked complete only after verifying:
 - root `mvn clean verify` and `git diff --check` pass.
 - affected documentation is synchronized.
 
+R25 is complete. User Service is the authoritative OAuth2/OpenID Connect issuer,
+and the verified authentication, authorization, JWT, refresh-token, revocation,
+account-lifecycle, audit and Resource Server boundaries form the accepted R25
+baseline.
 ---
 
-## ⏳ R26 — Booking Service
-
+## 🚧 R26 — Booking Service
+R26 is the next implementation round.
 Booking Service will own:
 
 - bookings;
