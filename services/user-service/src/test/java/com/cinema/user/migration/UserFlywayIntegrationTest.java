@@ -2,9 +2,13 @@ package com.cinema.user.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
-import jakarta.persistence.EntityManagerFactory;
+import javax.sql.DataSource;
 
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationInfo;
@@ -13,11 +17,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
+
+import jakarta.persistence.EntityManagerFactory;
 
 class UserFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
+
+    @Autowired private DataSource dataSource;
 
     private static final List<String> EXPECTED_TABLES =
             List.of(
@@ -660,6 +666,57 @@ class UserFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                         "occurred_at",
                         "created_at",
                         "updated_at");
+    }
+
+    @Test
+    void integrationTestsShouldUseMySqlTestcontainer() throws Exception {
+
+        assertThat(MYSQL.isRunning()).isTrue();
+
+        assertThat(MYSQL.getDockerImageName()).isEqualTo("mysql:8.4.0");
+
+        assertThat(MYSQL.getDatabaseName()).isEqualTo("cinema_test_db");
+
+        assertThat(MYSQL.getUsername()).isEqualTo("cinema");
+
+        try (Connection connection = dataSource.getConnection()) {
+
+            DatabaseMetaData metadata = connection.getMetaData();
+
+            assertThat(metadata.getDatabaseProductName()).isEqualToIgnoringCase("MySQL");
+
+            assertThat(metadata.getDatabaseMajorVersion()).isEqualTo(8);
+
+            assertThat(metadata.getURL()).startsWith("jdbc:mysql:").contains("cinema_test_db");
+
+            assertThat(connection.getCatalog()).isEqualTo("cinema_test_db");
+
+            assertThat(connection.isReadOnly()).isFalse();
+        }
+    }
+
+    @Test
+    void mysqlContainerShouldUseFlywayOwnedSchema() {
+
+        String databaseProduct =
+                jdbcTemplate.queryForObject("SELECT @@version_comment", String.class);
+
+        assertThat(databaseProduct).containsIgnoringCase("MySQL");
+
+        Integer flywayMigrationCount =
+                jdbcTemplate.queryForObject(
+                        """
+                        SELECT COUNT(*)
+                        FROM flyway_schema_history
+                        WHERE success = TRUE
+                        """,
+                        Integer.class);
+
+        assertThat(flywayMigrationCount).isNotNull().isPositive();
+
+        String currentDatabase = jdbcTemplate.queryForObject("SELECT DATABASE()", String.class);
+
+        assertThat(currentDatabase).isEqualTo("cinema_test_db");
     }
 
     private int permissionCountForRole(String roleName) {
