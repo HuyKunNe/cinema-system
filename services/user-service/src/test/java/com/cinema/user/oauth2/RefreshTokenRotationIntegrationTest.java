@@ -1,7 +1,6 @@
 package com.cinema.user.oauth2;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
@@ -10,28 +9,21 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
-import com.cinema.user.entity.RefreshTokenHistory;
-import com.cinema.user.entity.Role;
-import com.cinema.user.entity.SecurityAuditEvent;
-import com.cinema.user.entity.User;
-import com.cinema.user.entity.UserRole;
-import com.cinema.user.enums.RoleName;
-import com.cinema.user.oauth2.model.ConfidentialUserClientRegistration;
-import com.cinema.user.oauth2.token.RefreshTokenHasher;
-import com.cinema.user.oauth2.token.RefreshTokenStatus;
-import com.cinema.user.repository.RefreshTokenHistoryRepository;
-import com.cinema.user.repository.RoleRepository;
-import com.cinema.user.repository.SecurityAuditEventRepository;
-import com.cinema.user.repository.UserRepository;
-import com.cinema.user.repository.UserRoleRepository;
-import com.cinema.user.security.audit.SecurityAuditActorType;
-import com.cinema.user.security.audit.SecurityAuditEventType;
-import com.cinema.user.security.audit.SecurityAuditOutcome;
-import com.cinema.user.security.audit.SecurityAuditTargetType;
-import com.cinema.user.service.UserCredentialService;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.OffsetDateTime;
+import java.util.Base64;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,21 +51,28 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.time.OffsetDateTime;
-import java.util.Base64;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
+import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
+import com.cinema.user.entity.RefreshTokenHistory;
+import com.cinema.user.entity.Role;
+import com.cinema.user.entity.SecurityAuditEvent;
+import com.cinema.user.entity.User;
+import com.cinema.user.entity.UserRole;
+import com.cinema.user.enums.RoleName;
+import com.cinema.user.oauth2.model.ConfidentialUserClientRegistration;
+import com.cinema.user.oauth2.token.RefreshTokenHasher;
+import com.cinema.user.oauth2.token.RefreshTokenStatus;
+import com.cinema.user.repository.RefreshTokenHistoryRepository;
+import com.cinema.user.repository.RoleRepository;
+import com.cinema.user.repository.SecurityAuditEventRepository;
+import com.cinema.user.repository.UserRepository;
+import com.cinema.user.repository.UserRoleRepository;
+import com.cinema.user.security.audit.SecurityAuditActorType;
+import com.cinema.user.security.audit.SecurityAuditEventType;
+import com.cinema.user.security.audit.SecurityAuditOutcome;
+import com.cinema.user.security.audit.SecurityAuditTargetType;
+import com.cinema.user.service.UserCredentialService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @SpringBootTest(
         properties = {
@@ -547,6 +546,273 @@ class RefreshTokenRotationIntegrationTest extends AbstractMySqlIntegrationTest {
 
                             assertThat(event.getUpdatedAt()).isNotNull();
                         });
+    }
+
+    @Test
+    void oldestRotatedTokenReuseShouldRevokeLatestTokenInFamily() throws Exception {
+
+        ConcurrentRefreshFixture fixture = createConcurrentRefreshFixture();
+
+        String firstRefreshToken = fixture.refreshToken();
+
+        JsonNode firstRotationResponse = refreshAccessToken(firstRefreshToken);
+
+        String secondRefreshToken = firstRotationResponse.required("refresh_token").asText();
+
+        JsonNode secondRotationResponse = refreshAccessToken(secondRefreshToken);
+
+        String thirdRefreshToken = secondRotationResponse.required("refresh_token").asText();
+
+        assertThat(secondRefreshToken).isNotBlank().isNotEqualTo(firstRefreshToken);
+
+        assertThat(thirdRefreshToken)
+                .isNotBlank()
+                .isNotEqualTo(firstRefreshToken)
+                .isNotEqualTo(secondRefreshToken);
+
+        RefreshTokenHistory firstHistoryBeforeReuse =
+                refreshTokenHistoryRepository
+                        .findByTokenHash(refreshTokenHasher.hash(firstRefreshToken))
+                        .orElseThrow();
+
+        RefreshTokenHistory secondHistoryBeforeReuse =
+                refreshTokenHistoryRepository
+                        .findByTokenHash(refreshTokenHasher.hash(secondRefreshToken))
+                        .orElseThrow();
+
+        RefreshTokenHistory thirdHistoryBeforeReuse =
+                refreshTokenHistoryRepository
+                        .findByTokenHash(refreshTokenHasher.hash(thirdRefreshToken))
+                        .orElseThrow();
+
+        assertThat(firstHistoryBeforeReuse.getStatus()).isEqualTo(RefreshTokenStatus.ROTATED);
+
+        assertThat(secondHistoryBeforeReuse.getStatus()).isEqualTo(RefreshTokenStatus.ROTATED);
+
+        assertThat(thirdHistoryBeforeReuse.getStatus()).isEqualTo(RefreshTokenStatus.ACTIVE);
+
+        MvcResult reuseResult =
+                mockMvc.perform(
+                                post("/oauth2/token")
+                                        .with(httpBasic(CLIENT_ID, RAW_CLIENT_SECRET))
+                                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                        .param("grant_type", "refresh_token")
+                                        .param("refresh_token", firstRefreshToken))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(jsonPath("$.error").value("invalid_grant"))
+                        .andReturn();
+
+        assertThat(reuseResult.getResponse().getContentAsString())
+                .doesNotContain(
+                        firstRefreshToken,
+                        secondRefreshToken,
+                        thirdRefreshToken,
+                        refreshTokenHasher.hash(firstRefreshToken),
+                        refreshTokenHasher.hash(secondRefreshToken),
+                        refreshTokenHasher.hash(thirdRefreshToken));
+
+        RefreshTokenHistory reusedHistory =
+                refreshTokenHistoryRepository
+                        .findByTokenHash(refreshTokenHasher.hash(firstRefreshToken))
+                        .orElseThrow();
+
+        RefreshTokenHistory rotatedHistory =
+                refreshTokenHistoryRepository
+                        .findByTokenHash(refreshTokenHasher.hash(secondRefreshToken))
+                        .orElseThrow();
+
+        RefreshTokenHistory revokedHistory =
+                refreshTokenHistoryRepository
+                        .findByTokenHash(refreshTokenHasher.hash(thirdRefreshToken))
+                        .orElseThrow();
+
+        assertThat(reusedHistory.getStatus()).isEqualTo(RefreshTokenStatus.REUSED);
+
+        assertThat(reusedHistory.getReusedAt()).isNotNull();
+
+        assertThat(rotatedHistory.getStatus()).isEqualTo(RefreshTokenStatus.ROTATED);
+
+        assertThat(rotatedHistory.getRotatedAt()).isNotNull();
+
+        assertThat(rotatedHistory.getReusedAt()).isNull();
+
+        assertThat(revokedHistory.getStatus()).isEqualTo(RefreshTokenStatus.REVOKED);
+
+        assertThat(revokedHistory.getRevokedAt()).isNotNull();
+
+        assertThat(
+                        refreshTokenHistoryRepository.findAllByAuthorizationId(
+                                fixture.authorizationId()))
+                .hasSize(3)
+                .extracting(RefreshTokenHistory::getStatus)
+                .containsExactlyInAnyOrder(
+                        RefreshTokenStatus.REUSED,
+                        RefreshTokenStatus.ROTATED,
+                        RefreshTokenStatus.REVOKED);
+
+        OAuth2Authorization authorization =
+                authorizationService.findById(fixture.authorizationId());
+
+        assertThat(authorization).isNotNull();
+
+        assertThat(authorization.getAccessToken()).isNotNull();
+
+        assertThat(authorization.getAccessToken().isInvalidated()).isTrue();
+
+        assertThat(authorization.getRefreshToken()).isNotNull();
+
+        assertThat(authorization.getRefreshToken().isInvalidated()).isTrue();
+
+        mockMvc.perform(
+                        post("/oauth2/token")
+                                .with(httpBasic(CLIENT_ID, RAW_CLIENT_SECRET))
+                                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                .param("grant_type", "refresh_token")
+                                .param("refresh_token", thirdRefreshToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("invalid_grant"));
+
+        List<SecurityAuditEvent> auditEvents =
+                securityAuditEventRepository
+                        .findAllByTargetTypeAndTargetReferenceOrderByOccurredAtDesc(
+                                SecurityAuditTargetType.AUTHORIZATION_SESSION,
+                                fixture.authorizationId());
+
+        assertThat(auditEvents)
+                .singleElement()
+                .satisfies(
+                        event -> {
+                            assertThat(event.getEventType())
+                                    .isEqualTo(SecurityAuditEventType.REFRESH_TOKEN_REUSE_DETECTED);
+
+                            assertThat(event.getActorType())
+                                    .isEqualTo(SecurityAuditActorType.CLIENT);
+
+                            assertThat(event.getActorReference()).isEqualTo(CLIENT_ID);
+
+                            assertThat(event.getTargetType())
+                                    .isEqualTo(SecurityAuditTargetType.AUTHORIZATION_SESSION);
+
+                            assertThat(event.getTargetReference())
+                                    .isEqualTo(fixture.authorizationId());
+
+                            assertThat(event.getOutcome()).isEqualTo(SecurityAuditOutcome.SUCCESS);
+
+                            assertThat(event.getReason()).isEqualTo("ROTATED_REFRESH_TOKEN_REUSED");
+
+                            assertThat(event.getMetadata()).isNull();
+
+                            assertThat(event.getCorrelationId()).isNotBlank();
+
+                            assertThat(event.getOccurredAt()).isNotNull();
+                        });
+    }
+
+    @Test
+    void invalidClientShouldNotTriggerRefreshTokenFamilyRevocation() throws Exception {
+
+        ConcurrentRefreshFixture fixture = createConcurrentRefreshFixture();
+
+        String firstRefreshToken = fixture.refreshToken();
+
+        JsonNode rotationResponse = refreshAccessToken(firstRefreshToken);
+
+        String secondRefreshToken = rotationResponse.required("refresh_token").asText();
+
+        assertThat(secondRefreshToken).isNotBlank().isNotEqualTo(firstRefreshToken);
+
+        RefreshTokenHistory rotatedHistoryBeforeRequest =
+                refreshTokenHistoryRepository
+                        .findByTokenHash(refreshTokenHasher.hash(firstRefreshToken))
+                        .orElseThrow();
+
+        RefreshTokenHistory activeHistoryBeforeRequest =
+                refreshTokenHistoryRepository
+                        .findByTokenHash(refreshTokenHasher.hash(secondRefreshToken))
+                        .orElseThrow();
+
+        assertThat(rotatedHistoryBeforeRequest.getStatus()).isEqualTo(RefreshTokenStatus.ROTATED);
+
+        assertThat(activeHistoryBeforeRequest.getStatus()).isEqualTo(RefreshTokenStatus.ACTIVE);
+
+        MvcResult invalidClientResult =
+                mockMvc.perform(
+                                post("/oauth2/token")
+                                        .with(
+                                                httpBasic(
+                                                        CLIENT_ID,
+                                                        RAW_CLIENT_SECRET + "-incorrect"))
+                                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                        .param("grant_type", "refresh_token")
+                                        .param("refresh_token", firstRefreshToken))
+                        .andExpect(status().isUnauthorized())
+                        .andExpect(jsonPath("$.error").value("invalid_client"))
+                        .andReturn();
+
+        assertThat(invalidClientResult.getResponse().getContentAsString())
+                .doesNotContain(
+                        firstRefreshToken,
+                        secondRefreshToken,
+                        refreshTokenHasher.hash(firstRefreshToken),
+                        refreshTokenHasher.hash(secondRefreshToken));
+
+        RefreshTokenHistory rotatedHistoryAfterRequest =
+                refreshTokenHistoryRepository
+                        .findByTokenHash(refreshTokenHasher.hash(firstRefreshToken))
+                        .orElseThrow();
+
+        RefreshTokenHistory activeHistoryAfterRequest =
+                refreshTokenHistoryRepository
+                        .findByTokenHash(refreshTokenHasher.hash(secondRefreshToken))
+                        .orElseThrow();
+
+        assertThat(rotatedHistoryAfterRequest.getStatus()).isEqualTo(RefreshTokenStatus.ROTATED);
+
+        assertThat(rotatedHistoryAfterRequest.getReusedAt()).isNull();
+
+        assertThat(activeHistoryAfterRequest.getStatus()).isEqualTo(RefreshTokenStatus.ACTIVE);
+
+        assertThat(activeHistoryAfterRequest.getRevokedAt()).isNull();
+
+        assertThat(
+                        securityAuditEventRepository
+                                .findAllByTargetTypeAndTargetReferenceOrderByOccurredAtDesc(
+                                        SecurityAuditTargetType.AUTHORIZATION_SESSION,
+                                        fixture.authorizationId()))
+                .isEmpty();
+
+        OAuth2Authorization authorizationBeforeValidRefresh =
+                authorizationService.findById(fixture.authorizationId());
+
+        assertThat(authorizationBeforeValidRefresh).isNotNull();
+
+        assertThat(authorizationBeforeValidRefresh.getRefreshToken().isInvalidated()).isFalse();
+
+        JsonNode validRefreshResponse = refreshAccessToken(secondRefreshToken);
+
+        String thirdRefreshToken = validRefreshResponse.required("refresh_token").asText();
+
+        assertThat(validRefreshResponse.required("access_token").asText()).isNotBlank();
+
+        assertThat(thirdRefreshToken)
+                .isNotBlank()
+                .isNotEqualTo(firstRefreshToken)
+                .isNotEqualTo(secondRefreshToken);
+
+        RefreshTokenHistory secondHistoryAfterValidRefresh =
+                refreshTokenHistoryRepository
+                        .findByTokenHash(refreshTokenHasher.hash(secondRefreshToken))
+                        .orElseThrow();
+
+        RefreshTokenHistory thirdHistory =
+                refreshTokenHistoryRepository
+                        .findByTokenHash(refreshTokenHasher.hash(thirdRefreshToken))
+                        .orElseThrow();
+
+        assertThat(secondHistoryAfterValidRefresh.getStatus())
+                .isEqualTo(RefreshTokenStatus.ROTATED);
+
+        assertThat(thirdHistory.getStatus()).isEqualTo(RefreshTokenStatus.ACTIVE);
     }
 
     @Test
