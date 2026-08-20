@@ -1633,12 +1633,11 @@ Do not:
 
 The latest completed service round is:
 
-````text
-R25 — User Service
+> **R25 — User Service**
 
 The active implementation round is:
 
-R26 — Booking Service
+> **R26 — Booking Service**
 
 ADR-013 selects User Service with Spring Authorization Server as the
 authoritative issuer. R25 implementation is complete, and R26 implementation

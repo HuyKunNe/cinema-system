@@ -251,7 +251,6 @@ R24 completion evidence:
 - Maven verification passes.
 - Documentation is synchronized.
 
-```markdown
 Latest completed round:
 
 > **R25 — User Service**
