@@ -1,8 +1,8 @@
 # Changelog
 
 **Version:** 0.6
-**Current baseline:** R25.1–R25.13 completed; R25.14 active
-**Last reviewed:** 2026-08-18
+**Current baseline:** R25.1–R25.14 completed; R25.15 active
+**Last reviewed:** 2026-08-20
 
 ---
 
@@ -37,13 +37,31 @@ R25.1–R25.10   Completed
 R25.11         Completed
 R25.12         Completed
 R25.13         Completed
-R25.14         Security and protocol verification in progress
+R25.14         Completed
+R25.15         Stabilization and closure in progress
 R26-R28        Planned
 ```
 
 ---
 
 # Unreleased
+
+## 2026-08-20
+
+### Security and Protocol Verification
+
+- Completed R25.14 security and protocol verification.
+- Verified JWT issuer, audience, signature, expiration and not-before validation.
+- Verified UUID v7 user subjects and normalized role and permission claims.
+- Verified Authorization Code with mandatory S256 PKCE.
+- Verified controlled Client Credentials issuance and grant-policy rejection.
+- Verified multi-generation refresh-token rotation and family-wide reuse revocation.
+- Verified invalid client authentication cannot trigger refresh-family revocation.
+- Verified locked and disabled accounts cannot use existing refresh authorizations.
+- Verified integration tests run against MySQL 8.4 Testcontainers with
+  Flyway-owned schema and Hibernate validation.
+- Removed obsolete JUnit 4 and MockMvc debug imports from OAuth2 tests.
+- Advanced the active checkpoint to R25.15 stabilization and closure.
 
 ## 2026-08-19
 

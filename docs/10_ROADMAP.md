@@ -1320,7 +1320,7 @@ R25.13 is complete. Gateway, Movie Service and Inventory Service use shared
 Resource Server mechanics while maintaining independent authentication and
 authorization boundaries.
 
-#### ⏳ R25.14 — security and protocol verification
+#### ✅ R25.14 — security and protocol verification
 
 - issuer, audience, signature, expiration and not-before tests;
 - subject, role and permission tests;
@@ -1328,6 +1328,12 @@ authorization boundaries.
 - refresh rotation and reuse tests;
 - locked and disabled account tests;
 - MySQL Testcontainers verification.
+
+R25.14 is complete. Verification covers JWT issuer, audience, signature and
+temporal validation; UUID v7 subjects; normalized roles and permissions;
+Authorization Code with S256 PKCE; controlled Client Credentials; refresh-token
+rotation and reuse regression behavior; locked and disabled account token
+rejection; and MySQL 8.4 Testcontainers execution.
 
 #### ⏳ R25.15 — stabilization and closure
 

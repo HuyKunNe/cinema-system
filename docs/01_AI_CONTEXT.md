@@ -110,8 +110,8 @@ Verified endpoint authorization:
 
 Current next checkpoint:
 
-```text
-R25.14 — Security and protocol verification — NEXT
+````text
+R25.15 — Stabilization and closure — NEXT
 
 **R25 — User Service**
 
@@ -133,11 +133,12 @@ R25.10 — JWT claims and JWK signing — DONE
 R25.11.1–R25.11.11 — refresh security, auditing, concurrency and closure — DONE
 R25.12 — profile and account lifecycle APIs — DONE
 R25.13 — Gateway and Resource Server integration — DONE
+R25.14 — Security and protocol verification — DONE
 
 Active checkpoint:
-R25.14 — Security and protocol verification — NEXT
+R25.15 — Stabilization and closure — NEXT
 
-```
+````
 
 R25.13 completed:
 
@@ -645,9 +646,8 @@ testing and verification requirements.
 
 User Service is the active business-service round.
 
-R25.1–R25.13 are complete. R25.14 security and protocol verification is the
-active checkpoint.
-
+R25.1–R25.14 are complete. R25.15 stabilization and closure is the active
+checkpoint.
 
 ---
 
@@ -791,6 +791,7 @@ R24 met all completion requirements on 2026-08-04.
 ---
 
 # Current Next Step
+
 - R25.14 security and protocol verification — NEXT
 
 R25.11 is complete. Do not remove the post-lock `ACTIVE` state check or map a
@@ -810,6 +811,6 @@ Accepted concurrency behavior:
 
 Remaining checkpoints:
 
-R25.13 is complete. Preserve the implemented identity, Gateway and independent
-Resource Server boundaries while performing R25.14 security and protocol
-verification.
+R25.14 is complete. Preserve the verified JWT, OAuth2/OIDC, refresh-token,
+account-state, Testcontainers, Gateway and independent Resource Server
+boundaries while performing R25.15 stabilization and closure.

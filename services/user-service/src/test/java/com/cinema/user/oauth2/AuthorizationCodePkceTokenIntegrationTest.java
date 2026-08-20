@@ -5,7 +5,6 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -356,7 +355,6 @@ class AuthorizationCodePkceTokenIntegrationTest extends AbstractMySqlIntegration
                                         .queryParam("state", "test-state")
                                         .queryParam("code_challenge", codeChallenge)
                                         .queryParam("code_challenge_method", "S256"))
-                        .andDo(print())
                         .andReturn();
 
         assertThat(result.getResponse().getStatus())

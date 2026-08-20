@@ -2,7 +2,6 @@ package com.cinema.user.oauth2.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.Assert.assertThat;
 
 import com.cinema.common.core.constant.CommonConstants;
 import com.cinema.common.exception.exception.ConflictException;

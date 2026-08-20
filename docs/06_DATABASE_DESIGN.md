@@ -2174,19 +2174,19 @@ Before marking a service round complete, verify:
 - [ ] Outbox schema matches `common-outbox`
 - [ ] Processed-event schema matches consumer idempotency semantics
 - [ ] Outbox payload size matches the JPA mapping
-- [ ] Flyway starts on an empty MySQL database
-- [ ] Hibernate `ddl-auto` is `validate`
-- [ ] MySQL Testcontainers integration tests pass
+- [x] Flyway starts on an empty MySQL database
+- [x] Hibernate `ddl-auto` is `validate`
+- [x] MySQL Testcontainers integration tests pass
 - [ ] No committed database password exists
-- [ ] User normalized email and username uniqueness is database-enforced
-- [ ] Passwords and confidential-client secrets use approved one-way hashes
-- [ ] Raw verification, reset, and refresh tokens are not persisted
-- [ ] OAuth2 clients, authorizations, consents, and refresh tokens remain owned
+- [x] User normalized email and username uniqueness is database-enforced
+- [x] Passwords and confidential-client secrets use approved one-way hashes
+- [x] Raw verification, reset, and refresh tokens are not persisted
+- [x] OAuth2 clients, authorizations, consents, and refresh tokens remain owned
       by User Service
-- [ ] Refresh-token rotation and reuse handling are concurrency-safe
+- [x] Refresh-token rotation and reuse handling are concurrency-safe
 - [ ] MFA secret and recovery-code storage meets the security policy
-- [ ] Security audit records contain no credentials or raw tokens
-- [ ] Signing private keys are not stored in service business tables or Config
+- [x] Security audit records contain no credentials or raw tokens
+- [x] Signing private keys are not stored in service business tables or Config
       Server configuration
 - [ ] `mvn clean verify` passes
 - [ ] Documentation matches implemented migrations

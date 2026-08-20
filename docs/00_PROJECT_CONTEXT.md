@@ -105,13 +105,18 @@ R25.10 — JWT claims and JWK signing — DONE
 R25.11.1–R25.11.11 — refresh security, auditing, concurrency and closure — DONE
 R25.12 — profile and account lifecycle APIs — DONE
 R25.13 — Gateway and Resource Server integration — DONE
+R25.14 — security and protocol verification — DONE
 ```
 
 Active R25 checkpoint:
 
-- R25.14 security and protocol verification — NEXT
+- R25.15 stabilization and closure — NEXT
 
-Accepted authentication decision:
+  R25.14 verifies JWT trust and temporal validation, UUID v7 subjects, roles and
+  permissions, Authorization Code with PKCE, controlled Client Credentials,
+  refresh-token rotation and reuse handling, locked and disabled account token
+  rejection, and MySQL Testcontainers execution.
+  Accepted authentication decision:
 
 - User Service integrates Spring Authorization Server.
 - User Service is the single authoritative OAuth2 and OpenID Connect issuer.

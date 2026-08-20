@@ -519,14 +519,14 @@ rejected.
 - [ ] Booking Service never accesses Inventory tables or locks
 - [ ] Outbox current status starts at `PENDING`, not `NEW`
 - [ ] Outbox target hardening is not documented as implemented
-- [ ] User Service is the sole token issuer and signing-key owner
-- [ ] Authorization Code uses PKCE
-- [ ] Resource Owner Password Credentials is absent
+- [x] User Service is the sole token issuer and signing-key owner
+- [x] Authorization Code uses PKCE
+- [x] Resource Owner Password Credentials is absent
 - [x] Resource Servers validate signature, issuer, timestamps, and `cinema-api`
       audience
-- [ ] Refresh rotation and reuse handling are atomic and tested when implemented
+- [x] Refresh rotation and reuse handling are atomic and tested
 - [x] Gateway reactive security is implemented and verified
-- [ ] No password, token, client secret, MFA material, or private key appears in
+- [x] No password, token, client secret, MFA material, or private key appears in
       events or logs
 - [ ] `mvn clean verify` passes
 

@@ -54,7 +54,8 @@ implemented.
 | R25.11.11 — Cleanup, verification and documentation closure | Completed |
 | R25.12 — Profile and account lifecycle APIs                 | Completed |
 | R25.13 — Gateway and Resource Server integration            | Completed |
-| R25.14 — Security and protocol verification                 | Active    |
+| R25.14 — Security and protocol verification                 | Completed |
+| R25.15 — Stabilization and closure                          | Active    |
 | R26 — Booking Service                                       | Planned   |
 | R27 — Payment Service                                       | Planned   |
 | R28 — Notification Service                                  | Planned   |
@@ -65,11 +66,11 @@ Latest completed runtime service:
 
 Latest completed integration checkpoint:
 
-> **R25.13 — Gateway and Resource Server integration**
+> **R25.14 — Security and protocol verification**
 
 Active checkpoint:
 
-> **R25.14 — Security and protocol verification**
+> **R25.15 — Stabilization and closure**
 
 See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 

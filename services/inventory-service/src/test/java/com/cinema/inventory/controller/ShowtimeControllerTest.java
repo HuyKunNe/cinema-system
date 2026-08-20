@@ -11,21 +11,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.UUID;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
 import com.cinema.inventory.dto.request.CreateShowtimeRequest;
 import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
 import com.cinema.inventory.dto.response.ShowtimeResponse;
@@ -34,8 +19,21 @@ import com.cinema.inventory.service.ShowtimeService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.UUID;
 
 @ExtendWith(MockitoExtension.class)
 class ShowtimeControllerTest {
@@ -48,27 +46,28 @@ class ShowtimeControllerTest {
 
     private static final OffsetDateTime UPDATED_AT = OffsetDateTime.parse("2026-07-27T04:00:00Z");
 
-    @Mock
-    private ShowtimeService showtimeService;
+    @Mock private ShowtimeService showtimeService;
 
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
     private static final BigDecimal BASE_PRICE = new BigDecimal("100000.00");
-    private static final DateTimeFormatter JSON_DATE_TIME_FORMATTER = DateTimeFormatter
-            .ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
+    private static final DateTimeFormatter JSON_DATE_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper()
-                .findAndRegisterModules()
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        objectMapper =
+                new ObjectMapper()
+                        .findAndRegisterModules()
+                        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
-        MappingJackson2HttpMessageConverter jacksonConverter = new MappingJackson2HttpMessageConverter(objectMapper);
+        MappingJackson2HttpMessageConverter jacksonConverter =
+                new MappingJackson2HttpMessageConverter(objectMapper);
 
-        mockMvc = MockMvcBuilders
-                .standaloneSetup(new ShowtimeController(showtimeService))
-                .setMessageConverters(jacksonConverter)
-                .build();
+        mockMvc =
+                MockMvcBuilders.standaloneSetup(new ShowtimeController(showtimeService))
+                        .setMessageConverters(jacksonConverter)
+                        .build();
     }
 
     @Test
@@ -77,105 +76,82 @@ class ShowtimeControllerTest {
         UUID movieId = UUID.randomUUID();
         UUID roomId = UUID.randomUUID();
 
-        CreateShowtimeRequest request = new CreateShowtimeRequest(
-                movieId,
-                roomId,
-                STARTS_AT,
-                ENDS_AT,
-                BASE_PRICE);
+        CreateShowtimeRequest request =
+                new CreateShowtimeRequest(movieId, roomId, STARTS_AT, ENDS_AT, BASE_PRICE);
 
-        ShowtimeResponse response = response(
-                showtimeId,
-                movieId,
-                roomId,
-                STARTS_AT,
-                ENDS_AT,
-                ShowtimeStatus.SCHEDULED);
+        ShowtimeResponse response =
+                response(showtimeId, movieId, roomId, STARTS_AT, ENDS_AT, ShowtimeStatus.SCHEDULED);
 
-        when(showtimeService.create(request))
-                .thenReturn(response);
+        when(showtimeService.create(request)).thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/showtimes")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andDo(print())
+        mockMvc.perform(
+                        post("/api/v1/showtimes")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(header().string(
-                        "Location",
-                        "/api/v1/showtimes/" + showtimeId))
-                .andExpect(jsonPath("$.id")
-                        .value(showtimeId.toString()))
-                .andExpect(jsonPath("$.movieId")
-                        .value(movieId.toString()))
-                .andExpect(jsonPath("$.roomId")
-                        .value(roomId.toString()))
-                .andExpect(jsonPath("$.roomName")
-                        .value("Room 01"))
-                .andExpect(jsonPath("$.cinemaName")
-                        .value("CGV Vincom"))
-                .andExpect(jsonPath("$.status")
-                        .value("SCHEDULED"));
+                .andExpect(header().string("Location", "/api/v1/showtimes/" + showtimeId))
+                .andExpect(jsonPath("$.id").value(showtimeId.toString()))
+                .andExpect(jsonPath("$.movieId").value(movieId.toString()))
+                .andExpect(jsonPath("$.roomId").value(roomId.toString()))
+                .andExpect(jsonPath("$.roomName").value("Room 01"))
+                .andExpect(jsonPath("$.cinemaName").value("CGV Vincom"))
+                .andExpect(jsonPath("$.status").value("SCHEDULED"));
 
         verify(showtimeService).create(request);
     }
 
     @Test
-    void createShouldReturnBadRequestWhenEndsAtIsBeforeStartsAt()
-            throws Exception {
+    void createShouldReturnBadRequestWhenEndsAtIsBeforeStartsAt() throws Exception {
 
-        CreateShowtimeRequest request = new CreateShowtimeRequest(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                ENDS_AT,
-                STARTS_AT,
-                BASE_PRICE);
+        CreateShowtimeRequest request =
+                new CreateShowtimeRequest(
+                        UUID.randomUUID(), UUID.randomUUID(), ENDS_AT, STARTS_AT, BASE_PRICE);
 
-        mockMvc.perform(post("/api/v1/showtimes")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(
+                        post("/api/v1/showtimes")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(showtimeService);
     }
 
     @Test
-    void createShouldReturnBadRequestWhenMovieIdIsNull()
-            throws Exception {
+    void createShouldReturnBadRequestWhenMovieIdIsNull() throws Exception {
 
-        CreateShowtimeRequest request = new CreateShowtimeRequest(
-                null,
-                UUID.randomUUID(),
-                STARTS_AT,
-                ENDS_AT,
-                BASE_PRICE);
+        CreateShowtimeRequest request =
+                new CreateShowtimeRequest(null, UUID.randomUUID(), STARTS_AT, ENDS_AT, BASE_PRICE);
 
-        mockMvc.perform(post("/api/v1/showtimes")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(
+                        post("/api/v1/showtimes")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(showtimeService);
     }
 
     @Test
-    void createShouldReturnBadRequestForMalformedDate()
-            throws Exception {
+    void createShouldReturnBadRequestForMalformedDate() throws Exception {
 
         UUID movieId = UUID.randomUUID();
         UUID roomId = UUID.randomUUID();
 
-        String requestBody = """
+        String requestBody =
+                """
                 {
                   "movieId": "%s",
                   "roomId": "%s",
                   "startsAt": "invalid-date",
                   "endsAt": "2099-01-01T05:00:00Z"
                 }
-                """.formatted(movieId, roomId);
+                """
+                        .formatted(movieId, roomId);
 
-        mockMvc.perform(post("/api/v1/showtimes")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+        mockMvc.perform(
+                        post("/api/v1/showtimes")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(showtimeService);
@@ -187,29 +163,17 @@ class ShowtimeControllerTest {
         UUID movieId = UUID.randomUUID();
         UUID roomId = UUID.randomUUID();
 
-        ShowtimeResponse response = response(
-                showtimeId,
-                movieId,
-                roomId,
-                STARTS_AT,
-                ENDS_AT,
-                ShowtimeStatus.SCHEDULED);
+        ShowtimeResponse response =
+                response(showtimeId, movieId, roomId, STARTS_AT, ENDS_AT, ShowtimeStatus.SCHEDULED);
 
-        when(showtimeService.getById(showtimeId))
-                .thenReturn(response);
+        when(showtimeService.getById(showtimeId)).thenReturn(response);
 
-        mockMvc.perform(get(
-                "/api/v1/showtimes/{showtimeId}",
-                showtimeId))
+        mockMvc.perform(get("/api/v1/showtimes/{showtimeId}", showtimeId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id")
-                        .value(showtimeId.toString()))
-                .andExpect(jsonPath("$.movieId")
-                        .value(movieId.toString()))
-                .andExpect(jsonPath("$.roomId")
-                        .value(roomId.toString()))
-                .andExpect(jsonPath("$.status")
-                        .value("SCHEDULED"));
+                .andExpect(jsonPath("$.id").value(showtimeId.toString()))
+                .andExpect(jsonPath("$.movieId").value(movieId.toString()))
+                .andExpect(jsonPath("$.roomId").value(roomId.toString()))
+                .andExpect(jsonPath("$.status").value("SCHEDULED"));
 
         verify(showtimeService).getById(showtimeId);
     }
@@ -220,29 +184,24 @@ class ShowtimeControllerTest {
         UUID movieId = UUID.randomUUID();
         UUID roomId = UUID.randomUUID();
 
-        ShowtimeResponse response = response(
-                showtimeId,
-                movieId,
-                roomId,
-                STARTS_AT,
-                ENDS_AT,
-                ShowtimeStatus.OPEN_FOR_BOOKING);
+        ShowtimeResponse response =
+                response(
+                        showtimeId,
+                        movieId,
+                        roomId,
+                        STARTS_AT,
+                        ENDS_AT,
+                        ShowtimeStatus.OPEN_FOR_BOOKING);
 
-        when(showtimeService.getByRoomId(roomId))
-                .thenReturn(List.of(response));
+        when(showtimeService.getByRoomId(roomId)).thenReturn(List.of(response));
 
-        mockMvc.perform(get(
-                "/api/v1/showtimes/by-room/{roomId}",
-                roomId))
+        mockMvc.perform(get("/api/v1/showtimes/by-room/{roomId}", roomId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].id")
-                        .value(showtimeId.toString()))
-                .andExpect(jsonPath("$[0].roomId")
-                        .value(roomId.toString()))
-                .andExpect(jsonPath("$[0].status")
-                        .value("OPEN_FOR_BOOKING"));
+                .andExpect(jsonPath("$[0].id").value(showtimeId.toString()))
+                .andExpect(jsonPath("$[0].roomId").value(roomId.toString()))
+                .andExpect(jsonPath("$[0].status").value("OPEN_FOR_BOOKING"));
 
         verify(showtimeService).getByRoomId(roomId);
     }
@@ -253,80 +212,63 @@ class ShowtimeControllerTest {
         UUID movieId = UUID.randomUUID();
         UUID roomId = UUID.randomUUID();
 
-        ShowtimeResponse response = response(
-                showtimeId,
-                movieId,
-                roomId,
-                STARTS_AT,
-                ENDS_AT,
-                ShowtimeStatus.SCHEDULED);
+        ShowtimeResponse response =
+                response(showtimeId, movieId, roomId, STARTS_AT, ENDS_AT, ShowtimeStatus.SCHEDULED);
 
-        when(showtimeService.getByMovieId(movieId))
-                .thenReturn(List.of(response));
+        when(showtimeService.getByMovieId(movieId)).thenReturn(List.of(response));
 
-        mockMvc.perform(get(
-                "/api/v1/showtimes/by-movie/{movieId}",
-                movieId))
+        mockMvc.perform(get("/api/v1/showtimes/by-movie/{movieId}", movieId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].id")
-                        .value(showtimeId.toString()))
-                .andExpect(jsonPath("$[0].movieId")
-                        .value(movieId.toString()));
+                .andExpect(jsonPath("$[0].id").value(showtimeId.toString()))
+                .andExpect(jsonPath("$[0].movieId").value(movieId.toString()));
 
         verify(showtimeService).getByMovieId(movieId);
     }
 
     @Test
-    void getByTimeRangeShouldPassDatesToService()
-            throws Exception {
+    void getByTimeRangeShouldPassDatesToService() throws Exception {
 
-        ShowtimeResponse response = response(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                STARTS_AT,
-                ENDS_AT,
-                ShowtimeStatus.SCHEDULED);
+        ShowtimeResponse response =
+                response(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        STARTS_AT,
+                        ENDS_AT,
+                        ShowtimeStatus.SCHEDULED);
 
-        when(showtimeService.getByTimeRange(
-                STARTS_AT,
-                ENDS_AT))
-                .thenReturn(List.of(response));
+        when(showtimeService.getByTimeRange(STARTS_AT, ENDS_AT)).thenReturn(List.of(response));
 
-        mockMvc.perform(get("/api/v1/showtimes")
-                .param("from", STARTS_AT.toString())
-                .param("to", ENDS_AT.toString()))
+        mockMvc.perform(
+                        get("/api/v1/showtimes")
+                                .param("from", STARTS_AT.toString())
+                                .param("to", ENDS_AT.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].status")
-                        .value("SCHEDULED"));
+                .andExpect(jsonPath("$[0].status").value("SCHEDULED"));
 
-        verify(showtimeService).getByTimeRange(
-                STARTS_AT,
-                ENDS_AT);
+        verify(showtimeService).getByTimeRange(STARTS_AT, ENDS_AT);
     }
 
     @Test
-    void getByTimeRangeShouldReturnBadRequestWhenFromIsMissing()
-            throws Exception {
+    void getByTimeRangeShouldReturnBadRequestWhenFromIsMissing() throws Exception {
 
-        mockMvc.perform(get("/api/v1/showtimes")
-                .param("to", ENDS_AT.toString()))
+        mockMvc.perform(get("/api/v1/showtimes").param("to", ENDS_AT.toString()))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(showtimeService);
     }
 
     @Test
-    void getByTimeRangeShouldReturnBadRequestForMalformedDate()
-            throws Exception {
+    void getByTimeRangeShouldReturnBadRequestForMalformedDate() throws Exception {
 
-        mockMvc.perform(get("/api/v1/showtimes")
-                .param("from", "invalid-date")
-                .param("to", ENDS_AT.toString()))
+        mockMvc.perform(
+                        get("/api/v1/showtimes")
+                                .param("from", "invalid-date")
+                                .param("to", ENDS_AT.toString()))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(showtimeService);
@@ -342,58 +284,46 @@ class ShowtimeControllerTest {
 
         OffsetDateTime newEndsAt = OffsetDateTime.parse("2099-01-02T06:00:00Z");
 
-        UpdateShowtimeRequest request = new UpdateShowtimeRequest(
-                newStartsAt,
-                newEndsAt,
-                ShowtimeStatus.OPEN_FOR_BOOKING);
+        UpdateShowtimeRequest request =
+                new UpdateShowtimeRequest(newStartsAt, newEndsAt, ShowtimeStatus.OPEN_FOR_BOOKING);
 
-        ShowtimeResponse response = response(
-                showtimeId,
-                movieId,
-                roomId,
-                newStartsAt,
-                newEndsAt,
-                ShowtimeStatus.OPEN_FOR_BOOKING);
+        ShowtimeResponse response =
+                response(
+                        showtimeId,
+                        movieId,
+                        roomId,
+                        newStartsAt,
+                        newEndsAt,
+                        ShowtimeStatus.OPEN_FOR_BOOKING);
 
-        when(showtimeService.update(showtimeId, request))
-                .thenReturn(response);
+        when(showtimeService.update(showtimeId, request)).thenReturn(response);
 
-        mockMvc.perform(put(
-                "/api/v1/showtimes/{showtimeId}",
-                showtimeId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andDo(print())
+        mockMvc.perform(
+                        put("/api/v1/showtimes/{showtimeId}", showtimeId)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id")
-                        .value(showtimeId.toString()))
-                .andExpect(jsonPath("$.status")
-                        .value("OPEN_FOR_BOOKING"))
-                .andExpect(jsonPath("$.startsAt")
-                        .value(newStartsAt.format(JSON_DATE_TIME_FORMATTER)))
-                .andExpect(jsonPath("$.endsAt")
-                        .value(newEndsAt.format(JSON_DATE_TIME_FORMATTER)));
+                .andExpect(jsonPath("$.id").value(showtimeId.toString()))
+                .andExpect(jsonPath("$.status").value("OPEN_FOR_BOOKING"))
+                .andExpect(
+                        jsonPath("$.startsAt").value(newStartsAt.format(JSON_DATE_TIME_FORMATTER)))
+                .andExpect(jsonPath("$.endsAt").value(newEndsAt.format(JSON_DATE_TIME_FORMATTER)));
 
-        verify(showtimeService)
-                .update(showtimeId, request);
+        verify(showtimeService).update(showtimeId, request);
     }
 
     @Test
-    void updateShouldReturnBadRequestWhenTimeRangeIsInvalid()
-            throws Exception {
+    void updateShouldReturnBadRequestWhenTimeRangeIsInvalid() throws Exception {
 
         UUID showtimeId = UUID.randomUUID();
 
-        UpdateShowtimeRequest request = new UpdateShowtimeRequest(
-                ENDS_AT,
-                STARTS_AT,
-                ShowtimeStatus.SCHEDULED);
+        UpdateShowtimeRequest request =
+                new UpdateShowtimeRequest(ENDS_AT, STARTS_AT, ShowtimeStatus.SCHEDULED);
 
-        mockMvc.perform(put(
-                "/api/v1/showtimes/{showtimeId}",
-                showtimeId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(
+                        put("/api/v1/showtimes/{showtimeId}", showtimeId)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(showtimeService);
@@ -403,53 +333,44 @@ class ShowtimeControllerTest {
     void openShouldReturnUpdatedShowtime() throws Exception {
         UUID showtimeId = UUID.randomUUID();
 
-        ShowtimeResponse response = response(
-                showtimeId,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                STARTS_AT,
-                ENDS_AT,
-                ShowtimeStatus.OPEN_FOR_BOOKING);
+        ShowtimeResponse response =
+                response(
+                        showtimeId,
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        STARTS_AT,
+                        ENDS_AT,
+                        ShowtimeStatus.OPEN_FOR_BOOKING);
 
-        when(showtimeService.openForBooking(showtimeId))
-                .thenReturn(response);
+        when(showtimeService.openForBooking(showtimeId)).thenReturn(response);
 
-        mockMvc.perform(patch(
-                "/api/v1/showtimes/{showtimeId}/open",
-                showtimeId))
+        mockMvc.perform(patch("/api/v1/showtimes/{showtimeId}/open", showtimeId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id")
-                        .value(showtimeId.toString()))
-                .andExpect(jsonPath("$.status")
-                        .value("OPEN_FOR_BOOKING"));
+                .andExpect(jsonPath("$.id").value(showtimeId.toString()))
+                .andExpect(jsonPath("$.status").value("OPEN_FOR_BOOKING"));
 
-        verify(showtimeService)
-                .openForBooking(showtimeId);
+        verify(showtimeService).openForBooking(showtimeId);
     }
 
     @Test
     void closeShouldReturnClosedShowtime() throws Exception {
         UUID showtimeId = UUID.randomUUID();
 
-        ShowtimeResponse response = response(
-                showtimeId,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                STARTS_AT,
-                ENDS_AT,
-                ShowtimeStatus.CLOSED);
+        ShowtimeResponse response =
+                response(
+                        showtimeId,
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        STARTS_AT,
+                        ENDS_AT,
+                        ShowtimeStatus.CLOSED);
 
-        when(showtimeService.close(showtimeId))
-                .thenReturn(response);
+        when(showtimeService.close(showtimeId)).thenReturn(response);
 
-        mockMvc.perform(patch(
-                "/api/v1/showtimes/{showtimeId}/close",
-                showtimeId))
+        mockMvc.perform(patch("/api/v1/showtimes/{showtimeId}/close", showtimeId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id")
-                        .value(showtimeId.toString()))
-                .andExpect(jsonPath("$.status")
-                        .value("CLOSED"));
+                .andExpect(jsonPath("$.id").value(showtimeId.toString()))
+                .andExpect(jsonPath("$.status").value("CLOSED"));
 
         verify(showtimeService).close(showtimeId);
     }
@@ -458,72 +379,60 @@ class ShowtimeControllerTest {
     void cancelShouldReturnCancelledShowtime() throws Exception {
         UUID showtimeId = UUID.randomUUID();
 
-        ShowtimeResponse response = response(
-                showtimeId,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                STARTS_AT,
-                ENDS_AT,
-                ShowtimeStatus.CANCELLED);
+        ShowtimeResponse response =
+                response(
+                        showtimeId,
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        STARTS_AT,
+                        ENDS_AT,
+                        ShowtimeStatus.CANCELLED);
 
-        when(showtimeService.cancel(showtimeId))
-                .thenReturn(response);
+        when(showtimeService.cancel(showtimeId)).thenReturn(response);
 
-        mockMvc.perform(patch(
-                "/api/v1/showtimes/{showtimeId}/cancel",
-                showtimeId))
+        mockMvc.perform(patch("/api/v1/showtimes/{showtimeId}/cancel", showtimeId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id")
-                        .value(showtimeId.toString()))
-                .andExpect(jsonPath("$.status")
-                        .value("CANCELLED"));
+                .andExpect(jsonPath("$.id").value(showtimeId.toString()))
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
 
         verify(showtimeService).cancel(showtimeId);
     }
 
     @Test
-    void completeShouldReturnCompletedShowtime()
-            throws Exception {
+    void completeShouldReturnCompletedShowtime() throws Exception {
 
         UUID showtimeId = UUID.randomUUID();
 
-        ShowtimeResponse response = response(
-                showtimeId,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                STARTS_AT,
-                ENDS_AT,
-                ShowtimeStatus.COMPLETED);
+        ShowtimeResponse response =
+                response(
+                        showtimeId,
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        STARTS_AT,
+                        ENDS_AT,
+                        ShowtimeStatus.COMPLETED);
 
-        when(showtimeService.complete(showtimeId))
-                .thenReturn(response);
+        when(showtimeService.complete(showtimeId)).thenReturn(response);
 
-        mockMvc.perform(patch(
-                "/api/v1/showtimes/{showtimeId}/complete",
-                showtimeId))
+        mockMvc.perform(patch("/api/v1/showtimes/{showtimeId}/complete", showtimeId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id")
-                        .value(showtimeId.toString()))
-                .andExpect(jsonPath("$.status")
-                        .value("COMPLETED"));
+                .andExpect(jsonPath("$.id").value(showtimeId.toString()))
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
 
         verify(showtimeService).complete(showtimeId);
     }
 
     @Test
-    void createShouldReturnBadRequestWhenBasePriceIsZero()
-            throws Exception {
+    void createShouldReturnBadRequestWhenBasePriceIsZero() throws Exception {
 
-        CreateShowtimeRequest request = new CreateShowtimeRequest(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                STARTS_AT,
-                ENDS_AT,
-                BigDecimal.ZERO);
+        CreateShowtimeRequest request =
+                new CreateShowtimeRequest(
+                        UUID.randomUUID(), UUID.randomUUID(), STARTS_AT, ENDS_AT, BigDecimal.ZERO);
 
-        mockMvc.perform(post("/api/v1/showtimes")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(
+                        post("/api/v1/showtimes")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(showtimeService);
