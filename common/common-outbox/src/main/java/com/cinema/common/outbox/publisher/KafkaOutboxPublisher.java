@@ -1,65 +1,51 @@
 package com.cinema.common.outbox.publisher;
 
-import java.util.concurrent.CompletableFuture;
-
-import org.springframework.stereotype.Component;
-
 import com.cinema.common.kafka.producer.KafkaProducerService;
 import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.common.outbox.exception.OutboxPublishException;
 import com.cinema.common.outbox.model.OutboxEventMessage;
-import com.cinema.common.outbox.model.OutboxEventPayload;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.springframework.stereotype.Component;
+
+import java.util.concurrent.CompletableFuture;
+
 @Component
-public class KafkaOutboxPublisher
-        implements OutboxPublisher {
+public class KafkaOutboxPublisher implements OutboxPublisher {
 
     private final KafkaProducerService producer;
 
     private final ObjectMapper mapper;
 
-    public KafkaOutboxPublisher(
-            KafkaProducerService producer,
-            ObjectMapper mapper) {
+    public KafkaOutboxPublisher(KafkaProducerService producer, ObjectMapper mapper) {
 
         this.producer = producer;
-
         this.mapper = mapper;
-
     }
 
     @Override
-    public CompletableFuture<Void> publish(
-            OutboxEventEntity event) {
+    public CompletableFuture<Void> publish(OutboxEventEntity event) {
 
         try {
+            JsonNode payload = mapper.readTree(event.getPayload());
 
-            OutboxEventPayload payload = mapper.readValue(
-                    event.getPayload(),
-                    OutboxEventPayload.class);
+            OutboxEventMessage message =
+                    new OutboxEventMessage(
+                            event.getId(),
+                            event.getAggregateId(),
+                            event.getAggregateType().name(),
+                            event.getEventType(),
+                            event.getEventVersion(),
+                            event.getOccurredAt(),
+                            event.getCorrelationId(),
+                            event.getCausationId(),
+                            payload);
 
-            OutboxEventMessage message = new OutboxEventMessage(
-                    event.getId(),
-                    event.getEventType(),
-                    event.getCreatedAt(),
-                    payload);
-
-            return producer.send(
-                    event.getEventType(),
-                    message);
+            return producer.send(event.getTopic(), event.getPartitionKey(), message);
 
         } catch (Exception exception) {
-
-            CompletableFuture<Void> future = new CompletableFuture<>();
-
-            future.completeExceptionally(
-                    new OutboxPublishException(exception));
-
-            return future;
-
+            return CompletableFuture.failedFuture(new OutboxPublishException(exception));
         }
-
     }
-
 }
