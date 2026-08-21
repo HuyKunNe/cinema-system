@@ -1,64 +1,65 @@
 package com.cinema.common.outbox.scheduler;
 
+import com.cinema.common.outbox.acknowledgement.OutboxAcknowledgementService;
+import com.cinema.common.outbox.claim.OutboxClaimService;
 import com.cinema.common.outbox.entity.OutboxEventEntity;
-import com.cinema.common.outbox.enums.OutboxStatus;
 import com.cinema.common.outbox.publisher.OutboxPublisher;
-import com.cinema.common.outbox.repository.OutboxRepository;
 
-import org.springframework.data.domain.PageRequest;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.Clock;
-import java.time.OffsetDateTime;
-import java.util.List;
-
 @Component
+@ConditionalOnProperty(
+        prefix = "cinema.outbox",
+        name = "enabled",
+        havingValue = "true",
+        matchIfMissing = true)
 public class OutboxScheduler {
 
-    private static final int BATCH_SIZE = 100;
-
-    private final OutboxRepository repository;
+    private final OutboxClaimService claimService;
 
     private final OutboxPublisher publisher;
 
-    private final Clock clock;
+    private final OutboxAcknowledgementService acknowledgementService;
 
-    public OutboxScheduler(OutboxRepository repository, OutboxPublisher publisher, Clock clock) {
+    public OutboxScheduler(
+            OutboxClaimService claimService,
+            OutboxPublisher publisher,
+            OutboxAcknowledgementService acknowledgementService) {
 
-        this.repository = repository;
+        this.claimService = claimService;
         this.publisher = publisher;
-        this.clock = clock;
+        this.acknowledgementService = acknowledgementService;
     }
 
-    @Scheduled(fixedDelayString = "${cinema.outbox.delay:5000}")
+    @Scheduled(fixedDelayString = "${cinema.outbox.scheduler-delay:5s}")
     public void publishPendingEvents() {
 
-        List<OutboxEventEntity> events =
-                repository.findByStatusInOrderByCreatedAtAsc(
-                        List.of(OutboxStatus.PENDING, OutboxStatus.FAILED),
-                        PageRequest.of(0, BATCH_SIZE));
-
-        events.stream().filter(OutboxEventEntity::canRetry).forEach(this::publish);
+        claimService.claimNextBatch().forEach(this::publish);
     }
 
     private void publish(OutboxEventEntity event) {
 
-        event.markProcessing();
+        String processingOwner = event.getProcessingOwner();
 
-        repository.save(event);
+        int currentRetryCount = event.getRetryCount();
 
         publisher
                 .publish(event)
                 .whenComplete(
                         (ignored, exception) -> {
                             if (exception == null) {
-                                event.markSent(OffsetDateTime.now(clock));
-                            } else {
-                                event.markFailed();
-                            }
+                                acknowledgementService.acknowledgeSuccess(
+                                        event.getId(), processingOwner);
 
-                            repository.save(event);
+                            } else {
+                                acknowledgementService.acknowledgeFailure(
+                                        event.getId(),
+                                        processingOwner,
+                                        currentRetryCount,
+                                        exception);
+                            }
                         });
     }
 }

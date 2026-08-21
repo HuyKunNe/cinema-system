@@ -1,35 +1,29 @@
 # Transactional Outbox
 
-Version: R25
+**Version:** R26.6
+**Status:** Shared Outbox hardening implemented; business-service integration remains service-owned
+**Last updated:** 2026-08-21
 
 ---
 
 # Purpose
 
 Cinema Booking System uses the Transactional Outbox Pattern to publish Kafka
-integration events reliably without using a distributed transaction.
+integration events reliably without a distributed transaction.
 
-The pattern solves the dual-write problem:
+The owning service writes its business state and an Outbox row in the same local
+MySQL transaction. A scheduler publishes the persisted event only after that
+transaction commits.
 
-```text
-Write business data
-+
-Publish Kafka event
-```
+The Outbox guarantees:
 
-These two operations cannot be committed atomically across MySQL and Kafka.
-Therefore, the owning service writes both its business state and an outbox row
-inside one local database transaction. A scheduler publishes the persisted event
-after the transaction commits.
+- a committed business change has a durable event record;
+- a rolled-back business change does not publish an event;
+- Kafka publication can be retried independently;
+- a service does not require a distributed transaction;
+- the original event identifier and routing information survive retries.
 
-The outbox guarantees:
-
-- A committed business change has a durable event record.
-- A rolled-back business change does not publish an event.
-- Kafka publication can be retried independently.
-- A service does not require a distributed transaction.
-
-The outbox does not guarantee end-to-end exactly-once processing.
+The Outbox does not provide end-to-end exactly-once delivery.
 
 The delivery model is:
 
@@ -39,32 +33,35 @@ At-least-once publication
 Idempotent consumption
 ```
 
-Duplicate delivery is expected and must not create duplicate business effects.
+Duplicate publication is valid. Consumers must prevent duplicate business
+effects.
 
 ---
 
 # Source of Truth
 
-This document describes:
+This document defines:
 
-1. The `common-outbox` implementation completed in R14.
-2. The rules every business service must follow when integrating it.
-3. The implementation gaps still present at the R25 documentation review.
-4. The security and privacy rules for User Service lifecycle events.
+1. The hardened `common-outbox` infrastructure completed in R26.6.
+2. The contract every Outbox-owning service must follow.
+3. The transaction, claim, lease, retry and acknowledgement rules.
+4. The remaining service-integration and operational work.
 
-When documentation and implementation differ:
-
-1. Preserve database-per-service ownership.
-2. Preserve the local business transaction plus outbox insert boundary.
-3. Preserve at-least-once delivery and idempotent consumption.
-4. Do not claim exactly-once delivery.
-5. Treat the implementation gaps listed in this document as unfinished work.
-
-Related event names, producers and consumers are defined by:
+Related event names, producers, consumers and versions are defined by:
 
 ```text
 docs/07_EVENT_CATALOG.md
 ```
+
+When documentation and implementation differ:
+
+1. Preserve database-per-service ownership.
+2. Preserve the local business transaction plus Outbox insert boundary.
+3. Preserve at-least-once delivery and idempotent consumption.
+4. Preserve the original event ID across publication retries.
+5. Do not claim exactly-once delivery.
+6. Do not mark service integration complete until its transaction and contract
+   tests pass.
 
 ---
 
@@ -72,9 +69,7 @@ docs/07_EVENT_CATALOG.md
 
 Every service owns its own `outbox_events` table.
 
-Examples:
-
-| Service              | Owns business data            | Owns outbox events                          |
+| Service              | Owns business data            | Owns Outbox events                          |
 | -------------------- | ----------------------------- | ------------------------------------------- |
 | Booking Service      | `bookings`, `booking_seats`   | Booking lifecycle events                    |
 | Inventory Service    | `show_seats`, inventory state | Seat hold, booking and release events       |
@@ -82,27 +77,25 @@ Examples:
 | Notification Service | Notification state            | Notification-owned events only when defined |
 | User Service         | Users and identity state      | Approved minimal user lifecycle events only |
 
-An outbox table is not shared infrastructure data.
-
 Rules:
 
-- A service writes only to its own outbox table.
-- A service reads and publishes only its own outbox rows.
-- No service queries another service's outbox table.
-- No cross-service foreign key may reference an outbox row.
-- Business event ownership remains in the producing business service.
-- `common-outbox` provides infrastructure only.
-- Business event classes and business decisions must not be placed in
+- a service writes only to its own Outbox table;
+- a service reads and publishes only its own Outbox rows;
+- no service queries another service's Outbox table;
+- no cross-service foreign key references an Outbox row;
+- business event ownership remains in the producing business service;
+- `common-outbox` provides infrastructure only;
+- business event classes and business decisions do not belong in
   `common-outbox`.
 
-Inventory Service owns `show_seats`. Booking Service must request seat
-reservation through `seat-reservation-requested`; it must not update inventory
-tables directly.
+Inventory Service remains the only owner of `show_seats`. Booking Service
+requests reservation through `seat-reservation-requested`; it must not update
+Inventory tables directly.
 
 User Service owns OAuth2 clients, authorizations, consent, refresh tokens,
-credentials, MFA state, and signing-key access. Those records are not Outbox
+credentials, MFA state and signing-key access. Those records are not Outbox
 events. User Service may create Outbox rows only for approved minimal lifecycle
-events defined by `docs/07_EVENT_CATALOG.md`.
+events in the Event Catalog.
 
 ---
 
@@ -114,86 +107,56 @@ Business command
         v
 Owning service transaction
         |
-        +--> update business tables
+        +--> mutate business tables
         |
-        +--> insert outbox_events row as PENDING
+        +--> insert PENDING outbox_events row
         |
         v
 Commit local MySQL transaction
         |
         v
-Outbox Scheduler
+Short claim transaction
         |
-        +--> select publishable rows
-        |
+        +--> SELECT eligible rows
+        +--> FOR UPDATE SKIP LOCKED
+        +--> assign processing owner and lease
         +--> mark PROCESSING
         |
-        +--> publish to Kafka
+        v
+Commit claim transaction
+        |
+        v
+Publish to Kafka without a database transaction
         |
         v
 Kafka acknowledgement future
         |
-        +--> success: mark SENT
+        +--> success: conditional PROCESSING -> SENT
         |
-        +--> failure: mark FAILED and increment retry_count
+        +--> failure: conditional PROCESSING -> FAILED
 ```
 
-The event must never be published directly from the business transaction as a
-replacement for the outbox insert.
-
-Correct:
-
-```text
-Business transaction
-    update aggregate
-    save outbox row
-commit
-
-Scheduler
-    publish later
-```
-
-Incorrect:
-
-```text
-Business transaction
-    update aggregate
-    kafkaTemplate.send(...)
-commit
-```
-
-The incorrect flow can produce either:
-
-- Committed business data with no Kafka event.
-- A Kafka event for business data that later rolls back.
+Kafka I/O must never keep a database transaction open.
 
 ---
 
 # Local Transaction Boundary
 
-The aggregate update and outbox insert must use the same datasource and the same
+The aggregate mutation and Outbox insert use the same datasource and the same
 local transaction.
 
 Conceptual example:
 
 ```java
 @Transactional
-public UUID createBooking(CreateBookingCommand command) {
+public Booking createBooking(CreateBookingCommand command) {
     Booking booking = bookingRepository.save(
-        Booking.create(command)
-    );
+            Booking.create(command));
 
     outboxService.save(
-        new OutboxEventEntity(
-            uuidV7Generator.generate(),
-            AggregateType.BOOKING,
-            booking.getId(),
-            "seat-reservation-requested",
-            serializeSeatReservationRequested(booking)
-        )
-    );
+            createSeatReservationRequestedEvent(booking));
 
-    return booking.getId();
+    return booking;
 }
 ```
 
@@ -206,16 +169,16 @@ Required behavior:
 | Failure                    | Not executed or rolled back | Rollback           | No                |
 | Rollback after both writes | Rolled back                 | Rollback           | No                |
 
-`REQUIRES_NEW` must not be used for the outbox insert because it could commit an
-event for business data that later rolls back.
+`REQUIRES_NEW` must not be used for the Outbox insert. It could commit an event
+for business data that later rolls back.
 
-Publishing occurs outside the original business transaction.
+Direct Kafka publication must not replace the Outbox insert.
 
 ---
 
-# Current `common-outbox` Components
+# Shared Components
 
-R14 introduced:
+R26.6 provides:
 
 ```text
 OutboxEventEntity
@@ -224,27 +187,33 @@ AggregateType
 OutboxRepository
 OutboxService
 DefaultOutboxService
+OutboxClaimService
+DefaultOutboxClaimService
+OutboxAcknowledgementService
+DefaultOutboxAcknowledgementService
+OutboxRetryPolicy
 OutboxPublisher
 KafkaOutboxPublisher
 OutboxScheduler
 OutboxEventMessage
-OutboxEventPayload
 OutboxPublishException
+OutboxProperties
 OutboxConfiguration
 ```
 
-Responsibilities:
-
-| Component              | Responsibility                                     |
-| ---------------------- | -------------------------------------------------- |
-| `OutboxEventEntity`    | Persist publication state and serialized payload   |
-| `OutboxRepository`     | Load and save outbox rows                          |
-| `OutboxService`        | Save an outbox row from a business transaction     |
-| `OutboxPublisher`      | Publish one persisted outbox event                 |
-| `KafkaOutboxPublisher` | Deserialize payload and delegate to `common-kafka` |
-| `OutboxScheduler`      | Poll, publish and update status                    |
-| `OutboxEventMessage`   | Kafka message currently created by the publisher   |
-| `OutboxEventPayload`   | Current generic payload wrapper                    |
+| Component                      | Responsibility                                   |
+| ------------------------------ | ------------------------------------------------ |
+| `OutboxEventEntity`            | Persist event, routing and publication state     |
+| `OutboxRepository`             | Atomic selection and conditional state updates   |
+| `OutboxService`                | Insert an event in a business transaction        |
+| `OutboxClaimService`           | Claim a bounded batch in a short transaction     |
+| `OutboxAcknowledgementService` | Persist Kafka success or failure transactionally |
+| `OutboxRetryPolicy`            | Calculate bounded backoff and jitter             |
+| `OutboxPublisher`              | Publish one persisted event                      |
+| `KafkaOutboxPublisher`         | Build the envelope and delegate to Kafka         |
+| `OutboxScheduler`              | Coordinate claim, publish and acknowledgement    |
+| `OutboxEventMessage`           | Canonical infrastructure event envelope          |
+| `OutboxProperties`             | Typed scheduler, lease and retry configuration   |
 
 `common-outbox` must not own:
 
@@ -259,84 +228,70 @@ Business compensation logic
 
 ---
 
-# Current Persistence Model
+# Hardened Persistence Model
 
-The current R14 entity maps to:
+Each owning service defines its `outbox_events` table through Flyway.
+`common-outbox` supplies the matching JPA entity and infrastructure.
 
-| Field            | Current Java type | Meaning                                                     |
-| ---------------- | ----------------- | ----------------------------------------------------------- |
-| `id`             | `UUID`            | Event identifier                                            |
-| `aggregate_type` | `AggregateType`   | Aggregate category                                          |
-| `aggregate_id`   | `UUID`            | Aggregate identifier                                        |
-| `event_type`     | `String`          | Topic and event routing value in the current implementation |
-| `payload`        | `LONGTEXT`        | Serialized JSON payload                                     |
-| `status`         | `OutboxStatus`    | Publication state                                           |
-| `retry_count`    | `Integer`         | Failed publication count                                    |
-| `created_at`     | `OffsetDateTime`  | Creation time                                               |
-| `published_at`   | `OffsetDateTime`  | Successful publication time                                 |
+| Field                   | Java type        | Meaning                               |
+| ----------------------- | ---------------- | ------------------------------------- |
+| `id`                    | `UUID`           | Stable event identifier               |
+| `aggregate_type`        | `AggregateType`  | Owning aggregate category             |
+| `aggregate_id`          | `UUID`           | Owning aggregate identifier           |
+| `event_type`            | `String`         | Logical event type                    |
+| `event_version`         | `String`         | Explicit event contract version       |
+| `topic`                 | `String`         | Kafka destination                     |
+| `partition_key`         | `String`         | Kafka ordering key                    |
+| `occurred_at`           | `OffsetDateTime` | Business occurrence time              |
+| `correlation_id`        | `UUID`           | Distributed flow identifier           |
+| `causation_id`          | `UUID`           | Causing command or event              |
+| `payload`               | `LONGTEXT`       | Immutable serialized payload          |
+| `status`                | `OutboxStatus`   | Publication state                     |
+| `retry_count`           | `Integer`        | Failed publication count              |
+| `next_attempt_at`       | `OffsetDateTime` | Earliest next eligible attempt        |
+| `last_error`            | `String`         | Bounded sanitized failure description |
+| `processing_owner`      | `String`         | Unique claim token                    |
+| `processing_started_at` | `OffsetDateTime` | Claim start time                      |
+| `processing_expires_at` | `OffsetDateTime` | Claim lease expiration                |
+| `created_at`            | `OffsetDateTime` | Outbox row creation time              |
+| `published_at`          | `OffsetDateTime` | Successful Kafka acknowledgement time |
 
-The actual Flyway migration in each service must define the schema. JPA must
-validate it; JPA schema generation must not replace Flyway.
+UUID columns use `BINARY(16)` consistently.
 
-Conceptual baseline:
+JPA schema generation does not replace Flyway. Production-like tests use
+`ddl-auto=validate`.
 
-```sql
-CREATE TABLE outbox_events (
-    id             BINARY(16)    NOT NULL,
-    aggregate_type VARCHAR(50)   NOT NULL,
-    aggregate_id   BINARY(16)    NOT NULL,
-    event_type     VARCHAR(100)  NOT NULL,
-    payload        LONGTEXT      NOT NULL,
-    status         VARCHAR(20)   NOT NULL,
-    retry_count    INT           NOT NULL DEFAULT 0,
-    created_at     DATETIME(6)   NOT NULL,
-    published_at   DATETIME(6)   NULL,
-    PRIMARY KEY (id),
-    INDEX idx_outbox_publish (
-        status,
-        created_at
-    ),
-    INDEX idx_outbox_aggregate (
-        aggregate_type,
-        aggregate_id
-    )
-);
+Required indexes include:
+
+```text
+(status, next_attempt_at, processing_expires_at, created_at)
+(processing_owner, status)
+(aggregate_type, aggregate_id)
+(correlation_id)
 ```
-
-The exact UUID column representation must match the shared UUID/JPA strategy.
-Do not mix `VARCHAR(36)` and `BINARY(16)` accidentally.
-
-The conceptual schema above reflects the current entity. Fields such as
-`next_retry_at`, `last_error`, claim ownership and lease expiration require a
-future migration and corresponding entity changes before they may be used.
 
 ---
 
 # Identifier Rules
 
-All outbox event identifiers use UUID v7.
+All integration-event identifiers use UUID v7.
 
-Rules:
-
-- Generate `eventId` once when the outbox row is created.
+- Generate `eventId` once when the Outbox row is created.
 - Preserve the same `eventId` across every retry.
-- Never generate a new ID for a publication retry.
-- The Kafka message `eventId` must equal `outbox_events.id`.
-- `aggregateId` must identify the owning business aggregate.
-- Kafka retry, DLT replay and manual replay must preserve the original
-  `eventId`.
-- A newly created business event is not a retry and receives a new `eventId`.
+- Never generate a new event ID for a publication retry.
+- The Kafka message `eventId` equals `outbox_events.id`.
+- `aggregateId` identifies the owning business aggregate.
+- Retry, recovery, DLT replay and manual replay preserve the event ID.
+- A new business event is not a retry and receives a new event ID.
 
-Generating a new `eventId` during retry breaks consumer deduplication.
+Claim tokens are infrastructure identifiers. They are not integration-event IDs
+and do not appear in the published envelope.
 
 ---
 
-# Event Contract
+# Canonical Event Contract
 
-The canonical integration-event contract is defined in
-`docs/07_EVENT_CATALOG.md`.
-
-Required envelope information includes:
+Persisted and published envelope values are:
 
 ```text
 eventId
@@ -350,65 +305,56 @@ causationId
 payload
 ```
 
-The current R14 `OutboxEventMessage` contains only:
+Routing values persisted beside the envelope are:
 
 ```text
-eventId
-eventType
-createdAt
-payload
+topic
+partitionKey
 ```
-
-This is an implementation gap. Before business-service integration is considered
-complete, the persisted data and published envelope must be aligned with the
-canonical event contract without introducing producer-internal class coupling.
 
 Rules:
 
-- `occurredAt` represents when the business event occurred.
-- `createdAt` represents when the outbox row was created.
-- Publication time must not replace business occurrence time.
-- `eventVersion` must be explicit.
-- `correlationId` links events belonging to the same business flow.
-- `causationId` identifies the command or event that caused the new event.
-- Event payloads must be immutable contracts.
-- Timestamps use ISO-8601 and the approved shared Jackson configuration.
-- Money uses `BigDecimal` plus an explicit currency.
-- JPA entities must never be serialized as integration events.
-- Kafka consumers must not trust producer-internal `__TypeId__` headers.
+- `occurredAt` is the business occurrence time.
+- `createdAt` is the Outbox row creation time and is not a replacement for
+  `occurredAt`.
+- `publishedAt` is the successful acknowledgement time.
+- `eventVersion` is explicit.
+- `correlationId` links events in the same distributed flow.
+- `causationId` identifies the command or event that caused this event.
+- payload contracts are immutable DTOs or records.
+- timestamps use ISO-8601 through the shared Jackson configuration.
+- money uses `BigDecimal` plus an explicit currency.
+- JPA entities are never serialized as integration events.
+- consumers do not trust producer-internal `__TypeId__` headers.
 
 ---
 
-# Event Type and Topic Routing
+# Topic and Partition Routing
 
-The current `KafkaOutboxPublisher` calls:
+`topic` and logical `eventType` are separate persisted values.
+
+The publisher delegates with:
 
 ```java
 producer.send(
-    event.getEventType(),
-    message
-);
+        event.getTopic(),
+        event.getPartitionKey(),
+        message);
 ```
 
-Therefore, the current implementation uses `event_type` as the Kafka topic.
+Rules:
 
-Until topic and logical event type are modeled separately:
-
-- `event_type` must contain the exact approved topic name.
-- Topic names must be kebab-case.
-- Topic names must exist in `docs/07_EVENT_CATALOG.md`.
-- A service may publish only the topics it owns.
-- Consumers must route by an explicit supported event type and version.
-
-If a future design separates `topic` from `eventType`, it requires a migration,
-contract update and tests. Do not silently change the meaning of the existing
-column.
+- topic names use kebab-case;
+- topics exist in `docs/07_EVENT_CATALOG.md`;
+- a service publishes only topics it owns;
+- the partition key follows the event catalog and service design;
+- Booking Saga events use the Booking aggregate ID as the Kafka key;
+- retries preserve the original topic and key;
+- consumers route by supported event type and version.
 
 ---
 
 # Business Event Ownership
-
-The approved catalog ownership is:
 
 | Event/topic                   | Producer          | Primary consumers                       |
 | ----------------------------- | ----------------- | --------------------------------------- |
@@ -427,11 +373,7 @@ The approved catalog ownership is:
 | `user-email-verified`         | User Service      | Approved consumers only                 |
 | `user-account-status-changed` | User Service      | Approved consumers only                 |
 
-Booking, Payment, Notification, and User event contracts are planned until their
-owning roadmap rounds implement and test them. This table summarizes
-`docs/07_EVENT_CATALOG.md`; that catalog remains authoritative if the event set
-changes.
-
+The Event Catalog remains authoritative if ownership or the event set changes.
 A consumer does not gain permission to publish a topic merely because it can
 consume it.
 
@@ -439,7 +381,7 @@ consume it.
 
 # Status State Machine
 
-Current statuses:
+Approved statuses are:
 
 ```text
 PENDING
@@ -448,579 +390,389 @@ SENT
 FAILED
 ```
 
-Current transitions:
-
 ```text
-PENDING -----> PROCESSING -----> SENT
-                   |
-                   +-----------> FAILED
+PENDING ------> PROCESSING ------> SENT
+                    |
+                    +-----------> FAILED
                                       |
                                       +--> PROCESSING on retry
+
+expired PROCESSING lease ------------> PROCESSING under a new claim
 ```
 
-Meaning:
-
-| Status       | Meaning                                                |
-| ------------ | ------------------------------------------------------ |
-| `PENDING`    | Persisted and waiting for first publication            |
-| `PROCESSING` | Selected by a scheduler and publication is in progress |
-| `SENT`       | Kafka send future completed successfully               |
-| `FAILED`     | Last publication attempt failed                        |
+| Status       | Meaning                                            |
+| ------------ | -------------------------------------------------- |
+| `PENDING`    | Persisted and waiting for first publication        |
+| `PROCESSING` | Owned by an active or recoverable processing lease |
+| `SENT`       | Kafka acknowledgement completed successfully       |
+| `FAILED`     | Last owned publication attempt failed              |
 
 Rules:
 
-- New outbox rows start as `PENDING`.
-- `PROCESSING` is set before calling the publisher.
-- `SENT` is terminal for normal scheduler processing.
-- `FAILED` increments `retry_count`.
-- Retrying changes `FAILED` to `PROCESSING`.
-- Business code must not create rows directly as `SENT`.
-- Publication failure must not change committed business state.
-
-The older term `NEW` is not the current enum value. New documentation and
-migrations must use `PENDING` unless an explicit migration renames the state.
-
----
-
-# Current Scheduler Behavior
-
-`OutboxScheduler` currently:
-
-1. Runs with fixed delay `${cinema.outbox.delay:5000}`.
-2. Selects up to 100 rows whose status is `PENDING` or `FAILED`.
-3. Orders rows by `createdAt`.
-4. Filters rows through `canRetry()`.
-5. Marks each selected row `PROCESSING`.
-6. Saves the row.
-7. Publishes asynchronously.
-8. Marks it `SENT` after successful completion.
-9. Marks it `FAILED` and increments `retry_count` after failure.
-
-Current defaults:
-
-| Setting                 |    Value |
-| ----------------------- | -------: |
-| Scheduler delay         | 5,000 ms |
-| Query batch size        |      100 |
-| Maximum failed attempts |        5 |
-
-`OutboxConstants` defines `BATCH_SIZE = 100` and `DEFAULT_DELAY = 5000`, but the
-current repository method and scheduler annotation also contain their effective
-values directly. These values should be unified through validated configuration
-in a later hardening change.
+- new rows start as `PENDING`;
+- claim changes an eligible row to `PROCESSING`;
+- `SENT` is terminal for normal scheduling;
+- failure increments `retry_count`;
+- retry changes an eligible `FAILED` row to `PROCESSING`;
+- expired `PROCESSING` may be reclaimed safely;
+- business code never creates a row directly as `SENT`;
+- publication failure does not roll back committed business state;
+- the obsolete status `NEW` must not be used.
 
 ---
 
-# Kafka Acknowledgement Rule
+# Atomic Claiming
 
-Calling the Kafka producer is not proof of successful publication.
+Claiming occurs in a short local transaction.
 
-The outbox row may become `SENT` only after the future returned by
+The MySQL 8 query selects a bounded ordered batch using:
+
+```sql
+FOR UPDATE SKIP LOCKED
+```
+
+Eligible rows are:
+
+- `PENDING` rows whose `next_attempt_at` is absent or due;
+- `FAILED` rows below the maximum retry count whose next attempt is due;
+- `PROCESSING` rows below the maximum retry count whose lease expired.
+
+Ineligible rows are:
+
+- `SENT` rows;
+- active `PROCESSING` leases;
+- delayed retries;
+- retry-exhausted rows.
+
+The claim transaction assigns a unique `processing_owner`, records the start
+time, records the lease expiration and commits before Kafka publication.
+
+The database row is authoritative. Correctness does not depend on an in-memory
+lock, Redis lock or a single scheduler instance.
+
+---
+
+# Multi-Instance Safety
+
+Multiple service instances may run the scheduler concurrently.
+
+`SKIP LOCKED` ensures that a competing claimer does not wait for or select a row
+currently locked by another claim transaction.
+
+Each claimed event receives a unique claim token. A token is unique per claim,
+not merely per application instance. This prevents a delayed callback from an
+earlier attempt from acknowledging a newer claim.
+
+Concurrency tests use MySQL Testcontainers and verify:
+
+- two claimers cannot own the same active row;
+- locked rows are skipped;
+- active leases are not stolen;
+- expired leases are recovered;
+- stale acknowledgements update zero rows.
+
+---
+
+# Processing Lease Recovery
+
+A row is recoverable when:
+
+```text
+status = PROCESSING
+AND processing_expires_at <= current time
+AND retry_count < maximum attempts
+```
+
+Recovery preserves all event identity, contract, payload and routing values.
+It changes only processing ownership and lease metadata.
+
+Do not reset all `PROCESSING` rows blindly. A live publisher may still own an
+unexpired lease.
+
+Because a process may stop after Kafka accepts an event but before `SENT`
+commits, recovery may publish the same event again. Consumers remain
+idempotent.
+
+---
+
+# Kafka Acknowledgement
+
+Calling the producer is not proof of successful publication.
+
+The row becomes `SENT` only after the future returned by
 `KafkaProducerService.send(...)` completes successfully.
 
-Current behavior:
+Acknowledgement runs in a separate short transaction after Kafka I/O.
+
+The conditional success boundary is:
 
 ```text
-producer.send(...)
-    |
-    +--> future succeeds --> markSent()
-    |
-    +--> future fails ----> markFailed()
+event_id = expected event
+AND status = PROCESSING
+AND processing_owner = expected claim token
 ```
 
-The exact Kafka producer acknowledgement level is infrastructure configuration,
-but the application must never mark `SENT` merely because the send method
-returned a future.
-
-Important failure window:
+Success sets:
 
 ```text
-Kafka accepted message
-        |
-process crashes before database marks SENT
-        |
-scheduler publishes the same event again
+status = SENT
+published_at = acknowledgement time
+next_attempt_at = NULL
+processing lease fields = NULL
 ```
 
-This is why duplicate Kafka delivery is valid and consumers must be idempotent.
+Failure uses the same ownership boundary and sets:
+
+```text
+status = FAILED
+retry_count = retry_count + 1
+next_attempt_at = calculated retry time
+last_error = bounded sanitized reason
+processing lease fields = NULL
+```
+
+An update count of zero means the callback is stale and is ignored.
 
 ---
 
 # Retry Policy
 
-The current R14 retry implementation is immediate polling of `FAILED` rows until
-`retry_count` reaches 5.
-
-Current rule:
-
-```java
-retryCount < 5
-```
-
-The same outbox row and `eventId` are reused.
-
-Current limitations:
-
-- No `next_retry_at`.
-- No exponential backoff.
-- No jitter.
-- No error classification.
-- No persisted bounded error reason.
-- No automatic terminal status distinct from `FAILED`.
-- No DLT publication.
-
-Production hardening should add bounded exponential backoff with jitter:
+Publication failures use bounded exponential backoff with bounded jitter.
 
 ```text
-next delay =
+bounded delay =
 min(
-    configured maximum,
-    base delay * 2 ^ retry_count
+    configured maximum retry delay,
+    base retry delay * 2 ^ current retry count
 )
-+
-bounded jitter
+
+next attempt =
+failure time
++ bounded delay
++ bounded random jitter
 ```
-
-Retryable examples:
-
-```text
-Kafka broker temporarily unavailable
-Leader election
-Request timeout
-Transient network failure
-```
-
-Non-retryable examples:
-
-```text
-Malformed persisted JSON
-Unsupported event type
-Unsupported event version
-Missing required identifier
-Invalid topic mapping
-```
-
-Non-retryable failures must not be retried forever. Their operational handling
-requires an explicit terminal policy, protected diagnostics and an authorized
-replay process.
-
-Expected Outbox application failures use `common-exception` and stable error
-codes. Do not introduce `IllegalArgumentException`, `IllegalStateException`, or
-a generic `RuntimeException` as the service/API error contract for malformed
-events, unsupported routing, serialization, or publication failure.
-
----
-
-# `PROCESSING` Recovery
-
-The current scheduler selects only `PENDING` and `FAILED`.
-
-If a process stops after saving `PROCESSING` but before saving `SENT` or `FAILED`,
-the row remains stuck because the current query will not select it again.
-
-This is a known production-blocking gap.
-
-A hardened implementation requires a claim lease, for example:
-
-```text
-processing_owner
-processing_started_at
-processing_expires_at
-```
-
-Recovery rule:
-
-```text
-PROCESSING
-+
-lease expired
-        |
-        v
-eligible for safe retry
-```
-
-Recovery preserves the same `eventId`.
-
-Do not reset every `PROCESSING` row blindly. A live publisher may still own an
-unexpired claim.
-
----
-
-# Multi-Instance Concurrency
-
-The current repository query:
-
-```text
-findTop100ByStatusInOrderByCreatedAt(...)
-```
-
-does not atomically claim rows and does not prevent multiple application
-instances from selecting the same row.
-
-Duplicate publication is semantically tolerated by idempotent consumers, but
-uncontrolled concurrent claims create avoidable load and unsafe state races.
-
-Before horizontally scaling an outbox publisher, implement and test one approved
-database claim strategy, such as:
-
-```text
-SELECT ... FOR UPDATE SKIP LOCKED
-```
-
-inside a short claim transaction, followed by leased processing.
-
-Requirements:
-
-- Claim rows atomically.
-- Keep database locks short.
-- Do not hold a database transaction open while waiting for Kafka.
-- Record ownership and lease expiration.
-- Recover abandoned claims.
-- Preserve at-least-once delivery.
-- Test with multiple scheduler instances.
-
-Distributed Redis locks must not replace the database claim protocol for outbox
-rows.
-
----
-
-# Ordering
-
-Kafka guarantees order only within a partition.
-
-The partition key must be the aggregate identifier, normally `aggregateId`, so
-events for one aggregate remain in order.
 
 Rules:
 
-- Events for one booking use the same booking ID as the Kafka key.
-- Events for one payment use the same payment aggregate key according to the
-  event contract.
-- Retries preserve the original key.
-- A consumer must still validate current aggregate state.
-- An old or delayed event must not reverse a newer terminal state.
-- Global ordering across all aggregates is neither required nor guaranteed.
+- retry uses the same row and event ID;
+- retry preserves topic and partition key;
+- `retry_count` increments only through an owned failure acknowledgement;
+- a row is not claimable before `next_attempt_at`;
+- a row is not claimable after reaching `maximumAttempts`;
+- `last_error` is limited to 2,000 characters;
+- `last_error` contains no payload, credential or complete stack trace.
 
-The current `KafkaOutboxPublisher` delegates without visibly passing an explicit
-key. `common-kafka` and producer integration must be verified before claiming
-aggregate ordering is implemented.
+Retryable examples include broker unavailability, leader election, request
+timeout and transient network failure.
+
+Malformed JSON, unsupported event types, unsupported versions and invalid
+routing require explicit terminal classification and operational handling. R26.6
+does not introduce a separate terminal status or DLT.
 
 ---
 
-# Idempotent Consumer
+# Failure Windows
 
-Every state-changing Kafka consumer must implement the Idempotent Consumer
-Pattern.
+| Failure window                                   | Expected result                                      |
+| ------------------------------------------------ | ---------------------------------------------------- |
+| Business transaction rolls back                  | Business state and Outbox row both roll back         |
+| Process stops after business commit              | PENDING row remains durable                          |
+| Claim transaction rolls back                     | Row remains eligible under its prior state           |
+| Process stops after claim                        | Expired lease permits recovery                       |
+| Kafka send fails                                 | Owned acknowledgement schedules retry                |
+| Kafka accepts event, process stops before `SENT` | Recovery may publish the same event again            |
+| Stale callback arrives                           | Conditional update affects zero rows                 |
+| Consumer receives duplicate                      | Processed-event uniqueness prevents duplicate effect |
+| Retry count reaches maximum                      | Automated claim stops and operations must alert      |
 
-Conceptual table:
+---
 
-```sql
-CREATE TABLE processed_events (
-    event_id       BINARY(16)   NOT NULL,
-    consumer_name  VARCHAR(100) NOT NULL,
-    processed_at   DATETIME(6)  NOT NULL,
-    PRIMARY KEY (event_id, consumer_name)
-);
-```
+# Idempotent Consumption
 
-The identifier uses the same UUID storage strategy as event IDs.
+At-least-once publication requires idempotent state-changing consumers.
 
-Consumer transaction:
+The processing uniqueness boundary is:
 
 ```text
-Begin local database transaction
-        |
-        +--> insert (event_id, consumer_name)
-        |
-        +--> duplicate key?
-        |       |
-        |       +--> yes: no-op and acknowledge
-        |
-        +--> validate event and business preconditions
-        |
-        +--> update owned business data
-        |
-        +--> insert new outbox event when required
-        |
-Commit
-        |
-        v
-Kafka offset may be acknowledged
+(event_id, consumer_name)
 ```
 
-The processed-event insert, business update and any resulting outbox insert must
-commit in the same local transaction.
-
-Incorrect:
+The following commit together:
 
 ```text
-save processed_events
-commit
-
-update business data
-commit
+processed-event insertion
+business state transition
+resulting Outbox insertion
 ```
 
-If the second transaction fails, a retry is incorrectly ignored.
-
-`consumer_name` must be stable across deployments and unique for a logical
-consumer. It must not contain a random instance identifier.
-
----
-
-# Consumer Validation
-
-Idempotency is necessary but does not make an event trusted.
-
-Before applying a business effect, consumers validate:
-
-- Envelope structure.
-- Supported `eventType`.
-- Supported `eventVersion`.
-- Required identifiers.
-- `aggregateId` consistency.
-- Kafka key consistency.
-- Timestamp format.
-- Correlation and causation identifiers.
-- Payload structure.
-- Numeric ranges.
-- Monetary value and currency.
-- Current business-state preconditions.
-- Producer identity where infrastructure provides it.
-
-A delayed `payment-succeeded` must not revive a cancelled or expired booking.
-
-An event with a duplicate `eventId` but different content is invalid and must not
-be treated as a normal duplicate.
-
----
-
-# Failure Scenarios
-
-| Failure                                       | Expected result                                      |
-| --------------------------------------------- | ---------------------------------------------------- |
-| Business transaction rolls back               | Business data and outbox row both roll back          |
-| Service crashes after commit, before polling  | `PENDING` row remains durable                        |
-| Payload cannot be serialized before save      | Business transaction rolls back                      |
-| Payload cannot be deserialized by publisher   | Future fails; row becomes `FAILED`                   |
-| Kafka is unavailable                          | Row becomes `FAILED`; retry count increments         |
-| Kafka succeeds, service crashes before `SENT` | Event may be published again                         |
-| Database save of `SENT` fails                 | Event may be published again                         |
-| Consumer receives duplicate                   | Processed-event uniqueness prevents duplicate effect |
-| Scheduler crashes while row is `PROCESSING`   | Current implementation can leave row stuck           |
-| Two schedulers select the same row            | Current implementation may publish concurrently      |
-| Retry count reaches 5                         | Current scheduler stops selecting the row            |
-
-The last three cases require operational visibility and production hardening.
-
----
-
-# Dead-Letter Strategy
-
-DLT support is not implemented in the current R14 `common-outbox`.
-
-Do not document `booking-dlt`, `payment-dlt` or `inventory-dlt` as active until
-topics, ownership, ACLs, retention, payload rules, monitoring and replay behavior
-are implemented and tested.
-
-A future DLT record should preserve:
-
-```text
-original eventId
-original topic
-original partition and offset where available
-event type and version
-aggregate identifier
-bounded failure category
-failure timestamp
-retry count
-approved correlation metadata
-```
-
-It must not contain:
-
-```text
-credentials
-tokens
-private keys
-full card data
-complete stack traces
-unnecessary personal data
-unbounded exception messages
-```
-
-DLT publication is not a business compensation action. Saga compensation must be
-defined by the owning services and their business events.
-
----
-
-# Manual Replay
-
-Manual replay is a privileged administrative operation.
-
-Requirements:
-
-- Explicit authorization.
-- Audit record containing actor, reason, target and result.
-- Selection by stable event ID.
-- Preservation of original `eventId`.
-- Preservation of aggregate key and event version.
-- Validation that payload and topic remain supported.
-- Protection against concurrent automated publication.
-- Idempotent consumers.
-- Bounded batch size.
-- Dry-run or inspection capability before large replay.
-- Metrics and alerting.
-
-Manual replay must not:
-
-- Edit a failed payload silently.
-- Generate a new ID merely to bypass deduplication.
-- Change business state directly.
-- Reset all failed events without a bounded target.
-- expose protected payload data in an administrative UI.
-
-If correcting an invalid historical event requires a new business fact, create a
-new explicitly owned event rather than disguising it as a retry.
-
----
-
-# Security
-
-Outbox payloads receive the same protection as integration events.
-
-Rules:
-
-- Only the owning service database user may access its outbox table.
-- The publication worker uses least-privilege Kafka credentials.
-- Producer ACLs permit only topics owned by that service.
-- Payloads contain only data required by approved consumers.
-- Payloads must not contain secrets.
-- Logs must not dump complete protected payloads.
-- Backups containing outbox rows must be protected.
-- Administrative inspection and replay require privileged access.
-- Manual replay is audited.
-- Retention and deletion follow data-protection requirements.
-- Kafka and database traffic use protected transport outside isolated local
-  development.
-
-Prohibited payload data:
-
-```text
-Passwords
-Password hashes
-Password-reset tokens
-Email-verification tokens
-Access tokens
-Refresh tokens
-Authorization codes
-Database credentials
-Private signing keys
-OAuth2 client secrets
-MFA secrets
-MFA recovery codes
-Payment provider secrets
-CVV values
-Full card numbers
-Unnecessary personal data
-Internal stack traces
-```
-
-If `last_error` is introduced later, it must store a bounded sanitized reason,
-not credentials, raw payloads or complete exception traces.
-
-## User Service and OAuth2 boundary
-
-The Outbox must not be used as OAuth2 token persistence, session persistence,
-revocation storage, consent storage, or security-audit storage.
-
-The following are not Kafka business events by default:
-
-- Login success or failure
-- Authorization denial
-- Access-token issuance
-- Refresh-token issuance, rotation, reuse detection, or revocation
-- Authorization-code issuance
-- OAuth2 consent changes
-- Client-secret changes
-- MFA enrollment, challenge, recovery, or bypass
-- Signing-key loading or rotation
-
-These activities remain inside User Service security state, audit records, and
-observability unless an accepted ADR and concrete consumer requirement approve
-a minimal event.
-
-An approved User lifecycle Outbox payload must:
-
-- Use a UUID user identifier.
-- Contain only fields required by an approved consumer.
-- Avoid a full user profile when an identifier is sufficient.
-- Exclude every credential, token, secret, private key, and raw authentication
-  artifact.
-- Follow retention and privacy requirements in both MySQL and Kafka.
-- Be covered by payload-contract and sensitive-data tests.
+A duplicate-key race is duplicate delivery, not an uncontrolled internal error.
+Consumers also validate current aggregate state and supported event version.
 
 ---
 
 # Serialization
 
-Payload JSON uses the approved `common-jackson` `ObjectMapper`.
+Payload JSON uses the approved shared `ObjectMapper`.
+
+- use ISO-8601 timestamps;
+- disable timestamp-array serialization;
+- do not enable unsafe global polymorphic typing;
+- do not deserialize arbitrary producer class names;
+- use immutable DTOs or records;
+- do not serialize JPA proxies or entities;
+- do not serialize exceptions into the event;
+- validate payload size;
+- keep payloads compatible within an event version;
+- introduce a new version for breaking changes.
+
+Serialization occurs before the business transaction commits. A payload that
+cannot be serialized must prevent committing business state without a
+publishable event.
+
+---
+
+# Security and Privacy
+
+- Only the owning service database user accesses its Outbox table.
+- Publication workers use least-privilege Kafka credentials.
+- Producer ACLs permit only topics owned by that service.
+- Payloads contain only data required by approved consumers.
+- Logs do not dump complete payloads.
+- Administrative inspection and replay require privileged access.
+- Backups containing Outbox rows follow data-protection requirements.
+- Kafka and database traffic use protected transport outside isolated local
+  development.
+
+Prohibited payload and error data includes:
+
+```text
+Passwords and password hashes
+Password-reset and email-verification tokens
+Access and refresh tokens
+Authorization codes
+Database credentials
+Private signing keys
+OAuth2 client secrets
+MFA secrets and recovery codes
+Payment provider secrets
+CVV values and full card numbers
+Unnecessary personal data
+Complete internal stack traces
+```
+
+## User Service and OAuth2 boundary
+
+The Outbox is not OAuth2 token, session, revocation, consent or security-audit
+storage.
+
+Login activity, token issuance, authorization denial, refresh-token rotation,
+client-secret changes, MFA operations and signing-key operations are not Kafka
+business events by default.
+
+An approved User lifecycle payload:
+
+- uses a UUID user identifier;
+- contains only fields required by an approved consumer;
+- avoids a full profile when an identifier is sufficient;
+- excludes every credential, token, secret and raw authentication artifact;
+- follows retention and privacy requirements;
+- has payload-contract and sensitive-data tests.
+
+---
+
+# Configuration
+
+Active typed properties use the `cinema.outbox` prefix:
+
+```yaml
+cinema:
+  outbox:
+    batch-size: 100
+    scheduler-delay: 5s
+    lease-duration: 30s
+    maximum-attempts: 5
+    base-retry-delay: 1s
+    maximum-retry-delay: 1m
+    maximum-jitter: 500ms
+```
 
 Rules:
 
-- Use ISO-8601 timestamps.
-- Disable timestamp-array serialization.
-- Do not enable unsafe global polymorphic default typing.
-- Do not deserialize arbitrary producer class names.
-- Use immutable DTOs or records.
-- Do not serialize JPA lazy proxies.
-- Do not serialize exceptions into the event.
-- Validate maximum payload size.
-- Keep payloads backward compatible within an event version.
-- Introduce a new version for breaking contract changes.
+- values have safe local defaults;
+- batch size and attempt count are positive;
+- durations are non-negative and meaningful;
+- maximum retry delay is not below the base delay;
+- configuration contains no credentials;
+- production must not silently disable publication.
 
-Serialization should occur before the transaction commits. A payload that cannot
-be serialized must prevent creation of a business state that has no publishable
-event.
+---
+
+# Dead-Letter Strategy
+
+DLT publication is not implemented in R26.6.
+
+Do not document a DLT topic as active until ownership, ACLs, retention, payload,
+monitoring and replay behavior are implemented and tested.
+
+A future DLT record preserves the original event identity and routing metadata.
+It must not contain credentials, full payment data, complete stack traces or
+unnecessary personal data.
+
+DLT publication is not Saga compensation. Compensation remains business logic
+owned by participating services.
+
+---
+
+# Manual Replay
+
+Manual replay is not implemented in R26.6. When introduced, it requires:
+
+- explicit authorization;
+- an audit record with actor, reason, target and result;
+- selection by stable event ID;
+- preservation of event ID, aggregate key and version;
+- supported payload and topic validation;
+- protection against concurrent automated publication;
+- bounded batches and dry-run inspection;
+- metrics and alerting.
+
+Manual replay must not silently edit payloads, generate a new ID to bypass
+deduplication, change business state directly or reset every failed row blindly.
 
 ---
 
 # Retention and Cleanup
 
-Cleanup is not implemented in the current module.
+Cleanup is not implemented in R26.6.
 
-Before cleanup is enabled, define per-environment retention for:
+Before enabling cleanup, define retention for:
 
 ```text
-SENT outbox rows
-Terminal failed rows
-Processed-event rows
+SENT Outbox rows
+retry-exhausted rows
+processed-event rows
 DLT records
-Audit records
+audit records
 Kafka topics
-Database backups
+database backups
 ```
 
 Cleanup rules:
 
-- Delete only terminal rows eligible by policy.
-- Never delete `PENDING` rows.
-- Never delete an actively leased `PROCESSING` row.
-- Do not delete unresolved failures merely because they are old.
-- Use bounded batches.
-- Avoid long-running transactions.
-- Preserve audit requirements.
-- Coordinate outbox retention with Kafka retention and replay requirements.
-- Monitor cleanup failures and table growth.
+- delete only terminal rows eligible by policy;
+- never delete `PENDING` rows;
+- never delete an active `PROCESSING` lease;
+- do not discard unresolved failures merely because they are old;
+- use bounded batches and short transactions;
+- preserve audit requirements;
+- coordinate Outbox, processed-event and Kafka retention.
 
-Deleting `processed_events` too early permits an old Kafka message to cause a
+Deleting processed-event records too early permits an old message to create a
 duplicate business effect.
 
 ---
 
 # Observability
-
-The outbox requires metrics, structured logs and alerts.
 
 Recommended metrics:
 
@@ -1028,6 +780,7 @@ Recommended metrics:
 outbox.pending.count
 outbox.processing.count
 outbox.failed.count
+outbox.retry.exhausted.count
 outbox.oldest.pending.age
 outbox.publish.success.count
 outbox.publish.failure.count
@@ -1037,86 +790,18 @@ outbox.stuck.processing.count
 outbox.cleanup.deleted.count
 ```
 
-Useful dimensions:
+Useful bounded dimensions include service, environment, event type, result and
+failure category.
 
-```text
-service
-environment
-event_type
-result
-bounded_failure_category
-```
+Do not use event IDs, aggregate IDs, user IDs or raw error messages as unbounded
+metric labels.
 
-Do not use `eventId`, `aggregateId`, user identifiers or raw error messages as
-unbounded metric labels.
+Alerts should cover old pending rows, growing failure counts, expired leases,
+publication failure rate, retry exhaustion, missing successful publications and
+table growth.
 
-Structured logs may include:
-
-```text
-service
-eventId
-eventType
-aggregateId where approved
-retryCount
-correlationId
-bounded result
-bounded failure category
-```
-
-Logs must not include complete payloads or secrets.
-
-Alert examples:
-
-- Oldest `PENDING` age exceeds the service objective.
-- `FAILED` count grows continuously.
-- Events remain `PROCESSING` beyond their lease.
-- Publish failure rate exceeds a threshold.
-- No successful publication occurs while pending rows exist.
-- Retry exhaustion occurs.
-- Cleanup stops and table size grows unexpectedly.
-
----
-
-# Configuration
-
-Current property:
-
-```yaml
-cinema:
-    outbox:
-        delay: 5000
-```
-
-The current scheduler defaults to 5 seconds when the property is missing.
-
-Future validated configuration should include:
-
-```yaml
-cinema:
-    outbox:
-        enabled: true
-        delay: 5s
-        batch-size: 100
-        max-retries: 5
-        retry:
-            initial-delay: 1s
-            max-delay: 5m
-            jitter: true
-        processing-lease: 1m
-        retention: 7d
-```
-
-This example defines the target configuration shape only. Properties not bound
-and implemented in code must not be treated as active.
-
-Configuration must:
-
-- Have safe defaults for local development.
-- Be validated at startup.
-- Reject negative delays and invalid batch sizes.
-- Be environment-specific where necessary.
-- Not contain credentials.
-- Not silently disable publication in production.
+Operational metrics and alerts remain follow-up work unless a service round
+explicitly implements them.
 
 ---
 
@@ -1126,139 +811,125 @@ Configuration must:
 
 Verify:
 
-- A new entity starts as `PENDING`.
-- `markProcessing()` changes status to `PROCESSING`.
-- `markSent()` changes status to `SENT` and sets `publishedAt`.
-- `markFailed()` changes status to `FAILED` and increments `retryCount`.
-- `canRetry()` is true below the maximum.
-- `canRetry()` is false at the maximum.
-- Publisher creates the expected event envelope.
-- Publisher uses the approved topic.
-- Serialization failure completes exceptionally.
-- Successful Kafka future marks the row `SENT`.
-- Failed Kafka future marks the row `FAILED`.
+- new rows start as `PENDING` and are initially eligible;
+- claim assigns status, owner and lease;
+- matching owners may complete entity transitions;
+- stale owners cannot complete transitions;
+- error descriptions are bounded;
+- retry delay grows exponentially and is capped;
+- jitter remains within its configured bound;
+- canonical envelopes preserve all required values;
+- publisher uses persisted topic and partition key;
+- malformed payload publication completes exceptionally;
+- scheduler acknowledges only after the Kafka future completes.
 
-## Repository tests
+## Migration and repository tests
 
-Verify with MySQL Testcontainers:
+Use MySQL Testcontainers to verify:
 
-- UUID column mapping matches Flyway.
-- `LONGTEXT` payload mapping is valid.
-- Status enum values match the schema.
-- Rows are selected in the intended order.
-- Batch size is enforced.
-- Eligible and ineligible statuses are separated.
-- Required indexes exist.
+- UUID mappings match `BINARY(16)` migrations;
+- payload mapping is `LONGTEXT`;
+- status values match schema constraints;
+- required columns and indexes exist;
+- `FOR UPDATE SKIP LOCKED` works on MySQL 8;
+- eligible states and retry times are selected correctly;
+- batch size and retry exhaustion are enforced.
 
-## Transaction integration tests
+## Transaction tests
 
 Verify:
 
-- Business update and outbox insert commit together.
-- Business failure rolls back the outbox insert.
-- Outbox failure rolls back the business update.
-- No Kafka publication is required for the original transaction to commit.
-- A resulting consumer outbox event commits with the consumer business update.
-
-## Kafka integration tests
-
-Verify with Kafka Testcontainers:
-
-- A persisted event is published.
-- The message contains the original `eventId`.
-- Topic and aggregate key match the catalog.
-- The row becomes `SENT` only after successful acknowledgement.
-- Broker failure produces `FAILED`.
-- Recovery republishes with the same `eventId`.
-- Duplicate delivery creates one business effect.
-- Unsupported event versions are rejected safely.
+- business mutation and Outbox insert commit together;
+- failure of either write rolls back both;
+- original business commit does not require Kafka availability;
+- claim commits before Kafka I/O;
+- acknowledgement executes in its own transaction;
+- stale acknowledgements update zero rows.
 
 ## Concurrency tests
 
-Before multi-instance production use, verify:
+Verify:
 
-- Two schedulers do not own the same active claim.
-- Database locks are not held while waiting for Kafka.
-- Expired claims are recovered.
-- Live claims are not stolen.
-- Multiple aggregate events preserve required ordering.
+- concurrent claimers do not own the same event;
+- locked rows are skipped;
+- active leases are not stolen;
+- expired claims recover;
+- Kafka I/O holds no database lock;
+- duplicate delivery creates one consumer business effect.
 
 ## Security tests
 
-Verify:
+Verify payloads and logs contain no prohibited data and Kafka credentials cannot
+publish unauthorized topics.
 
-- Event payloads contain no prohibited fields.
-- Logs do not contain complete payloads or credentials.
-- Producer credentials cannot publish unauthorized topics.
-- Consumer credentials cannot publish merely because they can read.
-- Manual replay requires authorization and produces an audit record.
+Final verification is:
 
-The current `common-outbox` module has no test source directory. R14 should not
-be considered production-hardened until the required automated tests are added.
+```bash
+mvn clean verify
+```
 
 ---
 
-# Current Implementation Gaps Reviewed at R25
+# R26.6 Completion State
 
-R14 provides the reusable Outbox foundation. Repository review during R25 shows
-that the following items remain:
+Implemented in shared infrastructure:
 
-- Align `OutboxEventMessage` with the canonical event envelope.
-- Persist or otherwise supply `aggregateId`, `aggregateType`, `eventVersion`,
-  `occurredAt`, `correlationId` and `causationId` to the published event.
-- Send an explicit aggregate Kafka key.
-- Replace duplicated constants with validated properties.
-- Implement real delayed retry using `next_retry_at`.
-- Add exponential backoff and jitter.
-- Persist a bounded sanitized failure category when required.
-- Define terminal retry exhaustion behavior.
-- Recover abandoned `PROCESSING` rows.
-- Implement atomic multi-instance claims and leases.
-- Add DLT behavior only after an explicit design is accepted.
-- Add authorized and audited manual replay.
-- Add retention and cleanup jobs.
-- Add metrics, structured logs and alerts.
-- Add unit, repository, transaction, Kafka, concurrency and security tests.
-- Add Flyway migrations to each outbox-owning business service.
-- Verify topic ACLs and database least privilege.
-- Ensure User Service Outbox payloads cannot serialize credentials, OAuth2
-  tokens, client secrets, MFA material, or signing-key data.
+- [x] Canonical persisted event metadata
+- [x] Canonical published envelope
+- [x] Explicit topic and partition key
+- [x] Stable event ID across retry
+- [x] Typed claim and retry configuration
+- [x] Atomic MySQL claim using `FOR UPDATE SKIP LOCKED`
+- [x] Unique processing-owner token
+- [x] Processing lease and expired-claim recovery
+- [x] Kafka acknowledgement-based `SENT` transition
+- [x] Transactional conditional acknowledgements
+- [x] Stale callback protection
+- [x] Exponential backoff with bounded jitter
+- [x] Bounded retry and error description
+- [x] Unit tests for envelope, publisher, claim, retry and acknowledgement
+- [x] MySQL concurrency and recovery integration tests
 
-These are implementation tasks, not features that may be marked complete merely
-by documenting them.
+Still service-owned or deferred:
+
+- [ ] Business mutation and Outbox insert integration per producing service
+- [ ] Business event payload contracts per Event Catalog entry
+- [ ] Consumer processed-event integration
+- [ ] Kafka broker integration tests per service
+- [ ] Non-retryable failure classification
+- [ ] DLT design and implementation
+- [ ] Authorized manual replay
+- [ ] Retention and cleanup jobs
+- [ ] Production metrics and alerts
+- [ ] Kafka ACL verification
+
+R26.6 completion does not by itself complete Booking publication. Booking creates
+`seat-reservation-requested` in R26.7.
 
 ---
 
-# Required Review Checklist
+# Required Service Review Checklist
 
-Before an outbox-owning service is complete:
+Before an Outbox-owning service is complete:
 
-- [ ] Business state and outbox row commit in one local transaction
-- [ ] Outbox row uses UUID v7
+- [ ] Business state and Outbox row commit in one transaction
+- [ ] Outbox event ID uses UUID v7
 - [ ] Event ID remains stable across retries
-- [ ] Topic exists in `docs/07_EVENT_CATALOG.md`
+- [ ] Topic exists in the Event Catalog
 - [ ] Producer owns the event
-- [ ] Kafka key is the approved aggregate ID
-- [ ] Published envelope matches the canonical event contract
+- [ ] Kafka key is the approved aggregate identifier
+- [ ] Envelope matches the canonical contract
 - [ ] Payload uses the approved Jackson configuration
 - [ ] Payload contains no secrets or prohibited payment data
-- [ ] User lifecycle payloads contain no credentials, tokens, client secrets,
-      MFA material, or signing-key data
-- [ ] OAuth2 protocol and internal security-audit activity is not modeled as an
-      Outbox business event without an approved requirement
 - [ ] New rows start as `PENDING`
 - [ ] Rows become `SENT` only after Kafka acknowledgement
 - [ ] Failed publication increments retry state
 - [ ] Retry exhaustion is observable
-- [ ] Abandoned `PROCESSING` rows can recover
-- [ ] Multi-instance row claiming is safe
+- [ ] Abandoned `PROCESSING` rows recover
+- [ ] Multi-instance claiming is safe
 - [ ] Consumers are transactional and idempotent
-- [ ] Processed-event uniqueness is enforced by the database
-- [ ] Consumer state validation rejects stale transitions
-- [ ] Retry and replay preserve the original event ID and key
-- [ ] Manual replay is authorized and audited
-- [ ] Cleanup retention is explicit
-- [ ] Logs and metrics do not expose protected payload data
+- [ ] Processed-event uniqueness is database-enforced
+- [ ] Retry and replay preserve event ID and key
 - [ ] Flyway and JPA mappings agree
 - [ ] Automated tests cover failure windows and duplicate delivery
 - [ ] `mvn clean verify` passes
@@ -1274,9 +945,7 @@ bookingRepository.save(booking);
 kafkaTemplate.send("seat-reservation-requested", event);
 ```
 
----
-
-## Separate outbox transaction
+## Separate Outbox transaction
 
 ```java
 @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -1287,28 +956,23 @@ public void saveOutboxEvent(...) {
 
 when the business state uses another transaction.
 
----
-
-## New ID on retry
+## New event ID on retry
 
 ```java
 event.setId(UUID.randomUUID());
 publisher.publish(event);
 ```
 
----
-
 ## Marking sent before acknowledgement
 
 ```java
-producer.send(topic, message);
-event.markSent();
-outboxRepository.save(event);
+producer.send(topic, key, message);
+repository.markSent(eventId);
 ```
 
----
+without awaiting successful completion of the producer future.
 
-## Shared outbox database
+## Shared Outbox database
 
 ```text
 Booking Service
@@ -1316,36 +980,8 @@ Payment Service
 Inventory Service
         |
         v
-one shared outbox database
+one shared Outbox database
 ```
-
----
-
-## Non-idempotent consumer
-
-```java
-@KafkaListener(...)
-public void consume(Event event) {
-    paymentService.charge(event);
-}
-```
-
-without processed-event protection and provider idempotency.
-
----
-
-## Sensitive payload
-
-```json
-{
-    "bookingId": "...",
-    "accessToken": "...",
-    "paymentApiKey": "...",
-    "cardNumber": "..."
-}
-```
-
----
 
 ## Blind replay
 
@@ -1362,7 +998,7 @@ control.
 
 # Useful Repository Checks
 
-Find direct Kafka publication in business services:
+Find direct business-service Kafka publication:
 
 ```bash
 git grep -n -E \
@@ -1370,10 +1006,7 @@ git grep -n -E \
     -- services
 ```
 
-Every business publication must be reviewed to confirm whether it belongs behind
-the outbox.
-
-Find outbox status inconsistencies:
+Find status inconsistencies:
 
 ```bash
 git grep -n -E \
@@ -1381,7 +1014,7 @@ git grep -n -E \
     -- common services docs
 ```
 
-Find event IDs regenerated during retry:
+Find regenerated event IDs:
 
 ```bash
 git grep -n -E \
@@ -1397,7 +1030,7 @@ git grep -n -i -E \
     -- common services
 ```
 
-Find prohibited sensitive fields in events:
+Find prohibited sensitive fields:
 
 ```bash
 git grep -n -i -E \
@@ -1405,34 +1038,16 @@ git grep -n -i -E \
     -- common services
 ```
 
-Review matches in authentication DTOs separately from integration events.
-
-Find service migrations:
-
-```bash
-find services \
-    -path "*/src/main/resources/db/migration/*.sql" \
-    -type f \
-    -print
-```
-
-Verify formatting:
+Verify formatting and build:
 
 ```bash
 git diff --check
-```
-
-Run the complete build:
-
-```bash
 mvn clean verify
 ```
 
 ---
 
 # Related Documentation
-
-See:
 
 ```text
 docs/00_PROJECT_CONTEXT.md
@@ -1447,11 +1062,11 @@ docs/11_CHANGELOG.md
 docs/12_DEPENDENCY_RULES.md
 docs/13_SEQUENCE_DIAGRAMS.md
 docs/14_DEPLOYMENT.md
-docs/decisions/ADR-013-spring-authorization-server.md
+docs/16_BOOKING_SERVICE_DESIGN.md
 docs/decisions/
 ```
 
-The Event Catalog owns event names, producers and consumers.
+The Event Catalog owns event names, producers, consumers and versions.
 
 Database Design owns service data boundaries.
 

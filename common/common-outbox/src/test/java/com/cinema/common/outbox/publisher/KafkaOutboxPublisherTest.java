@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.cinema.common.kafka.producer.KafkaProducerService;
+import com.cinema.common.outbox.config.OutboxProperties;
 import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.common.outbox.enums.AggregateType;
 import com.cinema.common.outbox.model.OutboxEventMessage;
@@ -15,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -25,7 +27,19 @@ class KafkaOutboxPublisherTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
-    private final KafkaOutboxPublisher publisher = new KafkaOutboxPublisher(producer, objectMapper);
+    private final OutboxProperties properties =
+            new OutboxProperties(
+                    "booking-service",
+                    100,
+                    Duration.ofSeconds(5),
+                    Duration.ofSeconds(30),
+                    5,
+                    Duration.ofSeconds(1),
+                    Duration.ofMinutes(1),
+                    Duration.ZERO);
+
+    private final KafkaOutboxPublisher publisher =
+            new KafkaOutboxPublisher(producer, objectMapper, properties);
 
     @Test
     void shouldPublishCanonicalEnvelopeUsingPersistedTopicAndPartitionKey() {
@@ -84,6 +98,7 @@ class KafkaOutboxPublisherTest {
         assertThat(message.eventType()).isEqualTo("seat-reservation-requested");
         assertThat(message.eventVersion()).isEqualTo("1");
         assertThat(message.occurredAt()).isEqualTo(occurredAt);
+        assertThat(message.producer()).isEqualTo("booking-service");
         assertThat(message.correlationId()).isEqualTo(correlationId);
         assertThat(message.causationId()).isEqualTo(causationId);
         assertThat(message.payload().get("bookingId").asText()).isEqualTo(bookingId.toString());

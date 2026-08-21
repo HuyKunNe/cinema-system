@@ -1,6 +1,7 @@
 package com.cinema.common.outbox.publisher;
 
 import com.cinema.common.kafka.producer.KafkaProducerService;
+import com.cinema.common.outbox.config.OutboxProperties;
 import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.common.outbox.exception.OutboxPublishException;
 import com.cinema.common.outbox.model.OutboxEventMessage;
@@ -18,10 +19,14 @@ public class KafkaOutboxPublisher implements OutboxPublisher {
 
     private final ObjectMapper mapper;
 
-    public KafkaOutboxPublisher(KafkaProducerService producer, ObjectMapper mapper) {
+    private final OutboxProperties properties;
+
+    public KafkaOutboxPublisher(
+            KafkaProducerService producer, ObjectMapper mapper, OutboxProperties properties) {
 
         this.producer = producer;
         this.mapper = mapper;
+        this.properties = properties;
     }
 
     @Override
@@ -38,6 +43,7 @@ public class KafkaOutboxPublisher implements OutboxPublisher {
                             event.getEventType(),
                             event.getEventVersion(),
                             event.getOccurredAt(),
+                            properties.producer(),
                             event.getCorrelationId(),
                             event.getCausationId(),
                             payload);

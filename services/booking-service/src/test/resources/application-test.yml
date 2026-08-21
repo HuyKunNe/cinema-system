@@ -29,8 +29,17 @@ eureka:
 cinema:
   booking:
     reservation-expiration: 10m
-    max-seats-per-booking: 10
+    maximum-seat-count: 10
 
+  outbox:
+    producer: booking-service
+    batch-size: 100
+    scheduler-delay: 5s
+    lease-duration: 30s
+    maximum-attempts: 5
+    base-retry-delay: 1s
+    maximum-retry-delay: 1m
+    maximum-jitter: 0ms
   security:
     oauth2:
       issuer-uri: https://identity.cinema.test

@@ -106,6 +106,12 @@ public final class BookingErrorCode implements ErrorCode {
                     "BOOKING_REQUEST_FINGERPRINT_GENERATION_FAILED",
                     "Booking request fingerprint could not be generated");
 
+    public static final BookingErrorCode OUTBOX_PAYLOAD_SERIALIZATION_FAILED =
+            new BookingErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "BOOKING_OUTBOX_PAYLOAD_SERIALIZATION_FAILED",
+                    "Booking event payload could not be serialized");
+
     private final ErrorCategory category;
 
     private final String code;

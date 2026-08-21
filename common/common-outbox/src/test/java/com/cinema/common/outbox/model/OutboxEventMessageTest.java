@@ -41,6 +41,7 @@ class OutboxEventMessageTest {
                         "seat-reservation-requested",
                         "1",
                         occurredAt,
+                        "booking-service",
                         correlationId,
                         causationId,
                         payload);
@@ -52,6 +53,7 @@ class OutboxEventMessageTest {
         assertThat(message.eventVersion()).isEqualTo("1");
         assertThat(message.occurredAt()).isEqualTo(occurredAt);
         assertThat(message.createdAt()).isEqualTo(occurredAt);
+        assertThat(message.producer()).isEqualTo("booking-service");
         assertThat(message.correlationId()).isEqualTo(correlationId);
         assertThat(message.causationId()).isEqualTo(causationId);
         assertThat(message.payload()).isEqualTo(payload);

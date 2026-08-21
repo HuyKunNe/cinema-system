@@ -70,6 +70,21 @@ public class OutboxEventEntity {
     @Column(name = "retry_count", nullable = false)
     private Integer retryCount;
 
+    @Column(name = "next_attempt_at")
+    private OffsetDateTime nextAttemptAt;
+
+    @Column(name = "last_error", length = 2000)
+    private String lastError;
+
+    @Column(name = "processing_owner", length = 150)
+    private String processingOwner;
+
+    @Column(name = "processing_started_at")
+    private OffsetDateTime processingStartedAt;
+
+    @Column(name = "processing_expires_at")
+    private OffsetDateTime processingExpiresAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -105,29 +120,82 @@ public class OutboxEventEntity {
         this.payload = payload;
         this.status = OutboxStatus.PENDING;
         this.retryCount = 0;
+        this.nextAttemptAt = createdAt;
         this.createdAt = createdAt;
     }
 
-    public void markProcessing() {
+    public void claim(
+            String processingOwner,
+            OffsetDateTime processingStartedAt,
+            OffsetDateTime processingExpiresAt) {
 
         this.status = OutboxStatus.PROCESSING;
+        this.processingOwner = processingOwner;
+        this.processingStartedAt = processingStartedAt;
+        this.processingExpiresAt = processingExpiresAt;
+        this.lastError = null;
     }
 
-    public void markSent(OffsetDateTime publishedAt) {
+    public boolean markSent(String expectedOwner, OffsetDateTime publishedAt) {
+
+        if (!isOwnedBy(expectedOwner)) {
+            return false;
+        }
 
         this.status = OutboxStatus.SENT;
         this.publishedAt = publishedAt;
+        this.nextAttemptAt = null;
+
+        clearProcessingLease();
+
+        return true;
     }
 
-    public void markFailed() {
+    public boolean markFailed(
+            String expectedOwner, OffsetDateTime nextAttemptAt, String lastError) {
+
+        if (!isOwnedBy(expectedOwner)) {
+            return false;
+        }
 
         this.status = OutboxStatus.FAILED;
         this.retryCount++;
+        this.nextAttemptAt = nextAttemptAt;
+        this.lastError = truncateError(lastError);
+
+        clearProcessingLease();
+
+        return true;
     }
 
-    public boolean canRetry() {
+    public boolean canRetry(int maximumAttempts) {
 
-        return retryCount < 5;
+        return retryCount < maximumAttempts;
+    }
+
+    public boolean isOwnedBy(String expectedOwner) {
+
+        return status == OutboxStatus.PROCESSING
+                && expectedOwner != null
+                && expectedOwner.equals(processingOwner);
+    }
+
+    private void clearProcessingLease() {
+
+        this.processingOwner = null;
+        this.processingStartedAt = null;
+        this.processingExpiresAt = null;
+    }
+
+    private static String truncateError(String error) {
+
+        if (error == null || error.isBlank()) {
+            return null;
+        }
+
+        String normalized = error.trim();
+
+        return normalized.length() <= 2000 ? normalized : normalized.substring(0, 2000);
     }
 
     public UUID getId() {
@@ -193,6 +261,31 @@ public class OutboxEventEntity {
     public Integer getRetryCount() {
 
         return retryCount;
+    }
+
+    public OffsetDateTime getNextAttemptAt() {
+
+        return nextAttemptAt;
+    }
+
+    public String getLastError() {
+
+        return lastError;
+    }
+
+    public String getProcessingOwner() {
+
+        return processingOwner;
+    }
+
+    public OffsetDateTime getProcessingStartedAt() {
+
+        return processingStartedAt;
+    }
+
+    public OffsetDateTime getProcessingExpiresAt() {
+
+        return processingExpiresAt;
     }
 
     public OffsetDateTime getCreatedAt() {

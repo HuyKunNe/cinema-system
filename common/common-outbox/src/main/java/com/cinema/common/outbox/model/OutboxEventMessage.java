@@ -13,6 +13,7 @@ public record OutboxEventMessage(
         String eventType,
         String eventVersion,
         OffsetDateTime occurredAt,
+        String producer,
         UUID correlationId,
         UUID causationId,
         JsonNode payload)

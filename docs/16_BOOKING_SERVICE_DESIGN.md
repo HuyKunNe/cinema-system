@@ -391,6 +391,22 @@ The hardened Outbox implementation must support:
 - acknowledgement-based SENT transitions;
 - safe persistence updates outside Kafka callback threads.
 
+R26.6 hardened `common-outbox` with:
+
+- canonical persisted and published event metadata;
+- explicit Kafka topic and partition key;
+- MySQL atomic claims using `FOR UPDATE SKIP LOCKED`;
+- unique processing-owner tokens;
+- bounded processing leases;
+- abandoned-claim recovery;
+- transactional acknowledgement updates;
+- stale-callback protection;
+- bounded exponential retry with jitter;
+- persisted next-attempt time and bounded error description.
+
+The implementation preserves at-least-once publication. Booking consumers must
+remain idempotent.
+
 ---
 
 ## 13. Idempotent Consumers

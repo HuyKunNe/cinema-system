@@ -72,7 +72,15 @@ cinema:
   booking:
     reservation-expiration: ${BOOKING_RESERVATION_EXPIRATION:10m}
     max-seats-per-booking: ${BOOKING_MAX_SEATS_PER_BOOKING:10}
-
+  outbox:
+    producer: booking-service
+    batch-size: 100
+    scheduler-delay: 5s
+    lease-duration: 30s
+    maximum-attempts: 5
+    base-retry-delay: 1s
+    maximum-retry-delay: 1m
+    maximum-jitter: 500ms
   security:
     oauth2:
       issuer-uri: ${CINEMA_AUTH_ISSUER}
