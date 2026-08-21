@@ -1,71 +1,88 @@
 server:
-    port: ${INVENTORY_SERVICE_PORT:8083}
+  port: ${INVENTORY_SERVICE_PORT:8083}
 
 spring:
-    application:
-        name: inventory-service
+  application:
+    name: inventory-service
 
-    config:
-        import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+  config:
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
 
-    datasource:
-        url: ${INVENTORY_DB_URL:jdbc:mysql://localhost:3306/cinema_inventory_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-        username: ${INVENTORY_DB_USERNAME}
-        password: ${INVENTORY_DB_PASSWORD}
-        driver-class-name: com.mysql.cj.jdbc.Driver
+  datasource:
+    url: ${INVENTORY_DB_URL:jdbc:mysql://localhost:3306/cinema_inventory_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${INVENTORY_DB_USERNAME}
+    password: ${INVENTORY_DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
-    jpa:
-        open-in-view: false
-        hibernate:
-            ddl-auto: validate
-        properties:
-            hibernate:
-                format_sql: true
-                jdbc:
-                    time_zone: UTC
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
 
-    flyway:
-        enabled: true
-        locations: classpath:db/migration
-        validate-on-migrate: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
 springdoc:
-    api-docs:
-        enabled: true
-        path: /v3/api-docs
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
 
-    swagger-ui:
-        enabled: true
-        path: /swagger-ui.html
-        disable-swagger-default-url: true
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
 
 eureka:
-    client:
-        service-url:
-            defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
 
-    instance:
-        prefer-ip-address: true
-        instance-id: ${spring.application.name}:${server.port}
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
 
 management:
-    endpoints:
-        web:
-            exposure:
-                include: health,info
+  endpoints:
+    web:
+      exposure:
+        include: health,info
 
-    endpoint:
-        health:
-            show-details: always
+  endpoint:
+    health:
+      show-details: always
 
 logging:
-    level:
-        com.cinema.inventory: INFO
-        com.netflix.discovery: INFO
-        org.hibernate.SQL: DEBUG
+  level:
+    com.cinema.inventory: INFO
+    com.netflix.discovery: INFO
+    org.hibernate.SQL: DEBUG
 cinema:
-    security:
-        oauth2:
-            issuer-uri: ${CINEMA_AUTH_ISSUER}
-            jwk-set-uri: ${CINEMA_AUTH_JWK_SET_URI}
-            audience: ${CINEMA_AUTH_AUDIENCE:cinema-api}
+  security:
+    oauth2:
+      issuer-uri: ${CINEMA_AUTH_ISSUER}
+      jwk-set-uri: ${CINEMA_AUTH_JWK_SET_URI}
+      audience: ${CINEMA_AUTH_AUDIENCE:cinema-api}
+
+  outbox:
+    enabled: ${INVENTORY_OUTBOX_ENABLED:true}
+    producer: inventory-service
+    batch-size: ${INVENTORY_OUTBOX_BATCH_SIZE:100}
+    scheduler-delay: ${INVENTORY_OUTBOX_SCHEDULER_DELAY:5s}
+    lease-duration: ${INVENTORY_OUTBOX_LEASE_DURATION:30s}
+    maximum-attempts: ${INVENTORY_OUTBOX_MAXIMUM_ATTEMPTS:5}
+    base-retry-delay: ${INVENTORY_OUTBOX_BASE_RETRY_DELAY:1s}
+    maximum-retry-delay: ${INVENTORY_OUTBOX_MAXIMUM_RETRY_DELAY:1m}
+    maximum-jitter: ${INVENTORY_OUTBOX_MAXIMUM_JITTER:500ms}

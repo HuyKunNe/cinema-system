@@ -1,33 +1,50 @@
 spring:
-    cloud:
-        config:
-            enabled: false
+  cloud:
+    config:
+      enabled: false
 
-    datasource:
-        url: ${INVENTORY_TEST_DB_URL:jdbc:mysql://localhost:3306/cinema_inventory_test_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-        username: ${INVENTORY_TEST_DB_USERNAME}
-        password: ${INVENTORY_TEST_DB_PASSWORD}
-        driver-class-name: com.mysql.cj.jdbc.Driver
+  datasource:
+    url: ${INVENTORY_TEST_DB_URL:jdbc:mysql://localhost:3306/cinema_inventory_test_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${INVENTORY_TEST_DB_USERNAME}
+    password: ${INVENTORY_TEST_DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
-    flyway:
-        enabled: true
-        clean-disabled: true
+  flyway:
+    enabled: true
+    clean-disabled: true
 
-    jpa:
-        hibernate:
-            ddl-auto: validate
-        open-in-view: false
-        properties:
-            hibernate:
-                format_sql: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
 eureka:
-    client:
-        enabled: false
+  client:
+    enabled: false
 
 cinema:
-    security:
-        oauth2:
-            issuer-uri: https://identity.cinema.test
-            jwk-set-uri: https://identity.cinema.test/oauth2/jwks
-            audience: cinema-api
+  security:
+    oauth2:
+      issuer-uri: https://identity.cinema.test
+      jwk-set-uri: https://identity.cinema.test/oauth2/jwks
+      audience: cinema-api
+
+  outbox:
+    enabled: false
+    producer: inventory-service
+    batch-size: 100
+    scheduler-delay: 5s
+    lease-duration: 30s
+    maximum-attempts: 5
+    base-retry-delay: 1s
+    maximum-retry-delay: 1m
+    maximum-jitter: 0ms

@@ -160,6 +160,12 @@
             <version>${project.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.cinema</groupId>
+            <artifactId>common-outbox</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Tests -->
 
         <dependency>
