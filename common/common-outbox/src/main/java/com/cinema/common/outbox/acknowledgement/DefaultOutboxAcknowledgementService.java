@@ -4,14 +4,12 @@ import com.cinema.common.outbox.enums.OutboxStatus;
 import com.cinema.common.outbox.repository.OutboxRepository;
 import com.cinema.common.outbox.retry.OutboxRetryPolicy;
 
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-@Service
 public class DefaultOutboxAcknowledgementService implements OutboxAcknowledgementService {
 
     private static final int MAXIMUM_ERROR_LENGTH = 2000;

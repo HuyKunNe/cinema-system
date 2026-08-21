@@ -2,13 +2,10 @@ package com.cinema.common.outbox.retry;
 
 import com.cinema.common.outbox.config.OutboxProperties;
 
-import org.springframework.stereotype.Component;
-
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.random.RandomGenerator;
 
-@Component
 public class OutboxRetryPolicy {
 
     private final OutboxProperties properties;

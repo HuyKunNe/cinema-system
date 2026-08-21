@@ -7,9 +7,7 @@ import com.cinema.common.outbox.publisher.OutboxPublisher;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 
-@Component
 @ConditionalOnProperty(
         prefix = "cinema.outbox",
         name = "enabled",

@@ -4,11 +4,10 @@ import com.cinema.common.kafka.event.BaseEvent;
 import com.cinema.common.kafka.serializer.KafkaEventSerializer;
 
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.stereotype.Service;
 
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
-@Service
 public class DefaultKafkaProducerService implements KafkaProducerService {
 
     private final KafkaTemplate<String, String> kafkaTemplate;
@@ -18,12 +17,18 @@ public class DefaultKafkaProducerService implements KafkaProducerService {
     public DefaultKafkaProducerService(
             KafkaTemplate<String, String> kafkaTemplate, KafkaEventSerializer serializer) {
 
-        this.kafkaTemplate = kafkaTemplate;
-        this.serializer = serializer;
+        this.kafkaTemplate =
+                Objects.requireNonNull(kafkaTemplate, "kafkaTemplate must not be null");
+
+        this.serializer = Objects.requireNonNull(serializer, "serializer must not be null");
     }
 
     @Override
     public CompletableFuture<Void> send(String topic, String partitionKey, BaseEvent event) {
+
+        Objects.requireNonNull(topic, "topic must not be null");
+        Objects.requireNonNull(partitionKey, "partitionKey must not be null");
+        Objects.requireNonNull(event, "event must not be null");
 
         String serializedEvent = serializer.serialize(event);
 

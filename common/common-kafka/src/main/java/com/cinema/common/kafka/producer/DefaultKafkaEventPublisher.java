@@ -2,16 +2,16 @@ package com.cinema.common.kafka.producer;
 
 import com.cinema.common.kafka.event.BaseEvent;
 
-import org.springframework.stereotype.Component;
+import java.util.Objects;
 
-@Component
 public class DefaultKafkaEventPublisher implements KafkaEventPublisher {
 
     private final KafkaProducerService producerService;
 
     public DefaultKafkaEventPublisher(KafkaProducerService producerService) {
 
-        this.producerService = producerService;
+        this.producerService =
+                Objects.requireNonNull(producerService, "producerService must not be null");
     }
 
     @Override

@@ -9,6 +9,7 @@ import com.cinema.booking.repository.BookingRepository;
 import com.cinema.booking.repository.BookingSeatRepository;
 import com.cinema.common.core.id.UuidGenerator;
 import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.outbox.repository.OutboxRepository;
 import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
 
 import org.junit.jupiter.api.AfterEach;
@@ -32,8 +33,11 @@ class BookingIdempotencyIntegrationTest extends AbstractMySqlIntegrationTest {
 
     @Autowired private BookingSeatRepository bookingSeatRepository;
 
+    @Autowired private OutboxRepository outboxRepository;
+
     @BeforeEach
     void cleanDatabase() {
+        outboxRepository.deleteAll();
         bookingSeatRepository.deleteAll();
         bookingRepository.deleteAll();
     }
@@ -61,6 +65,8 @@ class BookingIdempotencyIntegrationTest extends AbstractMySqlIntegrationTest {
         assertThat(bookingRepository.count()).isEqualTo(1);
 
         assertThat(bookingSeatRepository.count()).isEqualTo(2);
+
+        assertThat(outboxRepository.count()).isEqualTo(1);
     }
 
     @Test
@@ -168,6 +174,7 @@ class BookingIdempotencyIntegrationTest extends AbstractMySqlIntegrationTest {
 
             assertThat(bookingSeatRepository.count()).isEqualTo(2);
 
+            assertThat(outboxRepository.count()).isEqualTo(1);
         } finally {
             executor.shutdownNow();
         }

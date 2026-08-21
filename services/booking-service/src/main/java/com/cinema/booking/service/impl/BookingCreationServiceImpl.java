@@ -4,10 +4,13 @@ import com.cinema.booking.config.BookingProperties;
 import com.cinema.booking.dto.response.BookingResponse;
 import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
+import com.cinema.booking.event.SeatReservationRequestedOutboxFactory;
 import com.cinema.booking.mapper.BookingMapper;
 import com.cinema.booking.repository.BookingRepository;
 import com.cinema.booking.repository.BookingSeatRepository;
 import com.cinema.booking.service.BookingCreationService;
+import com.cinema.common.outbox.entity.OutboxEventEntity;
+import com.cinema.common.outbox.service.OutboxService;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +31,10 @@ public class BookingCreationServiceImpl implements BookingCreationService {
 
     private final BookingProperties bookingProperties;
 
+    private final SeatReservationRequestedOutboxFactory outboxFactory;
+
+    private final OutboxService outboxService;
+
     private final Clock clock;
 
     public BookingCreationServiceImpl(
@@ -35,12 +42,16 @@ public class BookingCreationServiceImpl implements BookingCreationService {
             BookingSeatRepository bookingSeatRepository,
             BookingMapper bookingMapper,
             BookingProperties bookingProperties,
+            SeatReservationRequestedOutboxFactory outboxFactory,
+            OutboxService outboxService,
             Clock clock) {
 
         this.bookingRepository = bookingRepository;
         this.bookingSeatRepository = bookingSeatRepository;
         this.bookingMapper = bookingMapper;
         this.bookingProperties = bookingProperties;
+        this.outboxFactory = outboxFactory;
+        this.outboxService = outboxService;
         this.clock = clock;
     }
 
@@ -72,6 +83,10 @@ public class BookingCreationServiceImpl implements BookingCreationService {
                         .toList();
 
         List<BookingSeat> savedSeats = bookingSeatRepository.saveAll(bookingSeats);
+
+        OutboxEventEntity outboxEvent = outboxFactory.create(savedBooking, savedSeats, now);
+
+        outboxService.save(outboxEvent);
 
         return bookingMapper.toResponse(savedBooking, savedSeats);
     }

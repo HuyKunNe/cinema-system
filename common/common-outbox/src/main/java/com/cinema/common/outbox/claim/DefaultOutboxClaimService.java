@@ -4,7 +4,6 @@ import com.cinema.common.outbox.config.OutboxProperties;
 import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.common.outbox.repository.OutboxRepository;
 
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -12,7 +11,6 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
-@Service
 public class DefaultOutboxClaimService implements OutboxClaimService {
 
     private static final String CLAIM_OWNER_PREFIX = "outbox-claim:";

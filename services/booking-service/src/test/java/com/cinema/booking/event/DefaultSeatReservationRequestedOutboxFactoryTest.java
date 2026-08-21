@@ -9,6 +9,7 @@ import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
 import com.cinema.booking.enums.BookingStatus;
 import com.cinema.common.exception.exception.InternalServerException;
+import com.cinema.common.jackson.config.JacksonConfiguration;
 import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.common.outbox.enums.AggregateType;
 import com.cinema.common.outbox.enums.OutboxStatus;
@@ -24,7 +25,7 @@ import java.util.UUID;
 
 class DefaultSeatReservationRequestedOutboxFactoryTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+    private final ObjectMapper objectMapper = new JacksonConfiguration().objectMapper();
 
     private final DefaultSeatReservationRequestedOutboxFactory factory =
             new DefaultSeatReservationRequestedOutboxFactory(objectMapper);
@@ -71,8 +72,10 @@ class DefaultSeatReservationRequestedOutboxFactoryTest {
         assertThat(payload.get("bookingId").asText()).isEqualTo(booking.getId().toString());
         assertThat(payload.get("userId").asText()).isEqualTo(userId.toString());
         assertThat(payload.get("showtimeId").asText()).isEqualTo(showtimeId.toString());
-        assertThat(payload.get("requestedAt").asText()).isEqualTo(occurredAt.toString());
-        assertThat(payload.get("holdExpiresAt").asText()).isEqualTo(holdExpiresAt.toString());
+        assertThat(OffsetDateTime.parse(payload.get("requestedAt").asText())).isEqualTo(occurredAt);
+
+        assertThat(OffsetDateTime.parse(payload.get("holdExpiresAt").asText()))
+                .isEqualTo(holdExpiresAt);
 
         assertThat(payload.get("seats"))
                 .extracting(seat -> seat.get("seatNumber").asText())

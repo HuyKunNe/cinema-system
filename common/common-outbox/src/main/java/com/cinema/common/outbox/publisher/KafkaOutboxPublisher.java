@@ -8,11 +8,8 @@ import com.cinema.common.outbox.model.OutboxEventMessage;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import org.springframework.stereotype.Component;
-
 import java.util.concurrent.CompletableFuture;
 
-@Component
 public class KafkaOutboxPublisher implements OutboxPublisher {
 
     private final KafkaProducerService producer;
