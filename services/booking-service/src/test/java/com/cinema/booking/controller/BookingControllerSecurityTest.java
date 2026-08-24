@@ -14,6 +14,7 @@ import com.cinema.booking.config.BookingSecurityConfig;
 import com.cinema.booking.dto.request.CreateBookingRequest;
 import com.cinema.booking.dto.response.BookingResponse;
 import com.cinema.booking.enums.BookingStatus;
+import com.cinema.booking.service.BookingCancellationService;
 import com.cinema.booking.service.BookingService;
 import com.cinema.common.core.id.UuidGenerator;
 import com.cinema.common.security.config.SecurityConfiguration;
@@ -52,6 +53,8 @@ class BookingControllerSecurityTest {
 
     @MockitoBean private BookingService bookingService;
 
+    @MockitoBean private BookingCancellationService bookingCancellationService;
+
     @MockitoBean private JwtDecoder jwtDecoder;
 
     @MockitoBean private JpaMetamodelMappingContext jpaMetamodelMappingContext;
@@ -68,7 +71,7 @@ class BookingControllerSecurityTest {
                                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
 
-        verifyNoInteractions(bookingService);
+        verifyNoInteractions(bookingService, bookingCancellationService);
     }
 
     @Test
@@ -81,22 +84,7 @@ class BookingControllerSecurityTest {
                 new CreateBookingRequest("request-1", showtimeId, List.of("H7"));
 
         BookingResponse response =
-                new BookingResponse(
-                        bookingId,
-                        USER_ID,
-                        showtimeId,
-                        "request-1",
-                        BookingStatus.PENDING,
-                        null,
-                        null,
-                        OffsetDateTime.now().plusMinutes(10),
-                        null,
-                        null,
-                        null,
-                        List.of(),
-                        0L,
-                        OffsetDateTime.now(),
-                        OffsetDateTime.now());
+                response(bookingId, USER_ID, showtimeId, BookingStatus.PENDING, null);
 
         org.mockito.Mockito.when(
                         bookingService.create(eq(USER_ID), any(CreateBookingRequest.class)))
@@ -138,6 +126,71 @@ class BookingControllerSecurityTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
 
-        verifyNoInteractions(bookingService);
+        verifyNoInteractions(bookingService, bookingCancellationService);
+    }
+
+    @Test
+    void unauthenticatedCancellationShouldBeRejected() throws Exception {
+
+        UUID bookingId = UuidGenerator.next();
+
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", bookingId))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(bookingService, bookingCancellationService);
+    }
+
+    @Test
+    void authenticatedCancellationShouldUseJwtSubjectAsOwner() throws Exception {
+
+        UUID bookingId = UuidGenerator.next();
+        UUID showtimeId = UuidGenerator.next();
+
+        OffsetDateTime cancelledAt = OffsetDateTime.parse("2026-08-24T10:00:00Z");
+
+        BookingResponse response =
+                response(bookingId, USER_ID, showtimeId, BookingStatus.CANCELLED, cancelledAt);
+
+        org.mockito.Mockito.when(bookingCancellationService.cancel(USER_ID, bookingId))
+                .thenReturn(response);
+
+        mockMvc.perform(
+                        post("/api/v1/bookings/{bookingId}/cancel", bookingId)
+                                .with(jwt().jwt(token -> token.subject(USER_ID.toString()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").value(bookingId.toString()))
+                .andExpect(jsonPath("$.data.userId").value(USER_ID.toString()))
+                .andExpect(jsonPath("$.data.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.data.cancelledAt").exists());
+
+        verify(bookingCancellationService).cancel(USER_ID, bookingId);
+    }
+
+    private static BookingResponse response(
+            UUID bookingId,
+            UUID userId,
+            UUID showtimeId,
+            BookingStatus status,
+            OffsetDateTime cancelledAt) {
+
+        OffsetDateTime now = OffsetDateTime.parse("2026-08-24T10:00:00Z");
+
+        return new BookingResponse(
+                bookingId,
+                userId,
+                showtimeId,
+                "request-1",
+                status,
+                status == BookingStatus.PENDING ? null : new java.math.BigDecimal("250000.00"),
+                status == BookingStatus.PENDING ? null : "VND",
+                now.plusMinutes(10),
+                null,
+                cancelledAt,
+                null,
+                List.of(),
+                0L,
+                now,
+                now);
     }
 }

@@ -246,6 +246,28 @@ public final class BookingErrorCode implements ErrorCode {
                     "BOOKING_RESERVATION_RESULT_MISMATCH",
                     "Reservation result does not match the pending booking request");
 
+    public static final BookingErrorCode BOOKING_NOT_RESERVED =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS, "BOOKING_NOT_RESERVED", "Booking is not reserved");
+
+    public static final BookingErrorCode BOOKING_NOT_EXPIRED =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_NOT_EXPIRED",
+                    "Booking has not reached its expiration time");
+
+    public static final BookingErrorCode BOOKING_RESERVATION_EXPIRED =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_RESERVATION_EXPIRED",
+                    "Booking reservation has expired");
+
+    public static final BookingErrorCode CURRENT_TIME_REQUIRED =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_CURRENT_TIME_REQUIRED",
+                    "Current time is required");
+
     private final ErrorCategory category;
 
     private final String code;

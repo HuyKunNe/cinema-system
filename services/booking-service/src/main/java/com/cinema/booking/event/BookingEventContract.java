@@ -20,5 +20,13 @@ public final class BookingEventContract {
 
     public static final String INVENTORY_PRODUCER = "inventory-service";
 
+    public static final String BOOKING_CANCELLED = "booking-cancelled";
+
+    public static final String BOOKING_CANCELLED_VERSION = "1";
+
+    public static final String BOOKING_EXPIRED = "booking-expired";
+
+    public static final String BOOKING_EXPIRED_VERSION = "1";
+
     private BookingEventContract() {}
 }

@@ -84,6 +84,10 @@ cinema:
   booking:
     reservation-expiration: ${BOOKING_RESERVATION_EXPIRATION:10m}
     max-seats-per-booking: ${BOOKING_MAX_SEATS_PER_BOOKING:10}
+    expiration:
+      enabled: ${BOOKING_EXPIRATION_ENABLED:true}
+      batch-size: ${BOOKING_EXPIRATION_BATCH_SIZE:100}
+      scheduler-delay: ${BOOKING_EXPIRATION_SCHEDULER_DELAY:30s}
     kafka:
       enabled: ${BOOKING_KAFKA_ENABLED:true}
       topics:

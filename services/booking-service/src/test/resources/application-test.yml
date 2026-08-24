@@ -36,6 +36,10 @@ cinema:
   booking:
     reservation-expiration: 10m
     max-seats-per-booking: 10
+    expiration:
+      enabled: false
+      batch-size: 10
+      scheduler-delay: 1h
     kafka:
       enabled: false
       topics:

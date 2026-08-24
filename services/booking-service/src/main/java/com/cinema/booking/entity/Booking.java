@@ -165,6 +165,35 @@ public class Booking extends BaseEntity {
         this.status = BookingStatus.REJECTED;
     }
 
+    public void cancel(OffsetDateTime now) {
+
+        requireCurrentTime(now);
+        requireReserved();
+
+        /*
+         * Expiration wins when cancellation races at or after expiresAt.
+         */
+        if (!expiresAt.isAfter(now)) {
+            throw new ConflictException(BookingErrorCode.BOOKING_RESERVATION_EXPIRED);
+        }
+
+        this.status = BookingStatus.CANCELLED;
+
+        this.cancelledAt = now;
+    }
+
+    public void expire(OffsetDateTime now) {
+
+        requireCurrentTime(now);
+        requireReserved();
+
+        if (expiresAt.isAfter(now)) {
+            throw new ConflictException(BookingErrorCode.BOOKING_NOT_EXPIRED);
+        }
+
+        this.status = BookingStatus.EXPIRED;
+    }
+
     private static void validateUserId(UUID userId) {
         if (userId == null) {
             throw new ValidationException(BookingErrorCode.USER_ID_REQUIRED);
@@ -240,6 +269,20 @@ public class Booking extends BaseEntity {
 
         if (rejectionReason == null || rejectionReason.isBlank()) {
             throw new ValidationException(BookingErrorCode.REJECTION_REASON_REQUIRED);
+        }
+    }
+
+    private void requireReserved() {
+
+        if (status != BookingStatus.RESERVED) {
+            throw new ConflictException(BookingErrorCode.BOOKING_NOT_RESERVED);
+        }
+    }
+
+    private static void requireCurrentTime(OffsetDateTime now) {
+
+        if (now == null) {
+            throw new ValidationException(BookingErrorCode.CURRENT_TIME_REQUIRED);
         }
     }
 }

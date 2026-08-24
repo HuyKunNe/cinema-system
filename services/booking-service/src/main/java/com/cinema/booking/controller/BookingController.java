@@ -2,6 +2,7 @@ package com.cinema.booking.controller;
 
 import com.cinema.booking.dto.request.CreateBookingRequest;
 import com.cinema.booking.dto.response.BookingResponse;
+import com.cinema.booking.service.BookingCancellationService;
 import com.cinema.booking.service.BookingService;
 import com.cinema.common.response.factory.ResponseFactory;
 import com.cinema.common.response.model.ApiResponse;
@@ -33,9 +34,13 @@ public class BookingController {
 
     private final BookingService bookingService;
 
-    public BookingController(BookingService bookingService) {
+    private final BookingCancellationService bookingCancellationService;
+
+    public BookingController(
+            BookingService bookingService, BookingCancellationService bookingCancellationService) {
 
         this.bookingService = bookingService;
+        this.bookingCancellationService = bookingCancellationService;
     }
 
     @PostMapping
@@ -70,6 +75,15 @@ public class BookingController {
 
         PageResponse<BookingResponse> response =
                 bookingService.findAll(CurrentUser.id(), page, size);
+
+        return ResponseEntity.ok(ResponseFactory.success(response));
+    }
+
+    @PostMapping("/{bookingId}/cancel")
+    public ResponseEntity<ApiResponse<BookingResponse>> cancel(
+            @PathVariable("bookingId") @UuidV7 UUID bookingId) {
+
+        BookingResponse response = bookingCancellationService.cancel(CurrentUser.id(), bookingId);
 
         return ResponseEntity.ok(ResponseFactory.success(response));
     }
