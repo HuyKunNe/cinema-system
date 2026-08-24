@@ -146,6 +146,106 @@ public final class BookingErrorCode implements ErrorCode {
                     "BOOKING_PROCESSED_AT_REQUIRED",
                     "Processed time is required");
 
+    public static final BookingErrorCode BOOKING_NOT_PENDING =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS, "BOOKING_NOT_PENDING", "Booking is not pending");
+
+    public static final BookingErrorCode TOTAL_AMOUNT_REQUIRED =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_TOTAL_AMOUNT_REQUIRED",
+                    "Booking total amount is required");
+
+    public static final BookingErrorCode INVALID_TOTAL_AMOUNT =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_INVALID_TOTAL_AMOUNT",
+                    "Booking total amount must be zero or greater");
+
+    public static final BookingErrorCode CURRENCY_REQUIRED =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_CURRENCY_REQUIRED",
+                    "Booking currency is required");
+
+    public static final BookingErrorCode INVALID_CURRENCY =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_INVALID_CURRENCY",
+                    "Booking currency must contain exactly three letters");
+
+    public static final BookingErrorCode REJECTION_REASON_REQUIRED =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_REJECTION_REASON_REQUIRED",
+                    "Booking rejection reason is required");
+
+    public static final BookingErrorCode EVENT_MESSAGE_INVALID =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_EVENT_MESSAGE_INVALID",
+                    "Event message is invalid");
+
+    public static final BookingErrorCode EVENT_ID_INVALID =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_EVENT_ID_INVALID",
+                    "Event ID must be a UUID v7");
+
+    public static final BookingErrorCode EVENT_TYPE_INVALID =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_EVENT_TYPE_INVALID",
+                    "Event type is not supported");
+
+    public static final BookingErrorCode EVENT_VERSION_INVALID =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_EVENT_VERSION_INVALID",
+                    "Event version is not supported");
+
+    public static final BookingErrorCode EVENT_PRODUCER_INVALID =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_EVENT_PRODUCER_INVALID",
+                    "Event producer is invalid");
+
+    public static final BookingErrorCode EVENT_AGGREGATE_INVALID =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_EVENT_AGGREGATE_INVALID",
+                    "Event aggregate is invalid");
+
+    public static final BookingErrorCode EVENT_PARTITION_KEY_INVALID =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_EVENT_PARTITION_KEY_INVALID",
+                    "Event partition key must match the booking ID");
+
+    public static final BookingErrorCode EVENT_CORRELATION_ID_INVALID =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_EVENT_CORRELATION_ID_INVALID",
+                    "Event correlation ID must be a UUID v7");
+
+    public static final BookingErrorCode EVENT_OCCURRED_AT_REQUIRED =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_EVENT_OCCURRED_AT_REQUIRED",
+                    "Event occurrence time is required");
+
+    public static final BookingErrorCode EVENT_PAYLOAD_INVALID =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_EVENT_PAYLOAD_INVALID",
+                    "Event payload is invalid");
+
+    public static final BookingErrorCode RESERVATION_RESULT_MISMATCH =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_RESERVATION_RESULT_MISMATCH",
+                    "Reservation result does not match the pending booking request");
+
     private final ErrorCategory category;
 
     private final String code;

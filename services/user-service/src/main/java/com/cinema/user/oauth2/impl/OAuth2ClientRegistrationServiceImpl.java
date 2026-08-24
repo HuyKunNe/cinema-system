@@ -115,7 +115,7 @@ public class OAuth2ClientRegistrationServiceImpl implements OAuth2ClientRegistra
 
         try {
             registeredClientRepository.save(registeredClient);
-        } catch (DataIntegrityViolationException exception) {
+        } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             throw new ConflictException(UserErrorCode.OAUTH2_CLIENT_ALREADY_EXISTS, exception);
         }
     }

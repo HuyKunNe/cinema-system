@@ -2,6 +2,7 @@ package com.cinema.booking.entity;
 
 import com.cinema.booking.enums.BookingStatus;
 import com.cinema.booking.exception.BookingErrorCode;
+import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
 
@@ -15,6 +16,7 @@ import jakarta.persistence.UniqueConstraint;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.Locale;
 import java.util.UUID;
 
 @Entity
@@ -142,6 +144,27 @@ public class Booking extends BaseEntity {
         return status == BookingStatus.PENDING;
     }
 
+    public void reserve(BigDecimal totalAmount, String currency) {
+
+        requirePending();
+        validateTotalAmount(totalAmount);
+        validateCurrency(currency);
+
+        this.totalAmount = totalAmount;
+        this.currency = currency.trim().toUpperCase(Locale.ROOT);
+        this.rejectionReason = null;
+        this.status = BookingStatus.RESERVED;
+    }
+
+    public void reject(String rejectionReason) {
+
+        requirePending();
+        validateRejectionReason(rejectionReason);
+
+        this.rejectionReason = rejectionReason.trim();
+        this.status = BookingStatus.REJECTED;
+    }
+
     private static void validateUserId(UUID userId) {
         if (userId == null) {
             throw new ValidationException(BookingErrorCode.USER_ID_REQUIRED);
@@ -178,6 +201,45 @@ public class Booking extends BaseEntity {
         if (requestFingerprint == null || requestFingerprint.length() != 64) {
 
             throw new ValidationException(BookingErrorCode.REQUEST_FINGERPRINT_REQUIRED);
+        }
+    }
+
+    private void requirePending() {
+
+        if (!isPending()) {
+            throw new ConflictException(BookingErrorCode.BOOKING_NOT_PENDING);
+        }
+    }
+
+    private static void validateTotalAmount(BigDecimal totalAmount) {
+
+        if (totalAmount == null) {
+            throw new ValidationException(BookingErrorCode.TOTAL_AMOUNT_REQUIRED);
+        }
+
+        if (totalAmount.signum() < 0) {
+            throw new ValidationException(BookingErrorCode.INVALID_TOTAL_AMOUNT);
+        }
+    }
+
+    private static void validateCurrency(String currency) {
+
+        if (currency == null || currency.isBlank()) {
+            throw new ValidationException(BookingErrorCode.CURRENCY_REQUIRED);
+        }
+
+        String normalized = currency.trim();
+
+        if (normalized.length() != 3 || !normalized.chars().allMatch(Character::isLetter)) {
+
+            throw new ValidationException(BookingErrorCode.INVALID_CURRENCY);
+        }
+    }
+
+    private static void validateRejectionReason(String rejectionReason) {
+
+        if (rejectionReason == null || rejectionReason.isBlank()) {
+            throw new ValidationException(BookingErrorCode.REJECTION_REASON_REQUIRED);
         }
     }
 }

@@ -36,6 +36,15 @@ cinema:
   booking:
     reservation-expiration: 10m
     max-seats-per-booking: 10
+    kafka:
+      enabled: false
+      topics:
+        seat-reserved: seat-reserved
+      consumer-groups:
+        seat-reserved: booking-seat-reserved
+      retry:
+        interval: 10ms
+        maximum-retries: 2
 
   outbox:
     enabled: false

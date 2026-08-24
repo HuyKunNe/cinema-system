@@ -29,6 +29,18 @@ spring:
     locations: classpath:db/migration
     validate-on-migrate: true
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+    consumer:
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+    listener:
+      ack-mode: record
+
 springdoc:
   api-docs:
     enabled: true
@@ -72,6 +84,15 @@ cinema:
   booking:
     reservation-expiration: ${BOOKING_RESERVATION_EXPIRATION:10m}
     max-seats-per-booking: ${BOOKING_MAX_SEATS_PER_BOOKING:10}
+    kafka:
+      enabled: ${BOOKING_KAFKA_ENABLED:true}
+      topics:
+        seat-reserved: ${SEAT_RESERVED_TOPIC:seat-reserved}
+      consumer-groups:
+        seat-reserved: ${SEAT_RESERVED_CONSUMER_GROUP:booking-seat-reserved}
+      retry:
+        interval: ${BOOKING_KAFKA_RETRY_INTERVAL:1s}
+        maximum-retries: ${BOOKING_KAFKA_MAXIMUM_RETRIES:3}
   outbox:
     producer: booking-service
     batch-size: 100
