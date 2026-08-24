@@ -114,16 +114,16 @@ Conceptual structure:
 
 ```json
 {
-    "eventId": "019c1234-5678-7abc-8def-0123456789ab",
-    "eventType": "seat-reservation-requested",
-    "eventVersion": "1",
-    "occurredAt": "2026-07-23T08:30:15.123456Z",
-    "producer": "booking-service",
-    "aggregateType": "BOOKING",
-    "aggregateId": "019c1234-1111-7abc-8def-0123456789ab",
-    "correlationId": "019c1234-2222-7abc-8def-0123456789ab",
-    "causationId": null,
-    "payload": {}
+  "eventId": "019c1234-5678-7abc-8def-0123456789ab",
+  "eventType": "seat-reservation-requested",
+  "eventVersion": "1",
+  "occurredAt": "2026-07-23T08:30:15.123456Z",
+  "producer": "booking-service",
+  "aggregateType": "BOOKING",
+  "aggregateId": "019c1234-1111-7abc-8def-0123456789ab",
+  "correlationId": "019c1234-2222-7abc-8def-0123456789ab",
+  "causationId": null,
+  "payload": {}
 }
 ```
 
@@ -457,19 +457,19 @@ Booking Service must not update `show_seats`.
 
 ```json
 {
-    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-    "userId": "019c1234-2222-7abc-8def-0123456789ab",
-    "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
-    "seats": [
-        {
-            "seatNumber": "H7"
-        },
-        {
-            "seatNumber": "H8"
-        }
-    ],
-    "requestedAt": "2026-07-23T08:30:15.123456Z",
-    "holdExpiresAt": "2026-07-23T08:40:15.123456Z"
+  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+  "userId": "019c1234-2222-7abc-8def-0123456789ab",
+  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+  "seats": [
+    {
+      "seatNumber": "H7"
+    },
+    {
+      "seatNumber": "H8"
+    }
+  ],
+  "requestedAt": "2026-07-23T08:30:15.123456Z",
+  "holdExpiresAt": "2026-07-23T08:40:15.123456Z"
 }
 ```
 
@@ -529,26 +529,26 @@ not introduce an Inventory `RESERVED` state.
 
 ```json
 {
-    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-    "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
-    "seats": [
-        {
-            "inventorySeatId": "019c1234-4444-7abc-8def-0123456789ab",
-            "seatNumber": "H7",
-            "seatType": "STANDARD",
-            "price": 90000.0
-        },
-        {
-            "inventorySeatId": "019c1234-5555-7abc-8def-0123456789ab",
-            "seatNumber": "H8",
-            "seatType": "STANDARD",
-            "price": 90000.0
-        }
-    ],
-    "totalAmount": 180000.0,
-    "currency": "VND",
-    "heldAt": "2026-07-23T08:30:16.123456Z",
-    "holdExpiresAt": "2026-07-23T08:40:15.123456Z"
+  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+  "seats": [
+    {
+      "inventorySeatId": "019c1234-4444-7abc-8def-0123456789ab",
+      "seatNumber": "H7",
+      "seatType": "STANDARD",
+      "price": 90000.0
+    },
+    {
+      "inventorySeatId": "019c1234-5555-7abc-8def-0123456789ab",
+      "seatNumber": "H8",
+      "seatType": "STANDARD",
+      "price": 90000.0
+    }
+  ],
+  "totalAmount": 180000.0,
+  "currency": "VND",
+  "heldAt": "2026-07-23T08:30:16.123456Z",
+  "holdExpiresAt": "2026-07-23T08:40:15.123456Z"
 }
 ```
 
@@ -557,17 +557,27 @@ not introduce an Inventory `RESERVED` state.
 Booking Service must perform one local transaction:
 
 ```text
-Check processed event
+Validate canonical envelope and payload
+Insert processed-event marker
+Lock Booking
 Verify booking exists
 Verify expected booking status is PENDING
-Update booking seat snapshots with authoritative reservation values
+Verify showtime, expiration and exact requested seat set
+Update BookingSeat snapshots with authoritative reservation values
+Verify total amount equals the seat-price sum
 Update booking PENDING → RESERVED
-Store processed event
-Create payment-requested outbox event
 Commit
 ```
 
-A duplicate event must not create duplicate payments.
+`payment-requested` publication is deferred to R26.11. Reservation-result
+handling does not create a payment Outbox row.
+
+The processed-event marker, Booking state change and seat-snapshot updates must
+commit or roll back together.
+
+A duplicate event must not repeat the Booking transition or modify completed
+seat snapshots. When payment publication is introduced in R26.11, the same
+transactional idempotency boundary must prevent duplicate payment requests.
 
 A delayed event must not restore a cancelled, rejected, or expired booking to
 `RESERVED`.
@@ -592,12 +602,12 @@ Reports that Inventory Service could not reserve the complete requested seat set
 
 ```json
 {
-    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-    "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
-    "reasonCode": "SEAT_UNAVAILABLE",
-    "message": "One or more requested seats are unavailable",
-    "unavailableSeats": ["H7"],
-    "rejectedAt": "2026-07-23T08:30:16.123456Z"
+  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+  "reasonCode": "SEAT_UNAVAILABLE",
+  "message": "One or more requested seats are unavailable",
+  "unavailableSeats": ["H7"],
+  "rejectedAt": "2026-07-23T08:30:16.123456Z"
 }
 ```
 
@@ -620,13 +630,22 @@ details.
 Booking Service must:
 
 ```text
-Check processed event
-Verify booking status
+Validate canonical envelope and payload
+Insert processed-event marker
+Lock Booking
+Verify booking exists
+Verify expected Booking status is PENDING
+Verify the result belongs to the same Booking and showtime
+Store the approved stable reasonCode
 Update PENDING → REJECTED
-Store rejection reason
-Store processed event
 Commit
 ```
+
+Booking Service persists the approved `reasonCode`, not arbitrary diagnostic
+text from the producer.
+
+A delayed rejection must not reverse a Booking that already became `RESERVED`.
+A failed transition must roll back its processed-event marker.
 
 No payment request may be created for a rejected reservation.
 
@@ -651,13 +670,13 @@ booking.
 
 ```json
 {
-    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-    "userId": "019c1234-2222-7abc-8def-0123456789ab",
-    "amount": 180000.0,
-    "currency": "VND",
-    "paymentAttempt": 1,
-    "holdExpiresAt": "2026-07-23T08:40:15.123456Z",
-    "requestedAt": "2026-07-23T08:30:17.123456Z"
+  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+  "userId": "019c1234-2222-7abc-8def-0123456789ab",
+  "amount": 180000.0,
+  "currency": "VND",
+  "paymentAttempt": 1,
+  "holdExpiresAt": "2026-07-23T08:40:15.123456Z",
+  "requestedAt": "2026-07-23T08:30:17.123456Z"
 }
 ```
 
@@ -699,13 +718,13 @@ Reports that payment completed successfully.
 
 ```json
 {
-    "paymentId": "019c1234-6666-7abc-8def-0123456789ab",
-    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-    "amount": 180000.0,
-    "currency": "VND",
-    "provider": "MOCK",
-    "providerReference": "PAY-20260723-000001",
-    "paidAt": "2026-07-23T08:31:10.123456Z"
+  "paymentId": "019c1234-6666-7abc-8def-0123456789ab",
+  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+  "amount": 180000.0,
+  "currency": "VND",
+  "provider": "MOCK",
+  "providerReference": "PAY-20260723-000001",
+  "paidAt": "2026-07-23T08:31:10.123456Z"
 }
 ```
 
@@ -753,12 +772,12 @@ Reports that a payment attempt failed.
 
 ```json
 {
-    "paymentId": "019c1234-6666-7abc-8def-0123456789ab",
-    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-    "failureCode": "PAYMENT_DECLINED",
-    "message": "The payment was declined",
-    "failedAt": "2026-07-23T08:31:10.123456Z",
-    "retryable": false
+  "paymentId": "019c1234-6666-7abc-8def-0123456789ab",
+  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+  "failureCode": "PAYMENT_DECLINED",
+  "message": "The payment was declined",
+  "failedAt": "2026-07-23T08:31:10.123456Z",
+  "retryable": false
 }
 ```
 
@@ -818,14 +837,11 @@ BOOKING_EXPIRED
 
 ```json
 {
-    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-    "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
-    "seatIds": [
-        "019c1234-4444-7abc-8def-0123456789ab",
-        "019c1234-5555-7abc-8def-0123456789ab"
-    ],
-    "reason": "PAYMENT_FAILED",
-    "requestedAt": "2026-07-23T08:31:11.123456Z"
+  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+  "seatIds": ["019c1234-4444-7abc-8def-0123456789ab", "019c1234-5555-7abc-8def-0123456789ab"],
+  "reason": "PAYMENT_FAILED",
+  "requestedAt": "2026-07-23T08:31:11.123456Z"
 }
 ```
 
@@ -868,14 +884,14 @@ Reports the result of a seat release operation.
 
 ```json
 {
-    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-    "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
-    "releasedSeatIds": [
-        "019c1234-4444-7abc-8def-0123456789ab",
-        "019c1234-5555-7abc-8def-0123456789ab"
-    ],
-    "reason": "PAYMENT_FAILED",
-    "releasedAt": "2026-07-23T08:31:12.123456Z"
+  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+  "releasedSeatIds": [
+    "019c1234-4444-7abc-8def-0123456789ab",
+    "019c1234-5555-7abc-8def-0123456789ab"
+  ],
+  "reason": "PAYMENT_FAILED",
+  "releasedAt": "2026-07-23T08:31:12.123456Z"
 }
 ```
 
@@ -903,25 +919,25 @@ Reports that a booking completed successfully.
 
 ```json
 {
-    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-    "userId": "019c1234-2222-7abc-8def-0123456789ab",
-    "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
-    "paymentId": "019c1234-6666-7abc-8def-0123456789ab",
-    "seats": [
-        {
-            "seatNumber": "H7",
-            "seatType": "STANDARD",
-            "price": 90000.0
-        },
-        {
-            "seatNumber": "H8",
-            "seatType": "STANDARD",
-            "price": 90000.0
-        }
-    ],
-    "totalAmount": 180000.0,
-    "currency": "VND",
-    "confirmedAt": "2026-07-23T08:31:11.123456Z"
+  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+  "userId": "019c1234-2222-7abc-8def-0123456789ab",
+  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+  "paymentId": "019c1234-6666-7abc-8def-0123456789ab",
+  "seats": [
+    {
+      "seatNumber": "H7",
+      "seatType": "STANDARD",
+      "price": 90000.0
+    },
+    {
+      "seatNumber": "H8",
+      "seatType": "STANDARD",
+      "price": 90000.0
+    }
+  ],
+  "totalAmount": 180000.0,
+  "currency": "VND",
+  "confirmedAt": "2026-07-23T08:31:11.123456Z"
 }
 ```
 
@@ -977,11 +993,11 @@ Reports that a booking was cancelled.
 
 ```json
 {
-    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-    "userId": "019c1234-2222-7abc-8def-0123456789ab",
-    "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
-    "reason": "USER_REQUESTED",
-    "cancelledAt": "2026-07-23T08:35:00.123456Z"
+  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+  "userId": "019c1234-2222-7abc-8def-0123456789ab",
+  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+  "reason": "USER_REQUESTED",
+  "cancelledAt": "2026-07-23T08:35:00.123456Z"
 }
 ```
 
@@ -1013,10 +1029,10 @@ Reports that a booking expired before successful completion.
 
 ```json
 {
-    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-    "userId": "019c1234-2222-7abc-8def-0123456789ab",
-    "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
-    "expiredAt": "2026-07-23T08:40:15.123456Z"
+  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+  "userId": "019c1234-2222-7abc-8def-0123456789ab",
+  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+  "expiredAt": "2026-07-23T08:40:15.123456Z"
 }
 ```
 
@@ -1042,9 +1058,9 @@ Conceptual payload:
 
 ```json
 {
-    "userId": "019c1234-2222-7abc-8def-0123456789ab",
-    "accountStatus": "PENDING_VERIFICATION",
-    "registeredAt": "2026-08-05T08:30:15.123456Z"
+  "userId": "019c1234-2222-7abc-8def-0123456789ab",
+  "accountStatus": "PENDING_VERIFICATION",
+  "registeredAt": "2026-08-05T08:30:15.123456Z"
 }
 ```
 
@@ -1063,8 +1079,8 @@ Conceptual payload:
 
 ```json
 {
-    "userId": "019c1234-2222-7abc-8def-0123456789ab",
-    "verifiedAt": "2026-08-05T08:35:15.123456Z"
+  "userId": "019c1234-2222-7abc-8def-0123456789ab",
+  "verifiedAt": "2026-08-05T08:35:15.123456Z"
 }
 ```
 
@@ -1078,10 +1094,10 @@ Conceptual payload:
 
 ```json
 {
-    "userId": "019c1234-2222-7abc-8def-0123456789ab",
-    "previousStatus": "ACTIVE",
-    "newStatus": "DISABLED",
-    "changedAt": "2026-08-05T09:00:00.123456Z"
+  "userId": "019c1234-2222-7abc-8def-0123456789ab",
+  "previousStatus": "ACTIVE",
+  "newStatus": "DISABLED",
+  "changedAt": "2026-08-05T09:00:00.123456Z"
 }
 ```
 
@@ -1469,8 +1485,8 @@ Example JSON:
 
 ```json
 {
-    "amount": 180000.0,
-    "currency": "VND"
+  "amount": 180000.0,
+  "currency": "VND"
 }
 ```
 
@@ -1647,8 +1663,8 @@ Use Transactional Outbox.
 
 ```json
 {
-    "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
-    "status": "CONFIRMED"
+  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+  "status": "CONFIRMED"
 }
 ```
 
@@ -1660,7 +1676,7 @@ Without `eventId`, reliable consumer idempotency cannot be implemented consisten
 
 ```json
 {
-    "createdAt": [2026, 7, 23, 15, 30, 15]
+  "createdAt": [2026, 7, 23, 15, 30, 15]
 }
 ```
 

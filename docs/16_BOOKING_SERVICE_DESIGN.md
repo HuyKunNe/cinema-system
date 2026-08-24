@@ -306,32 +306,49 @@ commits.
 When `seat-reserved` is consumed, Booking Service performs one transaction:
 
 ```text
-Check processed event
-Load Booking
+Validate the canonical event envelope and payload
+Insert the processed-event marker
+Lock the Booking aggregate
 Validate PENDING state
-Validate showtime and requested seat set
+Validate showtime, expiration and exact requested seat set
 Complete authoritative BookingSeat snapshots
+Validate the authoritative total amount
 Set total amount and currency
 Change PENDING -> RESERVED
-Insert processed-event marker
-Create payment-requested Outbox row
 Commit
 ```
 
-When `seat-reservation-rejected` is consumed:
+Duplicate delivery must not repeat the state transition or modify completed seat
+snapshots.
+
+A delayed `seat-reserved` event must not restore a rejected, cancelled or expired
+Booking to `RESERVED`.
+
+`payment-requested` publication is intentionally deferred to R26.11. R26.9 does
+not create a payment Outbox row.
+
+When `seat-reservation-rejected` is consumed, Booking Service performs one
+transaction:
 
 ```text
-Check processed event
-Load Booking
+Validate the canonical event envelope and payload
+Insert the processed-event marker
+Lock the Booking aggregate
 Validate PENDING state
-Store rejection reason
+Validate the result belongs to the same Booking and showtime
+Store the approved stable rejection reason code
 Change PENDING -> REJECTED
-Insert processed-event marker
 Commit
 ```
 
-Duplicate delivery must not create duplicate state transitions or outgoing
-events.
+The event message is validated but is not persisted as the authoritative
+rejection reason. Internal exception, database and stack-trace details must not
+be stored.
+
+A duplicate event is ignored through the `(event_id, consumer_name)` boundary.
+A failed or stale transition rolls back its processed-event marker.
+
+No payment request may be created for a rejected Booking.
 
 ---
 

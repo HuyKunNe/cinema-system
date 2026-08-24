@@ -1378,7 +1378,7 @@ baseline.
 
 ## 🚧 R26 — Booking Service
 
-R26 is the next implementation round.
+R26 is the active implementation round.
 Booking Service will own:
 
 - bookings;
@@ -1411,7 +1411,7 @@ Booking Service must not:
 
 ### Implementation checkpoints
 
-#### 🚧 R26.1 — Booking architecture and contract closure
+#### ✅ R26.1 — Booking architecture and contract closure
 
 - define Booking ownership and service boundaries;
 - define authenticated ownership extraction;
@@ -1429,7 +1429,7 @@ Authoritative design:
 ## docs/16_BOOKING_SERVICE_DESIGN.md
 ```
 
-#### ⏳ R26.2 — Booking Service bootstrap and security
+#### ✅ R26.2 — Booking Service bootstrap and security
 
 - Spring Boot application bootstrap;
 - service configuration;
@@ -1438,19 +1438,36 @@ Authoritative design:
 - OAuth2 Resource Server;
 - shared API, Jackson, logging and tracing integration.
 
-#### ⏳ R26.3 — Booking aggregate and database schema
+#### ✅ R26.3 — Booking aggregate and database schema
 
-#### ⏳ R26.4 — Authenticated create and query APIs
+#### ✅ R26.4 — Authenticated create and query APIs
 
-#### ⏳ R26.5 — Client request idempotency
+#### ✅ R26.5 — Client request idempotency
 
-#### ⏳ R26.6 — Transactional Outbox contract hardening
+#### ✅ R26.6 — Transactional Outbox contract hardening
 
-#### ⏳ R26.7 — Seat reservation request publication
+#### ✅ R26.7 — Seat reservation request publication
 
-#### ⏳ R26.8 — Inventory event integration
+#### ✅ R26.8 — Inventory event integration
 
-#### ⏳ R26.9 — Reservation result handling
+#### ✅ R26.9 — Reservation result handling
+
+Completed capabilities:
+
+- canonical `seat-reserved` and `seat-reservation-rejected` validation;
+- Booking-owned processed-event schema and atomic registration;
+- authoritative BookingSeat snapshot completion;
+- `PENDING → RESERVED`;
+- `PENDING → REJECTED`;
+- exact showtime, expiration, seat-set and total verification;
+- bounded Kafka retry;
+- sanitized dead-letter publication;
+- duplicate-delivery protection;
+- stale-event protection;
+- concurrent reserved/rejected race verification;
+- transaction rollback verification.
+
+Payment request publication remains R26.11 scope.
 
 #### ⏳ R26.10 — Expiration and cancellation
 

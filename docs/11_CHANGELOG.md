@@ -2,7 +2,7 @@
 
 **Version:** 0.6
 **Current baseline:** R1–R25 completed; R26 active
-**Last reviewed:** 2026-08-20
+**Last reviewed:** 2026-08-24
 
 ---
 
@@ -47,6 +47,45 @@ R27-R28         Planned
 ---
 
 # Unreleased
+
+## 2026-08-24
+
+### R26.9 Reservation Result Handling
+
+- Completed canonical consumption of `seat-reserved` and
+  `seat-reservation-rejected`.
+- Added Booking-owned processed-event persistence with
+  `(event_id, consumer_name)` uniqueness.
+- Added atomic duplicate-event registration inside the Booking transaction.
+- Added authoritative BookingSeat snapshot completion.
+- Added exact showtime, expiration, seat-set and total verification.
+- Added controlled `PENDING → RESERVED` and `PENDING → REJECTED` transitions.
+- Persisted approved stable rejection reason codes instead of arbitrary
+  diagnostic messages.
+- Added Booking aggregate pessimistic locking.
+- Added bounded Kafka retry and sanitized dead-letter publication.
+- Verified malformed messages do not change Booking state.
+- Verified duplicate delivery does not repeat domain transitions.
+- Verified delayed reservation results do not restore or reverse decided
+  Bookings.
+- Verified concurrent reserved/rejected results allow exactly one transaction
+  to win.
+- Verified failed transitions roll back processed-event markers and partial
+  snapshots.
+- Deferred `payment-requested` publication to R26.11 according to the R26
+  implementation order.
+
+### R26.2–R26.8 Booking and Inventory Foundation
+
+- Bootstrapped and secured Booking Service.
+- Added the Booking aggregate, BookingSeat request rows and Flyway schema.
+- Added authenticated create and ownership-aware query APIs.
+- Added client request idempotency and concurrent duplicate protection.
+- Hardened the shared Transactional Outbox contract.
+- Added canonical `seat-reservation-requested` publication.
+- Added Inventory idempotent reservation processing.
+- Added Inventory result Outbox publication, Kafka listener, retry and DLT
+  verification.
 
 ## 2026-08-20
 

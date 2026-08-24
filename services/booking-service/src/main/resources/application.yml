@@ -88,8 +88,10 @@ cinema:
       enabled: ${BOOKING_KAFKA_ENABLED:true}
       topics:
         seat-reserved: ${SEAT_RESERVED_TOPIC:seat-reserved}
+        seat-reservation-rejected: ${SEAT_RESERVATION_REJECTED_TOPIC:seat-reservation-rejected}
       consumer-groups:
         seat-reserved: ${SEAT_RESERVED_CONSUMER_GROUP:booking-seat-reserved}
+        seat-reservation-rejected: ${SEAT_RESERVATION_REJECTED_CONSUMER_GROUP:booking-seat-rejected}
       retry:
         interval: ${BOOKING_KAFKA_RETRY_INTERVAL:1s}
         maximum-retries: ${BOOKING_KAFKA_MAXIMUM_RETRIES:3}
