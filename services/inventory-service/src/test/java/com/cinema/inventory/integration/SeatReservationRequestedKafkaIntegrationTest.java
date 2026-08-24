@@ -30,6 +30,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -253,6 +254,15 @@ class SeatReservationRequestedKafkaIntegrationTest {
         assertThat(deadLetterRecord.key()).isEqualTo(partitionKey.toString());
 
         assertThat(deadLetterRecord.value()).isEqualTo(malformedMessage);
+
+        /*
+         * DLT must not expose internal exception details.
+         */
+        Headers headers = deadLetterRecord.headers();
+
+        assertThat(headers.lastHeader("kafka_dlt-exception-message")).isNull();
+
+        assertThat(headers.lastHeader("kafka_dlt-exception-stacktrace")).isNull();
 
         assertThat(processedEventRepository.count()).isZero();
 

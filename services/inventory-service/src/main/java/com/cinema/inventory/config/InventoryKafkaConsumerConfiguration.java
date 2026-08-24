@@ -1,5 +1,10 @@
 package com.cinema.inventory.config;
 
+import static org.springframework.kafka.listener.DeadLetterPublishingRecoverer.HeaderNames.HeadersToAdd.EXCEPTION;
+import static org.springframework.kafka.listener.DeadLetterPublishingRecoverer.HeaderNames.HeadersToAdd.EX_CAUSE;
+import static org.springframework.kafka.listener.DeadLetterPublishingRecoverer.HeaderNames.HeadersToAdd.EX_MSG;
+import static org.springframework.kafka.listener.DeadLetterPublishingRecoverer.HeaderNames.HeadersToAdd.EX_STACKTRACE;
+
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.kafka.consumer.KafkaConsumerConfiguration;
 
@@ -25,12 +30,22 @@ public class InventoryKafkaConsumerConfiguration {
     DeadLetterPublishingRecoverer inventoryDeadLetterPublishingRecoverer(
             KafkaTemplate<String, String> kafkaTemplate) {
 
-        return new DeadLetterPublishingRecoverer(
-                kafkaTemplate,
-                (consumerRecord, exception) ->
-                        new TopicPartition(
-                                consumerRecord.topic() + DEAD_LETTER_SUFFIX,
-                                consumerRecord.partition()));
+        DeadLetterPublishingRecoverer recoverer =
+                new DeadLetterPublishingRecoverer(
+                        kafkaTemplate,
+                        (consumerRecord, exception) ->
+                                new TopicPartition(
+                                        consumerRecord.topic() + DEAD_LETTER_SUFFIX,
+                                        consumerRecord.partition()));
+
+        recoverer.excludeHeader(EXCEPTION, EX_CAUSE, EX_MSG, EX_STACKTRACE);
+
+        recoverer.setRetainExceptionHeader(false);
+        recoverer.setStripPreviousExceptionHeaders(true);
+        recoverer.setAppendOriginalHeaders(false);
+        recoverer.setFailIfSendResultIsError(true);
+
+        return recoverer;
     }
 
     @Bean
@@ -42,12 +57,7 @@ public class InventoryKafkaConsumerConfiguration {
 
         DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, backOff);
 
-        /*
-         * Đây là permanent input/contract failure.
-         * Retry cùng dữ liệu sẽ không thay đổi kết quả.
-         */
-        errorHandler.addNotRetryableExceptions(
-                ValidationException.class, IllegalArgumentException.class);
+        errorHandler.addNotRetryableExceptions(ValidationException.class);
 
         return errorHandler;
     }
