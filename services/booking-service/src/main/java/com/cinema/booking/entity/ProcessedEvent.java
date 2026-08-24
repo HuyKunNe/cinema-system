@@ -1,8 +1,8 @@
-package com.cinema.inventory.entity;
+package com.cinema.booking.entity;
 
+import com.cinema.booking.exception.BookingErrorCode;
 import com.cinema.common.exception.code.ErrorCode;
 import com.cinema.common.exception.exception.ValidationException;
-import com.cinema.inventory.exception.InventoryErrorCode;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -56,41 +56,46 @@ public class ProcessedEvent {
             String eventVersion,
             OffsetDateTime processedAt) {
 
-        this.id = requireNonNull(id, InventoryErrorCode.PROCESSED_EVENT_ID_REQUIRED);
+        this.id = requireValue(id, BookingErrorCode.PROCESSED_EVENT_ID_REQUIRED);
 
-        this.eventId = requireNonNull(eventId, InventoryErrorCode.EVENT_ID_REQUIRED);
+        this.eventId = requireValue(eventId, BookingErrorCode.EVENT_ID_REQUIRED);
 
-        this.consumerName = requireText(consumerName, InventoryErrorCode.CONSUMER_NAME_REQUIRED);
+        this.consumerName = requireText(consumerName, BookingErrorCode.CONSUMER_NAME_REQUIRED);
 
-        this.eventType = requireText(eventType, InventoryErrorCode.PROCESSED_EVENT_TYPE_REQUIRED);
+        this.eventType = requireText(eventType, BookingErrorCode.EVENT_TYPE_REQUIRED);
 
-        this.eventVersion =
-                requireText(eventVersion, InventoryErrorCode.PROCESSED_EVENT_VERSION_REQUIRED);
+        this.eventVersion = requireText(eventVersion, BookingErrorCode.EVENT_VERSION_REQUIRED);
 
-        this.processedAt = requireNonNull(processedAt, InventoryErrorCode.PROCESSED_AT_REQUIRED);
+        this.processedAt = requireValue(processedAt, BookingErrorCode.PROCESSED_AT_REQUIRED);
     }
 
     public UUID getId() {
+
         return id;
     }
 
     public UUID getEventId() {
+
         return eventId;
     }
 
     public String getConsumerName() {
+
         return consumerName;
     }
 
     public String getEventType() {
+
         return eventType;
     }
 
     public String getEventVersion() {
+
         return eventVersion;
     }
 
     public OffsetDateTime getProcessedAt() {
+
         return processedAt;
     }
 
@@ -103,7 +108,7 @@ public class ProcessedEvent {
         return value.trim();
     }
 
-    private static <T> T requireNonNull(T value, ErrorCode errorCode) {
+    private static <T> T requireValue(T value, ErrorCode errorCode) {
 
         if (value == null) {
             throw new ValidationException(errorCode);

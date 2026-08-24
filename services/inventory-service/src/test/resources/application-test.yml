@@ -27,6 +27,15 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
+    consumer:
+      group-id: inventory-seat-reservation-test
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+    listener:
+      ack-mode: record
 eureka:
   client:
     enabled: false
@@ -38,6 +47,15 @@ cinema:
       jwk-set-uri: https://identity.cinema.test/oauth2/jwks
       audience: cinema-api
 
+  inventory:
+    kafka:
+      enabled: false
+      consumer-group: inventory-seat-reservation-test
+      topics:
+        seat-reservation-requested: seat-reservation-requested
+      retry:
+        interval: 10ms
+        maximum-retries: 2
   outbox:
     enabled: false
     producer: inventory-service

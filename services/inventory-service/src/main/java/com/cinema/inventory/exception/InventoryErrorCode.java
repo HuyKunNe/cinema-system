@@ -285,6 +285,42 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_OUTBOX_PAYLOAD_SERIALIZATION_FAILED",
                     "Inventory event payload could not be serialized");
 
+    public static final InventoryErrorCode EVENT_MESSAGE_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_EVENT_MESSAGE_INVALID",
+                    "Kafka event message is invalid");
+
+    public static final InventoryErrorCode PROCESSED_EVENT_ID_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_PROCESSED_EVENT_ID_REQUIRED",
+                    "Processed event ID is required");
+
+    public static final InventoryErrorCode CONSUMER_NAME_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_CONSUMER_NAME_REQUIRED",
+                    "Consumer name is required");
+
+    public static final InventoryErrorCode PROCESSED_EVENT_TYPE_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_PROCESSED_EVENT_TYPE_REQUIRED",
+                    "Processed event type is required");
+
+    public static final InventoryErrorCode PROCESSED_EVENT_VERSION_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_PROCESSED_EVENT_VERSION_REQUIRED",
+                    "Processed event version is required");
+
+    public static final InventoryErrorCode PROCESSED_AT_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_PROCESSED_AT_REQUIRED",
+                    "Processed event timestamp is required");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

@@ -1,6 +1,9 @@
 package com.cinema.inventory.service.impl;
 
 import com.cinema.common.core.id.UuidGenerator;
+import com.cinema.common.exception.code.ErrorCode;
+import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.repository.ProcessedEventRepository;
 import com.cinema.inventory.service.ProcessedEventRegistrationService;
 
@@ -10,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
-import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -32,24 +34,27 @@ public class ProcessedEventRegistrationServiceImpl implements ProcessedEventRegi
     public boolean register(
             UUID eventId, String consumerName, String eventType, String eventVersion) {
 
-        Objects.requireNonNull(eventId, "eventId must not be null");
+        if (eventId == null) {
+            throw new ValidationException(InventoryErrorCode.EVENT_ID_REQUIRED);
+        }
 
         int insertedRows =
                 processedEventRepository.insertIfAbsent(
                         UuidGenerator.next().toString(),
                         eventId.toString(),
-                        requireText(consumerName, "consumerName"),
-                        requireText(eventType, "eventType"),
-                        requireText(eventVersion, "eventVersion"),
+                        requireText(consumerName, InventoryErrorCode.CONSUMER_NAME_REQUIRED),
+                        requireText(eventType, InventoryErrorCode.PROCESSED_EVENT_TYPE_REQUIRED),
+                        requireText(
+                                eventVersion, InventoryErrorCode.PROCESSED_EVENT_VERSION_REQUIRED),
                         OffsetDateTime.now(clock));
 
         return insertedRows == 1;
     }
 
-    private static String requireText(String value, String fieldName) {
+    private static String requireText(String value, ErrorCode errorCode) {
 
         if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException(fieldName + " must not be blank");
+            throw new ValidationException(errorCode);
         }
 
         return value.trim();

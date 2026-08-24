@@ -31,6 +31,14 @@ spring:
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${INVENTORY_KAFKA_CONSUMER_GROUP:inventory-seat-reservation}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -75,6 +83,17 @@ cinema:
       issuer-uri: ${CINEMA_AUTH_ISSUER}
       jwk-set-uri: ${CINEMA_AUTH_JWK_SET_URI}
       audience: ${CINEMA_AUTH_AUDIENCE:cinema-api}
+  inventory:
+    kafka:
+      enabled: ${INVENTORY_KAFKA_ENABLED:true}
+      consumer-group: ${INVENTORY_KAFKA_CONSUMER_GROUP:inventory-seat-reservation}
+
+      topics:
+        seat-reservation-requested: ${SEAT_RESERVATION_REQUESTED_TOPIC:seat-reservation-requested}
+
+      retry:
+        interval: ${INVENTORY_KAFKA_RETRY_INTERVAL:1s}
+        maximum-retries: ${INVENTORY_KAFKA_MAXIMUM_RETRIES:3}
 
   outbox:
     enabled: ${INVENTORY_OUTBOX_ENABLED:true}

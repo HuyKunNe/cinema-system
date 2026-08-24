@@ -112,6 +112,40 @@ public final class BookingErrorCode implements ErrorCode {
                     "BOOKING_OUTBOX_PAYLOAD_SERIALIZATION_FAILED",
                     "Booking event payload could not be serialized");
 
+    public static final BookingErrorCode PROCESSED_EVENT_ID_REQUIRED =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_PROCESSED_EVENT_ID_REQUIRED",
+                    "Processed event ID is required");
+
+    public static final BookingErrorCode EVENT_ID_REQUIRED =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION, "BOOKING_EVENT_ID_REQUIRED", "Event ID is required");
+
+    public static final BookingErrorCode CONSUMER_NAME_REQUIRED =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_CONSUMER_NAME_REQUIRED",
+                    "Consumer name is required");
+
+    public static final BookingErrorCode EVENT_TYPE_REQUIRED =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_EVENT_TYPE_REQUIRED",
+                    "Event type is required");
+
+    public static final BookingErrorCode EVENT_VERSION_REQUIRED =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_EVENT_VERSION_REQUIRED",
+                    "Event version is required");
+
+    public static final BookingErrorCode PROCESSED_AT_REQUIRED =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_PROCESSED_AT_REQUIRED",
+                    "Processed time is required");
+
     private final ErrorCategory category;
 
     private final String code;
