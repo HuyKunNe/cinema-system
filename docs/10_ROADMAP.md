@@ -1376,10 +1376,9 @@ baseline.
 
 ---
 
-## 🚧 R26 — Booking Service
+## ✅ R26 — Booking Service
 
-R26 is the active implementation round.
-Booking Service will own:
+R26 is complete. Booking Service owns:
 
 - bookings;
 - booking items or booking-seat references;
@@ -1388,7 +1387,7 @@ Booking Service will own:
 - Booking Outbox records;
 - Booking consumer-processing records.
 
-### Planned scope
+### Completed scope
 
 - authenticated booking creation;
 - ownership enforcement;
@@ -1497,9 +1496,8 @@ Completed capabilities:
 - source event ID as causation ID;
 - payment Outbox creation in the reservation-result transaction;
 - rollback of Booking, seat snapshots, processed marker and payment Outbox;
-- duplicate-result protection;
-- concurrent-result protection;
-- Kafka envelope and DLT verification;
+- duplicate-result and concurrent-result protection;
+- Kafka envelope verification;
 - exclusion of payment credentials and sensitive provider data.
 
 Payment execution remains R27 scope.
@@ -1508,30 +1506,25 @@ Payment execution remains R27 scope.
 
 Completed verification:
 
-- authenticated API ownership;
-- invalid JWT-subject rejection;
+- authenticated API ownership and invalid JWT-subject rejection;
 - request validation and client idempotency;
 - Flyway schema and constraints;
 - Booking and Inventory dependency boundaries;
-- duplicate and stale event delivery;
-- processed-event atomicity;
-- reservation-result ordering;
-- cancellation and expiration races;
+- duplicate, stale and concurrent event delivery;
+- processed-event and Outbox atomicity;
+- reservation-result and lifecycle ordering;
 - payment Outbox transaction rollback;
-- delayed reservation results after terminal lifecycle decisions;
 - full Booking Saga happy and failure paths;
-- Booking Service reactor verification;
-- root Maven reactor verification.
+- Booking Service and root Maven reactor verification.
 
 #### ✅ R26.13 — Stabilization and closure
 
 Completed closure:
 
 - temporary/debug-code audit;
-- service dependency-boundary audit;
+- dependency-boundary audit;
 - secret and generated-file audit;
-- Booking Service clean verification;
-- root reactor clean verification;
+- clean Booking and root reactor verification;
 - authoritative documentation synchronization;
 - R26 exit-criteria confirmation.
 
@@ -1756,19 +1749,19 @@ Do not:
 | Movie Service           | R23            | ✅ Completed                                                       |
 | Inventory Service       | R24            | ✅ Completed                                                       |
 | User Service            | R25            | ✅ Completed                                                       |
-| Booking Service         | R26            | 🚧 Active                                                          |
-| Payment Service         | R27            | ⏳ Planned                                                         |
+| Booking Service         | R26            | ✅ Completed                                                       |
+| Payment Service         | R27            | ⏳ Next                                                            |
 | Notification Service    | R28            | ⏳ Planned                                                         |
 | Production Readiness    | To be assigned | ⏳ Planned                                                         |
 
 The latest completed service round is:
 
-> **R25 — User Service**
-
-The active implementation round is:
-
 > **R26 — Booking Service**
 
+The next implementation round is:
+
+> **R27 — Payment Service**
+
 ADR-013 selects User Service with Spring Authorization Server as the
-authoritative issuer. R25 implementation is complete, and R26 implementation
-is in progress.
+authoritative issuer. R25 User Service and R26 Booking Service are complete.
+R27 Payment Service is next.

@@ -1,6 +1,6 @@
 # Sequence Diagrams
 
-Version: R25
+Version: R26
 
 ---
 
@@ -8,16 +8,17 @@ Version: R25
 
 This document visualizes implemented interactions and approved target flows.
 
-| Flow                                                    | Status                                             |
-| ------------------------------------------------------- | -------------------------------------------------- |
-| Inventory ShowSeat transitions and database concurrency | Implemented in R24                                 |
-| Shared servlet Resource Server responses                | Implemented for Inventory in R25.1                 |
-| Booking, Payment, and Notification Saga                 | Target for R26-R28                                 |
-| User account lifecycle and email verification           | Implemented through R25.7                          |
-| User Service Authorization Server/OIDC foundation       | Implemented in R25.8                               |
-| OAuth2 registered clients and approved grant flows      | Implemented and verified through R25.14            |
-| Gateway reactive Resource Server                        | Implemented in R25.13                              |
-| Hardened multi-instance Outbox retry/claim              | Target; not implemented by current `common-outbox` |
+| Flow                                                    | Status                                  |
+| ------------------------------------------------------- | --------------------------------------- |
+| Inventory ShowSeat transitions and database concurrency | Implemented in R24                      |
+| Shared servlet Resource Server responses                | Implemented for Inventory in R25.1      |
+| Booking-to-Inventory reservation flow                   | Implemented and verified through R26    |
+| Payment and Notification continuation                   | Target for R27-R28                      |
+| User account lifecycle and email verification           | Implemented through R25.7               |
+| User Service Authorization Server/OIDC foundation       | Implemented in R25.8                    |
+| OAuth2 registered clients and approved grant flows      | Implemented and verified through R25.14 |
+| Gateway reactive Resource Server                        | Implemented in R25.13                   |
+| Hardened multi-instance Outbox retry/claim              | Implemented and verified through R26.6  |
 
 A target diagram is an approved interaction contract, not proof that every
 participant currently exists.
@@ -156,7 +157,7 @@ one competing hold succeeds.
 
 ---
 
-# Target Booking and Seat Reservation Flow
+# Implemented Booking and Seat Reservation Flow
 
 The event name uses Booking-domain language. A successful
 `seat-reservation-requested` operation places Inventory ShowSeats in `HELD`
@@ -182,6 +183,7 @@ sequenceDiagram
         Inventory->>Kafka: seat-reserved
         Kafka->>Booking: Consume success
         Booking->>Booking: PENDING to RESERVED
+        Booking->>Booking: Save payment-requested Outbox event
     else Hold rejected
         Inventory->>Kafka: seat-reservation-rejected
         Kafka->>Booking: Consume rejection
@@ -189,9 +191,8 @@ sequenceDiagram
     end
 ```
 
-The future multi-seat workflow may use ordered Redis locks if its accepted
-design requires distributed coordination. Database transactions and constraints
-remain the final state guarantee.
+The implementation uses the approved coordination and database transaction
+boundaries. Database locks and constraints remain the final state guarantee.
 
 Booking Service must never query or update `show_seats`.
 
@@ -246,8 +247,11 @@ sequenceDiagram
     Inventory->>Kafka: seat-released
 ```
 
-Booking cancellation or expiration uses the same conditional release rule.
-Inventory never releases a `BOOKED` ShowSeat through this compensation flow.
+This explicit `seat-release-requested` path is reserved for future R27 payment
+failure compensation. R26 cancellation and expiration publish
+`booking-cancelled` and `booking-expired` instead of an additional release
+command. Future Inventory consumers still apply the same conditional rule and
+never release a `BOOKED` ShowSeat.
 
 ---
 
@@ -281,7 +285,7 @@ publication occurs afterward and may be repeated.
 
 ---
 
-# Target Hardened Outbox Claim and Retry Flow
+# Implemented Hardened Outbox Claim and Retry Flow
 
 ```mermaid
 sequenceDiagram
@@ -307,7 +311,9 @@ sequenceDiagram
     end
 ```
 
-This flow requires schema, entity, repository, scheduler, metrics, and test work.
+The claim, lease recovery, retry, acknowledgement and stale-callback protections
+are implemented and verified. Operational metrics may continue to evolve in a
+later production-readiness round.
 The current implementation does not yet provide atomic claims, processing
 leases, delayed exponential backoff, or a terminal status.
 
@@ -512,13 +518,13 @@ rejected.
 
 # Verification Checklist
 
-- [ ] Implemented diagrams match current code and migrations
+- [x] Implemented diagrams match current code and migrations
 - [ ] Target diagrams are explicitly marked as target
 - [ ] Booking `RESERVED` is not confused with Inventory `HELD`
 - [ ] Inventory never uses obsolete `RESERVED` or `SOLD` ShowSeat states
-- [ ] Booking Service never accesses Inventory tables or locks
+- [x] Booking Service never accesses Inventory tables or repositories
 - [ ] Outbox current status starts at `PENDING`, not `NEW`
-- [ ] Outbox target hardening is not documented as implemented
+- [x] Hardened Outbox claim, lease, retry and acknowledgement flow is implemented
 - [x] User Service is the sole token issuer and signing-key owner
 - [x] Authorization Code uses PKCE
 - [x] Resource Owner Password Credentials is absent

@@ -56,17 +56,17 @@ implemented.
 | R25.13 — Gateway and Resource Server integration            | Completed |
 | R25.14 — Security and protocol verification                 | Completed |
 | R25.15 — Stabilization and closure                          | Completed |
-| R26 — Booking Service                                       | Active    |
-| R27 — Payment Service                                       | Planned   |
+| R26 — Booking Service                                       | Completed |
+| R27 — Payment Service                                       | Next      |
 | R28 — Notification Service                                  | Planned   |
 
 Latest completed service round:
 
-> **R25 — User Service**
-
-Active round:
-
 > **R26 — Booking Service**
+
+Next round:
+
+> **R27 — Payment Service**
 
 See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 
@@ -347,10 +347,11 @@ service modules remain non-deployable until their roadmap rounds are complete.
 
 ---
 
-# Target Booking Flow
+# Implemented Booking and Inventory Flow
 
-The booking Saga is an approved future workflow. Booking, Payment, and
-Notification services are not yet implemented.
+The Booking-to-Inventory reservation flow and Booking-side payment request
+preparation are implemented and verified through R26. Payment processing and
+notification delivery remain R27 and R28 scope.
 
 ```mermaid
 sequenceDiagram
@@ -368,21 +369,24 @@ sequenceDiagram
 
     alt Seats held
         Inventory->>Kafka: Seat reservation succeeded
-        Kafka->>Booking: Mark booking RESERVED
+        Kafka->>Booking: Complete snapshots and mark RESERVED
+        Booking->>Booking: Save payment-requested Outbox event
+        Booking->>Kafka: payment-requested
     else Reservation rejected
         Inventory->>Kafka: Seat reservation rejected
         Kafka->>Booking: Mark booking REJECTED
     end
 ```
 
-Target rules:
+Implemented rules:
 
 - Booking Service stores its local booking and Outbox event atomically.
 - Inventory Service performs the authoritative ShowSeat transition.
 - State-changing consumers are idempotent.
 - Booking Service never imports Inventory entities or repositories.
-- Payment and notification workflows join through versioned events in their
-  approved rounds.
+- Booking preserves source correlation and causation for `payment-requested`.
+- Payment and Notification implementations join through versioned events in
+  their approved rounds.
 
 Detailed contracts remain authoritative in the roadmap, event catalog, and
 sequence-diagram documents.
@@ -495,15 +499,15 @@ resolve durable architectural decisions.
 - R25.1–R25.10 security, identity, OAuth2 client, grant, JWT and JWK foundations
 - R25.11.1–R25.11.11 refresh security, revocation, durable auditing, concurrency verification and closure
 - R25.12 profile and account lifecycle APIs, ownership enforcement and privileged auditing
+- R25.13–R25.15 Gateway integration, security verification and User Service closure
+- R26.1–R26.13 Booking Service implementation, concurrency verification and closure
 
-## Active
+## Next
 
-- R25.13 Gateway and Resource Server integration
+- R27 Payment Service
 
 ## Planned
 
-- R26 Booking Service
-- R27 Payment Service
 - R28 Notification Service
 - Complete container and production deployment
 - CI/CD, metrics, alerting, performance, and resilience verification

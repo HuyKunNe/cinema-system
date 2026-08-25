@@ -15,17 +15,21 @@ entities.
 
 Implementation status:
 
-- The event infrastructure and reliability foundations exist in common modules.
-- Inventory Service event production and consumption required through R24 and R26
-  are implemented and verified.
-- Booking Service event production and consumption required through R26 are
-  implemented and verified.
-- Implemented Booking events include `seat-reservation-requested`,
-  `payment-requested`, `booking-cancelled` and `booking-expired`.
-- Implemented Inventory result events consumed by Booking Service include
-  `seat-reserved` and `seat-reservation-rejected`.
-- Payment provider execution and Payment-owned result events remain R27 scope.
-- Notification event consumption remains R28 scope.
+- The shared Kafka and Transactional Outbox reliability foundations are
+  implemented.
+- Inventory Service consumption of `seat-reservation-requested` and production
+  of `seat-reserved` or `seat-reservation-rejected` are implemented and
+  verified.
+- Booking Service production of `seat-reservation-requested`,
+  `payment-requested`, `booking-cancelled`, and `booking-expired` is implemented
+  and verified.
+- Booking Service consumption of `seat-reserved` and
+  `seat-reservation-rejected` is implemented and verified.
+- Payment Service processing and the production of `payment-succeeded` and
+  `payment-failed` remain R27 scope.
+- Inventory and Notification consumption of Booking lifecycle events remains
+  future integration work until the corresponding consumers are implemented
+  and verified.
 - Documentation of a future topic is not proof that its producer or consumer
   currently exists.
 
@@ -842,9 +846,13 @@ Typical causes:
 
 ```text
 PAYMENT_FAILED
-BOOKING_CANCELLED
-BOOKING_EXPIRED
 ```
+
+The initial `seat-release-requested` command is reserved for the future R27
+payment-failure compensation path. R26 cancellation and expiration do not
+publish this additional command. Inventory will consume `booking-cancelled` or
+`booking-expired` directly and conditionally release only matching held seats
+when those consumers are implemented.
 
 ## Ownership
 
@@ -930,9 +938,990 @@ Reports that a booking completed successfully.
 
 ## Ownership
 
-| Attribute     | Value                                   |
-| ------------- | --------------------------------------- |
-| Producer      | Booking Service                         |
-| Consumers     | Inventory Service, Notification Service |
-| Aggregate     | Booking                                 |
-| Partition key |
+| Attribute       | Value                                   |
+| --------------- | --------------------------------------- |
+| Producer        | Booking Service                         |
+| Consumers       | Inventory Service, Notification Service |
+| Aggregate       | Booking                                 |
+| Partition key   | `bookingId`                             |
+| Current version | `1`                                     |
+
+## Payload
+
+```json
+{
+  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+  "userId": "019c1234-2222-7abc-8def-0123456789ab",
+  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+  "paymentId": "019c1234-6666-7abc-8def-0123456789ab",
+  "seats": [
+    {
+      "seatNumber": "H7",
+      "seatType": "STANDARD",
+      "price": 90000.0
+    },
+    {
+      "seatNumber": "H8",
+      "seatType": "STANDARD",
+      "price": 90000.0
+    }
+  ],
+  "totalAmount": 180000.0,
+  "currency": "VND",
+  "confirmedAt": "2026-07-23T08:31:11.123456Z"
+}
+```
+
+## Inventory Service behavior
+
+Inventory Service must:
+
+```text
+Check processed event
+Verify seats are HELD by this booking
+Update HELD → BOOKED
+Clear hold ownership and expiry metadata
+Store processed event
+Commit
+```
+
+Inventory Service remains the only service allowed to update `show_seats`.
+
+## Notification Service behavior
+
+Notification Service must:
+
+```text
+Check processed event
+Create idempotent confirmation notification
+Store processed event
+Create delivery work or outbox record if required
+Commit
+```
+
+Notification Service must not query Booking Service's database.
+
+Required notification data must be present in the event or obtained through an
+approved API.
+
+---
+
+# `booking-cancelled`
+
+Reports that a booking was cancelled.
+
+## Ownership
+
+| Attribute       | Value                                   |
+| --------------- | --------------------------------------- |
+| Producer        | Booking Service                         |
+| Consumers       | Inventory Service, Notification Service |
+| Aggregate       | Booking                                 |
+| Partition key   | `bookingId`                             |
+| Current version | `1`                                     |
+
+## Payload
+
+```json
+{
+  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+  "userId": "019c1234-2222-7abc-8def-0123456789ab",
+  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+  "reason": "USER_REQUESTED",
+  "cancelledAt": "2026-07-23T08:35:00.123456Z"
+}
+```
+
+Cancellation does not itself authorize Inventory Service to reverse booked
+seats.
+
+Inventory behavior depends on the approved cancellation and refund policy.
+
+For a booking whose ShowSeats are still `HELD`, Inventory Service may release
+them after validating hold ownership.
+
+R26 implements production of this event. Inventory and Notification consumers
+remain separate integration work. Booking Service must not additionally publish
+`seat-release-requested` for the same cancellation.
+
+---
+
+# `booking-expired`
+
+Reports that a booking expired before successful completion.
+
+## Ownership
+
+| Attribute       | Value                                   |
+| --------------- | --------------------------------------- |
+| Producer        | Booking Service                         |
+| Consumers       | Inventory Service, Notification Service |
+| Aggregate       | Booking                                 |
+| Partition key   | `bookingId`                             |
+| Current version | `1`                                     |
+
+## Payload
+
+```json
+{
+  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+  "userId": "019c1234-2222-7abc-8def-0123456789ab",
+  "showtimeId": "019c1234-3333-7abc-8def-0123456789ab",
+  "expiredAt": "2026-07-23T08:40:15.123456Z"
+}
+```
+
+Inventory Service must conditionally release only ShowSeats still `HELD` by the
+same booking.
+
+A delayed expiration event must not release ShowSeats that are already `BOOKED`
+or held by another booking.
+
+R26 implements production of this event. Inventory and Notification consumers
+remain separate integration work. Booking Service must not additionally publish
+`seat-release-requested` for the same expiration.
+
+---
+
+# User Service Candidate Events
+
+User Service may publish lifecycle facts only when another service has a
+documented business need. These contracts are planned R25 integration points,
+not implemented topics.
+
+## `user-registered`
+
+Reports that User Service committed a new user account.
+
+Conceptual payload:
+
+```json
+{
+  "userId": "019c1234-2222-7abc-8def-0123456789ab",
+  "accountStatus": "PENDING_VERIFICATION",
+  "registeredAt": "2026-08-05T08:30:15.123456Z"
+}
+```
+
+The event does not include a password, password hash, verification token,
+refresh token, access token, MFA secret, or complete profile. If an approved
+consumer needs a delivery address such as email, the privacy-reviewed contract
+must define whether to include a minimal address or use an authorized User
+Service API.
+
+## `user-email-verified`
+
+Reports completion of email verification without exposing the verification
+token.
+
+Conceptual payload:
+
+```json
+{
+  "userId": "019c1234-2222-7abc-8def-0123456789ab",
+  "verifiedAt": "2026-08-05T08:35:15.123456Z"
+}
+```
+
+Duplicate delivery must not create duplicate welcome or audit side effects.
+
+## `user-account-status-changed`
+
+Reports a durable account lifecycle change needed by an approved consumer.
+
+Conceptual payload:
+
+```json
+{
+  "userId": "019c1234-2222-7abc-8def-0123456789ab",
+  "previousStatus": "ACTIVE",
+  "newStatus": "DISABLED",
+  "changedAt": "2026-08-05T09:00:00.123456Z"
+}
+```
+
+Do not include private administrative notes, authentication evidence, raw IP
+addresses without an approved privacy need, or credential material.
+
+## Security activity that is not an integration event by default
+
+The following are User Service security audit or observability records unless a
+separate ADR and consumer requirement approve publication:
+
+- Login success or failure
+- Authorization denial
+- Access-token issuance
+- Refresh-token rotation or reuse detection
+- Token revocation
+- Client-secret changes
+- MFA enrollment, challenge, recovery, or bypass
+- Signing-key loading or rotation
+
+OAuth2 tokens and protocol messages must not be carried through Kafka as
+business events. Token revocation is enforced through User Service state,
+short-lived access tokens, and the accepted protocol/security design.
+
+---
+
+# Successful Saga
+
+```mermaid
+flowchart TD
+    A["Booking: PENDING"] --> B["seat-reservation-requested"]
+    B --> C["Inventory: HELD"]
+    C --> D["seat-reserved"]
+    D --> E["Booking: RESERVED"]
+    E --> F["payment-requested"]
+    F --> G["Payment: SUCCEEDED"]
+    G --> H["payment-succeeded"]
+    H --> I["Booking: CONFIRMED"]
+    I --> J["booking-confirmed"]
+    J --> K["Inventory: BOOKED"]
+```
+
+Each arrow crossing a service boundary represents Kafka communication.
+
+Each local state change and its outgoing event must use a local database transaction
+with Transactional Outbox.
+
+---
+
+# Reservation Failure Saga
+
+```mermaid
+flowchart TD
+    A["Booking: PENDING"] --> B["seat-reservation-requested"]
+    B --> C["Inventory rejects request"]
+    C --> D["seat-reservation-rejected"]
+    D --> E["Booking: REJECTED"]
+```
+
+No payment request is created.
+
+---
+
+# Payment Failure Compensation
+
+```mermaid
+flowchart TD
+    A["Booking: RESERVED"] --> B["payment-requested"]
+    B --> C["Payment: FAILED"]
+    C --> D["payment-failed"]
+    D --> E["Booking: PAYMENT_FAILED"]
+    E --> F["seat-release-requested"]
+    F --> G["Inventory: AVAILABLE"]
+    G --> H["seat-released"]
+```
+
+Compensation is an explicit business action.
+
+It is not a distributed rollback.
+
+---
+
+# Consumer Groups
+
+Each logical consumer must use its own consumer group.
+
+Conceptual examples:
+
+| Service              | Event                        | Consumer group                   |
+| -------------------- | ---------------------------- | -------------------------------- |
+| Inventory Service    | `seat-reservation-requested` | `inventory-seat-reservation`     |
+| Booking Service      | `seat-reserved`              | `booking-seat-reserved`          |
+| Booking Service      | `seat-reservation-rejected`  | `booking-seat-rejected`          |
+| Payment Service      | `payment-requested`          | `payment-request-processing`     |
+| Booking Service      | `payment-succeeded`          | `booking-payment-succeeded`      |
+| Booking Service      | `payment-failed`             | `booking-payment-failed`         |
+| Inventory Service    | `seat-release-requested`     | `inventory-seat-release`         |
+| Inventory Service    | `booking-confirmed`          | `inventory-booking-confirmed`    |
+| Notification Service | `booking-confirmed`          | `notification-booking-confirmed` |
+
+Multiple instances of the same logical consumer must share the same consumer group.
+
+Different services must not accidentally share a group when both need to receive
+the event.
+
+---
+
+# Idempotent Consumer Rules
+
+Every state-changing consumer must use its service-owned `processed_events` table.
+
+The idempotency key is based on:
+
+```text
+eventId
+consumer
+```
+
+Conceptual transaction:
+
+```text
+Begin transaction
+    Check whether eventId was processed by this logical consumer
+    Validate current aggregate state
+    Apply domain changes
+    Insert processed_events record
+    Insert resulting outbox event if required
+Commit
+```
+
+Rules:
+
+- Marking an event as processed before the domain transaction is unsafe.
+- Applying the domain change and storing the processed event in separate
+  transactions is unsafe.
+- In-memory sets are not sufficient.
+- Kafka offset commits are not a replacement for business idempotency.
+- A unique constraint must protect concurrent duplicate processing.
+- A duplicate event must not repeat an external payment charge.
+- Consumers must safely handle a unique-constraint race.
+
+---
+
+# Transactional Outbox Rules
+
+Every reliable producer must write the outgoing event to `outbox_events` in the same
+transaction as its domain state change.
+
+Correct:
+
+```text
+Booking transaction
+    bookings: PENDING → RESERVED
+    processed_events: seat-reserved event ID
+    outbox_events: payment-requested
+Commit
+```
+
+Incorrect:
+
+```java
+bookingRepository.save(booking);
+kafkaTemplate.send("payment-requested", event);
+```
+
+The outbox record must preserve:
+
+```text
+event ID
+event type
+event version
+topic
+partition key
+aggregate ID
+correlation ID
+causation ID
+payload
+creation time
+publication status
+```
+
+Publication retries must reuse the same event contract and `eventId`.
+
+See:
+
+```text
+docs/09_OUTBOX.md
+```
+
+---
+
+# Event Ordering
+
+Kafka guarantees ordering only within one partition.
+
+The project therefore uses `bookingId` as the key for the booking Saga where
+applicable.
+
+Consumers must still validate current state.
+
+Examples:
+
+- `payment-succeeded` must not blindly change `EXPIRED → CONFIRMED`.
+- `seat-release-requested` must not release a hold owned by another booking.
+- `booking-confirmed` must not convert an unrelated hold to `BOOKED`.
+- `seat-reserved` must not restore a rejected or cancelled booking.
+- A duplicate `payment-requested` must not create another charge.
+
+Event ordering is a transport property.
+
+Aggregate transition validation remains a domain responsibility.
+
+---
+
+# Event Versioning
+
+Every event contains an explicit `eventVersion`.
+
+Initial version:
+
+```text
+1
+```
+
+Backward-compatible changes may include:
+
+- Adding an optional field
+- Adding a field with a safe default
+- Adding a new enum value when consumers handle unknown values safely
+- Clarifying documentation without changing semantics
+
+Potentially breaking changes include:
+
+- Renaming a field
+- Removing a field
+- Changing a field type
+- Changing monetary units
+- Changing timestamp semantics
+- Changing nullability from optional to required
+- Reusing an enum value with a new meaning
+- Changing the event's business meaning
+
+Breaking changes require a new event version.
+
+Possible migration strategies:
+
+```text
+Dual publish old and new versions
+Consumer-first deployment
+Topic versioning when required
+Schema upcasting at the consumer boundary
+```
+
+A producer must not publish an incompatible payload under the existing version.
+
+---
+
+# Enum Evolution
+
+Event enum values are public contract data.
+
+Consumers must not rely exclusively on Java deserialization that fails immediately
+for every unknown enum value unless that behavior is explicitly intended.
+
+When forward compatibility is required, consumers should:
+
+- Preserve the raw value
+- Map unknown values to a safe unsupported state
+- Reject the event with a controlled error
+- Route permanently unsupported events according to the DLT policy
+
+Unknown values must not be silently interpreted as a different business state.
+
+---
+
+# Retry Policy
+
+Retry behavior must distinguish transient and permanent failures.
+
+Transient examples:
+
+```text
+Temporary database connection failure
+Kafka broker interruption
+Temporary downstream provider unavailability
+Optimistic locking conflict that can be retried safely
+```
+
+Permanent examples:
+
+```text
+Unsupported event version
+Malformed payload
+Missing required identifier
+Invalid enum value
+Business state incompatible with the event
+```
+
+Rules:
+
+- Retries must be bounded.
+- Backoff must be configured.
+- Repeated processing must remain idempotent.
+- Error logs must include event and correlation identifiers.
+- Payloads containing sensitive data must not be logged in full.
+- Permanent failures must not block a partition indefinitely.
+- The final recovery path must be documented.
+
+---
+
+# Dead-Letter Topics
+
+Events that cannot be processed after the approved retry policy may be sent to a
+dead-letter topic.
+
+Naming:
+
+```text
+<source-topic>.dlt
+```
+
+A dead-letter record should retain sufficient metadata:
+
+```text
+original topic
+original partition
+original offset
+consumer group
+event ID
+event type
+event version
+correlation ID
+failure classification
+bounded error message
+failure timestamp
+```
+
+Rules:
+
+- A DLT is not successful business processing.
+- DLT records require monitoring.
+- Replay must be controlled and idempotent.
+- Operators must determine whether the event is safe to replay.
+- Sensitive payloads must remain protected.
+- A replay must preserve or deliberately map the original `eventId`.
+- Deleting DLT records without investigation is not an approved recovery process.
+
+---
+
+# Event Validation
+
+Consumers must validate:
+
+- Envelope presence
+- Supported event type
+- Supported event version
+- Valid UUID fields
+- Required payload fields
+- Non-empty seat collections
+- Duplicate seat values
+- Non-negative monetary values
+- Supported currency
+- Valid ISO-8601 timestamps
+- Aggregate identifier consistency
+- Kafka key consistency where required
+- Business state preconditions
+
+Transport deserialization success does not imply business validity.
+
+Invalid input must produce a controlled failure classification.
+
+---
+
+# Monetary Data
+
+Event monetary fields use decimal values.
+
+Java:
+
+```java
+BigDecimal
+```
+
+Example JSON:
+
+```json
+{
+  "amount": 180000.0,
+  "currency": "VND"
+}
+```
+
+Rules:
+
+- Do not use floating-point calculations.
+- Currency must be explicit.
+- Amount semantics must be documented.
+- Booking and Payment Service must compare amount and currency.
+- Historical amounts must not be recalculated from current Inventory or Movie data.
+- Events must not rely on locale-formatted monetary strings.
+
+---
+
+# Seat Snapshot Rules
+
+Booking events may contain seat snapshots.
+
+A snapshot may include:
+
+```text
+inventorySeatId
+seatNumber
+seatType
+price
+```
+
+These values represent the seat at booking time.
+
+Booking Service stores the snapshot in `booking_seats`.
+
+It must not:
+
+- Import `ShowSeatEntity`
+- Import `ShowSeatRepository`
+- Query `show_seats`
+- Update `show_seats`
+- Treat the snapshot as authoritative current Inventory state
+
+Inventory Service remains the owner of ShowSeat availability, hold, booking,
+and administrative-availability state.
+
+---
+
+# Sensitive Data Rules
+
+Events must not contain:
+
+- Plain-text passwords
+- Password hashes
+- Password-reset tokens
+- Email-verification tokens
+- Refresh tokens
+- Access tokens
+- Authorization codes
+- OAuth2 client secrets
+- MFA secrets or recovery codes
+- Signing private keys
+- Database credentials
+- Payment provider secrets
+- CVV values
+- Full card numbers
+- Unnecessary personal information
+- Internal stack traces
+
+Events should contain only the information required by approved consumers.
+
+When a notification requires contact data, the contract must use an approved
+minimal representation or an approved API lookup.
+
+Sensitive values must not be copied into:
+
+```text
+Kafka headers
+outbox last_error
+consumer logs
+DLT error messages
+tracing attributes
+```
+
+---
+
+# Logging and Tracing
+
+Event processing logs should include:
+
+```text
+eventId
+eventType
+eventVersion
+correlationId
+causationId
+aggregateId
+producer
+consumer
+topic
+partition
+offset
+```
+
+Do not log complete payloads by default.
+
+Trace context may additionally be propagated using approved Kafka headers.
+
+Business correlation must not depend exclusively on tracing infrastructure.
+
+`correlationId` remains part of the event contract even when distributed tracing is
+temporarily unavailable.
+
+---
+
+# Schema and Contract Testing
+
+Event contract tests must verify:
+
+- Serialization
+- Deserialization
+- ISO-8601 timestamps
+- UUID fields
+- Decimal monetary values
+- Required fields
+- Unknown-field compatibility
+- Enum behavior
+- Event version handling
+- Partition key selection
+- Correlation and causation propagation
+- No JPA entity leakage
+- No sensitive data leakage
+
+Integration tests should use Kafka Testcontainers where Kafka behavior is involved.
+
+Tests must verify duplicate delivery.
+
+Example scenario:
+
+```text
+Publish payment-succeeded event twice
+    ↓
+Booking becomes CONFIRMED once
+    ↓
+One booking-confirmed logical event is created
+```
+
+Tests must also verify stale event handling.
+
+---
+
+# Invalid Event Designs
+
+## Publishing a JPA entity
+
+```java
+kafkaTemplate.send("seat-reserved", showSeatEntity);
+```
+
+This leaks Inventory Service persistence into the integration contract.
+
+---
+
+## Direct publication after database save
+
+```java
+bookingRepository.save(booking);
+kafkaTemplate.send("payment-requested", event);
+```
+
+A process failure between these operations can lose the event.
+
+Use Transactional Outbox.
+
+---
+
+## Missing event identifier
+
+```json
+{
+  "bookingId": "019c1234-1111-7abc-8def-0123456789ab",
+  "status": "CONFIRMED"
+}
+```
+
+Without `eventId`, reliable consumer idempotency cannot be implemented consistently.
+
+---
+
+## Timestamp array
+
+```json
+{
+  "createdAt": [2026, 7, 23, 15, 30, 15]
+}
+```
+
+Event timestamps must use ISO-8601 strings.
+
+---
+
+## Service-specific Java class header
+
+```text
+__TypeId__ = com.cinema.payment.internal.PaymentSucceededEntity
+```
+
+Consumers must not require the producer's internal Java package.
+
+Contracts must be deserialized according to the approved event type and version,
+not an internal entity class name.
+
+---
+
+## Duplicate side effects
+
+```java
+@KafkaListener(topics = "payment-succeeded")
+public void consume(PaymentSucceededEvent event) {
+    bookingService.confirm(event.bookingId());
+}
+```
+
+This is invalid when no processed-event check and expected-state validation exist.
+
+---
+
+## Booking Service updating inventory
+
+```java
+@KafkaListener(topics = "seat-reservation-requested")
+public void consume(SeatReservationRequestedEvent event) {
+    showSeatRepository.reserve(event.showtimeId(), event.seatNumbers());
+}
+```
+
+Booking Service must not own or use `ShowSeatRepository`.
+
+Inventory Service is the only valid consumer that changes `show_seats`.
+
+---
+
+# Event Catalog Summary
+
+| Topic                         | Producer  | Consumer           | Result                                            |
+| ----------------------------- | --------- | ------------------ | ------------------------------------------------- |
+| `seat-reservation-requested`  | Booking   | Inventory          | Attempts an atomic expiring ShowSeat hold         |
+| `seat-reserved`               | Inventory | Booking            | Inventory holds seats; Booking becomes `RESERVED` |
+| `seat-reservation-rejected`   | Inventory | Booking            | Booking becomes `REJECTED`                        |
+| `payment-requested`           | Booking   | Payment            | Creates idempotent payment attempt                |
+| `payment-succeeded`           | Payment   | Booking            | Booking becomes `CONFIRMED`                       |
+| `payment-failed`              | Payment   | Booking            | Booking becomes `PAYMENT_FAILED`                  |
+| `seat-release-requested`      | Booking   | Inventory          | Releases a booking-owned hold                     |
+| `seat-released`               | Inventory | Booking            | Confirms compensation result                      |
+| `booking-confirmed`           | Booking   | Inventory          | ShowSeats change `HELD → BOOKED`                  |
+| `booking-confirmed`           | Booking   | Notification       | Sends confirmation notification                   |
+| `booking-cancelled`           | Booking   | Inventory          | Conditionally releases held ShowSeats             |
+| `booking-cancelled`           | Booking   | Notification       | Sends cancellation notification                   |
+| `booking-expired`             | Booking   | Inventory          | Conditionally releases expired holds              |
+| `user-registered`             | User      | Approved consumers | Candidate minimal account-created fact            |
+| `user-email-verified`         | User      | Approved consumers | Candidate verification fact                       |
+| `user-account-status-changed` | User      | Approved consumers | Candidate lifecycle fact without credentials      |
+| `booking-expired`             | Booking   | Notification       | Sends expiration notification if required         |
+
+---
+
+# Event Verification Checklist
+
+Before marking an event-driven round complete, verify:
+
+- [ ] Every event has a stable `eventId`
+- [ ] New identifiers use UUID v7
+- [ ] Every event declares `eventType` and `eventVersion`
+- [ ] Every event uses ISO-8601 timestamps
+- [ ] Every Saga event propagates `correlationId`
+- [ ] Result events set the correct `causationId`
+- [ ] Kafka topic names match this catalog
+- [ ] Kafka keys use the documented aggregate identifier
+- [ ] Events do not expose JPA entities
+- [ ] Events do not expose service-internal repositories or packages
+- [ ] Monetary values use `BigDecimal`
+- [ ] Currency is explicit
+- [ ] Sensitive data is excluded
+- [ ] Reliable producers use Transactional Outbox
+- [ ] State-changing consumers use `processed_events`
+- [ ] Consumer domain changes and processed-event insertion share one transaction
+- [ ] Duplicate delivery tests pass
+- [ ] Stale event tests pass
+- [ ] Unsupported event versions are handled safely
+- [ ] Retry and DLT behavior are configured
+- [ ] Booking Service never updates `show_seats`
+- [ ] Inventory Service validates reservation ownership
+- [ ] Inventory event behavior uses `HELD`, `BOOKED`, and `UNAVAILABLE`; it does
+      not introduce obsolete `RESERVED` or `SOLD` ShowSeat states
+- [ ] Payment processing prevents duplicate provider charges
+- [ ] User lifecycle events contain no password, token, client-secret, MFA, or
+      signing-key material
+- [ ] OAuth2 protocol and security-audit activity is not published as a business
+      event without an approved requirement
+- [ ] Event contracts match Java records and tests
+- [ ] Documentation matches actual topic configuration
+- [ ] `mvn clean verify` passes
+
+---
+
+# Useful Repository Checks
+
+Search for topic names:
+
+```bash
+git grep -n -E \
+    "seat-reservation-requested|seat-reserved|seat-reservation-rejected|payment-requested|payment-succeeded|payment-failed|seat-release-requested|seat-released|booking-confirmed|booking-cancelled|booking-expired"
+```
+
+Search for legacy or conflicting topic names:
+
+```bash
+git grep -n -E \
+    "seat-reserved-topic|payment-success|payment-successful|payment-failure"
+```
+
+Each match must either be migrated or explicitly documented.
+
+Search for direct Kafka publication from business code:
+
+```bash
+git grep -n "kafkaTemplate.send" -- services
+```
+
+Direct calls are allowed only inside the approved outbox publication
+infrastructure, not beside domain repository mutations.
+
+Search for JPA entity leakage into events:
+
+```bash
+git grep -n -E \
+    "Entity>|Entity event|extends .*Entity|payload.*Entity" \
+    -- common services
+```
+
+Search for non-idempotent consumers:
+
+```bash
+git grep -n "@KafkaListener" -- services
+```
+
+Review every state-changing listener and verify `processed_events` participation.
+
+Search for prohibited Booking Service Inventory access:
+
+```bash
+git grep -n -E \
+    "ShowSeatRepository|ShowSeatEntity|show_seats|cinema_inventory_db" \
+    -- services/booking-service
+```
+
+Verify formatting:
+
+```bash
+git diff --check
+```
+
+Run the complete build:
+
+```bash
+mvn clean verify
+```
+
+---
+
+# Related Documentation
+
+See:
+
+```text
+docs/00_PROJECT_CONTEXT.md
+docs/01_AI_CONTEXT.md
+docs/02_ARCHITECTURE.md
+docs/03_TECHNOLOGY_STACK.md
+docs/04_MODULES.md
+docs/05_CODING_CONVENTIONS.md
+docs/06_DATABASE_DESIGN.md
+docs/08_SECURITY.md
+docs/09_OUTBOX.md
+docs/10_ROADMAP.md
+docs/11_CHANGELOG.md
+docs/12_DEPENDENCY_RULES.md
+docs/13_SEQUENCE_DIAGRAMS.md
+docs/14_DEPLOYMENT.md
+docs/decisions/ADR-013-spring-authorization-server.md
+docs/decisions/
+```
+
+When implementation and documentation conflict:
+
+1. Respect accepted Architecture Decision Records.
+2. Preserve database-per-service ownership.
+3. Preserve Inventory Service ownership of `show_seats`.
+4. Preserve Transactional Outbox publication.
+5. Preserve Idempotent Consumer processing.
+6. Preserve UUID v7 identifiers and ISO-8601 timestamps.
+7. Do not silently change an existing event contract.
+8. Correct inconsistencies before marking the round complete.

@@ -1,6 +1,6 @@
 # Deployment Guide
 
-Version: R25
+Version: R26
 
 ---
 
@@ -11,10 +11,11 @@ supported by the Cinema Booking System repository.
 
 Current baseline:
 
-- R1–R25 are completed.
+- R1–R26 are completed.
 - User Service is the authoritative OAuth2/OpenID Connect issuer.
 - Gateway, Movie Service and Inventory Service are verified Resource Servers.
-- R26 Booking Service is the active implementation round.
+- Booking Service is implemented and verified through R26.
+- R27 Payment Service is the next implementation round.
 - User Service has its Spring Authorization Server/OIDC foundation and
   controlled JDBC-backed registered-client configuration.
 
@@ -33,8 +34,8 @@ deployable. Only completed roadmap checkpoints define operational capability.
 | Movie Service        | R23    | Implemented with independent Resource Server security             |
 | Inventory Service    | R24    | Implemented with hardened independent Resource Server security    |
 | User Service         | R25.13 | Identity platform and integration through R25.13 implemented      |
-| Booking Service      | R26    | Not implemented                                                   |
-| Payment Service      | R27    | Not implemented                                                   |
+| Booking Service      | R26    | Implemented with independent Resource Server and Saga integration |
+| Payment Service      | R27    | Next implementation round                                         |
 | Notification Service | R28    | Not implemented                                                   |
 
 The Gateway validates bearer access tokens as a reactive OAuth2 Resource Server.
@@ -199,6 +200,8 @@ $env:MOVIE_DB_USERNAME = "cinema_movie"
 $env:MOVIE_DB_PASSWORD = "<your-password>"
 $env:INVENTORY_DB_USERNAME = "cinema_inventory"
 $env:INVENTORY_DB_PASSWORD = "<your-password>"
+$env:BOOKING_DB_USERNAME = "cinema_booking"
+$env:BOOKING_DB_PASSWORD = "<your-password>"
 $env:CINEMA_AUTH_ISSUER = "https://identity.cinema.local"
 $env:CINEMA_AUTH_JWK_SET_URI = "https://identity.cinema.local/oauth2/jwks"
 ```
@@ -214,9 +217,9 @@ database account.
 | -------------------- | --------------------------------: |
 | API Gateway          |                            `8080` |
 | Movie Service        |                            `8081` |
-| User Service         |                   `8082` reserved |
+| User Service         |                            `8082` |
 | Inventory Service    |                            `8083` |
-| Booking Service      |                   `8084` reserved |
+| Booking Service      |                            `8084` |
 | Payment Service      |                   `8085` reserved |
 | Notification Service |                   `8086` reserved |
 | Config Server        |                            `8888` |
@@ -240,6 +243,7 @@ Current databases:
 ```text
 cinema_movie_db
 cinema_inventory_db
+cinema_booking_db
 ```
 
 Example MySQL preparation must be adapted to the local credential policy:
@@ -247,6 +251,7 @@ Example MySQL preparation must be adapted to the local credential policy:
 ```sql
 CREATE DATABASE cinema_movie_db;
 CREATE DATABASE cinema_inventory_db;
+CREATE DATABASE cinema_booking_db;
 ```
 
 Do not use one application account with access to every service database in
@@ -287,10 +292,18 @@ mvn -pl services/movie-service -am clean package
 mvn -pl services/inventory-service -am clean package
 ```
 
+```bash
+mvn -pl services/booking-service -am clean package
+```
+
 Focused tests remain useful during development:
 
 ```bash
 mvn -pl services/inventory-service -am clean test
+```
+
+```bash
+mvn -pl services/booking-service -am clean test
 ```
 
 A focused module success does not replace root `mvn clean verify`. Generated
@@ -313,17 +326,16 @@ Spring applications:
 
 1. Config Server
 2. Discovery Server
-3. User Service Authorization Server, after it is implemented
-4. Movie Service and Inventory Service
+3. User Service Authorization Server
+4. Movie Service, Inventory Service and Booking Service
 5. API Gateway
 
 Gateway may start earlier for route-development work, but end-to-end readiness
 requires its target services to be registered.
 
-Until User Service is implemented, authenticated Inventory runtime flows require
-an explicitly approved development issuer/JWK source. Unit and integration tests
-may use test-only security configuration; that configuration must not leak into
-production profiles.
+Authenticated business-service runtime flows require the User Service issuer and
+JWK Set endpoint. Unit and integration tests may use test-only security
+configuration; that configuration must not leak into production profiles.
 
 ---
 
@@ -417,6 +429,59 @@ Confirm:
 
 Inventory Service owns ShowSeat transitions and concurrency control. Booking
 Service must never access its tables or locks.
+
+---
+
+# Run Booking Service
+
+Set the Booking database credentials and Resource Server trust configuration.
+Kafka must be available when `BOOKING_KAFKA_ENABLED` is left at its default
+value of `true`.
+
+Bash:
+
+```bash
+export BOOKING_DB_USERNAME='cinema_booking'
+export BOOKING_DB_PASSWORD='<your-password>'
+export CINEMA_AUTH_ISSUER='http://localhost:8082'
+export CINEMA_AUTH_JWK_SET_URI='http://localhost:8082/oauth2/jwks'
+export CINEMA_AUTH_AUDIENCE='cinema-api'
+
+mvn -pl services/booking-service -am spring-boot:run
+```
+
+PowerShell:
+
+```powershell
+$env:BOOKING_DB_USERNAME = "cinema_booking"
+$env:BOOKING_DB_PASSWORD = "<your-password>"
+$env:CINEMA_AUTH_ISSUER = "http://localhost:8082"
+$env:CINEMA_AUTH_JWK_SET_URI = "http://localhost:8082/oauth2/jwks"
+$env:CINEMA_AUTH_AUDIENCE = "cinema-api"
+
+./mvnw -pl services/booking-service -am spring-boot:run
+```
+
+Verify:
+
+```text
+http://localhost:8084/actuator/health
+http://localhost:8084/swagger-ui.html
+```
+
+Confirm:
+
+- Booking database connectivity.
+- Flyway migration success and Hibernate schema validation.
+- Discovery registration.
+- JWT issuer, JWK Set, and `cinema-api` audience configuration.
+- Kafka connectivity and the configured reservation-result consumers.
+- Outbox publication and retry scheduling.
+- Authenticated create, query, and cancellation endpoints enforce the scopes
+  documented in `08_SECURITY.md` and `16_BOOKING_SERVICE_DESIGN.md`.
+
+Booking Service owns booking state and its Outbox. It must not access Inventory
+Service tables or publish events outside the documented Event Catalog contract.
 
 ---
 

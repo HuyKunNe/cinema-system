@@ -18,8 +18,10 @@ The `docs` directory is the project's source of truth.
 - R22 — API Gateway
 - R23 — Movie Service
 - R24 — Inventory Service
+- R25 — User Service
+- R26 — Booking Service
 
-## Latest Completed Round
+## Completed Inventory Round
 
 > **R24 — Inventory Service**
 
@@ -106,13 +108,13 @@ Verified endpoint authorization:
 - JWT role and permission claims are mapped to granted authorities;
 - blank and duplicate authorities are removed.
 
-## Completed Booking Round
+## Latest Completed Round
 
 R26 Booking Service is complete.
 
 Completed checkpoints:
 
-````text
+```text
 R26.1  — Booking architecture and contract closure       — DONE
 R26.2  — Booking Service bootstrap and security           — DONE
 R26.3  — Booking aggregate and Flyway schema              — DONE
@@ -127,29 +129,33 @@ R26.11 — Payment event preparation                        — DONE
 R26.12 — Integration and concurrency verification         — DONE
 R26.13 — Stabilization and closure                        — DONE
 R26    — Booking Service                                  — DONE
+```
 
 Verified Booking baseline:
 
--authenticated ownership comes only from the JWT UUID subject;
--Booking Service never accepts a request-owned userId;
--Booking Service does not access Inventory persistence or show_seats;
--Booking and Inventory coordinate through canonical Kafka events;
--Booking mutations and outgoing events use Transactional Outbox;
--state-changing consumers use processed-event idempotency;
--duplicate and delayed events cannot reverse decided Booking state;
--cancellation and expiration use persisted expiration boundaries;
--payment-requested preserves source correlation and causation;
--Booking, seat snapshots, processed markers and outgoing Outbox records commit
-or roll back atomically;
--focused Booking verification and the root Maven reactor verification pass.
+- authenticated ownership comes only from the JWT UUID subject;
+- Booking Service never accepts a request-owned `userId`;
+- Booking Service does not access Inventory persistence or `show_seats`;
+- Booking and Inventory coordinate through canonical Kafka events;
+- Booking mutations and outgoing events use Transactional Outbox;
+- state-changing consumers use processed-event idempotency;
+- duplicate and delayed events cannot reverse decided Booking state;
+- cancellation and expiration use persisted expiration boundaries;
+- `payment-requested` preserves source correlation and causation;
+- Booking, seat snapshots, processed markers and outgoing Outbox records commit
+  or roll back atomically;
+- focused Booking verification and the root Maven reactor verification pass.
 
-Next Round
+## Next Round
+
+```text
 R27 — Payment Service — NEXT
+```
 
 Payment Service owns payment attempts, provider interaction, provider
 idempotency, payment-result events, refund state and Payment-owned persistence.
 
-R27 must consume the canonical payment-requested event without importing
+R27 must consume the canonical `payment-requested` event without importing
 Booking entities, repositories or database tables.
 
 R25.13 completed:
@@ -190,7 +196,7 @@ Authoritative decision record:
 
 ```text
 docs/decisions/ADR-013-spring-authorization-server.md
-````
+```
 
 ---
 
@@ -370,9 +376,8 @@ are the final consistency guarantee against double booking.
 
 The following is the authoritative seat reservation flow:
 
-> The following is the approved future event-driven multi-seat reservation flow.
-> Current single-row ShowSeat transitions use database transactions and
-> `PESSIMISTIC_WRITE`.
+> The Booking-to-Inventory reservation flow is implemented and verified through
+> R26. Payment processing after `payment-requested` remains R27 scope.
 
 ```mermaid
 sequenceDiagram
@@ -425,21 +430,14 @@ Booking Service publishes:
 
 ```text
 seat-reservation-requested
+payment-requested
+booking-cancelled
+booking-expired
 ```
 
-Suggested event contract:
-
-```java
-public record SeatReservationRequestedEvent(
-        UUID eventId,
-        UUID bookingId,
-        UUID userId,
-        UUID showtimeId,
-        List<String> seatNumbers,
-        OffsetDateTime occurredAt
-) {
-}
-```
+The exact immutable payloads and canonical envelope metadata are defined in
+`docs/07_EVENT_CATALOG.md`. Internal JPA entities are never used as integration
+event payloads.
 
 Booking Service does not validate seat availability against the Inventory
 database.
@@ -466,20 +464,10 @@ Success topic:
 seat-reserved
 ```
 
-Suggested success event:
-
-```java
-public record SeatReservedEvent(
-        UUID eventId,
-        UUID correlationId,
-        UUID bookingId,
-        UUID showtimeId,
-        List<String> seatNumbers,
-        OffsetDateTime reservedAt,
-        OffsetDateTime expiresAt
-) {
-}
-```
+The canonical success payload includes authoritative Inventory seat IDs, seat
+numbers, seat types, prices, total amount, currency, hold time and hold
+expiration. The exact versioned contract is defined in
+`docs/07_EVENT_CATALOG.md`.
 
 Rejection topic:
 
@@ -487,20 +475,9 @@ Rejection topic:
 seat-reservation-rejected
 ```
 
-Suggested rejection event:
-
-```java
-public record SeatReservationRejectedEvent(
-        UUID eventId,
-        UUID correlationId,
-        UUID bookingId,
-        UUID showtimeId,
-        List<String> seatNumbers,
-        String reason,
-        OffsetDateTime occurredAt
-) {
-}
-```
+The canonical rejection payload uses an approved stable reason code and does
+not expose internal exception, database or stack-trace details. The exact
+versioned contract is defined in `docs/07_EVENT_CATALOG.md`.
 
 ---
 
@@ -518,6 +495,9 @@ Booking Service then publishes:
 payment-requested
 ```
 
+The processed-event marker, Booking transition, BookingSeat snapshot completion
+and `payment-requested` Outbox insertion commit or roll back together.
+
 When Booking Service consumes `seat-reservation-rejected`:
 
 ```text
@@ -533,23 +513,21 @@ All consumers must implement idempotent processing.
 
 # Seat Release Flow
 
-A booking expiration, cancellation, or payment failure triggers:
+R26 cancellation and expiration publish their canonical lifecycle events:
 
 ```text
-Booking Service
-    ↓
-seat-release-requested
-    ↓
-Inventory Service
-    ↓
-show_seats: HELD → AVAILABLE
-    ↓
-seat-released
+booking-cancelled
+booking-expired
 ```
 
-Inventory Service remains the only service allowed to change the state of
-`show_seats`. A successful payment changes the held seats from `HELD` to
-`BOOKED`.
+Booking Service does not also publish `seat-release-requested` for those
+transitions. Future Inventory consumers conditionally release only ShowSeats
+that remain `HELD` by the same Booking.
+
+The separate `seat-release-requested` contract is reserved for the future R27
+payment-failure compensation path. Inventory Service remains the only service
+allowed to change `show_seats`. A successful payment will change matching held
+seats from `HELD` to `BOOKED` through an Inventory-owned transition.
 
 ---
 
@@ -644,8 +622,6 @@ explicitly requested.
 
 # Business Service Status
 
-# Business Service Status
-
 | Round | Service              | Status  |
 | ----- | -------------------- | ------- |
 | R23   | Movie Service        | DONE    |
@@ -655,8 +631,8 @@ explicitly requested.
 | R27   | Payment Service      | NEXT    |
 | R28   | Notification Service | PLANNED |
 
-Movie, Inventory, User and Booking Service have completed their implementation,
-testing, concurrency, security and verification requirements.
+Movie, Inventory, User and Booking Service have completed their applicable
+implementation and verification requirements.
 
 R26 Booking Service is closed. R27 Payment Service is the next business-service
 implementation round.
@@ -799,6 +775,7 @@ A round can be marked complete only when:
 A merged pull request alone does not mean the round is complete.
 
 R24 met all completion requirements on 2026-08-04.
+R25 and R26 subsequently met their documented completion requirements.
 
 ---
 
@@ -830,5 +807,4 @@ Authoritative integration-event contracts:
 
 ```text
 docs/07_EVENT_CATALOG.md
-
 ```
