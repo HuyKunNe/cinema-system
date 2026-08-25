@@ -22,10 +22,10 @@ $env:INVENTORY_TEST_DB_USERNAME = "root"
 $env:INVENTORY_TEST_DB_PASSWORD = "huykun17"
 $env:CINEMA_AUTH_ISSUER = "http://localhost:8082"
 $env:CINEMA_AUTH_JWK_SET_URI = "http://localhost:8082/oauth2/jwks"
-$env:USER_JWT_SIGNING_ENABLED = "true"
 $env:USER_JWT_SIGNING_KEY_ID = "cinema-user-local-2026-01"
-$env:USER_JWT_PRIVATE_KEY_LOCATION = "file:E:/java/cinema-system/.local/keys/user-service-private.pem"
-$env:USER_JWT_PUBLIC_KEY_LOCATION = "file:E:/java/cinema-system/.local/keys/user-service-public.pem"
+$env:USER_JWT_PRIVATE_KEY_LOCATION = "file:E:/learning/cinema-system/.local/keys/user-service-private.pem"
+$env:USER_JWT_PUBLIC_KEY_LOCATION = "file:E:/learning/cinema-system/.local/keys/user-service-public.pem"
+$env:USER_JWT_SIGNING_ENABLED = "false"
 
 ###run gateway-service config
 $env:CINEMA_AUTH_ISSUER = "http://localhost:8082"
@@ -40,3 +40,17 @@ mvn -pl infrastructure/gateway-service spring-boot:run
 mvn -pl services/movie-service spring-boot:run
 mvn -pl services/inventory-service spring-boot:run
 mvn -pl services/user-service spring-boot:run
+
+
+### create RAS key
+mkdir -p .local/keys
+
+openssl genpkey \
+  -algorithm RSA \
+  -pkeyopt rsa_keygen_bits:3072 \
+  -out .local/keys/user-service-private.pem
+
+openssl pkey \
+  -in .local/keys/user-service-private.pem \
+  -pubout \
+  -out .local/keys/user-service-public.pem

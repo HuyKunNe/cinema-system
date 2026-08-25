@@ -1469,7 +1469,33 @@ Completed capabilities:
 
 Payment request publication remains R26.11 scope.
 
-#### ⏳ R26.10 — Expiration and cancellation
+#### ✅ R26.10 — Expiration and cancellation
+
+Completed capabilities:
+
+- controlled `RESERVED → CANCELLED` transition;
+- controlled `RESERVED → EXPIRED` transition;
+- authenticated cancellation ownership enforcement;
+- ownership-aware pessimistic cancellation locking;
+- persisted `expires_at` as the authoritative expiration boundary;
+- configurable expiration candidate batching;
+- per-booking transactional expiration processing;
+- post-lock state and expiration revalidation;
+- canonical immutable `booking-cancelled` payload;
+- canonical immutable `booking-expired` payload;
+- transactional `booking-cancelled` Outbox publication;
+- transactional `booking-expired` Outbox publication;
+- no direct Inventory table access from Booking Service;
+- no duplicate `seat-release-requested` command publication;
+- cancellation rejection at or after `expires_at`;
+- expiration priority at the cancellation/expiration boundary;
+- concurrent expiration duplicate protection;
+- cancellation/expiration race verification;
+- lifecycle Outbox rollback verification;
+- authenticated cancellation API security verification.
+
+Inventory Service consumes the resulting Booking lifecycle events and remains
+responsible for conditionally releasing held seats.
 
 #### ⏳ R26.11 — Payment event preparation
 

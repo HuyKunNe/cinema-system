@@ -354,22 +354,96 @@ No payment request may be created for a rejected Booking.
 
 ## 11. Expiration and Cancellation
 
-Booking expiration is based on persisted `expires_at`.
+Booking expiration is based on persisted `expires_at`. Application-instance
+time or a newly calculated hold duration must not replace the persisted
+expiration boundary.
 
-Expiration processing must:
+The approved transitions are:
 
-- select only eligible non-terminal bookings;
-- validate the current state again inside the transaction;
-- use safe concurrent claiming or locking;
-- create the required compensation event through Transactional Outbox;
-- never release Inventory rows directly.
+```text
+RESERVED -> CANCELLED
+RESERVED -> EXPIRED
+```
 
-Cancellation must validate:
+Cancellation is exposed through:
 
-- authenticated ownership;
-- current Booking state;
-- whether cancellation is allowed;
-- whether a seat-release event is required.
+```text
+POST /api/v1/bookings/{bookingId}/cancel
+```
+
+The cancellation request does not accept a request-owned `userId`.
+Authenticated ownership is derived from the validated JWT UUID subject.
+
+Cancellation processing:
+
+1. validates the authenticated user and Booking identifiers;
+2. loads the Booking through an ownership-aware pessimistic lock;
+3. returns the same not-found response for a missing Booking and a Booking
+   belonging to another user;
+4. validates that the Booking is currently `RESERVED`;
+5. rejects cancellation at or after persisted `expires_at`;
+6. changes the Booking to `CANCELLED`;
+7. records trusted server time in `cancelled_at`;
+8. inserts one canonical `booking-cancelled` Outbox event;
+9. commits the Booking transition and Outbox insertion atomically.
+
+The initial approved cancellation reason is:
+
+```text
+USER_REQUESTED
+```
+
+Expiration processing:
+
+1. discovers only `RESERVED` candidates whose persisted `expires_at` is at or
+   before trusted server time;
+2. limits discovery to a configurable batch size;
+3. processes each candidate through a separate transactional service boundary;
+4. reloads the Booking using a pessimistic lock;
+5. validates state and expiration again after acquiring the lock;
+6. ignores a missing, terminal, no-longer-reserved or not-yet-expired Booking;
+7. changes an eligible Booking to `EXPIRED`;
+8. inserts one canonical `booking-expired` Outbox event;
+9. commits the Booking transition and Outbox insertion atomically.
+
+Candidate discovery does not itself establish transition eligibility. The
+post-lock validation inside the domain transaction is authoritative.
+
+When cancellation and expiration race at or after `expires_at`, expiration
+wins. Cancellation must not create a `booking-cancelled` event for an expired
+reservation.
+
+Concurrent expiration attempts are serialized by the Booking pessimistic lock.
+Exactly one transaction may change the Booking to `EXPIRED` and create the
+corresponding Outbox record. Later attempts observe the decided state and
+return without another transition or event.
+
+The lifecycle event contracts are:
+
+```text
+booking-cancelled
+booking-expired
+```
+
+Both events:
+
+- use aggregate type `BOOKING`;
+- use the Booking UUID as aggregate ID;
+- use the Booking UUID string as Kafka partition key;
+- contain immutable payloads;
+- use trusted server time;
+- are persisted through `common-outbox`;
+- are committed in the same transaction as the Booking state change.
+
+Booking Service must not directly read or update Inventory-owned
+`show_seats`.
+
+Booking Service must not additionally publish `seat-release-requested` for
+these transitions. Inventory Service consumes `booking-cancelled` and
+`booking-expired` and conditionally releases seats that are still held for the
+matching Booking.
+
+A failed lifecycle Outbox insertion rolls back the Booking transition.
 
 ---
 
@@ -494,8 +568,17 @@ R26 tests must cover:
 - transaction rollback;
 - Outbox creation in the domain transaction;
 - processed-event atomicity;
-- concurrent expiration;
+- transactional expiration and Outbox creation;
+- expiration rollback when Outbox persistence fails;
+- concurrent expiration creating exactly one lifecycle event;
 - cancellation ownership;
+- unauthenticated cancellation rejection;
+- cancellation using the authenticated JWT UUID subject;
+- cancellation rejection for non-reserved Bookings;
+- cancellation rejection at or after `expires_at`;
+- cancellation and expiration race ordering;
+- expiration winning at the persisted expiration boundary;
+- no duplicate lifecycle Outbox publication;
 - Booking Service dependency-boundary checks;
 - Booking Service never accessing `show_seats`.
 

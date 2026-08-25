@@ -2,7 +2,7 @@
 
 **Version:** 0.6
 **Current baseline:** R1–R25 completed; R26 active
-**Last reviewed:** 2026-08-24
+**Last reviewed:** 2026-08-25
 
 ---
 
@@ -47,6 +47,37 @@ R27-R28         Planned
 ---
 
 # Unreleased
+
+## 2026-08-25
+
+### R26.10 Expiration and Cancellation
+
+- Added controlled `RESERVED → CANCELLED` and `RESERVED → EXPIRED`
+  transitions.
+- Added authenticated, ownership-aware Booking cancellation.
+- Added pessimistic locking for cancellation and expiration lifecycle
+  decisions.
+- Added canonical immutable `booking-cancelled` and `booking-expired`
+  contracts.
+- Added transactional lifecycle Outbox factories and publication.
+- Added configurable expired-reservation candidate discovery.
+- Added per-booking transactional expiration processing with post-lock
+  revalidation.
+- Added failure isolation so one expiration error does not stop the remaining
+  batch.
+- Defined persisted `expires_at` as the authoritative cancellation and
+  expiration boundary.
+- Defined expiration as the winner when cancellation races at or after
+  `expires_at`.
+- Verified lifecycle state changes roll back when Outbox persistence fails.
+- Verified concurrent expiration creates exactly one state transition and one
+  Outbox event.
+- Verified cancellation and expiration cannot produce conflicting terminal
+  outcomes.
+- Kept Inventory seat release inside the Inventory Service ownership boundary.
+- Confirmed Booking Service does not publish a duplicate
+  `seat-release-requested` command for cancellation or expiration.
+- Completed R26.10 and advanced the active checkpoint to R26.11.
 
 ## 2026-08-24
 
