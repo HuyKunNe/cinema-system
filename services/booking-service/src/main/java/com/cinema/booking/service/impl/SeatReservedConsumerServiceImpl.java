@@ -3,6 +3,7 @@ package com.cinema.booking.service.impl;
 import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
 import com.cinema.booking.event.BookingEventContract;
+import com.cinema.booking.event.PaymentRequestedOutboxFactory;
 import com.cinema.booking.event.payload.ReservedSeatPayload;
 import com.cinema.booking.event.payload.SeatReservedPayload;
 import com.cinema.booking.event.serialization.SeatReservedPayloadReader;
@@ -15,12 +16,17 @@ import com.cinema.booking.service.SeatReservedConsumerService;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.common.outbox.model.OutboxEventMessage;
+import com.cinema.common.outbox.service.OutboxService;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -42,18 +48,30 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
 
     private final BookingSeatRepository bookingSeatRepository;
 
+    private final PaymentRequestedOutboxFactory paymentRequestedOutboxFactory;
+
+    private final OutboxService outboxService;
+
+    private final Clock clock;
+
     public SeatReservedConsumerServiceImpl(
             SeatReservedMessageValidator messageValidator,
             SeatReservedPayloadReader payloadReader,
             ProcessedEventRegistrationService processedEventRegistrationService,
             BookingRepository bookingRepository,
-            BookingSeatRepository bookingSeatRepository) {
+            BookingSeatRepository bookingSeatRepository,
+            PaymentRequestedOutboxFactory paymentRequestedOutboxFactory,
+            OutboxService outboxService,
+            @Qualifier("systemClock") Clock clock) {
 
         this.messageValidator = messageValidator;
         this.payloadReader = payloadReader;
         this.processedEventRegistrationService = processedEventRegistrationService;
         this.bookingRepository = bookingRepository;
         this.bookingSeatRepository = bookingSeatRepository;
+        this.paymentRequestedOutboxFactory = paymentRequestedOutboxFactory;
+        this.outboxService = outboxService;
+        this.clock = clock;
     }
 
     @Override
@@ -100,7 +118,14 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
 
         bookingSeatRepository.saveAll(bookingSeats);
 
-        bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+
+        OffsetDateTime requestedAt = OffsetDateTime.now(clock);
+
+        OutboxEventEntity paymentRequestedEvent =
+                paymentRequestedOutboxFactory.create(savedBooking, message, requestedAt);
+
+        outboxService.save(paymentRequestedEvent);
 
         return Result.reserved();
     }

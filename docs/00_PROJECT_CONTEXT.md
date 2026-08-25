@@ -1,6 +1,6 @@
 # Cinema Booking System
 
-Version: 0.6 (R25 User Service Completed; R26 Booking Service Active)
+Version: 0.7 (R26 Booking Service Completed; R27 Payment Service Next)
 
 ---
 
@@ -56,6 +56,8 @@ Hệ thống được thiết kế để mô phỏng nền tảng của các chu
 - ✅ R22 — API Gateway
 - ✅ R23 — Movie Service
 - ✅ R24 — Inventory Service
+- ✅ R25 — User Service
+- ✅ R26 — Booking Service
 
 Inventory Service owns:
 
@@ -85,7 +87,7 @@ Completed R24 scope:
 - Added unit, integration, security and concurrency tests
 - Completed stabilization, exit-criteria and documentation verification
 
-## In Progress
+## Recently Completed
 
 - 🚧 R25 — User Service
 
@@ -112,15 +114,19 @@ R25 — User Service — DONE
 
 R25 is complete.
 
-Active implementation round:
+Completed implementation round:
 
-- R26 Booking Service — NEXT
+- R26 Booking Service — DONE
 
-  R25.14 verifies JWT trust and temporal validation, UUID v7 subjects, roles and
-  permissions, Authorization Code with PKCE, controlled Client Credentials,
-  refresh-token rotation and reuse handling, locked and disabled account token
-  rejection, and MySQL Testcontainers execution.
-  Accepted authentication decision:
+Next implementation round:
+
+- R27 Payment Service — NEXT
+
+R25.14 verifies JWT trust and temporal validation, UUID v7 subjects, roles and
+permissions, Authorization Code with PKCE, controlled Client Credentials,
+refresh-token rotation and reuse handling, locked and disabled account token
+rejection, and MySQL Testcontainers execution.
+Accepted authentication decision:
 
 - User Service integrates Spring Authorization Server.
 - User Service is the single authoritative OAuth2 and OpenID Connect issuer.
@@ -179,7 +185,6 @@ docs/decisions/ADR-013-spring-authorization-server.md
 
 ## Not Started
 
-- R26 — Booking Service
 - R27 — Payment Service
 - R28 — Notification Service
 
@@ -187,7 +192,7 @@ docs/decisions/ADR-013-spring-authorization-server.md
 
 # Current Target
 
-Latest completed round:
+Completed Inventory round:
 
 > **R24 — Inventory Service**
 
@@ -251,13 +256,17 @@ R24 completion evidence:
 - Maven verification passes.
 - Documentation is synchronized.
 
-Latest completed round:
+Completed User round:
 
 > **R25 — User Service**
 
-Active round:
+Latest completed round:
 
 > **R26 — Booking Service**
+
+Next round:
+
+> **R27 — Payment Service**
 
 ADR-013 selects User Service with Spring Authorization Server as the authoritative
 issuer. The issuer, audience, RS256/JWK ownership, approved grant types, access-token
@@ -279,7 +288,14 @@ refresh-token history.
 R25.11 refresh security, revocation, durable auditing, concurrency verification and
 documentation closure are complete. R25.12 profile and account lifecycle APIs,
 ownership enforcement and privileged-operation auditing are complete. R25.13 Gateway
-and Resource Server integration is complete. R25.14 security and protocol verification and R25.15 stabilization and closure are complete. R25 User Service is closed, and R26 Booking Service is active.
+and Resource Server integration is complete. R25.14 security and protocol verification
+and R25.15 stabilization and closure are complete. R25 User Service is closed.
+
+R26 Booking Service implementation, Kafka integration, Transactional Outbox,
+idempotency, cancellation, expiration, payment-event preparation, concurrency
+verification and documentation closure are complete.
+
+R27 Payment Service is the next implementation round.
 
 ---
 
@@ -407,9 +423,10 @@ foreign key to the Inventory Service database.
 The previous design in which Booking Service directly locked and updated
 `show_seats` is no longer valid.
 
-This is the approved R26+ Booking Saga target. Booking Service is not yet
-implemented. Inventory's direct ShowSeat `HELD`, `BOOKED`, `AVAILABLE`, and
-`UNAVAILABLE` transitions were completed in R24.
+This is the implemented and verified Booking Saga baseline through R26.
+Inventory's direct ShowSeat `HELD`, `BOOKED`, `AVAILABLE`, and `UNAVAILABLE`
+transitions were completed in R24. Booking coordination through canonical Kafka
+events was completed in R26.
 
 The standardized flow is:
 

@@ -5,12 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
 import com.cinema.booking.enums.BookingStatus;
+import com.cinema.booking.event.BookingEventContract;
 import com.cinema.booking.event.payload.ReservedSeatPayload;
 import com.cinema.booking.event.payload.SeatReservedPayload;
 import com.cinema.booking.repository.BookingRepository;
 import com.cinema.booking.repository.BookingSeatRepository;
 import com.cinema.booking.repository.ProcessedEventRepository;
 import com.cinema.common.core.id.UuidGenerator;
+import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.common.outbox.model.OutboxEventMessage;
 import com.cinema.common.outbox.repository.OutboxRepository;
 import com.cinema.common.test.annotation.IntegrationTest;
@@ -186,7 +188,22 @@ class SeatReservedKafkaIntegrationTest {
 
         assertThat(processedEventRepository.count()).isEqualTo(1);
 
-        assertThat(outboxRepository.count()).isZero();
+        assertThat(outboxRepository.findAll())
+                .singleElement()
+                .satisfies(
+                        event -> {
+                            assertThat(event.getEventType())
+                                    .isEqualTo(BookingEventContract.PAYMENT_REQUESTED);
+
+                            assertThat(event.getAggregateId()).isEqualTo(context.bookingId());
+
+                            assertThat(event.getPartitionKey())
+                                    .isEqualTo(context.bookingId().toString());
+
+                            assertThat(event.getCorrelationId()).isEqualTo(message.correlationId());
+
+                            assertThat(event.getCausationId()).isEqualTo(message.eventId());
+                        });
     }
 
     @Test
@@ -236,7 +253,10 @@ class SeatReservedKafkaIntegrationTest {
 
         assertThat(bookingSeatRepository.count()).isEqualTo(2);
 
-        assertThat(outboxRepository.count()).isZero();
+        assertThat(outboxRepository.findAll())
+                .singleElement()
+                .extracting(OutboxEventEntity::getEventType)
+                .isEqualTo(BookingEventContract.PAYMENT_REQUESTED);
     }
 
     @Test

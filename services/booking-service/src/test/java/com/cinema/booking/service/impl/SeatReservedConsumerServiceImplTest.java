@@ -3,6 +3,7 @@ package com.cinema.booking.service.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -11,6 +12,7 @@ import static org.mockito.Mockito.when;
 import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
 import com.cinema.booking.enums.BookingStatus;
+import com.cinema.booking.event.PaymentRequestedOutboxFactory;
 import com.cinema.booking.event.payload.ReservedSeatPayload;
 import com.cinema.booking.event.payload.SeatReservedPayload;
 import com.cinema.booking.event.serialization.SeatReservedPayloadReader;
@@ -23,7 +25,9 @@ import com.cinema.common.core.id.UuidGenerator;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.common.outbox.model.OutboxEventMessage;
+import com.cinema.common.outbox.service.OutboxService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,7 +36,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -43,6 +50,11 @@ class SeatReservedConsumerServiceImplTest {
     private static final OffsetDateTime NOW = OffsetDateTime.parse("2026-08-24T10:00:00Z");
 
     private static final OffsetDateTime EXPIRES_AT = OffsetDateTime.parse("2026-08-24T10:10:00Z");
+
+    private static final Instant REQUESTED_INSTANT = Instant.parse("2026-08-24T10:01:00Z");
+
+    private static final OffsetDateTime REQUESTED_AT =
+            OffsetDateTime.ofInstant(REQUESTED_INSTANT, ZoneOffset.UTC);
 
     private static final String PARTITION_KEY_PREFIX = "";
 
@@ -56,6 +68,10 @@ class SeatReservedConsumerServiceImplTest {
 
     @Mock private BookingSeatRepository bookingSeatRepository;
 
+    @Mock private PaymentRequestedOutboxFactory paymentRequestedOutboxFactory;
+
+    @Mock private OutboxService outboxService;
+
     private SeatReservedConsumerServiceImpl service;
 
     @BeforeEach
@@ -67,7 +83,10 @@ class SeatReservedConsumerServiceImplTest {
                         payloadReader,
                         processedEventRegistrationService,
                         bookingRepository,
-                        bookingSeatRepository);
+                        bookingSeatRepository,
+                        paymentRequestedOutboxFactory,
+                        outboxService,
+                        Clock.fixed(REQUESTED_INSTANT, ZoneOffset.UTC));
     }
 
     @Test
@@ -76,6 +95,14 @@ class SeatReservedConsumerServiceImplTest {
         TestContext context = validContext();
 
         prepareSuccessfulProcessing(context);
+
+        OutboxEventEntity paymentRequestedEvent = org.mockito.Mockito.mock(OutboxEventEntity.class);
+
+        when(bookingRepository.save(context.booking())).thenReturn(context.booking());
+
+        when(paymentRequestedOutboxFactory.create(
+                        context.booking(), context.message(), REQUESTED_AT))
+                .thenReturn(paymentRequestedEvent);
 
         SeatReservedConsumerService.Result result =
                 service.handle(context.partitionKey(), context.message());
@@ -114,6 +141,11 @@ class SeatReservedConsumerServiceImplTest {
         verify(bookingSeatRepository).saveAll(context.bookingSeats());
 
         verify(bookingRepository).save(context.booking());
+
+        verify(paymentRequestedOutboxFactory)
+                .create(context.booking(), context.message(), REQUESTED_AT);
+
+        verify(outboxService).save(paymentRequestedEvent);
     }
 
     @Test
@@ -132,7 +164,11 @@ class SeatReservedConsumerServiceImplTest {
 
         assertThat(result.status()).isEqualTo(SeatReservedConsumerService.Status.DUPLICATE);
 
-        verifyNoInteractions(bookingRepository, bookingSeatRepository);
+        verifyNoInteractions(
+                bookingRepository,
+                bookingSeatRepository,
+                paymentRequestedOutboxFactory,
+                outboxService);
 
         assertThat(context.booking().getStatus()).isEqualTo(BookingStatus.PENDING);
 
@@ -435,6 +471,57 @@ class SeatReservedConsumerServiceImplTest {
 
         verifyNoInteractions(
                 processedEventRegistrationService, bookingRepository, bookingSeatRepository);
+    }
+
+    @Test
+    void paymentOutboxFactoryFailureShouldPropagate() {
+
+        TestContext context = validContext();
+
+        prepareSuccessfulProcessing(context);
+
+        when(bookingRepository.save(context.booking())).thenReturn(context.booking());
+
+        IllegalStateException failure =
+                new IllegalStateException("Simulated payment Outbox factory failure");
+
+        when(paymentRequestedOutboxFactory.create(
+                        context.booking(), context.message(), REQUESTED_AT))
+                .thenThrow(failure);
+
+        assertThatThrownBy(() -> service.handle(context.partitionKey(), context.message()))
+                .isSameAs(failure);
+
+        verify(paymentRequestedOutboxFactory)
+                .create(context.booking(), context.message(), REQUESTED_AT);
+
+        verifyNoInteractions(outboxService);
+    }
+
+    @Test
+    void paymentOutboxSaveFailureShouldPropagate() {
+
+        TestContext context = validContext();
+
+        prepareSuccessfulProcessing(context);
+
+        OutboxEventEntity paymentRequestedEvent = org.mockito.Mockito.mock(OutboxEventEntity.class);
+
+        when(bookingRepository.save(context.booking())).thenReturn(context.booking());
+
+        when(paymentRequestedOutboxFactory.create(
+                        context.booking(), context.message(), REQUESTED_AT))
+                .thenReturn(paymentRequestedEvent);
+
+        IllegalStateException failure =
+                new IllegalStateException("Simulated payment Outbox persistence failure");
+
+        doThrow(failure).when(outboxService).save(paymentRequestedEvent);
+
+        assertThatThrownBy(() -> service.handle(context.partitionKey(), context.message()))
+                .isSameAs(failure);
+
+        verify(outboxService).save(paymentRequestedEvent);
     }
 
     private void prepareSuccessfulProcessing(TestContext context) {

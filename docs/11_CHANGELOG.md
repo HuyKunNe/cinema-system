@@ -1,7 +1,7 @@
 # Changelog
 
-**Version:** 0.6
-**Current baseline:** R1–R25 completed; R26 active
+**Version:** 0.7
+**Current baseline:** R1–R26 completed; R27 next
 **Last reviewed:** 2026-08-25
 
 ---
@@ -33,15 +33,12 @@ Current status:
 
 ```text
 R1-R24         Completed
-R25.1–R25.10   Completed
-R25.11         Completed
-R25.12         Completed
-R25.13         Completed
-R25.14         Completed
-R25.15         Completed
+R25.1–R25.15   Completed
 R25             User Service completed
-R26             Booking Service active
-R27-R28         Planned
+R26.1–R26.13   Completed
+R26             Booking Service completed
+R27             Payment Service next
+R28             Planned
 ```
 
 ---
@@ -49,6 +46,79 @@ R27-R28         Planned
 # Unreleased
 
 ## 2026-08-25
+
+### R26 Booking Service Stabilization and Closure
+
+- Completed R26 Booking Service.
+- Added the Flyway-owned Booking aggregate schema.
+- Added authenticated create, query and cancellation APIs.
+- Enforced ownership through the JWT UUID subject.
+- Added normalized client-request idempotency with database uniqueness.
+- Hardened shared Transactional Outbox claiming, leases, retries and
+  acknowledgement handling.
+- Added canonical `seat-reservation-requested` publication.
+- Added canonical `seat-reserved` and `seat-reservation-rejected` consumption.
+- Added Booking-owned processed-event idempotency.
+- Added authoritative BookingSeat snapshot completion.
+- Added duplicate, stale and concurrent reservation-result protection.
+- Added bounded Kafka retry and sanitized dead-letter handling.
+- Added transactional cancellation and automatic expiration.
+- Added canonical `booking-cancelled` and `booking-expired` events.
+- Added immutable canonical `payment-requested` publication.
+- Preserved source correlation IDs and source event causation IDs.
+- Verified aggregate, snapshots, processed markers and Outbox records commit or
+  roll back atomically.
+- Verified cancellation, expiration and reservation-result race ordering.
+- Verified Booking Service does not depend on Inventory Service code or access
+  `show_seats`.
+- Completed Booking API security and ownership verification.
+- Confirmed Booking Service reactor clean verification passes.
+- Confirmed root Maven reactor clean verification passes.
+- Synchronized the Event Catalog, Booking design, project context, AI context,
+  roadmap and changelog.
+- Advanced the next implementation target to R27 Payment Service.
+
+### R26.10–R26.12 Lifecycle, Payment Event and Verification
+
+- Added authenticated transactional Booking cancellation.
+- Added automatic reservation expiration with bounded candidate processing.
+- Added canonical Booking lifecycle Outbox factories.
+- Added immutable `payment-requested` payload and Outbox factory.
+- Added payment-request publication to the successful reservation-result
+  transaction.
+- Added payment-event Kafka envelope verification.
+- Verified duplicate reservation results create one payment request.
+- Verified concurrent reservation results create one payment request.
+- Verified delayed reservation results cannot restore cancelled or expired
+  Bookings.
+- Verified rejected, cancelled and expired paths do not independently create
+  payment requests.
+- Completed Booking Saga happy-path and failure-path integration coverage.
+
+### R26.11 Payment Event Preparation
+
+- Added the canonical immutable `payment-requested` payload.
+- Added the `payment-requested` event type and version contract.
+- Defined the initial payment-attempt value as `1`.
+- Added canonical Booking aggregate and partition-key metadata.
+- Preserved the source `seat-reserved` correlation ID.
+- Used the source `seat-reserved` event ID as the payment request causation ID.
+- Added trusted server timestamps for payment request creation.
+- Added the transactional `payment-requested` Outbox factory.
+- Added atomic payment request publication to the `seat-reserved` transaction.
+- Committed the processed-event marker, Booking transition, BookingSeat
+  snapshots and payment Outbox insertion together.
+- Verified payment Outbox failures roll back reservation processing.
+- Verified duplicate reservation-result delivery creates one payment request.
+- Verified distinct concurrent reservation-result events create one payment
+  request.
+- Verified delayed reservation results cannot create payment requests after
+  cancellation or expiration.
+- Verified canonical Kafka envelope publication and Outbox acknowledgement.
+- Excluded provider credentials and sensitive payment fields from the event.
+- Kept payment execution and provider idempotency inside the future Payment
+  Service boundary.
+- Completed R26.11 and advanced the active checkpoint to R26.12.
 
 ### R26.10 Expiration and Cancellation
 

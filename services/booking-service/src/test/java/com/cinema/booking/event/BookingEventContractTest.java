@@ -1,12 +1,19 @@
 package com.cinema.booking.event;
 
 import static org.assertj.core.api.Assertions.assertThat;
-
 import org.junit.jupiter.api.Test;
 
 import com.cinema.booking.enums.BookingCancellationReason;
 
 class BookingEventContractTest {
+
+    @Test
+    void paymentRequestedContractShouldRemainCanonical() {
+
+        assertThat(BookingEventContract.PAYMENT_REQUESTED).isEqualTo("payment-requested");
+
+        assertThat(BookingEventContract.PAYMENT_REQUESTED_VERSION).isEqualTo("1");
+    }
 
     @Test
     void bookingCancelledContractShouldRemainCanonical() {

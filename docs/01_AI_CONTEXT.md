@@ -106,41 +106,51 @@ Verified endpoint authorization:
 - JWT role and permission claims are mapped to granted authorities;
 - blank and duplicate authorities are removed.
 
-## Active Round
+## Completed Booking Round
 
-Current next checkpoint:
-
-````text
-R26.1 — Booking architecture and contract closure — IN PROGRESS
-
-**R25 — User Service**
-
-R25 implementation is done.
+R26 Booking Service is complete.
 
 Completed checkpoints:
-R25 implementation is done.
-```text
-R25.1 — common-security hardening — DONE
-R25.2 — authentication architecture and roadmap — DONE
-R25.3 — User Service bootstrap — DONE
-R25.4 — user domain and database schema — DONE
-R25.5 — roles and permissions — DONE
-R25.6 — password authentication foundation — DONE
-R25.7 — account lifecycle and email verification — DONE
-R25.8 — Spring Authorization Server foundation — DONE
-R25.9 — OAuth2 clients and grant types — DONE
-R25.10 — JWT claims and JWK signing — DONE
-R25.11.1–R25.11.11 — refresh security, auditing, concurrency and closure — DONE
-R25.12 — profile and account lifecycle APIs — DONE
-R25.13 — Gateway and Resource Server integration — DONE
-R25.14 — Security and protocol verification — DONE
-R25.15 — Stabilization and closure — DONE
-R25 — User Service — DONE
 
-Active checkpoint:
-R26 — Booking Service — NEXT
+````text
+R26.1  — Booking architecture and contract closure       — DONE
+R26.2  — Booking Service bootstrap and security           — DONE
+R26.3  — Booking aggregate and Flyway schema              — DONE
+R26.4  — Authenticated create and query APIs              — DONE
+R26.5  — Client request idempotency                       — DONE
+R26.6  — Transactional Outbox contract hardening          — DONE
+R26.7  — seat-reservation-requested publication           — DONE
+R26.8  — Inventory event integration                      — DONE
+R26.9  — Reservation result handling                      — DONE
+R26.10 — Expiration and cancellation                      — DONE
+R26.11 — Payment event preparation                        — DONE
+R26.12 — Integration and concurrency verification         — DONE
+R26.13 — Stabilization and closure                        — DONE
+R26    — Booking Service                                  — DONE
 
-````
+Verified Booking baseline:
+
+-authenticated ownership comes only from the JWT UUID subject;
+-Booking Service never accepts a request-owned userId;
+-Booking Service does not access Inventory persistence or show_seats;
+-Booking and Inventory coordinate through canonical Kafka events;
+-Booking mutations and outgoing events use Transactional Outbox;
+-state-changing consumers use processed-event idempotency;
+-duplicate and delayed events cannot reverse decided Booking state;
+-cancellation and expiration use persisted expiration boundaries;
+-payment-requested preserves source correlation and causation;
+-Booking, seat snapshots, processed markers and outgoing Outbox records commit
+or roll back atomically;
+-focused Booking verification and the root Maven reactor verification pass.
+
+Next Round
+R27 — Payment Service — NEXT
+
+Payment Service owns payment attempts, provider interaction, provider
+idempotency, payment-result events, refund state and Payment-owned persistence.
+
+R27 must consume the canonical payment-requested event without importing
+Booking entities, repositories or database tables.
 
 R25.13 completed:
 
@@ -180,7 +190,7 @@ Authoritative decision record:
 
 ```text
 docs/decisions/ADR-013-spring-authorization-server.md
-```
+````
 
 ---
 
@@ -634,22 +644,22 @@ explicitly requested.
 
 # Business Service Status
 
-| Round | Service              | Status      |
-| ----- | -------------------- | ----------- |
-| R23   | Movie Service        | DONE        |
-| R24   | Inventory Service    | DONE        |
-| R25   | User Service         | DONE        |
-| R26   | Booking Service      | NEXT        |
-| R27   | Payment Service      | NOT STARTED |
-| R28   | Notification Service | NOT STARTED |
+# Business Service Status
 
-Movie Service and Inventory Service have completed their implementation,
-testing and verification requirements.
+| Round | Service              | Status  |
+| ----- | -------------------- | ------- |
+| R23   | Movie Service        | DONE    |
+| R24   | Inventory Service    | DONE    |
+| R25   | User Service         | DONE    |
+| R26   | Booking Service      | DONE    |
+| R27   | Payment Service      | NEXT    |
+| R28   | Notification Service | PLANNED |
 
-User Service is the active business-service round.
+Movie, Inventory, User and Booking Service have completed their implementation,
+testing, concurrency, security and verification requirements.
 
-R25.1–R25.15 are complete. The User Service round is closed. R26 Booking
-Service is the active implementation round.
+R26 Booking Service is closed. R27 Payment Service is the next business-service
+implementation round.
 
 ---
 
@@ -794,24 +804,31 @@ R24 met all completion requirements on 2026-08-04.
 
 # Current Next Step
 
-- R26.1 — Booking architecture and contract closure
+- R27.1 — Payment architecture and contract closure
 
-Preserve all completed R25 identity, OAuth2/OIDC, Gateway and independent
-Resource Server boundaries.
+Preserve all completed R26 Booking boundaries.
 
-Booking Service must:
+Payment Service must:
 
-- obtain ownership from the authenticated UUID subject;
-- never accept an arbitrary request `userId`;
-- never access Inventory persistence;
-- store cross-service references as UUID values;
-- coordinate through approved integration events;
-- use Transactional Outbox for reliable publication;
-- use processed-event records for state-changing consumers;
-- validate every Booking state transition;
-- provide client request idempotency using the authenticated user boundary.
+- consume canonical `payment-requested` events idempotently;
+- own payment attempts and provider references;
+- never store card number, CVV or unrestricted provider credentials in events;
+- preserve correlation and causation metadata;
+- use Transactional Outbox for payment-result publication;
+- avoid direct access to Booking persistence;
+- publish canonical `payment-succeeded` or `payment-failed` results;
+- treat provider callbacks and retries as at-least-once operations;
+- enforce provider idempotency independently of Kafka idempotency.
 
-Authoritative Booking design:
+Authoritative Booking baseline:
 
 ```text
 docs/16_BOOKING_SERVICE_DESIGN.md
+```
+
+Authoritative integration-event contracts:
+
+```text
+docs/07_EVENT_CATALOG.md
+
+```

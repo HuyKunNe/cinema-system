@@ -1,8 +1,8 @@
 # Project Roadmap
 
-**Version:** R25 Completed
-**Current target:** R26 — Booking Service
-**Last updated:** 2026-08-20
+**Version:** R26 Completed
+**Current target:** R27 — Payment Service
+**Last updated:** 2026-08-25
 
 ---
 
@@ -1467,45 +1467,81 @@ Completed capabilities:
 - concurrent reserved/rejected race verification;
 - transaction rollback verification.
 
-Payment request publication remains R26.11 scope.
+Payment request publication was completed in R26.11.
 
 #### ✅ R26.10 — Expiration and cancellation
 
 Completed capabilities:
 
-- controlled `RESERVED → CANCELLED` transition;
-- controlled `RESERVED → EXPIRED` transition;
-- authenticated cancellation ownership enforcement;
-- ownership-aware pessimistic cancellation locking;
-- persisted `expires_at` as the authoritative expiration boundary;
-- configurable expiration candidate batching;
-- per-booking transactional expiration processing;
-- post-lock state and expiration revalidation;
-- canonical immutable `booking-cancelled` payload;
-- canonical immutable `booking-expired` payload;
-- transactional `booking-cancelled` Outbox publication;
-- transactional `booking-expired` Outbox publication;
-- no direct Inventory table access from Booking Service;
-- no duplicate `seat-release-requested` command publication;
-- cancellation rejection at or after `expires_at`;
-- expiration priority at the cancellation/expiration boundary;
-- concurrent expiration duplicate protection;
-- cancellation/expiration race verification;
-- lifecycle Outbox rollback verification;
-- authenticated cancellation API security verification.
+- authenticated ownership-aware cancellation;
+- `RESERVED → CANCELLED`;
+- persisted expiration-boundary enforcement;
+- automatic `RESERVED → EXPIRED`;
+- pessimistic lifecycle locking;
+- cancellation and expiration ordering;
+- canonical `booking-cancelled` publication;
+- canonical `booking-expired` publication;
+- atomic Booking and lifecycle Outbox persistence;
+- duplicate lifecycle-event prevention;
+- lifecycle rollback verification.
 
-Inventory Service consumes the resulting Booking lifecycle events and remains
-responsible for conditionally releasing held seats.
+#### ✅ R26.11 — Payment event preparation
 
-#### ⏳ R26.11 — Payment event preparation
+Completed capabilities:
 
-#### ⏳ R26.12 — Integration and concurrency verification
+- immutable `payment-requested` payload;
+- canonical event metadata;
+- initial `paymentAttempt = 1`;
+- trusted server timestamps;
+- source correlation preservation;
+- source event ID as causation ID;
+- payment Outbox creation in the reservation-result transaction;
+- rollback of Booking, seat snapshots, processed marker and payment Outbox;
+- duplicate-result protection;
+- concurrent-result protection;
+- Kafka envelope and DLT verification;
+- exclusion of payment credentials and sensitive provider data.
 
-#### ⏳ R26.13 — Stabilization and closure
+Payment execution remains R27 scope.
+
+#### ✅ R26.12 — Integration and concurrency verification
+
+Completed verification:
+
+- authenticated API ownership;
+- invalid JWT-subject rejection;
+- request validation and client idempotency;
+- Flyway schema and constraints;
+- Booking and Inventory dependency boundaries;
+- duplicate and stale event delivery;
+- processed-event atomicity;
+- reservation-result ordering;
+- cancellation and expiration races;
+- payment Outbox transaction rollback;
+- delayed reservation results after terminal lifecycle decisions;
+- full Booking Saga happy and failure paths;
+- Booking Service reactor verification;
+- root Maven reactor verification.
+
+#### ✅ R26.13 — Stabilization and closure
+
+Completed closure:
+
+- temporary/debug-code audit;
+- service dependency-boundary audit;
+- secret and generated-file audit;
+- Booking Service clean verification;
+- root reactor clean verification;
+- authoritative documentation synchronization;
+- R26 exit-criteria confirmation.
+
+R26 Booking Service is complete.
 
 ---
 
 ## ⏳ R27 — Payment Service
+
+**Status:** NEXT
 
 Payment Service will own:
 

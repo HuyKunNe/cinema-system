@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
 import com.cinema.booking.enums.BookingStatus;
+import com.cinema.booking.event.BookingEventContract;
 import com.cinema.booking.event.payload.ReservedSeatPayload;
 import com.cinema.booking.event.payload.SeatReservationRejectedPayload;
 import com.cinema.booking.event.payload.SeatReservedPayload;
@@ -15,6 +16,7 @@ import com.cinema.booking.service.SeatReservationRejectedConsumerService;
 import com.cinema.booking.service.SeatReservedConsumerService;
 import com.cinema.common.core.id.UuidGenerator;
 import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.common.outbox.model.OutboxEventMessage;
 import com.cinema.common.outbox.repository.OutboxRepository;
 import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
@@ -104,14 +106,19 @@ class ReservationResultRaceIntegrationTest extends AbstractMySqlIntegrationTest 
 
         assertThat(processedEventRepository.count()).isEqualTo(1);
 
-        assertThat(outboxRepository.count()).isZero();
-
         if (booking.getStatus() == BookingStatus.RESERVED) {
 
             assertReservedState(booking, seats, context);
 
+            assertThat(outboxRepository.findAll())
+                    .singleElement()
+                    .extracting(OutboxEventEntity::getEventType)
+                    .isEqualTo(BookingEventContract.PAYMENT_REQUESTED);
+
         } else {
             assertRejectedState(booking, seats);
+
+            assertThat(outboxRepository.count()).isZero();
         }
     }
 
@@ -191,7 +198,10 @@ class ReservationResultRaceIntegrationTest extends AbstractMySqlIntegrationTest 
          */
         assertThat(processedEventRepository.count()).isEqualTo(1);
 
-        assertThat(outboxRepository.count()).isZero();
+        assertThat(outboxRepository.findAll())
+                .singleElement()
+                .extracting(OutboxEventEntity::getEventType)
+                .isEqualTo(BookingEventContract.PAYMENT_REQUESTED);
     }
 
     @Test
@@ -260,6 +270,11 @@ class ReservationResultRaceIntegrationTest extends AbstractMySqlIntegrationTest 
         assertReservedState(booking, seats, context);
 
         assertThat(processedEventRepository.count()).isEqualTo(1);
+
+        assertThat(outboxRepository.findAll())
+                .singleElement()
+                .extracting(OutboxEventEntity::getEventType)
+                .isEqualTo(BookingEventContract.PAYMENT_REQUESTED);
     }
 
     private ConcurrentResults executeConcurrently(

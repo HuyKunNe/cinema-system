@@ -1,8 +1,8 @@
 # Booking Service Design
 
-**Version:** R26.1
-**Status:** Accepted design baseline
-**Last updated:** 2026-08-20
+**Version:** R26
+**Status:** Implemented and verified
+**Last updated:** 2026-08-25
 
 ---
 
@@ -315,17 +315,64 @@ Complete authoritative BookingSeat snapshots
 Validate the authoritative total amount
 Set total amount and currency
 Change PENDING -> RESERVED
+Create payment-requested Outbox event
 Commit
 ```
 
-Duplicate delivery must not repeat the state transition or modify completed seat
-snapshots.
+The processed-event marker, Booking state transition, BookingSeat snapshot
+completion and `payment-requested` Outbox insertion form one atomic local
+transaction.
+
+The canonical `payment-requested` payload contains:
+
+```text
+bookingId
+userId
+amount
+currency
+paymentAttempt
+holdExpiresAt
+requestedAt
+```
+
+The initial payment attempt is:
+
+```text
+1
+```
+
+The event uses:
+
+```text
+aggregateType = BOOKING
+aggregateId = bookingId
+topic = payment-requested
+partitionKey = bookingId
+eventVersion = 1
+correlationId = source seat-reserved correlationId
+causationId = source seat-reserved eventId
+```
+
+The payment event ID is a new UUID v7. `requestedAt`, `occurredAt` and Outbox
+creation time use the same trusted server timestamp.
+
+Duplicate delivery must not repeat the state transition, modify completed seat
+snapshots or create another payment request.
+
+Distinct reservation-result events racing for the same Booking are serialized
+through the Booking pessimistic lock. Only the winning `PENDING -> RESERVED`
+transaction creates a payment request.
 
 A delayed `seat-reserved` event must not restore a rejected, cancelled or expired
-Booking to `RESERVED`.
+Booking to `RESERVED` and must not create a payment request.
 
-`payment-requested` publication is intentionally deferred to R26.11. R26.9 does
-not create a payment Outbox row.
+A failed payment Outbox factory or Outbox persistence operation rolls back the
+processed-event marker, Booking state transition and BookingSeat snapshot
+changes.
+
+Payment provider execution, payment-attempt persistence, provider idempotency,
+`payment-succeeded` production and `payment-failed` production remain Payment
+Service responsibilities in R27.
 
 When `seat-reservation-rejected` is consumed, Booking Service performs one
 transaction:
@@ -579,6 +626,18 @@ R26 tests must cover:
 - cancellation and expiration race ordering;
 - expiration winning at the persisted expiration boundary;
 - no duplicate lifecycle Outbox publication;
+- immutable `payment-requested` payload contract;
+- canonical payment Outbox metadata;
+- source correlation preservation;
+- source event ID used as causation ID;
+- payment Outbox creation in the reservation-result transaction;
+- payment Outbox rollback with the Booking transition;
+- duplicate reservation result creating one payment request;
+- distinct concurrent reservation results creating one payment request;
+- delayed reservation result after cancellation creating no payment request;
+- delayed reservation result after expiration creating no payment request;
+- canonical Kafka envelope publication for `payment-requested`;
+- sensitive payment data excluded from the event;
 - Booking Service dependency-boundary checks;
 - Booking Service never accessing `show_seats`.
 
@@ -586,22 +645,77 @@ R26 tests must cover:
 
 ## 16. Implementation Order
 
-```text
-R26.1  Booking architecture and contract closure
-R26.2  Booking Service bootstrap and security
-R26.3  Booking aggregate and Flyway schema
-R26.4  Authenticated create and query APIs
-R26.5  Client request idempotency
-R26.6  Outbox contract hardening
-R26.7  seat-reservation-requested publication
-R26.8  Inventory event integration
-R26.9  Reservation result handling
-R26.10 Expiration and cancellation
-R26.11 Payment event preparation
-R26.12 Integration and concurrency verification
-R26.13 Stabilization and closure
-```
+| R26.1 Booking architecture and contract closure | DONE |
+| ----------------------------------------------- | ---- |
+| R26.2 Booking Service bootstrap and security    | DONE |
+| R26.3 Booking aggregate and Flyway schema       | DONE |
+| R26.4 Authenticated create and query APIs       | DONE |
+| R26.5 Client request idempotency                | DONE |
+| R26.6 Transactional Outbox contract hardening   | DONE |
+| R26.7 seat-reservation-requested publication    | DONE |
+| R26.8 Inventory event integration               | DONE |
+| R26.9 Reservation result handling               | DONE |
+| R26.10 Expiration and cancellation              | DONE |
+| R26.11 Payment event preparation                | DONE |
+| R26.12 Integration and concurrency verification | DONE |
+| R26.13 Stabilization and closure                | DONE |
 
 Payment processing remains R27.
 
 Notification processing remains R28.
+
+---
+
+## 17. Completion Status
+
+R26 Booking Service is implemented and verified.
+
+Completed capabilities:
+
+- authenticated booking creation;
+- ownership-aware booking queries;
+- authenticated transactional cancellation;
+- normalized seat validation and seat-count enforcement;
+- client request idempotency;
+- concurrent identical-request protection;
+- Flyway-owned Booking schema;
+- Booking aggregate lifecycle enforcement;
+- Booking-owned seat snapshots;
+- canonical `seat-reservation-requested` publication;
+- canonical `seat-reserved` and `seat-reservation-rejected` consumption;
+- processed-event idempotency;
+- pessimistic aggregate locking;
+- duplicate and stale event protection;
+- bounded Kafka retry and sanitized DLT handling;
+- transactional cancellation and expiration;
+- canonical `booking-cancelled` and `booking-expired` publication;
+- automatic expiration scheduling;
+- canonical `payment-requested` publication;
+- correlation and causation lineage preservation;
+- Transactional Outbox atomicity;
+- rollback of aggregate, snapshots, processed markers and Outbox records;
+- reservation-result, cancellation and expiration race verification;
+- Booking ownership-boundary verification;
+- verification that Booking Service does not access `show_seats`;
+- verification that Booking Service does not depend on Inventory Service code.
+
+Final verification completed:
+
+```text
+mvn -pl services/booking-service -am clean verify
+git diff --check
+mvn clean verify
+```
+
+Booking Service coordinates with Inventory and Payment through canonical Kafka
+events. It does not share databases, repositories, JPA entities or in-process
+Spring contexts with those services.
+
+Payment provider execution, payment-attempt persistence, provider idempotency,
+payment-result production and refund processing remain R27 Payment Service
+responsibilities.
+
+Notification delivery remains R28 Notification Service responsibility.
+
+The next implementation round is:
+R27 — Payment Service
