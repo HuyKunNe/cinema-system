@@ -1,6 +1,6 @@
 # Dependency Rules
 
-Version: R25
+Version: R26
 
 ---
 
@@ -204,9 +204,22 @@ Booking Service may keep a ShowSeat identifier as a reference, but it must not:
 - Reimplement authoritative ShowSeat transitions.
 - Create a cross-service foreign key to Inventory tables.
 
-Booking requests a hold, booking, or release through an approved Inventory API
-or event contract. Inventory performs the state transition and returns or
-publishes the authoritative result.
+The implemented R26 reservation boundary uses Kafka contracts:
+
+```text
+Booking  --seat-reservation-requested-->  Inventory
+Booking  <--seat-reserved----------------  Inventory
+Booking  <--seat-reservation-rejected----  Inventory
+```
+
+Booking cancellation and expiration publish `booking-cancelled` and
+`booking-expired`; they do not also publish `seat-release-requested`. Inventory
+lifecycle consumers remain future integration work. The explicit
+`seat-release-requested` command is reserved for R27 payment-failure
+compensation.
+
+Any future synchronous Inventory API requires an approved contract and must not
+replace Inventory ownership or create a distributed database transaction.
 
 ---
 
@@ -451,6 +464,11 @@ Any new module or material dependency-direction change requires:
 ---
 
 # Verification Checklist
+
+R26 closure tests verify the Booking-to-Inventory compile-time and database
+boundaries, including absence of an Inventory Service Maven dependency and
+absence of Booking access to `show_seats`. The list below remains the required
+review checklist for every subsequent change.
 
 - [ ] No common module depends on `services/*`
 - [ ] No business service depends on another business-service module

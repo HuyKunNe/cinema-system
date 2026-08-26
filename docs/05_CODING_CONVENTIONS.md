@@ -1,6 +1,6 @@
 # Coding Conventions
 
-Version: R25
+Version: R26
 
 ---
 
@@ -595,7 +595,7 @@ Example messages:
 ```text
 feat(security): validate JWT audience
 refactor(inventory): reuse shared authority mapping
-docs: synchronize R25 security architecture
+docs: synchronize R26 Booking architecture
 test(inventory): verify concurrent ShowSeat hold
 ```
 

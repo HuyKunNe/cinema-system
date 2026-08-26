@@ -1,6 +1,6 @@
 # Sequence Diagrams
 
-Version: R26
+Version: R27.1
 
 ---
 
@@ -205,12 +205,16 @@ sequenceDiagram
     participant Booking as Booking Service
     participant Kafka
     participant Payment as Payment Service
+    participant Provider as Payment Provider
     participant Inventory as Inventory Service
     participant Notification as Notification Service
 
     Booking->>Kafka: payment-requested
     Kafka->>Payment: Consume idempotently
-    Payment->>Payment: Save success and Outbox event
+    Payment->>Payment: Commit Payment and stable provider operation
+    Payment->>Provider: Charge with stable idempotency key
+    Provider-->>Payment: Terminal success
+    Payment->>Payment: Commit success and Outbox event
     Payment->>Kafka: payment-succeeded
     Kafka->>Booking: Consume success
     Booking->>Booking: RESERVED to CONFIRMED
@@ -230,12 +234,16 @@ Booking `RESERVED` and Inventory `HELD` are separate service-owned states.
 ```mermaid
 sequenceDiagram
     participant Payment as Payment Service
+    participant Provider as Payment Provider
     participant Kafka
     participant Booking as Booking Service
     participant Inventory as Inventory Service
     participant DB as Inventory Database
 
-    Payment->>Kafka: payment-failed
+    Payment->>Provider: Charge with stable idempotency key
+    Provider-->>Payment: Confirm terminal failure
+    Payment->>Payment: Commit failure and Outbox event
+    Payment->>Kafka: payment-failed with retryable=false
     Kafka->>Booking: Consume failure
     Booking->>Booking: RESERVED to PAYMENT_FAILED
     Booking->>Kafka: seat-release-requested
@@ -252,6 +260,10 @@ failure compensation. R26 cancellation and expiration publish
 `booking-cancelled` and `booking-expired` instead of an additional release
 command. Future Inventory consumers still apply the same conditional rule and
 never release a `BOOKED` ShowSeat.
+
+Retryable timeouts, temporary provider unavailability, and unknown outcomes do
+not enter this terminal flow until Payment Service resolves or exhausts them
+according to the approved policy. Ambiguous outcomes require reconciliation.
 
 ---
 

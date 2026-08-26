@@ -1,5 +1,9 @@
 # Security
 
+**Version:** R27.1
+**Status:** Implemented security baseline plus Payment contract requirements
+**Last updated:** 2026-08-26
+
 This document defines the security architecture, trust boundaries, authentication,
 authorization, token handling, service-to-service protection, secret management,
 input validation, data protection, logging, Kafka security, operational controls,
@@ -610,9 +614,23 @@ movie:manage
 showtime:manage
 inventory:manage
 payment:read
+payment:refund
+payment:reconcile
 notification:manage
 user:manage
 ```
+
+The names above are the target least-privilege vocabulary. In the current R26
+Booking implementation, `/api/v1/bookings` and its subpaths require a valid
+authenticated JWT, while ownership is derived from the validated UUID v7
+subject. `booking:create`, `booking:read`, and `booking:cancel` scope checks are
+not yet configured in `BookingSecurityConfig`; documentation and tests must not
+claim that missing Booking scopes currently return `403`.
+
+`payment:read` exists in the current User Service authority catalog.
+`payment:refund` and `payment:reconcile` are R27 target permissions and must be
+added through a new User Service Flyway migration and `PermissionCode` update
+before the corresponding Payment endpoints are enabled.
 
 Rules:
 
@@ -1091,14 +1109,22 @@ Rules:
 
 # Kafka Authorization Matrix
 
-Conceptual least-privilege matrix:
+Current implemented topic ownership through R26:
 
-| Service              | Write topics                                                                                                                             | Read topics                                                                                                         |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Booking Service      | `seat-reservation-requested`, `payment-requested`, `seat-release-requested`, `booking-confirmed`, `booking-cancelled`, `booking-expired` | `seat-reserved`, `seat-reservation-rejected`, `payment-succeeded`, `payment-failed`, `seat-released`                |
-| Inventory Service    | `seat-reserved`, `seat-reservation-rejected`, `seat-released`                                                                            | `seat-reservation-requested`, `seat-release-requested`, `booking-confirmed`, `booking-cancelled`, `booking-expired` |
-| Payment Service      | `payment-succeeded`, `payment-failed`                                                                                                    | `payment-requested`                                                                                                 |
-| Notification Service | Notification-owned events only when defined                                                                                              | `booking-confirmed`, `booking-cancelled`, `booking-expired`                                                         |
+| Service           | Write topics                                                                              | Read topics                                  |
+| ----------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Booking Service   | `seat-reservation-requested`, `payment-requested`, `booking-cancelled`, `booking-expired` | `seat-reserved`, `seat-reservation-rejected` |
+| Inventory Service | `seat-reserved`, `seat-reservation-rejected`                                              | `seat-reservation-requested`                 |
+
+Target additions require implementation and ACL verification in their approved
+rounds:
+
+| Round | Service              | Write topics                                  | Read topics                                                                           |
+| ----- | -------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------- |
+| R27   | Payment Service      | `payment-succeeded`, `payment-failed`         | `payment-requested`                                                                   |
+| R27   | Booking Service      | `seat-release-requested`, `booking-confirmed` | `payment-succeeded`, `payment-failed`, `seat-released`                                |
+| R27   | Inventory Service    | `seat-released`                               | `seat-release-requested`, `booking-confirmed`, `booking-cancelled`, `booking-expired` |
+| R28   | Notification Service | Notification-owned events when defined        | `booking-confirmed`, `booking-cancelled`, `booking-expired`                           |
 
 Topic permissions must match `docs/07_EVENT_CATALOG.md`.
 

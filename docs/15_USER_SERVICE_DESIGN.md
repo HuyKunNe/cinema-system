@@ -4,6 +4,8 @@
 
 **Runtime status:** R25.1–R25.15 implemented and verified
 
+**Last reviewed:** 2026-08-26
+
 **Architecture decision:** `docs/decisions/ADR-013-spring-authorization-server.md`
 
 ---
@@ -287,8 +289,8 @@ Confidential clients:
 Client secrets must be shown only once at creation or rotation. Stored secrets
 use a `PasswordEncoder`; they are never recoverable as plaintext.
 
-Implementation status (R25.9): controlled server-side registration and JDBC
-registered-client persistence are implemented. Public clients use
+R25.9 completed controlled server-side registration and JDBC
+registered-client persistence. Public clients use
 `ClientAuthenticationMethod.NONE`, Authorization Code plus Refresh Token,
 required PKCE and consent, a 15-minute access token and a non-reusable 30-day
 refresh token. Service clients use `client_secret_basic`, Client Credentials,
@@ -297,8 +299,8 @@ Dynamic client registration and a public management controller are not enabled.
 Authorization Server metadata advertises only Authorization Code, Refresh Token
 and Client Credentials. Protocol integration coverage verifies missing-PKCE
 rejection, successful S256 validation through the consent boundary, service
-client isolation and client-secret rejection. Successful token issuance remains
-R25.10-dependent because production RSA/JWK and JWT generation are not yet present.
+client isolation and client-secret rejection. R25.10 subsequently completed
+RSA/JWK signing, JWT generation, claims, and successful token issuance.
 
 ### 9.3 Consent
 
@@ -363,8 +365,10 @@ username roles permissions
 
 Rules:
 
-- `iss` exactly matches `CINEMA_AUTH_ISSUER`;
-- `aud` includes the approved target audience;
+- `iss` exactly matches `USER_AUTHORIZATION_SERVER_ISSUER`; Resource Servers
+  trust the same canonical value through `CINEMA_AUTH_ISSUER`;
+- `aud` includes a value from `USER_JWT_AUDIENCES`; Resource Servers require
+  the matching value through `CINEMA_AUTH_AUDIENCE`;
 - human `sub` is the user's UUID v7;
 - service `sub` is the approved service-principal identifier;
 - role values do not contain the `ROLE_` prefix;
@@ -434,6 +438,35 @@ Every successful refresh operation:
 
 Concurrent use of one refresh token must produce at most one successful
 successor.
+
+#### Verified concurrent rotation
+
+`findByTokenHashForUpdate` acquires a pessimistic write lock for the predecessor
+history row. The service rechecks `isActive()` after acquiring the lock.
+
+If another transaction rotated the row while the caller waited, the caller
+receives OAuth2 `invalid_grant`. Its candidate OAuth2 authorization update and
+successor history are rolled back.
+
+Verified invariants:
+
+```text
+concurrent ACTIVE refresh:
+    exactly one success
+    exactly one committed successor
+    at most one ACTIVE successor
+    losing request → invalid_grant
+
+concurrent ROTATED reuse:
+    both requests → invalid_grant
+    predecessor → REUSED
+    successor → REVOKED
+    authorization family → invalidated
+    reuse audit count → 1
+```
+
+The implementation does not expose `ConflictException`, lock details, token
+hashes, or raw token values through OAuth2 responses.
 
 ### 13.3 Reuse detection
 
@@ -533,7 +566,9 @@ Rules:
 - password reset revokes applicable active sessions;
 - role and permission changes affect new tokens immediately and existing access
   tokens after their short expiry unless emergency revocation is required;
-- privileged production accounts require MFA before R25 can close.
+- privileged production access requires MFA or an approved external identity
+  control that enforces MFA; without either control, privileged production login
+  remains disabled.
 
 R25.12 implementation status:
 
@@ -577,18 +612,19 @@ USER_DB_USERNAME
 USER_DB_PASSWORD
 CONFIG_SERVER_URL
 EUREKA_URL
-CINEMA_AUTH_ISSUER
-CINEMA_AUTH_AUDIENCE
-CINEMA_AUTH_PRIVATE_KEY_PATH
-CINEMA_AUTH_PUBLIC_KEY_PATH
-CINEMA_AUTH_ACTIVE_KEY_ID
-CINEMA_AUTH_ACCESS_TOKEN_TTL
-CINEMA_AUTH_REFRESH_TOKEN_TTL
+USER_EMAIL_VERIFICATION_LIFETIME
+USER_AUTHORIZATION_SERVER_ISSUER
+USER_JWT_AUDIENCES
+USER_JWT_SIGNING_ENABLED
+USER_JWT_SIGNING_KEY_ID
+USER_JWT_PRIVATE_KEY_LOCATION
+USER_JWT_PUBLIC_KEY_LOCATION
 ```
 
-Names may be refined during implementation, but secrets must remain external to
-Git. Configuration binding uses validated `@ConfigurationProperties`; security-
-critical configuration must fail startup when missing or invalid outside tests.
+These names match the current `user-service/application.yml`. Secrets and private
+keys must remain external to Git. Configuration binding uses validated
+`@ConfigurationProperties`; security-critical configuration must fail startup
+when missing or invalid outside tests.
 
 ---
 
@@ -730,15 +766,15 @@ fixtures and must not be reusable outside tests.
 
 ## 21. Implementation Order
 
-Runtime work begins only after this R25.2 design is accepted.
+The accepted implementation sequence completed during R25 was:
 
 | Checkpoint | Scope                                                              |
 | ---------- | ------------------------------------------------------------------ |
 | R25.3      | Bootstrap, configuration, persistence foundation and context tests |
 | R25.4      | User, profile, credential and account-status schema                |
 | R25.5      | Roles and permissions                                              |
-| R25.6      | Registration and password security                                 |
-| R25.7      | Verification and password recovery                                 |
+| R25.6      | Password authentication foundation                                 |
+| R25.7      | Account lifecycle and email verification                           |
 | R25.8      | Spring Authorization Server filter chain and OIDC foundation       |
 | R25.9      | Registered clients, PKCE, Refresh and Client Credentials grants    |
 | R25.10     | RSA keys, JWK publication and JWT claims                           |
@@ -754,9 +790,9 @@ Owner Password Credentials.
 
 ---
 
-## 22. R25.2 Exit Criteria
+## 22. Historical R25.2 Exit Criteria
 
-R25.2 may be marked complete when:
+R25.2 was the design-acceptance checkpoint. It required:
 
 - ADR-013 is accepted;
 - this implementation blueprint is accepted;
@@ -772,18 +808,19 @@ R25.2 may be marked complete when:
 - implementation checkpoints and test expectations are explicit;
 - affected architecture, security, database, sequence, deployment, roadmap and
   README documents agree;
-- no User Service runtime implementation is claimed as complete.
+- no User Service runtime implementation was claimed complete at the design-only
+  R25.2 checkpoint.
+
+These criteria describe the historical checkpoint and do not override the
+completed R25 runtime status at the top of this document.
 
 ---
 
 ## 23. Deferred Decisions
 
-The following details are intentionally deferred to their implementation
-checkpoint without reopening the accepted architecture:
+The following operational or future architecture choices remain deferred without
+reopening the accepted baseline:
 
-- exact Spring Authorization Server version resolved by the Spring dependency
-  management in use at R25.8;
-- exact Java class names and internal package refinements;
 - production secret-manager product;
 - automated signing-key rotation schedule;
 - supported MFA mechanism and recovery process;
@@ -793,32 +830,3 @@ checkpoint without reopening the accepted architecture:
 
 Each deferred choice must preserve ADR-013 and the security constraints in this
 document.
-
-### Concurrent Rotation
-
-`findByTokenHashForUpdate` acquires a pessimistic write lock for the predecessor
-history row. The service rechecks `isActive()` after acquiring the lock.
-
-If another transaction rotated the row while the caller waited, the caller receives
-OAuth2 `invalid_grant`. Its candidate OAuth2 authorization update and successor history
-are rolled back.
-
-The verified invariants are:
-
-```text
-concurrent ACTIVE refresh:
-    exactly one success
-    exactly one committed successor
-    at most one ACTIVE successor
-    losing request → invalid_grant
-
-concurrent ROTATED reuse:
-    both requests → invalid_grant
-    predecessor → REUSED
-    successor → REVOKED
-    authorization family → invalidated
-    reuse audit count → 1
-
-The implementation does not expose ConflictException, lock details, token hashes or
-raw token values through OAuth2 responses.
-```

@@ -1,5 +1,9 @@
 # System Architecture
 
+**Version:** R27.1
+**Status:** Booking Service completed; Payment architecture is the active target
+**Last updated:** 2026-08-26
+
 This document defines the authoritative architecture of Cinema Booking System.
 
 The system is designed as a production-oriented, event-driven microservices
@@ -451,6 +455,7 @@ seat-release-requested
 seat-released
 booking-confirmed
 booking-cancelled
+booking-expired
 notification-requested
 ```
 
@@ -601,6 +606,11 @@ flowchart TD
     Payment -->|payment-failed| Booking
     Booking -->|seat-release-requested| Inventory
 ```
+
+The reservation portion through Booking publication of `payment-requested` is
+implemented in R26. Payment-result handling, `booking-confirmed`, and the
+explicit `seat-release-requested` payment-failure compensation path are R27
+target behavior.
 
 Saga state is represented by domain status and event history within the
 participating services.
@@ -858,7 +868,7 @@ No payment request is created for a rejected seat reservation.
 
 ---
 
-# Payment Flow
+# Target R27 Payment Flow
 
 ```mermaid
 sequenceDiagram
@@ -892,9 +902,23 @@ database.
 
 Each state change is performed through local transactions and events.
 
+R26 stops after Booking persists and publishes `payment-requested`. Payment
+execution and both result branches below are not yet implemented.
+
+R27 separates Payment event consumption from external provider I/O. The
+consumer commits the Payment attempt, processed-event marker, and stable
+provider operation first. A Payment-owned worker calls the provider outside the
+database transaction and later commits the sanitized terminal result plus
+Outbox event. Every retry of the same operation reuses the same provider
+idempotency key.
+
+Retryable or unknown provider outcomes remain Payment-owned internal state.
+Version `1` `payment-failed` is terminal for Booking and is not emitted until a
+terminal outcome is known.
+
 ---
 
-# Booking Confirmation
+# Target R27 Booking Confirmation
 
 When Booking Service consumes `payment-succeeded`:
 
@@ -921,7 +945,7 @@ The exact topic and contract must match the event catalog.
 
 ---
 
-# Payment Failure Compensation
+# Target R27 Payment Failure Compensation
 
 When Booking Service consumes `payment-failed`:
 
@@ -941,14 +965,10 @@ Only seats reserved for the corresponding booking may be released.
 
 ---
 
-# Seat Release Flow
+# Explicit Seat Release Command
 
-Seat release may be triggered by:
-
-- Payment failure
-- Booking cancellation
-- Booking expiration
-- Reservation timeout
+The explicit `seat-release-requested` command is reserved for R27 payment
+failure compensation:
 
 ```mermaid
 sequenceDiagram
@@ -972,6 +992,11 @@ same booking before releasing them.
 A delayed release event must never release seats owned by a newer
 reservation.
 
+R26 booking cancellation and expiration do not additionally emit this command.
+They publish `booking-cancelled` and `booking-expired`, respectively. Future
+Inventory consumers of those lifecycle events must apply the same ownership
+check and conditionally release only matching `HELD` seats.
+
 ---
 
 # Booking Expiration
@@ -985,11 +1010,11 @@ Booking Service performs:
 
 1. Find eligible expired bookings.
 2. Change the booking to `EXPIRED`.
-3. Insert a `SEAT_RELEASE_REQUESTED` outbox event.
+3. Insert one `BOOKING_EXPIRED` outbox event.
 4. Commit the Booking database transaction.
 
-Inventory Service consumes the release request and restores the applicable
-seat inventory.
+Booking Service does not also insert `SEAT_RELEASE_REQUESTED`. The future
+Inventory `booking-expired` consumer restores only applicable held inventory.
 
 Expiration processing must be idempotent and safe when multiple scheduler
 instances run concurrently.

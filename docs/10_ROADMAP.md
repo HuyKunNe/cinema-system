@@ -1,8 +1,8 @@
 # Project Roadmap
 
-**Version:** R26 Completed
-**Current target:** R27 — Payment Service
-**Last updated:** 2026-08-25
+**Version:** R27.1 Planning
+**Current target:** R27.1 — Payment architecture and contract closure
+**Last updated:** 2026-08-26
 
 ---
 
@@ -1557,6 +1557,34 @@ Payment Service will own:
 - refund and reconciliation controls;
 - idempotent Booking event consumption;
 - audit coverage for financial administration.
+
+### Implementation checkpoints
+
+| Checkpoint | Scope                                                       | Status  |
+| ---------- | ----------------------------------------------------------- | ------- |
+| R27.1      | Payment architecture and contract closure                   | NEXT    |
+| R27.2      | Payment Service bootstrap and Resource Server security      | PLANNED |
+| R27.3      | Payment aggregate and Flyway schema                         | PLANNED |
+| R27.4      | `payment-requested` validation and idempotent consumption   | PLANNED |
+| R27.5      | Provider port, operation worker, and provider idempotency   | PLANNED |
+| R27.6      | Authenticated webhook and provider-result processing        | PLANNED |
+| R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | PLANNED |
+| R27.8      | Booking payment-result consumers                            | PLANNED |
+| R27.9      | Inventory confirmation and compensation consumers           | PLANNED |
+| R27.10     | Refund, reconciliation, permissions, and audit controls     | PLANNED |
+| R27.11     | Kafka retry, DLT, and publication verification              | PLANNED |
+| R27.12     | Saga integration, race, and concurrency verification        | PLANNED |
+| R27.13     | Stabilization, documentation, and closure                   | PLANNED |
+
+R27 provider execution must use a stable provider idempotency key and must not
+run while a database transaction or row lock remains open. Retryable or unknown
+provider outcomes are internal Payment state; the version `1`
+`payment-failed` event is terminal for Booking and therefore uses
+`retryable=false`.
+
+The initial `MOCK` provider adapter is for deterministic local and integration
+verification only. Production-provider selection remains an explicit deferred
+decision.
 
 Payment Service must never store CVV or publish card credentials in events.
 

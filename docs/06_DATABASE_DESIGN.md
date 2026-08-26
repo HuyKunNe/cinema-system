@@ -1,6 +1,7 @@
 # Database Design
 
-Version: R25
+Version: R27.1
+Last updated: 2026-08-26
 
 This document defines the authoritative database ownership, schema design rules,
 table responsibilities, relationships, constraints, indexing strategy, and
@@ -36,14 +37,14 @@ The database design follows these principles:
 
 Each business service owns a separate logical database.
 
-| Service              | Database                 |
-| -------------------- | ------------------------ |
-| Movie Service        | `cinema_movie_db`        |
-| User Service         | `cinema_user_db`         |
-| Inventory Service    | `cinema_inventory_db`    |
-| Booking Service      | `cinema_booking_db`      |
-| Payment Service      | `cinema_payment_db`      |
-| Notification Service | `cinema_notification_db` |
+| Service              | Database                 | Status             |
+| -------------------- | ------------------------ | ------------------ |
+| Movie Service        | `cinema_movie_db`        | Implemented        |
+| User Service         | `cinema_user_db`         | Implemented        |
+| Inventory Service    | `cinema_inventory_db`    | Implemented        |
+| Booking Service      | `cinema_booking_db`      | Implemented in R26 |
+| Payment Service      | `cinema_payment_db`      | R27 target         |
+| Notification Service | `cinema_notification_db` | R28 planned        |
 
 Infrastructure services must not use these databases for their own persistence.
 
@@ -445,11 +446,12 @@ User Service owns identity, credentials, authorization, user profiles, OAuth2
 and OpenID Connect persistence, refresh-token state, MFA state, and security
 audit records.
 
-This section defines the accepted R25 data contract. Flyway V1–V5 currently
-implement the identity, profile, credential, authority-assignment,
-email-verification-token and OAuth2 registered-client baseline. OAuth2
-authorization, consent, refresh-token, password-reset, MFA and security-audit
-persistence remain planned.
+This section defines the data contract completed in R25. Flyway V1–V11
+implement identity, profile, credentials, authority assignments, email
+verification, registered clients, OAuth2 authorization and consent,
+refresh-token history, registered-client lifecycle state, revocation auditing,
+and general security auditing. Password-reset and MFA persistence remain future
+scope.
 
 Conceptual tables:
 
@@ -472,7 +474,7 @@ user_mfa_methods
 security_audit_events
 ```
 
-Implemented tables through the current R25.9 baseline:
+Implemented tables through R25 closure:
 
 ```text
 users
@@ -484,6 +486,11 @@ user_roles
 role_permissions
 email_verification_tokens
 oauth2_registered_client
+oauth2_authorization
+oauth2_authorization_consent
+oauth2_refresh_token_history
+oauth2_revocation_audit_events
+security_audit_events
 ```
 
 `security_audit_events` stores append-oriented general security activity. Its columns
@@ -504,6 +511,7 @@ metadata
 occurred_at
 created_at
 updated_at
+```
 
 target_type and target_reference must either both be present or both be absent.
 Actor and target references are intentionally not foreign keys so that audit history
@@ -1054,6 +1062,8 @@ Conceptual columns:
 id
 user_id
 showtime_id
+client_request_id
+request_fingerprint
 status
 total_amount
 currency
@@ -1073,21 +1083,41 @@ CREATE TABLE bookings (
     id BINARY(16) NOT NULL,
     user_id BINARY(16) NOT NULL,
     showtime_id BINARY(16) NOT NULL,
+    client_request_id VARCHAR(100) NOT NULL,
+    request_fingerprint CHAR(64) NOT NULL,
     status VARCHAR(50) NOT NULL,
-    total_amount DECIMAL(19, 2) NOT NULL,
-    currency VARCHAR(3) NOT NULL,
-    expires_at TIMESTAMP(6) NULL,
-    confirmed_at TIMESTAMP(6) NULL,
-    cancelled_at TIMESTAMP(6) NULL,
+    total_amount DECIMAL(19, 2) NULL,
+    currency VARCHAR(3) NULL,
+    expires_at DATETIME(6) NOT NULL,
+    confirmed_at DATETIME(6) NULL,
+    cancelled_at DATETIME(6) NULL,
     rejection_reason VARCHAR(500) NULL,
-    created_at TIMESTAMP(6) NOT NULL,
-    updated_at TIMESTAMP(6) NOT NULL,
     version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
     CONSTRAINT pk_bookings PRIMARY KEY (id),
+    CONSTRAINT uk_bookings_user_client_request
+        UNIQUE (user_id, client_request_id),
     CONSTRAINT ck_bookings_total_non_negative
-        CHECK (total_amount >= 0)
+        CHECK (total_amount IS NULL OR total_amount >= 0),
+    CONSTRAINT ck_bookings_money_snapshot
+        CHECK (
+            (total_amount IS NULL AND currency IS NULL)
+            OR
+            (total_amount IS NOT NULL
+                AND currency IS NOT NULL
+                AND CHAR_LENGTH(currency) = 3)
+        )
 );
 ```
+
+`client_request_id` is unique per authenticated user. `request_fingerprint`
+stores the canonical SHA-256 request fingerprint used to distinguish a safe
+idempotent retry from reuse of the same client request ID with another payload.
+
+`total_amount` and `currency` are both nullable while the Booking is `PENDING`.
+They become a complete pair when the authoritative seat snapshot is completed;
+the database check prevents a partial money snapshot.
 
 `user_id` and `showtime_id` are external references.
 
@@ -1127,7 +1157,11 @@ The exact enum must remain synchronized between:
 - Tests
 - Event catalog
 
-Normal flow:
+R26 implements transitions to `RESERVED`, `REJECTED`, `CANCELLED`, and
+`EXPIRED`. `CONFIRMED` and `PAYMENT_FAILED` are reserved in the enum for R27
+payment-result handling and must not be documented as active handlers yet.
+
+Current and target flow:
 
 ```mermaid
 stateDiagram-v2
@@ -1172,9 +1206,9 @@ CREATE TABLE booking_seats (
     inventory_seat_id BINARY(16) NULL,
     showtime_id BINARY(16) NOT NULL,
     seat_number VARCHAR(20) NOT NULL,
-    seat_type VARCHAR(50) NOT NULL,
-    price DECIMAL(19, 2) NOT NULL,
-    created_at TIMESTAMP(6) NOT NULL,
+    seat_type VARCHAR(50) NULL,
+    price DECIMAL(19, 2) NULL,
+    created_at DATETIME(6) NOT NULL,
     CONSTRAINT pk_booking_seats PRIMARY KEY (id),
     CONSTRAINT fk_booking_seats_booking
         FOREIGN KEY (booking_id)
@@ -1182,7 +1216,17 @@ CREATE TABLE booking_seats (
     CONSTRAINT uk_booking_seats_booking_seat
         UNIQUE (booking_id, showtime_id, seat_number),
     CONSTRAINT ck_booking_seats_price_non_negative
-        CHECK (price >= 0)
+        CHECK (price IS NULL OR price >= 0),
+    CONSTRAINT ck_booking_seats_snapshot
+        CHECK (
+            (inventory_seat_id IS NULL
+                AND seat_type IS NULL
+                AND price IS NULL)
+            OR
+            (inventory_seat_id IS NOT NULL
+                AND seat_type IS NOT NULL
+                AND price IS NOT NULL)
+        )
 );
 ```
 
@@ -1200,9 +1244,17 @@ showtime_id
 Snapshot values must not be silently changed when the catalog or inventory price
 changes later.
 
+`inventory_seat_id`, `seat_type`, and `price` are intentionally nullable only
+for the initial `PENDING` request snapshot. They must be populated together from
+the authoritative `seat-reserved` result; the database check rejects a partial
+completion.
+
 ---
 
 # Payment Service Database
+
+This section is the R27 target design. Payment migrations and runtime
+persistence are not implemented in the current repository.
 
 Database:
 
@@ -1229,15 +1281,20 @@ Conceptual columns:
 id
 booking_id
 user_id
+payment_attempt
 amount
 currency
 provider
 status
+refund_status
 provider_reference
 failure_code
 failure_message
+hold_expires_at
 requested_at
 completed_at
+source_event_id
+correlation_id
 created_at
 updated_at
 version
@@ -1247,6 +1304,8 @@ Requirements:
 
 - `booking_id` is an external reference.
 - Payment Service must not create a foreign key to Booking Service.
+- `(booking_id, payment_attempt)` must be unique.
+- `source_event_id` must be unique and stored as `BINARY(16)`.
 - Amount must be stored using decimal arithmetic.
 - Provider references should be uniquely constrained when the provider
   guarantees uniqueness.
@@ -1255,15 +1314,37 @@ Requirements:
 - Full card numbers, CVV values, and access credentials must never be stored.
 - Duplicate `payment-requested` events must not create duplicate charges.
 
-A unique business constraint may combine:
+A unique business constraint is:
 
 ```text
 booking_id
-payment attempt
-provider
+payment_attempt
 ```
 
-The exact idempotency strategy must match the payment provider integration.
+Provider idempotency remains a separate constraint on the provider-operation
+row. Kafka event idempotency, Payment-attempt idempotency, provider idempotency,
+and webhook idempotency must not be treated as one key.
+
+Approved target Payment statuses are:
+
+```text
+RECEIVED
+PROCESSING
+PENDING_PROVIDER
+SUCCEEDED
+FAILED
+EXPIRED
+RECONCILIATION_REQUIRED
+```
+
+Approved target refund statuses are:
+
+```text
+NOT_REQUESTED
+PENDING
+SUCCEEDED
+FAILED
+```
 
 ---
 
@@ -1276,13 +1357,22 @@ Conceptual columns:
 ```text
 id
 payment_id
+provider
 transaction_type
-provider_transaction_id
+attempt_number
 status
 amount
 currency
-request_reference
+idempotency_key
+provider_reference
+provider_event_id
+failure_code
+failure_message
+requested_at
+processing_owner
+processing_expires_at
 created_at
+updated_at
 completed_at
 ```
 
@@ -1292,9 +1382,23 @@ Provider request and response payloads must be sanitized before persistence.
 
 Secrets and full sensitive payment details must not be stored.
 
+Target uniqueness boundaries include:
+
+```text
+payment_transactions(provider, idempotency_key)
+payment_transactions(provider, provider_event_id) when provider_event_id exists
+```
+
+Provider calls execute outside database transactions. A claimed operation uses a
+processing lease, and every retry of the same provider operation reuses the same
+idempotency key.
+
 ---
 
 # Notification Service Database
+
+This section is the R28 target design. Notification migrations and runtime
+persistence are not implemented in the current repository.
 
 Database:
 
@@ -1389,16 +1493,19 @@ event_type
 event_version
 topic
 partition_key
+occurred_at
 correlation_id
 causation_id
 payload
 status
 retry_count
-created_at
-updated_at
-processed_at
 next_attempt_at
 last_error
+processing_owner
+processing_started_at
+processing_expires_at
+created_at
+published_at
 ```
 
 Example design:
@@ -1406,23 +1513,30 @@ Example design:
 ```sql
 CREATE TABLE outbox_events (
     id BINARY(16) NOT NULL,
-    aggregate_type VARCHAR(100) NOT NULL,
+    aggregate_type VARCHAR(50) NOT NULL,
     aggregate_id BINARY(16) NOT NULL,
-    event_type VARCHAR(150) NOT NULL,
+    event_type VARCHAR(100) NOT NULL,
     event_version VARCHAR(20) NOT NULL,
-    topic VARCHAR(255) NOT NULL,
-    partition_key VARCHAR(255) NOT NULL,
+    topic VARCHAR(100) NOT NULL,
+    partition_key VARCHAR(100) NOT NULL,
+    occurred_at DATETIME(6) NOT NULL,
     correlation_id BINARY(16) NULL,
     causation_id BINARY(16) NULL,
     payload LONGTEXT NOT NULL,
-    status VARCHAR(50) NOT NULL,
+    status VARCHAR(20) NOT NULL,
     retry_count INT NOT NULL DEFAULT 0,
-    created_at TIMESTAMP(6) NOT NULL,
-    updated_at TIMESTAMP(6) NOT NULL,
-    processed_at TIMESTAMP(6) NULL,
-    next_attempt_at TIMESTAMP(6) NULL,
+    next_attempt_at DATETIME(6) NULL,
     last_error VARCHAR(2000) NULL,
-    CONSTRAINT pk_outbox_events PRIMARY KEY (id)
+    processing_owner VARCHAR(150) NULL,
+    processing_started_at DATETIME(6) NULL,
+    processing_expires_at DATETIME(6) NULL,
+    created_at DATETIME(6) NOT NULL,
+    published_at DATETIME(6) NULL,
+    CONSTRAINT pk_outbox_events PRIMARY KEY (id),
+    CONSTRAINT chk_outbox_events_retry_count
+        CHECK (retry_count >= 0),
+    CONSTRAINT chk_outbox_events_status
+        CHECK (status IN ('PENDING', 'PROCESSING', 'SENT', 'FAILED'))
 );
 ```
 
@@ -1431,17 +1545,22 @@ The exact schema must remain synchronized with `common-outbox`.
 Do not create a service-specific incompatible outbox schema when the shared
 module defines the approved persistence contract.
 
-Recommended polling index:
+Implemented claim index:
 
 ```sql
-CREATE INDEX idx_outbox_status_next_attempt_created
-    ON outbox_events (status, next_attempt_at, created_at);
+CREATE INDEX idx_outbox_events_claim
+    ON outbox_events (
+        status,
+        next_attempt_at,
+        processing_expires_at,
+        created_at
+    );
 ```
 
 Possible statuses:
 
 ```text
-NEW
+PENDING
 PROCESSING
 SENT
 FAILED
@@ -1498,7 +1617,8 @@ Conceptual columns:
 id
 event_id
 event_type
-consumer
+event_version
+consumer_name
 processed_at
 ```
 
@@ -1508,17 +1628,25 @@ Example design:
 CREATE TABLE processed_events (
     id BINARY(16) NOT NULL,
     event_id BINARY(16) NOT NULL,
-    event_type VARCHAR(150) NOT NULL,
-    consumer VARCHAR(150) NOT NULL,
-    processed_at TIMESTAMP(6) NOT NULL,
+    consumer_name VARCHAR(100) NOT NULL,
+    event_type VARCHAR(100) NOT NULL,
+    event_version VARCHAR(20) NOT NULL,
+    processed_at DATETIME(6) NOT NULL,
     CONSTRAINT pk_processed_events PRIMARY KEY (id),
     CONSTRAINT uk_processed_events_event_consumer
-        UNIQUE (event_id, consumer)
+        UNIQUE (event_id, consumer_name)
 );
+
+CREATE INDEX idx_processed_events_processed_at
+    ON processed_events (processed_at);
+
+CREATE INDEX idx_processed_events_type
+    ON processed_events (event_type, processed_at);
 ```
 
 If an event may be processed by only one logical consumer per service, a unique
-constraint on `event_id` may be sufficient.
+constraint on `event_id` may be sufficient. Booking Service uses the composite
+`(event_id, consumer_name)` uniqueness defined above.
 
 The chosen constraint must match actual consumer semantics.
 

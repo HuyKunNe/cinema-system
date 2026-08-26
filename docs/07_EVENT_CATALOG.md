@@ -1,7 +1,7 @@
 # Event Catalog
 
-Version: R26
-Last updated: 2026-08-25
+Version: R27.1
+Last updated: 2026-08-26
 
 This document defines the authoritative Kafka event contracts, ownership,
 versioning, routing, metadata, payload requirements, producer and consumer
@@ -711,14 +711,21 @@ booking.
 
 Payment Service must:
 
-1. Check `processed_events`.
-2. Verify the payment request is not expired.
-3. Resolve or create the idempotent payment attempt.
-4. Prevent duplicate provider charges.
-5. Store Payment Service-owned state.
-6. Store the processed event.
-7. Create `payment-succeeded` or `payment-failed`.
-8. Commit its local transaction.
+1. validate the canonical envelope and payload;
+2. check `processed_events`;
+3. resolve or create the idempotent `(bookingId, paymentAttempt)` aggregate;
+4. verify duplicate payload consistency;
+5. store Payment-owned state and a provider operation with a stable provider
+   idempotency key;
+6. store the processed event;
+7. commit its short local transaction without calling the provider;
+8. execute the provider operation outside the database transaction;
+9. record a terminal provider result and create `payment-succeeded` or
+   `payment-failed` in a later atomic local transaction.
+
+An already expired request may be finalized as `RESERVATION_EXPIRED` without
+calling the provider. Retryable or ambiguous provider outcomes remain internal
+Payment state and do not create a terminal result event.
 
 Provider calls require an explicit idempotency strategy.
 
@@ -818,6 +825,12 @@ INVALID_PAYMENT_REQUEST
 RESERVATION_EXPIRED
 DUPLICATE_PAYMENT
 ```
+
+Version `1` `payment-failed` is a terminal Booking Saga result. Its
+`retryable` field must therefore be `false`. Retryable technical failures such
+as a temporary provider outage remain inside Payment Service until retry is
+exhausted and the outcome is known. An unknown outcome requires reconciliation
+and must not be reported as terminal failure.
 
 ## Consumer behavior
 

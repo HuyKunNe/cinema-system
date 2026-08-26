@@ -8,6 +8,10 @@ Date
 
 2026-08-05
 
+Last reviewed
+
+2026-08-26
+
 ---
 
 ## Context
@@ -102,11 +106,14 @@ Example production issuer:
 https://identity.cinema.example
 ```
 
-The exact issuer must be supplied through environment configuration:
+User Service configures the issuer with:
 
 ```text
-CINEMA_AUTH_ISSUER
+USER_AUTHORIZATION_SERVER_ISSUER
 ```
+
+Gateway and business Resource Servers configure the same trusted value with
+`CINEMA_AUTH_ISSUER`.
 
 The issuer must not be hard-coded in Java source and must exactly match the `iss` claim placed in access tokens.
 
@@ -216,11 +223,14 @@ The initial protected API audience is:
 cinema-api
 ```
 
-The audience must be supplied through environment configuration:
+User Service configures issued audiences with:
 
 ```text
-CINEMA_AUTH_AUDIENCE
+USER_JWT_AUDIENCES
 ```
+
+Gateway and business Resource Servers configure their required audience with
+`CINEMA_AUTH_AUDIENCE`.
 
 API Gateway and business services must reject tokens that do not contain the required audience. A token intended only for a different API must not be accepted.
 
@@ -290,7 +300,9 @@ Private signing keys must remain accessible only to the Authorization Server, ne
 
 Public keys are exposed through the Authorization Server JWK Set endpoint.
 
-Resource Servers validate access tokens through the configured issuer URI, JWK Set URI, and required audience. Resource Servers must not share the Authorization Server private key.
+Resource Servers validate access tokens through `CINEMA_AUTH_ISSUER`,
+`CINEMA_AUTH_JWK_SET_URI`, and `CINEMA_AUTH_AUDIENCE`. They must not share the
+Authorization Server private key.
 
 ---
 
@@ -313,7 +325,7 @@ Emergency rotation must support revoking trust in a compromised key. The exact a
 
 ## Refresh Token Model
 
-Refresh tokens will be opaque security-sensitive credentials.
+Refresh tokens are opaque security-sensitive credentials.
 
 The initial maximum refresh-token lifetime is:
 
@@ -394,7 +406,7 @@ Privileged accounts include administrators, operational accounts, and security-m
 
 Production privileged access requires MFA.
 
-If MFA is not completed in R25, production privileged login must remain disabled or be protected by an approved external identity control that enforces MFA. The absence of MFA must not be silently treated as production-ready administrative security.
+Production MFA is not implemented in the current repository. Privileged production login must therefore remain disabled or be protected by an approved external identity control that enforces MFA. The absence of MFA must not be silently treated as production-ready administrative security.
 
 ---
 
@@ -467,7 +479,7 @@ User Service must not expose credential entities directly through APIs. Other se
 
 ## Testing Requirements
 
-R25 must verify at minimum:
+R25 verification covered at minimum:
 
 ```text
 valid issuer accepted
@@ -555,11 +567,18 @@ Rejected because compromise impact would be excessive and revocation would be di
 
 ---
 
-## Implementation Boundary
+## Implementation Boundary and Current Status
 
-This ADR accepts the architecture decision only. It does not mark User Service schema, registration, password authentication, Authorization Server configuration, clients, RSA keys, JWT customization, refresh-token rotation, revocation, MFA, or auditing as implemented.
+This ADR originally accepted the architecture decision without claiming runtime
+completion. R25 subsequently implemented and verified the User schema, password
+authentication, Authorization Server configuration, controlled clients, RSA/JWK
+signing, JWT customization, authorization and consent persistence, refresh-token
+rotation and reuse detection, revocation, logout, account lifecycle APIs, and
+security auditing.
 
-Those capabilities remain part of subsequent R25 implementation checkpoints.
+Public self-registration, email delivery, password-reset recovery, production
+MFA, production secret-manager selection, and automated signing-key rotation
+remain outside the completed baseline unless assigned by a later roadmap round.
 
 ---
 

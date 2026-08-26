@@ -1,6 +1,6 @@
 # Modules
 
-Version R25
+Version R26
 
 This document describes the modules registered by the root Maven reactor, their
 responsibilities, and the dependency boundaries that every implementation must
@@ -368,17 +368,34 @@ update `show_seats`.
 
 ## booking-service
 
-Owns bookings and booking-seat references. It coordinates reservation outcomes
-but does not own show-seat records.
+Implemented and completed in R26. It owns:
+
+- Booking aggregate lifecycle and Booking-owned seat snapshots
+- Authenticated create, query, and cancellation APIs
+- JWT-subject ownership enforcement
+- Client-request idempotency and request fingerprints
+- Booking `processed_events` records
+- Booking-local Transactional Outbox records
+- `seat-reservation-requested` publication
+- `seat-reserved` and `seat-reservation-rejected` consumption
+- `payment-requested`, `booking-cancelled`, and `booking-expired` publication
+- Automatic expiration and lifecycle race handling
+
+Booking Service does not own ShowSeats, payment execution, or notification
+delivery. It must not import Inventory Service code or access
+`cinema_inventory_db`.
 
 ## payment-service
 
-Owns payments, payment state transitions, provider interactions, and payment
-events.
+R27 next-round module. Its POM is registered, but runtime implementation is not
+present yet. When implemented, it owns payments, payment attempts, provider
+interactions, provider idempotency, and payment-result events.
 
 ## notification-service
 
-Owns notification delivery, templates, channel policies, and delivery state.
+R28 planned module. Its POM is registered, but runtime implementation is not
+present yet. When implemented, it owns notification delivery, templates,
+channel policies, and delivery state.
 
 ## user-service
 
@@ -398,7 +415,7 @@ Authorization Server and owns:
 Approved grants are Authorization Code with PKCE, Refresh Token, and approved
 Client Credentials. Resource Owner Password Credentials must not be added.
 
-Current implemented baseline through R25.8 and the implemented portion of R25.9:
+Completed R25 baseline includes:
 
 - service bootstrap, configuration, discovery and MySQL persistence;
 - Flyway-managed user, profile, credential, role, permission and assignment tables;
@@ -411,22 +428,25 @@ Current implemented baseline through R25.8 and the implemented portion of R25.9:
 - secure, hashed, expiring, revocable and single-use email-verification tokens;
 - separate Authorization Server and application security filter chains;
 - externalized canonical issuer settings and OpenID Connect enablement;
-- Flyway V5 and JDBC registered-client persistence;
+- Flyway V1–V11 covering identity, OAuth2 authorization, refresh history,
+  revocation auditing, and general security auditing;
 - controlled public PKCE and confidential service-client registration;
 - encoded client secrets, exact redirect URI validation and client-specific
   token lifetime policy;
-- unit, repository, Flyway and MySQL integration tests.
+- OAuth2 authorization and consent JDBC persistence;
+- RSA signing, public JWK Set publication and application JWT claims;
+- Authorization Code with PKCE, Refresh Token, and controlled Client Credentials
+  protocol verification;
+- opaque refresh-token rotation, reuse detection and authorization-family
+  revocation;
+- token revocation and OIDC RP-Initiated Logout;
+- current-user profile, password, account lifecycle, and administrative APIs;
+- durable revocation and general security auditing;
+- concurrency, security protocol, Resource Server integration, Flyway, and MySQL
+  verification.
 
-Not implemented yet:
-
-- public registration, profile and verification HTTP APIs;
-- email delivery;
-- password-reset tokens and recovery flow;
-- end-to-end Authorization Code with PKCE, Refresh Token and Client Credentials
-  protocol-flow verification;
-- OAuth2 authorization and consent persistence runtime;
-- RSA signing/JWK publication and JWT claim customization;
-- refresh-token rotation, logout and authorization-session revocation.
+Public self-registration, email delivery, password-reset recovery, and
+production MFA remain separate future scope unless assigned by the roadmap.
 
 ---
 

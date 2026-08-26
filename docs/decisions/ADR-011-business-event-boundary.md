@@ -4,6 +4,10 @@ Status
 
 Accepted
 
+Last reviewed
+
+2026-08-26
+
 ---
 
 ## Decision
@@ -14,17 +18,22 @@ common-outbox contains only infrastructure.
 
 Examples
 
-BookingCreatedEvent
+`seat-reservation-requested`, `payment-requested`, `booking-cancelled`, and
+`booking-expired`
 
-belongs to booking-service.
+belong to Booking Service.
 
-PaymentSucceededEvent
+`payment-succeeded` and `payment-failed`
 
-belongs to payment-service.
+belong to Payment Service when R27 implements them.
 
-SeatReservedEvent
+`seat-reserved`, `seat-reservation-rejected`, and `seat-released`
 
-belongs to inventory-service.
+belong to Inventory Service. `seat-released` remains future integration work.
+
+`common-kafka` and `common-outbox` may own technical envelopes, serializers,
+retry, claim, and publication abstractions. They must not own business payloads,
+state transitions, compensation decisions, or producer ownership.
 
 ---
 
@@ -33,3 +42,6 @@ belongs to inventory-service.
 Clear ownership.
 
 No business coupling inside common modules.
+
+No service imports another service's internal event implementation merely to
+consume its Kafka contract.

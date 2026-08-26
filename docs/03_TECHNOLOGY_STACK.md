@@ -1,6 +1,6 @@
 # Technology Stack
 
-Version: R25
+Version: R26
 
 This document records the approved platform technologies, the versions pinned
 by the root Maven build, and the difference between implemented and planned
@@ -84,6 +84,10 @@ criterion:
 
 ```bash
 mvn -pl services/inventory-service -am clean test
+```
+
+```bash
+mvn -pl services/booking-service -am clean test
 ```
 
 ---
@@ -173,7 +177,7 @@ Migration policy:
 
 Spring Security provides authentication and authorization foundations.
 
-The accepted R25 architecture is:
+The accepted identity architecture completed in R25 is:
 
 - User Service integrates Spring Authorization Server.
 - User Service is the authoritative OAuth2 and OpenID Connect issuer.
@@ -203,11 +207,12 @@ Access-token contract:
 Refresh tokens are opaque, revocable, rotated on use, and expire no later than
 30 days after issuance.
 
-Current runtime status: Spring Authorization Server, separate security chains,
-OIDC enablement, canonical issuer configuration and JDBC registered-client
-persistence are present in User Service. RSA/JWK signing, application JWT claims,
-authorization/consent persistence and full grant-flow verification remain later
-R25 work.
+Current runtime status: User Service implements Spring Authorization Server,
+separate security chains, OIDC, canonical issuer configuration, JDBC registered
+clients, RSA/JWK signing, application JWT claims, authorization and consent
+persistence, opaque refresh-token rotation and reuse detection, revocation,
+logout, account lifecycle APIs, and security auditing. Gateway, Movie,
+Inventory, and Booking independently validate the trusted JWT contract.
 
 `common-security` must not contain token issuance, signing private keys, OAuth2
 client persistence, consent persistence, or refresh-token persistence. Detailed
@@ -225,6 +230,8 @@ Implemented technical foundations include:
 - Event serialization
 - Retry and error handling
 - Transactional Outbox publishing
+- Inventory reservation-request consumption and result publication
+- Booking reservation-result consumption and Booking-owned event publication
 
 Architecture patterns:
 
@@ -236,6 +243,9 @@ Architecture patterns:
 
 Kafka delivery alone does not guarantee exactly-once business processing.
 State-changing consumers must implement idempotency.
+
+Payment processing and its result events remain R27 scope. Notification delivery
+remains R28 scope.
 
 ---
 
