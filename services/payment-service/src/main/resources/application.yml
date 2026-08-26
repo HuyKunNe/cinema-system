@@ -29,6 +29,16 @@ spring:
     locations: classpath:db/migration
     validate-on-migrate: true
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record
+
 springdoc:
   api-docs:
     enabled: true
@@ -73,3 +83,14 @@ cinema:
       issuer-uri: ${CINEMA_AUTH_ISSUER}
       jwk-set-uri: ${CINEMA_AUTH_JWK_SET_URI}
       audience: ${CINEMA_AUTH_AUDIENCE:cinema-api}
+  payment:
+    provider: ${PAYMENT_PROVIDER:MOCK}
+    kafka:
+      enabled: ${PAYMENT_KAFKA_ENABLED:true}
+      topics:
+        payment-requested: ${PAYMENT_REQUESTED_TOPIC:payment-requested}
+      consumer-groups:
+        payment-requested: ${PAYMENT_REQUESTED_CONSUMER_GROUP:payment-request-processing}
+      retry:
+        interval: ${PAYMENT_KAFKA_RETRY_INTERVAL:1s}
+        maximum-retries: ${PAYMENT_KAFKA_MAXIMUM_RETRIES:3}

@@ -71,6 +71,99 @@ public final class PaymentErrorCode implements ErrorCode {
             validation(
                     "PAYMENT_PROVIDER_INVALID", "Payment provider must not exceed 50 characters");
 
+    public static final PaymentErrorCode EVENT_MESSAGE_INVALID =
+            validation("PAYMENT_EVENT_MESSAGE_INVALID", "Payment event message is invalid");
+
+    public static final PaymentErrorCode EVENT_ID_REQUIRED =
+            validation("PAYMENT_EVENT_ID_REQUIRED", "Payment event ID is required");
+
+    public static final PaymentErrorCode EVENT_ID_INVALID =
+            validation("PAYMENT_EVENT_ID_INVALID", "Payment event ID must be a UUID v7");
+
+    public static final PaymentErrorCode EVENT_TYPE_INVALID =
+            validation("PAYMENT_EVENT_TYPE_INVALID", "Payment event type is not supported");
+
+    public static final PaymentErrorCode EVENT_VERSION_INVALID =
+            validation("PAYMENT_EVENT_VERSION_INVALID", "Payment event version is not supported");
+
+    public static final PaymentErrorCode EVENT_PRODUCER_INVALID =
+            validation("PAYMENT_EVENT_PRODUCER_INVALID", "Payment event producer is invalid");
+
+    public static final PaymentErrorCode EVENT_AGGREGATE_INVALID =
+            validation("PAYMENT_EVENT_AGGREGATE_INVALID", "Payment event aggregate is invalid");
+
+    public static final PaymentErrorCode EVENT_PARTITION_KEY_INVALID =
+            validation(
+                    "PAYMENT_EVENT_PARTITION_KEY_INVALID",
+                    "Payment event partition key must match the booking ID");
+
+    public static final PaymentErrorCode PAYMENT_ATTEMPT_PAYLOAD_MISMATCH =
+            new PaymentErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "PAYMENT_ATTEMPT_PAYLOAD_MISMATCH",
+                    "Payment attempt already exists with different request data");
+
+    public static final PaymentErrorCode PAYMENT_NOT_RECEIVED =
+            new PaymentErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "PAYMENT_NOT_RECEIVED",
+                    "Payment is not in received state");
+
+    public static final PaymentErrorCode PAYMENT_NOT_EXPIRED =
+            new PaymentErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "PAYMENT_NOT_EXPIRED",
+                    "Payment reservation has not expired");
+
+    public static final PaymentErrorCode CURRENT_TIME_REQUIRED =
+            validation("PAYMENT_CURRENT_TIME_REQUIRED", "Current time is required");
+
+    public static final PaymentErrorCode EVENT_CORRELATION_ID_INVALID =
+            validation(
+                    "PAYMENT_EVENT_CORRELATION_ID_INVALID",
+                    "Payment event correlation ID must be a UUID v7");
+
+    public static final PaymentErrorCode EVENT_CAUSATION_ID_REQUIRED =
+            validation(
+                    "PAYMENT_EVENT_CAUSATION_ID_REQUIRED",
+                    "Payment event causation ID is required");
+
+    public static final PaymentErrorCode EVENT_CAUSATION_ID_INVALID =
+            validation(
+                    "PAYMENT_EVENT_CAUSATION_ID_INVALID",
+                    "Payment event causation ID must be a UUID v7");
+
+    public static final PaymentErrorCode EVENT_OCCURRED_AT_REQUIRED =
+            validation(
+                    "PAYMENT_EVENT_OCCURRED_AT_REQUIRED",
+                    "Payment event occurrence time is required");
+
+    public static final PaymentErrorCode EVENT_PAYLOAD_INVALID =
+            validation("PAYMENT_EVENT_PAYLOAD_INVALID", "Payment event payload is invalid");
+
+    public static final PaymentErrorCode EVENT_PAYLOAD_AGGREGATE_MISMATCH =
+            validation(
+                    "PAYMENT_EVENT_PAYLOAD_AGGREGATE_MISMATCH",
+                    "Payment payload booking ID must match the event aggregate ID");
+
+    public static final PaymentErrorCode AMOUNT_PRECISION_INVALID =
+            validation("PAYMENT_AMOUNT_PRECISION_INVALID", "Payment amount exceeds DECIMAL(19, 2)");
+
+    public static final PaymentErrorCode PROCESSED_EVENT_ID_REQUIRED =
+            validation("PAYMENT_PROCESSED_EVENT_ID_REQUIRED", "Processed event ID is required");
+
+    public static final PaymentErrorCode CONSUMER_NAME_REQUIRED =
+            validation("PAYMENT_CONSUMER_NAME_REQUIRED", "Consumer name is required");
+
+    public static final PaymentErrorCode EVENT_TYPE_REQUIRED =
+            validation("PAYMENT_EVENT_TYPE_REQUIRED", "Event type is required");
+
+    public static final PaymentErrorCode EVENT_VERSION_REQUIRED =
+            validation("PAYMENT_EVENT_VERSION_REQUIRED", "Event version is required");
+
+    public static final PaymentErrorCode PROCESSED_AT_REQUIRED =
+            validation("PAYMENT_PROCESSED_AT_REQUIRED", "Processed time is required");
+
     private static PaymentErrorCode validation(String code, String message) {
 
         return new PaymentErrorCode(ErrorCategory.VALIDATION, code, message);

@@ -1,5 +1,6 @@
 package com.cinema.payment.entity;
 
+import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
 import com.cinema.payment.enums.PaymentStatus;
@@ -302,5 +303,25 @@ public class Payment extends BaseEntity {
         return status == PaymentStatus.SUCCEEDED
                 || status == PaymentStatus.FAILED
                 || status == PaymentStatus.EXPIRED;
+    }
+
+    public void expire(OffsetDateTime now) {
+
+        if (now == null) {
+            throw new ValidationException(PaymentErrorCode.CURRENT_TIME_REQUIRED);
+        }
+
+        if (status != PaymentStatus.RECEIVED) {
+            throw new ConflictException(PaymentErrorCode.PAYMENT_NOT_RECEIVED);
+        }
+
+        if (holdExpiresAt.isAfter(now)) {
+            throw new ConflictException(PaymentErrorCode.PAYMENT_NOT_EXPIRED);
+        }
+
+        status = PaymentStatus.EXPIRED;
+        failureCode = "RESERVATION_EXPIRED";
+        failureMessage = null;
+        completedAt = now;
     }
 }
