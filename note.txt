@@ -10,6 +10,7 @@ $env:INVENTORY_DB_URL="jdbc:mysql://localhost:3306/cinema_inventory_db?createDat
 $env:MOVIE_DB_URL="jdbc:mysql://localhost:3306/cinema_movie_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
 $env:BOOKING_DB_URL="jdbc:mysql://localhost:3306/cinema_booking_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
 $env:USER_DB_URL="jdbc:mysql://localhost:3306/cinema_user_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+$env:PAYMENT_DB_URL="jdbc:mysql://localhost:3306/cinema_user_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
 $env:USER_DB_USERNAME = "root"
 $env:USER_DB_PASSWORD = "huykun17"
 $env:MOVIE_DB_USERNAME = "root"
@@ -18,6 +19,8 @@ $env:INVENTORY_DB_USERNAME = "root"
 $env:INVENTORY_DB_PASSWORD = "huykun17"
 $env:BOOKING_DB_USERNAME = "root"
 $env:BOOKING_DB_PASSWORD = "huykun17"
+$env:PAYMENT_DB_USERNAME = "root"
+$env:PAYMENT_DB_PASSWORD = "huykun17"
 $env:INVENTORY_TEST_DB_USERNAME = "root"
 $env:INVENTORY_TEST_DB_PASSWORD = "huykun17"
 $env:CINEMA_AUTH_ISSUER = "http://localhost:8082"
@@ -40,6 +43,7 @@ mvn -pl infrastructure/gateway-service spring-boot:run
 mvn -pl services/movie-service spring-boot:run
 mvn -pl services/inventory-service spring-boot:run
 mvn -pl services/user-service spring-boot:run
+mvn -pl services/payment-service spring-boot:run
 
 
 ### create RAS key

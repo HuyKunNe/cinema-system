@@ -37,14 +37,14 @@ The database design follows these principles:
 
 Each business service owns a separate logical database.
 
-| Service              | Database                 | Status             |
-| -------------------- | ------------------------ | ------------------ |
-| Movie Service        | `cinema_movie_db`        | Implemented        |
-| User Service         | `cinema_user_db`         | Implemented        |
-| Inventory Service    | `cinema_inventory_db`    | Implemented        |
-| Booking Service      | `cinema_booking_db`      | Implemented in R26 |
-| Payment Service      | `cinema_payment_db`      | R27 target         |
-| Notification Service | `cinema_notification_db` | R28 planned        |
+| Service              | Database                 | Status               |
+| -------------------- | ------------------------ | -------------------- |
+| Movie Service        | `cinema_movie_db`        | Implemented          |
+| User Service         | `cinema_user_db`         | Implemented          |
+| Inventory Service    | `cinema_inventory_db`    | Implemented          |
+| Booking Service      | `cinema_booking_db`      | Implemented in R26   |
+| Payment Service      | `cinema_payment_db`      | Implemented in R27.3 |
+| Notification Service | `cinema_notification_db` | R28 planned          |
 
 Infrastructure services must not use these databases for their own persistence.
 
@@ -1253,8 +1253,11 @@ completion.
 
 # Payment Service Database
 
-This section is the R27 target design. Payment migrations and runtime
-persistence are not implemented in the current repository.
+This section is implemented as the R27.3 Payment persistence baseline.
+
+Flyway owns the Payment schema. Hibernate uses `ddl-auto=validate`, and MySQL
+Testcontainers verifies the domain tables, technical reliability tables,
+constraints, indexes, UUID storage, and service ownership boundaries.
 
 Database:
 

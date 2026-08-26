@@ -1,7 +1,7 @@
 # Payment Service Design
 
-**Version:** R27.1
-**Status:** Proposed architecture and contract baseline
+**Version:** R27.3
+**Status:** Payment aggregate and Flyway persistence baseline implemented
 **Last updated:** 2026-08-26
 
 ---
@@ -321,6 +321,31 @@ Additional requirements:
 
 ---
 
+### R27.3 implementation state
+
+R27.3 implements:
+
+- `Payment` and `PaymentTransaction` persistence mappings;
+- Payment and transaction status enums;
+- Flyway migrations for `payments`, `payment_transactions`,
+  `processed_events`, and `outbox_events`;
+- Payment-attempt, source-event, provider-operation, provider-reference,
+  provider-event, and consumer-event uniqueness boundaries;
+- UUID `BINARY(16)`, `DECIMAL(19, 2)`, normalized currency, positive-attempt,
+  state, completion, and processing-lease constraints;
+- Payment and transaction repositories;
+- pessimistic Payment and transaction lookup boundaries;
+- MySQL Testcontainers migration and repository verification.
+
+R27.3 does not implement:
+
+- `payment-requested` validation or Kafka consumption;
+- processed-event registration behavior;
+- provider calls or provider-operation claiming;
+- webhook handling;
+- terminal payment-result Outbox creation;
+- refund or reconciliation workflows.
+
 ## 9. `payment-requested` Consumer Transaction
 
 The listener validates the canonical envelope before domain processing:
@@ -429,12 +454,12 @@ UNKNOWN
 
 Four idempotency boundaries are distinct:
 
-| Boundary | Key | Purpose |
-| --- | --- | --- |
-| Kafka delivery | `(eventId, consumerName)` | Prevent duplicate event effects |
-| Payment attempt | `(bookingId, paymentAttempt)` | Prevent duplicate Payment aggregates |
-| Provider operation | `(provider, idempotencyKey)` | Prevent duplicate provider charges/refunds |
-| Provider webhook | `(provider, providerEventId)` | Prevent duplicate callback effects |
+| Boundary           | Key                           | Purpose                                    |
+| ------------------ | ----------------------------- | ------------------------------------------ |
+| Kafka delivery     | `(eventId, consumerName)`     | Prevent duplicate event effects            |
+| Payment attempt    | `(bookingId, paymentAttempt)` | Prevent duplicate Payment aggregates       |
+| Provider operation | `(provider, idempotencyKey)`  | Prevent duplicate provider charges/refunds |
+| Provider webhook   | `(provider, providerEventId)` | Prevent duplicate callback effects         |
 
 A Kafka processed-event row alone cannot prevent a second provider charge after
 a crash. Provider idempotency is mandatory.
@@ -516,6 +541,13 @@ provider messages are prohibited from the event.
 
 Provider webhook endpoints do not use customer bearer authentication. They use
 provider-specific request authentication.
+
+| Request                                                 | R27.2 rule                |
+| ------------------------------------------------------- | ------------------------- |
+| `OPTIONS /**`                                           | permit for CORS preflight |
+| `/actuator/health`, `/actuator/info`                    | permit                    |
+| `GET /api/v1/payments/{paymentId}`                      | require `payment:read`    |
+| refund, reconciliation, webhook, and all other requests | deny                      |
 
 The endpoint contract is provider-adapter owned under:
 
@@ -772,21 +804,21 @@ R27 verification must cover:
 
 ## 23. Implementation Order
 
-| Checkpoint | Scope | Status |
-| --- | --- | --- |
-| R27.1 | Payment architecture and contract closure | NEXT |
-| R27.2 | Payment Service bootstrap and Resource Server security | PLANNED |
-| R27.3 | Payment aggregate and Flyway schema | PLANNED |
-| R27.4 | `payment-requested` validation and idempotent consumption | PLANNED |
-| R27.5 | Provider port, operation worker, and provider idempotency | PLANNED |
-| R27.6 | Authenticated webhook and provider-result processing | PLANNED |
-| R27.7 | `payment-succeeded` and `payment-failed` Outbox publication | PLANNED |
-| R27.8 | Booking payment-result consumers | PLANNED |
-| R27.9 | Inventory confirmation and compensation consumers | PLANNED |
-| R27.10 | Refund, reconciliation, permissions, and audit controls | PLANNED |
-| R27.11 | Kafka retry, DLT, and publication verification | PLANNED |
-| R27.12 | Saga integration, race, and concurrency verification | PLANNED |
-| R27.13 | Stabilization, documentation, and closure | PLANNED |
+| Checkpoint | Scope                                                       | Status  |
+| ---------- | ----------------------------------------------------------- | ------- |
+| R27.1      | Payment architecture and contract closure                   | DONE    |
+| R27.2      | Payment Service bootstrap and Resource Server security      | DONE    |
+| R27.3      | Payment aggregate and Flyway schema                         | DONE    |
+| R27.4      | `payment-requested` validation and idempotent consumption   | NEXT    |
+| R27.5      | Provider port, operation worker, and provider idempotency   | PLANNED |
+| R27.6      | Authenticated webhook and provider-result processing        | PLANNED |
+| R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | PLANNED |
+| R27.8      | Booking payment-result consumers                            | PLANNED |
+| R27.9      | Inventory confirmation and compensation consumers           | PLANNED |
+| R27.10     | Refund, reconciliation, permissions, and audit controls     | PLANNED |
+| R27.11     | Kafka retry, DLT, and publication verification              | PLANNED |
+| R27.12     | Saga integration, race, and concurrency verification        | PLANNED |
+| R27.13     | Stabilization, documentation, and closure                   | PLANNED |
 
 No checkpoint may introduce real provider credentials, direct cross-service
 database access, non-idempotent charges, or direct Kafka publication after a

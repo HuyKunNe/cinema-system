@@ -1,7 +1,7 @@
 # Project Roadmap
 
-**Version:** R27.1 Planning
-**Current target:** R27.1 — Payment architecture and contract closure
+**Version:** R27.4 Implementation
+**Current target:** R27.4 — `payment-requested` validation and idempotent consumption
 **Last updated:** 2026-08-26
 
 ---
@@ -1562,10 +1562,10 @@ Payment Service will own:
 
 | Checkpoint | Scope                                                       | Status  |
 | ---------- | ----------------------------------------------------------- | ------- |
-| R27.1      | Payment architecture and contract closure                   | NEXT    |
-| R27.2      | Payment Service bootstrap and Resource Server security      | PLANNED |
-| R27.3      | Payment aggregate and Flyway schema                         | PLANNED |
-| R27.4      | `payment-requested` validation and idempotent consumption   | PLANNED |
+| R27.1      | Payment architecture and contract closure                   | DONE    |
+| R27.2      | Payment Service bootstrap and Resource Server security      | DONE    |
+| R27.3      | Payment aggregate and Flyway schema                         | DONE    |
+| R27.4      | `payment-requested` validation and idempotent consumption   | NEXT    |
 | R27.5      | Provider port, operation worker, and provider idempotency   | PLANNED |
 | R27.6      | Authenticated webhook and provider-result processing        | PLANNED |
 | R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | PLANNED |
@@ -1575,6 +1575,21 @@ Payment Service will own:
 | R27.11     | Kafka retry, DLT, and publication verification              | PLANNED |
 | R27.12     | Saga integration, race, and concurrency verification        | PLANNED |
 | R27.13     | Stabilization, documentation, and closure                   | PLANNED |
+
+R27.3 completed the Payment persistence baseline:
+
+- Payment and PaymentTransaction domain mappings;
+- Payment, provider-operation, Kafka-delivery, and webhook idempotency
+  constraints;
+- Flyway-owned Payment, transaction, processed-event, and Outbox schemas;
+- UUID `BINARY(16)` storage;
+- decimal money storage and normalized currency constraints;
+- Payment status, refund status, transaction type, and transaction status
+  constraints;
+- provider-operation processing lease columns;
+- Payment repository locking and ownership queries;
+- one internal Payment foreign key and no cross-service foreign keys;
+- MySQL Testcontainers migration and persistence verification.
 
 R27 provider execution must use a stable provider idempotency key and must not
 run while a database transaction or row lock remains open. Retryable or unknown

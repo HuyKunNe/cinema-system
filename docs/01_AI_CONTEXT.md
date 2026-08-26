@@ -781,7 +781,31 @@ R25 and R26 subsequently met their documented completion requirements.
 
 # Current Next Step
 
-- R27.1 — Payment architecture and contract closure
+- R27.4 — `payment-requested` validation and idempotent consumption
+
+R27.3 Payment persistence baseline is complete:
+
+- Payment and PaymentTransaction mappings use Payment-owned persistence only;
+- UUID identifiers use `BINARY(16)`;
+- Flyway owns the `payments`, `payment_transactions`, `processed_events`, and
+  `outbox_events` tables;
+- `(booking_id, payment_attempt)` protects Payment-attempt idempotency;
+- `(provider, idempotency_key)` protects provider-operation idempotency;
+- `(provider, provider_event_id)` protects provider-webhook idempotency;
+- `(event_id, consumer_name)` protects Kafka consumer idempotency;
+- only `payment_transactions.payment_id -> payments.id` is a physical foreign
+  key;
+- Booking and User identifiers remain external references;
+- Hibernate uses `ddl-auto=validate`;
+- MySQL Testcontainers verifies migrations, mappings, constraints, indexes,
+  UUID columns, and ownership boundaries.
+
+R27.1 architecture and contract closure is complete. The R27.2 implementation
+must establish the independent Payment application, Config Client, Eureka
+Client, Actuator, shared JWT conversion, and a fail-closed servlet security
+chain. Only `GET /api/v1/payments/{paymentId}` is reserved for
+`payment:read`; refund, reconciliation, webhook, and all other routes remain
+denied until their checkpoints implement the corresponding contracts.
 
 Preserve all completed R26 Booking boundaries.
 
