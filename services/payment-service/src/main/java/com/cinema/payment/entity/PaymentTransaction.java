@@ -412,4 +412,136 @@ public class PaymentTransaction {
                 && processingExpiresAt != null
                 && processingExpiresAt.isAfter(now);
     }
+
+    public void completeSuccessfully(
+            String expectedOwner, String reference, OffsetDateTime completedAt) {
+
+        requireOwnedBy(expectedOwner);
+        validateProviderReference(reference);
+        validateCompletionTime(completedAt);
+
+        status = PaymentTransactionStatus.SUCCEEDED;
+        providerReference = reference.strip();
+        failureCode = null;
+        failureMessage = null;
+        this.completedAt = completedAt;
+
+        clearProcessingLease();
+    }
+
+    public void completeFailed(
+            String expectedOwner, String code, String message, OffsetDateTime completedAt) {
+
+        requireOwnedBy(expectedOwner);
+        validateFailureCode(code);
+        validateCompletionTime(completedAt);
+
+        status = PaymentTransactionStatus.FAILED;
+        failureCode = code.strip();
+        failureMessage = normalizeFailureMessage(message);
+        this.completedAt = completedAt;
+
+        clearProcessingLease();
+    }
+
+    public void markPendingProvider(
+            String expectedOwner, String reference, String code, String message) {
+
+        requireOwnedBy(expectedOwner);
+
+        status = PaymentTransactionStatus.PENDING_PROVIDER;
+        providerReference = normalizeProviderReference(reference);
+        failureCode = normalizeFailureCode(code);
+        failureMessage = normalizeFailureMessage(message);
+        completedAt = null;
+
+        clearProcessingLease();
+    }
+
+    private void requireOwnedBy(String expectedOwner) {
+
+        if (!isOwnedBy(expectedOwner)) {
+            throw new ConflictException(PaymentErrorCode.PAYMENT_TRANSACTION_LEASE_NOT_OWNED);
+        }
+    }
+
+    private void clearProcessingLease() {
+
+        processingOwner = null;
+        processingExpiresAt = null;
+    }
+
+    private static void validateCompletionTime(OffsetDateTime completionTime) {
+
+        if (completionTime == null) {
+            throw new ValidationException(PaymentErrorCode.CURRENT_TIME_REQUIRED);
+        }
+    }
+
+    private static void validateProviderReference(String reference) {
+
+        if (reference == null || reference.isBlank()) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_REFERENCE_REQUIRED);
+        }
+
+        if (reference.strip().length() > 255) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_RESULT_INVALID);
+        }
+    }
+
+    private static String normalizeProviderReference(String reference) {
+
+        if (reference == null || reference.isBlank()) {
+            return null;
+        }
+
+        String normalizedReference = reference.strip();
+
+        if (normalizedReference.length() > 255) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_RESULT_INVALID);
+        }
+
+        return normalizedReference;
+    }
+
+    private static void validateFailureCode(String code) {
+
+        if (code == null || code.isBlank()) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_FAILURE_CODE_REQUIRED);
+        }
+
+        if (code.strip().length() > 100) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_RESULT_INVALID);
+        }
+    }
+
+    private static String normalizeFailureCode(String code) {
+
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+
+        String normalizedCode = code.strip();
+
+        if (normalizedCode.length() > 100) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_RESULT_INVALID);
+        }
+
+        return normalizedCode;
+    }
+
+    private static String normalizeFailureMessage(String message) {
+
+        if (message == null || message.isBlank()) {
+            return null;
+        }
+
+        String normalizedMessage = message.strip();
+
+        if (normalizedMessage.length() > 500) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_RESULT_INVALID);
+        }
+
+        return normalizedMessage;
+    }
 }

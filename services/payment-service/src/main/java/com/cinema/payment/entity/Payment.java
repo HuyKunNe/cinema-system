@@ -337,4 +337,117 @@ public class Payment extends BaseEntity {
 
         status = PaymentStatus.PROCESSING;
     }
+
+    public void completeProviderSuccess(String reference, OffsetDateTime completedAt) {
+
+        requireProviderResultApplicable();
+        validateProviderReference(reference);
+        validateProviderResultTime(completedAt);
+
+        providerReference = reference.strip();
+        failureCode = null;
+        failureMessage = null;
+        this.completedAt = completedAt;
+
+        status =
+                holdExpiresAt.isAfter(completedAt)
+                        ? PaymentStatus.SUCCEEDED
+                        : PaymentStatus.RECONCILIATION_REQUIRED;
+    }
+
+    public void completeProviderFailure(String code, String message, OffsetDateTime completedAt) {
+
+        requireProviderResultApplicable();
+        validateFailureCode(code);
+        validateProviderResultTime(completedAt);
+
+        status = PaymentStatus.FAILED;
+        providerReference = null;
+        failureCode = code.strip();
+        failureMessage = normalizeFailureMessage(message);
+        this.completedAt = completedAt;
+    }
+
+    public void recordPendingProvider(String reference, OffsetDateTime observedAt) {
+
+        requireProviderResultApplicable();
+        validateProviderResultTime(observedAt);
+
+        providerReference = normalizeProviderReference(reference);
+        failureCode = null;
+        failureMessage = null;
+        completedAt = null;
+
+        status =
+                holdExpiresAt.isAfter(observedAt)
+                        ? PaymentStatus.PENDING_PROVIDER
+                        : PaymentStatus.RECONCILIATION_REQUIRED;
+    }
+
+    private void requireProviderResultApplicable() {
+
+        if (status != PaymentStatus.PROCESSING && status != PaymentStatus.PENDING_PROVIDER) {
+
+            throw new ConflictException(PaymentErrorCode.PAYMENT_PROVIDER_RESULT_NOT_APPLICABLE);
+        }
+    }
+
+    private static void validateProviderResultTime(OffsetDateTime resultTime) {
+
+        if (resultTime == null) {
+            throw new ValidationException(PaymentErrorCode.CURRENT_TIME_REQUIRED);
+        }
+    }
+
+    private static void validateProviderReference(String reference) {
+
+        if (reference == null || reference.isBlank()) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_REFERENCE_REQUIRED);
+        }
+
+        if (reference.strip().length() > 255) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_RESULT_INVALID);
+        }
+    }
+
+    private static String normalizeProviderReference(String reference) {
+
+        if (reference == null || reference.isBlank()) {
+            return null;
+        }
+
+        String normalizedReference = reference.strip();
+
+        if (normalizedReference.length() > 255) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_RESULT_INVALID);
+        }
+
+        return normalizedReference;
+    }
+
+    private static void validateFailureCode(String code) {
+
+        if (code == null || code.isBlank()) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_FAILURE_CODE_REQUIRED);
+        }
+
+        if (code.strip().length() > 100) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_RESULT_INVALID);
+        }
+    }
+
+    private static String normalizeFailureMessage(String message) {
+
+        if (message == null || message.isBlank()) {
+            return null;
+        }
+
+        String normalizedMessage = message.strip();
+
+        if (normalizedMessage.length() > 500) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_RESULT_INVALID);
+        }
+
+        return normalizedMessage;
+    }
 }

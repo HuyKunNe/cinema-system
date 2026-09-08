@@ -265,6 +265,12 @@ public final class PaymentErrorCode implements ErrorCode {
                     "PAYMENT_TRANSACTION_DATA_MISMATCH",
                     "Payment transaction data does not match its payment");
 
+    public static final PaymentErrorCode PAYMENT_PROVIDER_RESULT_NOT_APPLICABLE =
+            new PaymentErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "PAYMENT_PROVIDER_RESULT_NOT_APPLICABLE",
+                    "Provider result cannot be applied to the current payment state");
+
     private static PaymentErrorCode validation(String code, String message) {
 
         return new PaymentErrorCode(ErrorCategory.VALIDATION, code, message);
