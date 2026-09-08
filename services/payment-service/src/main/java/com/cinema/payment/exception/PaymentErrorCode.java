@@ -271,6 +271,46 @@ public final class PaymentErrorCode implements ErrorCode {
                     "PAYMENT_PROVIDER_RESULT_NOT_APPLICABLE",
                     "Provider result cannot be applied to the current payment state");
 
+    public static final PaymentErrorCode PROVIDER_WEBHOOK_HEADERS_REQUIRED =
+            validation(
+                    "PAYMENT_PROVIDER_WEBHOOK_HEADERS_REQUIRED",
+                    "Provider webhook headers are required");
+
+    public static final PaymentErrorCode PROVIDER_WEBHOOK_HEADERS_INVALID =
+            validation(
+                    "PAYMENT_PROVIDER_WEBHOOK_HEADERS_INVALID",
+                    "Provider webhook headers are invalid");
+
+    public static final PaymentErrorCode PROVIDER_WEBHOOK_BODY_REQUIRED =
+            validation(
+                    "PAYMENT_PROVIDER_WEBHOOK_BODY_REQUIRED",
+                    "Provider webhook raw body is required");
+
+    public static final PaymentErrorCode PROVIDER_WEBHOOK_RECEIVED_AT_REQUIRED =
+            validation(
+                    "PAYMENT_PROVIDER_WEBHOOK_RECEIVED_AT_REQUIRED",
+                    "Provider webhook received time is required");
+
+    public static final PaymentErrorCode PROVIDER_WEBHOOK_EVENT_ID_REQUIRED =
+            validation(
+                    "PAYMENT_PROVIDER_WEBHOOK_EVENT_ID_REQUIRED",
+                    "Provider webhook event ID is required");
+
+    public static final PaymentErrorCode PROVIDER_WEBHOOK_EVENT_ID_INVALID =
+            validation(
+                    "PAYMENT_PROVIDER_WEBHOOK_EVENT_ID_INVALID",
+                    "Provider webhook event ID must not exceed 255 characters");
+
+    public static final PaymentErrorCode PROVIDER_WEBHOOK_OCCURRED_AT_REQUIRED =
+            validation(
+                    "PAYMENT_PROVIDER_WEBHOOK_OCCURRED_AT_REQUIRED",
+                    "Provider webhook occurrence time is required");
+
+    public static final PaymentErrorCode PROVIDER_WEBHOOK_RESULT_INVALID =
+            validation(
+                    "PAYMENT_PROVIDER_WEBHOOK_RESULT_INVALID",
+                    "Verified provider webhook result is invalid");
+
     private static PaymentErrorCode validation(String code, String message) {
 
         return new PaymentErrorCode(ErrorCategory.VALIDATION, code, message);
