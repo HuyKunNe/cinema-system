@@ -24,7 +24,7 @@ The `docs` directory is the project's source of truth.
 - R27.2 — Payment Service bootstrap and Resource Server security
 - R27.3 — Payment aggregate and Flyway schema
 - R27.4 — `payment-requested` validation and idempotent consumption
-
+- R27.5 — Provider port, operation worker, and provider idempotency
 ## Completed Inventory Round
 
 > **R24 — Inventory Service**
@@ -161,12 +161,13 @@ R27.1 — Payment architecture and contract closure                 — DONE
 R27.2 — Payment Service bootstrap and Resource Server security    — DONE
 R27.3 — Payment aggregate and Flyway schema                       — DONE
 R27.4 — payment-requested validation and idempotent consumption   — DONE
+R27.5 — Provider port, operation worker, and provider idempotency — DONE
 ```
 
 Current checkpoint:
 
 ```text
-R27.5 — Provider port, operation worker, and provider idempotency — NEXT
+R27.6 — Authenticated webhook and provider-result processing — NEXT
 ```
 
 Payment Service owns payment attempts, provider interaction, provider
@@ -652,7 +653,7 @@ Movie, Inventory, User and Booking Service have completed their applicable
 implementation and verification requirements.
 
 R26 Booking Service is closed. R27 Payment Service is in progress.
-R27.4 is complete and R27.5 is the active implementation checkpoint.
+R27.1–R27.5 are complete. R27.6 is the active implementation checkpoint.
 
 ---
 
@@ -798,24 +799,50 @@ R25 and R26 subsequently met their documented completion requirements.
 
 # Current Next Step
 
-- R27.5 — Provider port, operation worker, and provider idempotency
+- R27.6 — Authenticated webhook and provider-result processing
 
-R27.3 Payment persistence baseline is complete:
+R27.1–R27.5 are complete. Payment Service now has:
 
-- Payment and PaymentTransaction mappings use Payment-owned persistence only;
-- UUID identifiers use `BINARY(16)`;
-- Flyway owns the `payments`, `payment_transactions`, `processed_events`, and
-  `outbox_events` tables;
-- `(booking_id, payment_attempt)` protects Payment-attempt idempotency;
-- `(provider, idempotency_key)` protects provider-operation idempotency;
-- `(provider, provider_event_id)` protects provider-webhook idempotency;
-- `(event_id, consumer_name)` protects Kafka consumer idempotency;
-- only `payment_transactions.payment_id -> payments.id` is a physical foreign
-  key;
-- Booking and User identifiers remain external references;
-- Hibernate uses `ddl-auto=validate`;
-- MySQL Testcontainers verifies migrations, mappings, constraints, indexes,
-  UUID columns, and ownership boundaries.
+- an independent secured application;
+- Flyway-owned Payment persistence;
+- canonical and idempotent `payment-requested` consumption;
+- stable provider-operation idempotency keys;
+- a provider-neutral charge port;
+- a normalized provider registry;
+- a deterministic local/test `MOCK` adapter;
+- bounded `READ_COMMITTED` and `SKIP LOCKED` operation claiming;
+- processing-owner leases and expired-lease recovery;
+- immutable claimed-operation snapshots;
+- provider execution protected by `Propagation.NEVER`;
+- lease-guarded result application;
+- safe pending and unknown outcome handling;
+- late-success routing to `RECONCILIATION_REQUIRED`;
+- crash-window and multi-instance MySQL verification.
+
+The provider worker has no scheduled or public trigger through R27.5. It must not
+be scheduled before R27.7 adds atomic terminal result Outbox publication.
+
+R27.6 must add:
+
+- provider allowlist resolution at the webhook boundary;
+- raw-body preservation for signature verification;
+- strict payload-size limits;
+- provider-specific signature and timestamp verification;
+- replay protection;
+- provider-event idempotency;
+- Payment and transaction lookup by safe provider references;
+- lock ordering compatible with the R27.5 worker;
+- webhook-versus-worker race handling;
+- exact provider-required acknowledgements without exposing internal errors.
+
+R27.6 must not:
+
+- accept unsigned callbacks;
+- trust parsed JSON before signature verification;
+- log signatures, secrets, or unrestricted raw bodies;
+- publish terminal Kafka events directly;
+- introduce real production credentials;
+- access Booking or Inventory persistence.
 
 R27.1 architecture and contract closure is complete.
 R27.1–R27.4 are complete. Payment Service now has an independent secured

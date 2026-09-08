@@ -1,7 +1,7 @@
 # Project Roadmap
 
-**Version:** R27.5 Implementation
-**Current target:** R27.5 — Provider port, operation worker, and provider idempotency
+**Version:** R27.6 Implementation
+**Current target:** R27.6 — Authenticated webhook and provider-result processing
 **Last updated:** 2026-09-08
 
 ---
@@ -1566,8 +1566,8 @@ Payment Service will own:
 | R27.2      | Payment Service bootstrap and Resource Server security      | DONE    |
 | R27.3      | Payment aggregate and Flyway schema                         | DONE    |
 | R27.4      | `payment-requested` validation and idempotent consumption   | DONE    |
-| R27.5      | Provider port, operation worker, and provider idempotency   | NEXT    |
-| R27.6      | Authenticated webhook and provider-result processing        | PLANNED |
+| R27.5      | Provider port, operation worker, and provider idempotency   | DONE    |
+| R27.6      | Authenticated webhook and provider-result processing        | NEXT    |
 | R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | PLANNED |
 | R27.8      | Booking payment-result consumers                            | PLANNED |
 | R27.9      | Inventory confirmation and compensation consumers           | PLANNED |
@@ -1611,6 +1611,32 @@ R27.4 completed Payment request consumption:
 
 R27.4 does not claim provider execution, webhook processing, terminal payment
 result publication, refund processing, or reconciliation.
+
+R27.5 completed the initial provider-execution baseline:
+
+- provider-neutral immutable charge command and result contracts;
+- explicit succeeded, failed, pending, and unknown outcomes;
+- normalized provider registry and deterministic `MOCK` adapter;
+- bounded provider-operation batches;
+- processing-owner leases and expired-lease recovery;
+- separate indexes and queries for ready and expired operations;
+- MySQL `READ_COMMITTED` and `FOR UPDATE SKIP LOCKED` claiming;
+- stable provider idempotency across retry and crash recovery;
+- immutable claimed-operation preparation;
+- fixed `Payment -> PaymentTransaction` lock ordering;
+- provider execution rejected inside an active database transaction;
+- lease-owner-guarded provider-result application;
+- late-success reconciliation behavior;
+- per-operation worker failure isolation;
+- unit, MySQL concurrency, transaction-boundary, crash-window, and
+  idempotency verification.
+
+The R27.5 worker is not scheduled. R27.7 must add atomic terminal result Outbox
+publication before scheduled provider execution is enabled.
+
+R27.6 is the active checkpoint. It adds authenticated provider callback
+processing without changing Payment database ownership or exposing provider
+credentials.
 
 R27 provider execution must use a stable provider idempotency key and must not
 run while a database transaction or row lock remains open. Retryable or unknown
@@ -1814,7 +1840,7 @@ Do not:
 | Inventory Service       | R24            | ✅ Completed                                                       |
 | User Service            | R25            | ✅ Completed                                                       |
 | Booking Service         | R26            | ✅ Completed                                                       |
-| Payment Service         | R27            | ⏳ Next                                                            |
+| Payment Service         | R27            | ⏳ In progress — R27.1–R27.5 completed                             |
 | Notification Service    | R28            | ⏳ Planned                                                         |
 | Production Readiness    | To be assigned | ⏳ Planned                                                         |
 

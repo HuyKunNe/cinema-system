@@ -1,7 +1,7 @@
 # Payment Service Design
 
-**Version:** R27.4
-**Status:** `payment-requested` validation and idempotent consumption implemented
+**Version:** R27.5
+**Status:** Provider port, operation worker, and provider idempotency implemented
 **Last updated:** 2026-09-08
 
 ---
@@ -371,6 +371,42 @@ R27.4 does not implement:
 - terminal payment-result Outbox publication;
 - Booking payment-result consumption;
 - refunds or reconciliation.
+
+### R27.5 implementation state
+
+R27.5 implements:
+
+- immutable provider-neutral charge command and result contracts;
+- explicit `SUCCEEDED`, `FAILED`, `PENDING`, and `UNKNOWN` provider outcomes;
+- Payment-owned provider port and normalized provider registry;
+- deterministic local/test `MOCK` provider adapter;
+- stable provider reference behavior for the same idempotency key;
+- bounded provider-operation claiming;
+- processing-owner and processing-expiration leases;
+- expired-lease recovery using the same transaction and idempotency key;
+- separate indexed queries for ready and expired operations;
+- MySQL `FOR UPDATE SKIP LOCKED` claiming under `READ_COMMITTED`;
+- immutable claimed-operation snapshots;
+- fixed `Payment -> PaymentTransaction` lock ordering;
+- explicit prevention of provider execution inside database transactions;
+- lease-owner verification before applying provider results;
+- success, failure, pending, unknown, and late-success state handling;
+- `RECONCILIATION_REQUIRED` for provider success observed after hold expiration;
+- per-operation worker failure isolation;
+- crash-window verification after provider acceptance and before local result commit;
+- unit, transaction-boundary, MySQL concurrency, lease-recovery, and provider-idempotency verification.
+
+The R27.5 worker has no scheduled or public trigger. Scheduled execution remains
+disabled until R27.7 can persist terminal Payment state and its canonical result
+Outbox event atomically.
+
+R27.5 does not implement:
+
+- production MoMo or VNPay credentials and network calls;
+- authenticated provider webhooks;
+- terminal payment-result Outbox publication;
+- Booking payment-result consumption;
+- automatic refund or reconciliation processing.
 
 ## 9. `payment-requested` Consumer Transaction
 
@@ -841,8 +877,8 @@ R27 verification must cover:
 | R27.2      | Payment Service bootstrap and Resource Server security      | DONE    |
 | R27.3      | Payment aggregate and Flyway schema                         | DONE    |
 | R27.4      | `payment-requested` validation and idempotent consumption   | DONE    |
-| R27.5      | Provider port, operation worker, and provider idempotency   | NEXT    |
-| R27.6      | Authenticated webhook and provider-result processing        | PLANNED |
+| R27.5      | Provider port, operation worker, and provider idempotency   | DONE    |
+| R27.6      | Authenticated webhook and provider-result processing        | NEXT    |
 | R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | PLANNED |
 | R27.8      | Booking payment-result consumers                            | PLANNED |
 | R27.9      | Inventory confirmation and compensation consumers           | PLANNED |
