@@ -69,6 +69,7 @@ Latest completed checkpoint:
 Current checkpoint:
 
 > **R27.5 — Provider port, operation worker, and provider idempotency**
+
 > See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 
 ---

@@ -25,8 +25,10 @@ Implementation status:
   and verified.
 - Booking Service consumption of `seat-reserved` and
   `seat-reservation-rejected` is implemented and verified.
-- Payment Service processing and the production of `payment-succeeded` and
-  `payment-failed` remain R27 scope.
+- Payment Service consumption of canonical `payment-requested` version `1`,
+  Payment-attempt creation, processed-event idempotency, bounded Kafka retry,
+  and sanitized dead-letter handling are implemented and verified.
+- Provider execution and production of `payment-succeeded` and `payment-failed` remain later R27 scope.ayment Service processing and the production of `payment-succeeded` and `payment-failed` remain R27 scope.
 - Inventory and Notification consumption of Booking lifecycle events remains
   future integration work until the corresponding consumers are implemented
   and verified.

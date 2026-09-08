@@ -119,7 +119,7 @@ R26 Booking Service is complete.
 Completed checkpoints:
 
 ```text
-R26.1  — Booking architecture and contract closure       — DONE
+R26.1  — Booking architecture and contract closure        — DONE
 R26.2  — Booking Service bootstrap and security           — DONE
 R26.3  — Booking aggregate and Flyway schema              — DONE
 R26.4  — Authenticated create and query APIs              — DONE
@@ -162,10 +162,12 @@ R27.2 — Payment Service bootstrap and Resource Server security    — DONE
 R27.3 — Payment aggregate and Flyway schema                       — DONE
 R27.4 — payment-requested validation and idempotent consumption   — DONE
 ```
+
 Current checkpoint:
 
+```text
 R27.5 — Provider port, operation worker, and provider idempotency — NEXT
-
+```
 
 Payment Service owns payment attempts, provider interaction, provider
 idempotency, payment-result events, refund state and Payment-owned persistence.
@@ -637,20 +639,20 @@ explicitly requested.
 
 # Business Service Status
 
-| Round | Service              | Status  |
-| ----- | -------------------- | ------- |
-| R23   | Movie Service        | DONE    |
-| R24   | Inventory Service    | DONE    |
-| R25   | User Service         | DONE    |
-| R26   | Booking Service      | DONE    |
-| R27   | Payment Service      | NEXT    |
-| R28   | Notification Service | PLANNED |
+| Round | Service              | Status      |
+| ----- | -------------------- | ----------- |
+| R23   | Movie Service        | DONE        |
+| R24   | Inventory Service    | DONE        |
+| R25   | User Service         | DONE        |
+| R26   | Booking Service      | DONE        |
+| R27   | Payment Service      | IN PROGRESS |
+| R28   | Notification Service | PLANNED     |
 
 Movie, Inventory, User and Booking Service have completed their applicable
 implementation and verification requirements.
 
-R26 Booking Service is closed. R27 Payment Service is the next business-service
-implementation round.
+R26 Booking Service is closed. R27 Payment Service is in progress.
+R27.4 is complete and R27.5 is the active implementation checkpoint.
 
 ---
 
@@ -796,7 +798,7 @@ R25 and R26 subsequently met their documented completion requirements.
 
 # Current Next Step
 
-- R27.4 — `payment-requested` validation and idempotent consumption
+- R27.5 — Provider port, operation worker, and provider idempotency
 
 R27.3 Payment persistence baseline is complete:
 
@@ -815,12 +817,15 @@ R27.3 Payment persistence baseline is complete:
 - MySQL Testcontainers verifies migrations, mappings, constraints, indexes,
   UUID columns, and ownership boundaries.
 
-R27.1 architecture and contract closure is complete. The R27.2 implementation
-must establish the independent Payment application, Config Client, Eureka
-Client, Actuator, shared JWT conversion, and a fail-closed servlet security
-chain. Only `GET /api/v1/payments/{paymentId}` is reserved for
-`payment:read`; refund, reconciliation, webhook, and all other routes remain
-denied until their checkpoints implement the corresponding contracts.
+R27.1 architecture and contract closure is complete.
+R27.1–R27.4 are complete. Payment Service now has an independent secured
+application, Flyway-owned persistence, canonical `payment-requested`
+consumption, processed-event idempotency, stable provider-operation
+idempotency keys, bounded Kafka retry, and sanitized DLT handling.
+
+R27.5 must add the provider-neutral port, bounded operation claiming, processing
+leases, and execution outside database transactions. It must not introduce
+production credentials or call providers while holding database locks.
 
 Preserve all completed R26 Booking boundaries.
 
@@ -847,4 +852,3 @@ Authoritative integration-event contracts:
 ```text
 docs/07_EVENT_CATALOG.md
 ```
-````

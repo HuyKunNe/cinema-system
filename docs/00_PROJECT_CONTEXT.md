@@ -275,13 +275,17 @@ Completed User round:
 
 > **R25 — User Service**
 
-Latest completed round:
+Latest completed service round:
 
 > **R26 — Booking Service**
 
-Next round:
+Latest completed Payment checkpoint:
 
-> **R27 — Payment Service**
+> **R27.4 — `payment-requested` validation and idempotent consumption**
+
+Current checkpoint:
+
+> **R27.5 — Provider port, operation worker, and provider idempotency**
 
 ADR-013 selects User Service with Spring Authorization Server as the authoritative
 issuer. The issuer, audience, RS256/JWK ownership, approved grant types, access-token
@@ -310,7 +314,7 @@ R26 Booking Service implementation, Kafka integration, Transactional Outbox,
 idempotency, cancellation, expiration, payment-event preparation, concurrency
 verification and documentation closure are complete.
 
-R27 Payment Service is the next implementation round.
+R27 Payment Service is in progress. R27.4 is complete and R27.5 is the current implementation checkpoint.
 
 ---
 
