@@ -35,7 +35,10 @@ import java.util.UUID;
             @Index(name = "idx_payment_transactions_payment", columnList = "payment_id"),
             @Index(
                     name = "idx_payment_transactions_claim",
-                    columnList = "status, processing_expires_at, requested_at")
+                    columnList = "status, processing_expires_at, requested_at, id"),
+            @Index(
+                    name = "idx_payment_transactions_ready_claim",
+                    columnList = "status, requested_at, id")
         },
         uniqueConstraints = {
             @UniqueConstraint(

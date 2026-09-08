@@ -7,10 +7,12 @@ import com.cinema.payment.repository.PaymentTransactionRepository;
 import com.cinema.payment.service.PaymentTransactionClaimService;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -35,13 +37,25 @@ public class PaymentTransactionClaimServiceImpl implements PaymentTransactionCla
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public List<PaymentTransaction> claimNextBatch() {
 
         OffsetDateTime claimedAt = OffsetDateTime.now(clock);
 
-        List<PaymentTransaction> transactions =
-                transactionRepository.findClaimableTransactions(claimedAt, properties.batchSize());
+        int batchSize = properties.batchSize();
+
+        List<PaymentTransaction> transactions = new ArrayList<>(batchSize);
+
+        List<PaymentTransaction> expiredTransactions =
+                transactionRepository.findExpiredProcessingTransactions(claimedAt, batchSize);
+
+        transactions.addAll(expiredTransactions);
+
+        int remainingCapacity = batchSize - transactions.size();
+
+        if (remainingCapacity > 0) {
+            transactions.addAll(transactionRepository.findReadyTransactions(remainingCapacity));
+        }
 
         if (transactions.isEmpty()) {
             return List.of();

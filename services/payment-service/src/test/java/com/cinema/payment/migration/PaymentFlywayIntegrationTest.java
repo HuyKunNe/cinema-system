@@ -37,7 +37,7 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
 
         assertThat(migrationInfo.all()).filteredOn(info -> info.getState().isFailed()).isEmpty();
 
-        assertThat(migrationInfo.applied()).hasSize(3);
+        assertThat(migrationInfo.applied()).hasSize(4);
     }
 
     @Test
@@ -51,13 +51,14 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                         WHERE version IN (
                             '1',
                             '2',
-                            '3'
+                            '3',
+                            '4'
                         )
                           AND success = TRUE
                         """,
                         Integer.class);
 
-        assertThat(count).isEqualTo(3);
+        assertThat(count).isEqualTo(4);
     }
 
     @Test
@@ -225,7 +226,8 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                               'idx_outbox_events_claim',
                               'idx_outbox_events_processing_owner',
                               'idx_outbox_events_aggregate',
-                              'idx_outbox_events_correlation'
+                              'idx_outbox_events_correlation',
+                              'idx_payment_transactions_ready_claim'
                           )
                         """,
                         String.class);
@@ -242,7 +244,8 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                         "idx_outbox_events_claim",
                         "idx_outbox_events_processing_owner",
                         "idx_outbox_events_aggregate",
-                        "idx_outbox_events_correlation");
+                        "idx_outbox_events_correlation",
+                        "idx_payment_transactions_ready_claim");
     }
 
     @Test
@@ -472,6 +475,4 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                                         """))
                 .isInstanceOf(DataAccessException.class);
     }
-
-    
 }

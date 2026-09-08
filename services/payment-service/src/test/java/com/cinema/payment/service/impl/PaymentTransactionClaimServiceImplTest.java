@@ -59,8 +59,9 @@ class PaymentTransactionClaimServiceImplTest {
         List<PaymentTransaction> claimableTransactions =
                 List.of(firstTransaction, secondTransaction);
 
-        when(transactionRepository.findClaimableTransactions(NOW, 2))
-                .thenReturn(claimableTransactions);
+        when(transactionRepository.findExpiredProcessingTransactions(NOW, 2)).thenReturn(List.of());
+
+        when(transactionRepository.findReadyTransactions(2)).thenReturn(claimableTransactions);
 
         List<PaymentTransaction> result = claimService.claimNextBatch();
 
@@ -86,13 +87,47 @@ class PaymentTransactionClaimServiceImplTest {
     @Test
     void emptyBatchShouldNotInvokeSave() {
 
-        when(transactionRepository.findClaimableTransactions(NOW, 2)).thenReturn(List.of());
+        when(transactionRepository.findExpiredProcessingTransactions(NOW, 2)).thenReturn(List.of());
+
+        when(transactionRepository.findReadyTransactions(2)).thenReturn(List.of());
 
         List<PaymentTransaction> result = claimService.claimNextBatch();
 
         assertThat(result).isEmpty();
 
         verify(transactionRepository, never()).saveAll(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void expiredProcessingTransactionsShouldUseCapacityBeforeReadyTransactions() {
+
+        PaymentTransaction expiredTransaction = transaction("charge:expired");
+
+        expiredTransaction.claim("expired-worker", NOW.minusMinutes(1), NOW.minusSeconds(1));
+
+        PaymentTransaction readyTransaction = transaction("charge:ready");
+
+        when(transactionRepository.findExpiredProcessingTransactions(NOW, 2))
+                .thenReturn(List.of(expiredTransaction));
+
+        when(transactionRepository.findReadyTransactions(1)).thenReturn(List.of(readyTransaction));
+
+        List<PaymentTransaction> result = claimService.claimNextBatch();
+
+        assertThat(result).containsExactly(expiredTransaction, readyTransaction);
+
+        assertThat(expiredTransaction.getStatus()).isEqualTo(PaymentTransactionStatus.PROCESSING);
+
+        assertThat(readyTransaction.getStatus()).isEqualTo(PaymentTransactionStatus.PROCESSING);
+
+        assertThat(expiredTransaction.getProcessingOwner())
+                .isEqualTo(readyTransaction.getProcessingOwner());
+
+        verify(transactionRepository).findExpiredProcessingTransactions(NOW, 2);
+
+        verify(transactionRepository).findReadyTransactions(1);
+
+        verify(transactionRepository).saveAll(List.of(expiredTransaction, readyTransaction));
     }
 
     private static PaymentTransaction transaction(String idempotencyKey) {
