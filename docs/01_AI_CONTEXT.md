@@ -20,6 +20,10 @@ The `docs` directory is the project's source of truth.
 - R24 — Inventory Service
 - R25 — User Service
 - R26 — Booking Service
+- R27.1 — Payment architecture and contract closure
+- R27.2 — Payment Service bootstrap and Resource Server security
+- R27.3 — Payment aggregate and Flyway schema
+- R27.4 — `payment-requested` validation and idempotent consumption
 
 ## Completed Inventory Round
 
@@ -146,11 +150,22 @@ Verified Booking baseline:
   or roll back atomically;
 - focused Booking verification and the root Maven reactor verification pass.
 
-## Next Round
+## Current Payment Round
+
+R27 Payment Service is in progress.
+
+Completed checkpoints:
 
 ```text
-R27 — Payment Service — NEXT
+R27.1 — Payment architecture and contract closure                 — DONE
+R27.2 — Payment Service bootstrap and Resource Server security    — DONE
+R27.3 — Payment aggregate and Flyway schema                       — DONE
+R27.4 — payment-requested validation and idempotent consumption   — DONE
 ```
+Current checkpoint:
+
+R27.5 — Provider port, operation worker, and provider idempotency — NEXT
+
 
 Payment Service owns payment attempts, provider interaction, provider
 idempotency, payment-result events, refund state and Payment-owned persistence.
@@ -832,3 +847,4 @@ Authoritative integration-event contracts:
 ```text
 docs/07_EVENT_CATALOG.md
 ```
+````

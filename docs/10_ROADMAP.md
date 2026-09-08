@@ -1,8 +1,8 @@
 # Project Roadmap
 
-**Version:** R27.4 Implementation
-**Current target:** R27.4 — `payment-requested` validation and idempotent consumption
-**Last updated:** 2026-08-26
+**Version:** R27.5 Implementation
+**Current target:** R27.5 — Provider port, operation worker, and provider idempotency
+**Last updated:** 2026-09-08
 
 ---
 
@@ -1532,9 +1532,9 @@ R26 Booking Service is complete.
 
 ---
 
-## ⏳ R27 — Payment Service
+## 🚧 R27 — Payment Service
 
-**Status:** NEXT
+**Status:** IMPLEMENTATION
 
 Payment Service will own:
 
@@ -1565,8 +1565,8 @@ Payment Service will own:
 | R27.1      | Payment architecture and contract closure                   | DONE    |
 | R27.2      | Payment Service bootstrap and Resource Server security      | DONE    |
 | R27.3      | Payment aggregate and Flyway schema                         | DONE    |
-| R27.4      | `payment-requested` validation and idempotent consumption   | NEXT    |
-| R27.5      | Provider port, operation worker, and provider idempotency   | PLANNED |
+| R27.4      | `payment-requested` validation and idempotent consumption   | DONE    |
+| R27.5      | Provider port, operation worker, and provider idempotency   | NEXT    |
 | R27.6      | Authenticated webhook and provider-result processing        | PLANNED |
 | R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | PLANNED |
 | R27.8      | Booking payment-result consumers                            | PLANNED |
@@ -1590,6 +1590,27 @@ R27.3 completed the Payment persistence baseline:
 - Payment repository locking and ownership queries;
 - one internal Payment foreign key and no cross-service foreign keys;
 - MySQL Testcontainers migration and persistence verification.
+
+R27.4 completed Payment request consumption:
+
+- immutable `payment-requested` version `1` payload model;
+- strict canonical envelope and payload readers;
+- UUID v7, producer, aggregate, partition-key, tracing, money, attempt, and
+  expiration validation;
+- Payment-owned processed-event registration using
+  `(event_id, consumer_name)`;
+- duplicate same-event no-op behavior;
+- consistent different-event handling for one Booking attempt;
+- conflicting duplicate payload rejection;
+- atomic Payment and READY CHARGE creation;
+- stable `charge:<paymentId>` provider idempotency key;
+- expired request finalization without provider execution;
+- no provider call inside the consumer transaction;
+- bounded Kafka retry and sanitized DLT publication;
+- unit, MySQL, concurrency, and Kafka integration verification.
+
+R27.4 does not claim provider execution, webhook processing, terminal payment
+result publication, refund processing, or reconciliation.
 
 R27 provider execution must use a stable provider idempotency key and must not
 run while a database transaction or row lock remains open. Retryable or unknown

@@ -1,6 +1,6 @@
 # Cinema Booking System
 
-Version: 0.7 (R26 Booking Service Completed; R27 Payment Service Next)
+Version: 0.8 (R27.4 Completed; R27.5 Provider Execution Next)
 
 ---
 
@@ -58,6 +58,10 @@ Hệ thống được thiết kế để mô phỏng nền tảng của các chu
 - ✅ R24 — Inventory Service
 - ✅ R25 — User Service
 - ✅ R26 — Booking Service
+- ✅ R27.1 — Payment architecture and contract closure
+- ✅ R27.2 — Payment Service bootstrap and Resource Server security
+- ✅ R27.3 — Payment aggregate and Flyway schema
+- ✅ R27.4 — `payment-requested` validation and idempotent consumption
 
 Inventory Service owns:
 
@@ -118,9 +122,17 @@ Completed implementation round:
 
 - R26 Booking Service — DONE
 
-Next implementation round:
+Current implementation round:
 
-- R27 Payment Service — NEXT
+- R27 Payment Service — IN PROGRESS
+
+Latest completed checkpoint:
+
+- R27.4 — `payment-requested` validation and idempotent consumption — DONE
+
+Next checkpoint:
+
+- R27.5 — Provider port, operation worker, and provider idempotency — NEXT
 
 R25.14 verifies JWT trust and temporal validation, UUID v7 subjects, roles and
 permissions, Authorization Code with PKCE, controlled Client Credentials,
@@ -183,9 +195,12 @@ Architecture decision:
 docs/decisions/ADR-013-spring-authorization-server.md
 ```
 
-## Not Started
+## In Progress
 
 - R27 — Payment Service
+
+## Not Started
+
 - R28 — Notification Service
 
 ---

@@ -57,18 +57,19 @@ implemented.
 | R25.14 — Security and protocol verification                 | Completed |
 | R25.15 — Stabilization and closure                          | Completed |
 | R26 — Booking Service                                       | Completed |
-| R27 — Payment Service                                       | Next      |
+| R27.1–R27.4 — Payment foundation and event consumption      | Completed |
+| R27.5 — Provider port, worker, and provider idempotency     | Next      |
+| R27.6–R27.13 — Remaining Payment Saga integration           | Planned   |
 | R28 — Notification Service                                  | Planned   |
 
-Latest completed service round:
+Latest completed checkpoint:
 
-> **R26 — Booking Service**
+> **R27.4 — `payment-requested` validation and idempotent consumption**
 
-Next round:
+Current checkpoint:
 
-> **R27 — Payment Service**
-
-See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
+> **R27.5 — Provider port, operation worker, and provider idempotency**
+> See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 
 ---
 
@@ -392,6 +393,25 @@ Detailed contracts remain authoritative in the roadmap, event catalog, and
 sequence-diagram documents.
 
 ---
+
+## Payment Service
+
+Implemented through R27.4:
+
+- Independent OAuth2 Resource Server security
+- Flyway-owned `payments`, `payment_transactions`, `processed_events`, and
+  `outbox_events`
+- Payment-attempt and provider-operation idempotency constraints
+- Canonical `payment-requested` envelope and payload validation
+- Idempotent processed-event registration
+- Atomic Payment and READY CHARGE transaction creation
+- Stable provider idempotency keys
+- Expired-request rejection before provider execution
+- Bounded Kafka retry and sanitized dead-letter publication
+- Unit, MySQL, concurrency, and Kafka integration verification
+
+Provider execution, webhooks, terminal payment-result events, refunds, and
+reconciliation remain later R27 checkpoints.
 
 # Build and Test
 

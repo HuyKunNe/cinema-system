@@ -1,8 +1,8 @@
 # Payment Service Design
 
-**Version:** R27.3
-**Status:** Payment aggregate and Flyway persistence baseline implemented
-**Last updated:** 2026-08-26
+**Version:** R27.4
+**Status:** `payment-requested` validation and idempotent consumption implemented
+**Last updated:** 2026-09-08
 
 ---
 
@@ -346,6 +346,32 @@ R27.3 does not implement:
 - terminal payment-result Outbox creation;
 - refund or reconciliation workflows.
 
+### R27.4 implementation state
+
+R27.4 implements:
+
+- immutable `PaymentRequestedPayload`;
+- strict JSON-to-envelope and JSON-to-payload readers;
+- canonical envelope and payload validation;
+- Payment-owned processed-event persistence;
+- concurrent duplicate-event registration;
+- transactional Payment-attempt consistency enforcement;
+- atomic `RECEIVED` Payment and `READY` CHARGE creation;
+- stable provider idempotency keys;
+- expired Payment creation without a CHARGE;
+- Kafka listener wiring;
+- bounded retry and sanitized dead-letter publication;
+- unit, MySQL integration, concurrency, and Kafka integration verification.
+
+R27.4 does not implement:
+
+- provider API calls;
+- provider-operation claiming or leases;
+- authenticated webhook processing;
+- terminal payment-result Outbox publication;
+- Booking payment-result consumption;
+- refunds or reconciliation.
+
 ## 9. `payment-requested` Consumer Transaction
 
 The listener validates the canonical envelope before domain processing:
@@ -370,12 +396,17 @@ The consumer then performs one short local transaction:
 Insert processed-event marker
 Resolve existing payment by (bookingId, paymentAttempt)
 Validate duplicate payload consistency
-If already expired, create terminal EXPIRED payment and payment-failed Outbox
+If already expired, create terminal EXPIRED Payment without a CHARGE
 Otherwise create RECEIVED Payment
 Create READY CHARGE transaction with stable provider idempotency key
 Persist source event ID and correlation ID
 Commit
 ```
+
+Through R27.4, expired request handling persists the terminal Payment state but
+does not yet publish `payment-failed`. R27.7 must add terminal result Outbox
+publication atomically with the approved terminal-result transaction before R27
+closure.
 
 The transaction must not call the provider.
 
@@ -809,8 +840,8 @@ R27 verification must cover:
 | R27.1      | Payment architecture and contract closure                   | DONE    |
 | R27.2      | Payment Service bootstrap and Resource Server security      | DONE    |
 | R27.3      | Payment aggregate and Flyway schema                         | DONE    |
-| R27.4      | `payment-requested` validation and idempotent consumption   | NEXT    |
-| R27.5      | Provider port, operation worker, and provider idempotency   | PLANNED |
+| R27.4      | `payment-requested` validation and idempotent consumption   | DONE    |
+| R27.5      | Provider port, operation worker, and provider idempotency   | NEXT    |
 | R27.6      | Authenticated webhook and provider-result processing        | PLANNED |
 | R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | PLANNED |
 | R27.8      | Booking payment-result consumers                            | PLANNED |

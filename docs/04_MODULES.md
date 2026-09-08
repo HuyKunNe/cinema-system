@@ -1,6 +1,6 @@
 # Modules
 
-Version R26
+Version R27.4
 
 This document describes the modules registered by the root Maven reactor, their
 responsibilities, and the dependency boundaries that every implementation must
@@ -387,9 +387,27 @@ delivery. It must not import Inventory Service code or access
 
 ## payment-service
 
-R27 next-round module. Its POM is registered, but runtime implementation is not
-present yet. When implemented, it owns payments, payment attempts, provider
-interactions, provider idempotency, and payment-result events.
+Implemented through R27.4. It owns:
+
+- Payment aggregates and payment-attempt lifecycle
+- Payment transactions and provider-operation evidence
+- Payment-local `processed_events`
+- Payment-local Transactional Outbox records
+- Payment provider selection and provider idempotency boundaries
+- Canonical `payment-requested` consumption
+- Duplicate delivery and conflicting-attempt detection
+- Kafka retry and sanitized dead-letter handling
+- Payment-owned refund and reconciliation state
+
+Implemented runtime behavior currently stops after creating a `RECEIVED`
+Payment and a `READY` CHARGE operation, or an `EXPIRED` Payment when the
+reservation deadline has passed.
+
+Provider execution, authenticated webhooks, terminal result Outbox publication,
+refund operations, and reconciliation remain later R27 checkpoints.
+
+Payment Service must not import Booking or Inventory implementation classes,
+access their databases, or store payment credentials.
 
 ## notification-service
 

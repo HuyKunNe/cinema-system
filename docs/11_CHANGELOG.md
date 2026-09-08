@@ -1,8 +1,8 @@
 # Changelog
 
-**Version:** 0.7
-**Current baseline:** R1–R26 completed; R27 next
-**Last reviewed:** 2026-08-25
+**Version:** 0.8
+**Current baseline:** R1–R26 and R27.1–R27.4 completed; R27.5 next
+**Last reviewed:** 2026-09-08
 
 ---
 
@@ -32,18 +32,40 @@ the roadmap.
 Current status:
 
 ```text
-R1-R24         Completed
-R25.1–R25.15   Completed
-R25             User Service completed
-R26.1–R26.13   Completed
-R26             Booking Service completed
-R27             Payment Service next
-R28             Planned
+R1-R24                Completed
+R25.1–R25.15          Completed
+R25                   User Service completed
+R26.1–R26.13          Completed
+R26                   Booking Service completed
+R27.1–R27.4           Completed
+R27                   Payment Service in progress
+R27.5                 Next
+R28                   Planned
 ```
 
 ---
 
 # Unreleased
+
+## 2026-09-08
+
+### R27.4 Payment Request Consumption
+
+- Added immutable canonical `payment-requested` version `1` models.
+- Added strict envelope and payload readers and validators.
+- Enforced UUID v7 event, aggregate, correlation, and causation identifiers.
+- Enforced Booking producer, Booking aggregate, and Booking partition-key rules.
+- Added Payment-owned processed-event registration.
+- Added duplicate same-event no-op handling.
+- Added consistent different-event handling for the same Payment attempt.
+- Added conflicting duplicate payload rejection.
+- Added atomic `RECEIVED` Payment and `READY` CHARGE creation.
+- Added stable provider idempotency keys based on Payment identity.
+- Added expired-request handling without provider execution.
+- Confirmed that the Kafka consumer does not call a provider.
+- Added bounded Kafka retry and sanitized dead-letter publication.
+- Added unit, MySQL integration, concurrency, and Kafka/DLT verification.
+- Completed R27.4 and advanced the active checkpoint to R27.5.
 
 ## 2026-08-25
 

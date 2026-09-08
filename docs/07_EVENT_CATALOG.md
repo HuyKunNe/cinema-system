@@ -1,7 +1,7 @@
 # Event Catalog
 
-Version: R27.1
-Last updated: 2026-08-26
+Version: R27.4
+Last updated: 2026-09-08
 
 This document defines the authoritative Kafka event contracts, ownership,
 versioning, routing, metadata, payload requirements, producer and consumer
@@ -722,6 +722,15 @@ Payment Service must:
 8. execute the provider operation outside the database transaction;
 9. record a terminal provider result and create `payment-succeeded` or
    `payment-failed` in a later atomic local transaction.
+
+Implementation status through R27.4:
+
+- steps 1–7 are implemented and verified;
+- an accepted non-expired request creates one `RECEIVED` Payment and one
+  `READY` CHARGE operation;
+- an already expired request creates one `EXPIRED` Payment and no CHARGE;
+- provider execution remains R27.5;
+- terminal payment-result Outbox publication remains R27.7.
 
 An already expired request may be finalized as `RESERVATION_EXPIRED` without
 calling the provider. Retryable or ambiguous provider outcomes remain internal
