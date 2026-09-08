@@ -1,6 +1,7 @@
 package com.cinema.payment.entity;
 
 import com.cinema.common.core.id.UuidGenerator;
+import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.payment.enums.PaymentTransactionStatus;
 import com.cinema.payment.enums.PaymentTransactionType;
@@ -53,6 +54,8 @@ public class PaymentTransaction {
     private static final int MAX_PROVIDER_LENGTH = 50;
 
     private static final int MAX_IDEMPOTENCY_KEY_LENGTH = 200;
+
+    private static final int MAX_PROCESSING_OWNER_LENGTH = 150;
 
     @Id
     @JdbcTypeCode(SqlTypes.BINARY)
@@ -156,6 +159,66 @@ public class PaymentTransaction {
         this.currency = normalizeCode(currency);
         this.idempotencyKey = idempotencyKey.trim();
         this.requestedAt = requestedAt;
+    }
+
+    public boolean isClaimableAt(OffsetDateTime now) {
+
+        if (now == null) {
+            throw new ValidationException(PaymentErrorCode.CURRENT_TIME_REQUIRED);
+        }
+
+        return status == PaymentTransactionStatus.READY
+                || (status == PaymentTransactionStatus.PROCESSING
+                        && processingExpiresAt != null
+                        && !processingExpiresAt.isAfter(now));
+    }
+
+    public void claim(String owner, OffsetDateTime claimedAt, OffsetDateTime leaseExpiresAt) {
+
+        validateProcessingOwner(owner);
+        validateProcessingLease(claimedAt, leaseExpiresAt);
+
+        if (!isClaimableAt(claimedAt)) {
+            throw new ConflictException(PaymentErrorCode.TRANSACTION_NOT_CLAIMABLE);
+        }
+
+        status = PaymentTransactionStatus.PROCESSING;
+        processingOwner = owner.strip();
+        processingExpiresAt = leaseExpiresAt;
+    }
+
+    public boolean isOwnedBy(String expectedOwner) {
+
+        return status == PaymentTransactionStatus.PROCESSING
+                && expectedOwner != null
+                && expectedOwner.equals(processingOwner);
+    }
+
+    private static void validateProcessingOwner(String owner) {
+
+        if (owner == null || owner.isBlank()) {
+            throw new ValidationException(PaymentErrorCode.PROCESSING_OWNER_REQUIRED);
+        }
+
+        if (owner.strip().length() > MAX_PROCESSING_OWNER_LENGTH) {
+            throw new ValidationException(PaymentErrorCode.PROCESSING_OWNER_INVALID);
+        }
+    }
+
+    private static void validateProcessingLease(
+            OffsetDateTime claimedAt, OffsetDateTime leaseExpiresAt) {
+
+        if (claimedAt == null) {
+            throw new ValidationException(PaymentErrorCode.CURRENT_TIME_REQUIRED);
+        }
+
+        if (leaseExpiresAt == null) {
+            throw new ValidationException(PaymentErrorCode.PROCESSING_EXPIRATION_REQUIRED);
+        }
+
+        if (!leaseExpiresAt.isAfter(claimedAt)) {
+            throw new ValidationException(PaymentErrorCode.PROCESSING_EXPIRATION_INVALID);
+        }
     }
 
     public UUID getId() {

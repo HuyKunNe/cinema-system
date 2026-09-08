@@ -3,18 +3,19 @@ package com.cinema.payment.entity;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.cinema.common.core.id.UuidGenerator;
-import com.cinema.common.exception.exception.ValidationException;
-import com.cinema.payment.enums.PaymentTransactionStatus;
-import com.cinema.payment.enums.PaymentTransactionType;
-import com.cinema.payment.exception.PaymentErrorCode;
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.UUID;
 
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
 
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
-import java.util.UUID;
+import com.cinema.common.core.id.UuidGenerator;
+import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.payment.enums.PaymentTransactionStatus;
+import com.cinema.payment.enums.PaymentTransactionType;
+import com.cinema.payment.exception.PaymentErrorCode;
 
 class PaymentTransactionTest {
 
@@ -277,6 +278,94 @@ class PaymentTransactionTest {
                                 IDEMPOTENCY_KEY,
                                 null),
                 PaymentErrorCode.REQUESTED_AT_REQUIRED);
+    }
+
+    @Test
+    void readyTransactionShouldBeClaimed() {
+
+        PaymentTransaction transaction = validTransaction();
+
+        OffsetDateTime claimedAt = OffsetDateTime.parse("2026-09-08T10:00:00Z");
+
+        OffsetDateTime leaseExpiresAt = OffsetDateTime.parse("2026-09-08T10:00:30Z");
+
+        transaction.claim("payment-worker-1", claimedAt, leaseExpiresAt);
+
+        assertThat(transaction.getStatus()).isEqualTo(PaymentTransactionStatus.PROCESSING);
+
+        assertThat(transaction.getProcessingOwner()).isEqualTo("payment-worker-1");
+
+        assertThat(transaction.getProcessingExpiresAt()).isEqualTo(leaseExpiresAt);
+
+        assertThat(transaction.isOwnedBy("payment-worker-1")).isTrue();
+        assertThat(transaction.isOwnedBy("payment-worker-2")).isFalse();
+    }
+
+    @Test
+    void expiredProcessingLeaseShouldBeReclaimable() {
+
+        PaymentTransaction transaction = validTransaction();
+
+        OffsetDateTime firstClaimAt = OffsetDateTime.parse("2026-09-08T10:00:00Z");
+
+        transaction.claim("payment-worker-1", firstClaimAt, firstClaimAt.plusSeconds(30));
+
+        OffsetDateTime secondClaimAt = firstClaimAt.plusSeconds(31);
+
+        transaction.claim("payment-worker-2", secondClaimAt, secondClaimAt.plusSeconds(30));
+
+        assertThat(transaction.getStatus()).isEqualTo(PaymentTransactionStatus.PROCESSING);
+
+        assertThat(transaction.getProcessingOwner()).isEqualTo("payment-worker-2");
+
+        assertThat(transaction.getProcessingExpiresAt()).isEqualTo(secondClaimAt.plusSeconds(30));
+    }
+
+    @Test
+    void activeProcessingLeaseShouldNotBeClaimedAgain() {
+
+        PaymentTransaction transaction = validTransaction();
+
+        OffsetDateTime firstClaimAt = OffsetDateTime.parse("2026-09-08T10:00:00Z");
+
+        transaction.claim("payment-worker-1", firstClaimAt, firstClaimAt.plusSeconds(30));
+
+        assertThatThrownBy(
+                        () ->
+                                transaction.claim(
+                                        "payment-worker-2",
+                                        firstClaimAt.plusSeconds(15),
+                                        firstClaimAt.plusSeconds(45)))
+                .isInstanceOf(ConflictException.class)
+                .satisfies(
+                        throwable ->
+                                assertThat(((ConflictException) throwable).getErrorCode())
+                                        .isEqualTo(PaymentErrorCode.TRANSACTION_NOT_CLAIMABLE));
+    }
+
+    @Test
+    void invalidProcessingLeaseShouldBeRejected() {
+
+        PaymentTransaction transaction = validTransaction();
+
+        OffsetDateTime claimedAt = OffsetDateTime.parse("2026-09-08T10:00:00Z");
+
+        assertValidation(
+                () -> transaction.claim("payment-worker-1", claimedAt, claimedAt),
+                PaymentErrorCode.PROCESSING_EXPIRATION_INVALID);
+    }
+
+    private static PaymentTransaction validTransaction() {
+
+        return transaction(
+                PAYMENT_ID,
+                "MOCK",
+                PaymentTransactionType.CHARGE,
+                1,
+                new BigDecimal("250000.00"),
+                "VND",
+                IDEMPOTENCY_KEY,
+                REQUESTED_AT);
     }
 
     private static PaymentTransaction transaction(

@@ -85,6 +85,9 @@ cinema:
       audience: ${CINEMA_AUTH_AUDIENCE:cinema-api}
   payment:
     provider: ${PAYMENT_PROVIDER:MOCK}
+    provider-operation:
+      batch-size: ${PAYMENT_PROVIDER_OPERATION_BATCH_SIZE:20}
+      lease-duration: ${PAYMENT_PROVIDER_OPERATION_LEASE_DURATION:30s}
     kafka:
       enabled: ${PAYMENT_KAFKA_ENABLED:true}
       topics:

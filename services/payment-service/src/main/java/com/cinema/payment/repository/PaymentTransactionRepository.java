@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,4 +35,25 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
             WHERE transaction.id = :transactionId
             """)
     Optional<PaymentTransaction> findByIdForUpdate(@Param("transactionId") UUID transactionId);
+
+    @Query(
+            value =
+                    """
+                    SELECT *
+                    FROM payment_transactions
+                    WHERE
+                        status = 'READY'
+                        OR
+                        (
+                            status = 'PROCESSING'
+                            AND processing_expires_at IS NOT NULL
+                            AND processing_expires_at <= :now
+                        )
+                    ORDER BY requested_at ASC, id ASC
+                    LIMIT :batchSize
+                    FOR UPDATE SKIP LOCKED
+                    """,
+            nativeQuery = true)
+    List<PaymentTransaction> findClaimableTransactions(
+            @Param("now") OffsetDateTime now, @Param("batchSize") int batchSize);
 }

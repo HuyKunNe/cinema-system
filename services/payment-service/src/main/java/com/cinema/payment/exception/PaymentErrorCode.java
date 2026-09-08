@@ -164,6 +164,59 @@ public final class PaymentErrorCode implements ErrorCode {
     public static final PaymentErrorCode PROCESSED_AT_REQUIRED =
             validation("PAYMENT_PROCESSED_AT_REQUIRED", "Processed time is required");
 
+    public static final PaymentErrorCode PROVIDER_OUTCOME_REQUIRED =
+            validation("PAYMENT_PROVIDER_OUTCOME_REQUIRED", "Payment provider outcome is required");
+
+    public static final PaymentErrorCode PROVIDER_REFERENCE_REQUIRED =
+            validation(
+                    "PAYMENT_PROVIDER_REFERENCE_REQUIRED",
+                    "Payment provider reference is required");
+
+    public static final PaymentErrorCode PROVIDER_FAILURE_CODE_REQUIRED =
+            validation(
+                    "PAYMENT_PROVIDER_FAILURE_CODE_REQUIRED",
+                    "Payment provider failure code is required");
+    public static final PaymentErrorCode PROVIDER_CHARGE_COMMAND_REQUIRED =
+            validation(
+                    "PAYMENT_PROVIDER_CHARGE_COMMAND_REQUIRED",
+                    "Provider charge command is required");
+
+    public static final PaymentErrorCode PROVIDER_NOT_SUPPORTED =
+            validation("PAYMENT_PROVIDER_NOT_SUPPORTED", "Payment provider is not supported");
+
+    public static final PaymentErrorCode PROVIDER_CONFIGURATION_INVALID =
+            new PaymentErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "PAYMENT_PROVIDER_CONFIGURATION_INVALID",
+                    "Payment provider configuration is invalid");
+
+    public static final PaymentErrorCode PROVIDER_RESULT_INVALID =
+            validation("PAYMENT_PROVIDER_RESULT_INVALID", "Payment provider result is invalid");
+
+    public static final PaymentErrorCode PROCESSING_OWNER_REQUIRED =
+            validation("PAYMENT_PROCESSING_OWNER_REQUIRED", "Payment processing owner is required");
+
+    public static final PaymentErrorCode PROCESSING_OWNER_INVALID =
+            validation(
+                    "PAYMENT_PROCESSING_OWNER_INVALID",
+                    "Payment processing owner must not exceed 150 characters");
+
+    public static final PaymentErrorCode PROCESSING_EXPIRATION_REQUIRED =
+            validation(
+                    "PAYMENT_PROCESSING_EXPIRATION_REQUIRED",
+                    "Payment processing expiration is required");
+
+    public static final PaymentErrorCode PROCESSING_EXPIRATION_INVALID =
+            validation(
+                    "PAYMENT_PROCESSING_EXPIRATION_INVALID",
+                    "Payment processing expiration must be after the claim time");
+
+    public static final PaymentErrorCode TRANSACTION_NOT_CLAIMABLE =
+            new PaymentErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "PAYMENT_TRANSACTION_NOT_CLAIMABLE",
+                    "Payment transaction is not claimable");
+
     private static PaymentErrorCode validation(String code, String message) {
 
         return new PaymentErrorCode(ErrorCategory.VALIDATION, code, message);
