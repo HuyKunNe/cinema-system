@@ -217,6 +217,14 @@ public final class PaymentErrorCode implements ErrorCode {
                     "PAYMENT_TRANSACTION_NOT_CLAIMABLE",
                     "Payment transaction is not claimable");
 
+    public static final PaymentErrorCode PAYMENT_TRANSACTION_ID_REQUIRED =
+            validation("PAYMENT_TRANSACTION_ID_REQUIRED", "Payment transaction ID is required");
+
+    public static final PaymentErrorCode PROVIDER_OPERATION_REQUIRED =
+            validation(
+                    "PAYMENT_PROVIDER_OPERATION_REQUIRED",
+                    "Claimed provider operation is required");
+
     private static PaymentErrorCode validation(String code, String message) {
 
         return new PaymentErrorCode(ErrorCategory.VALIDATION, code, message);
