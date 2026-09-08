@@ -401,4 +401,15 @@ public class PaymentTransaction {
 
         return value.trim().toUpperCase(Locale.ROOT);
     }
+
+    public boolean hasActiveLease(String expectedOwner, OffsetDateTime now) {
+
+        if (now == null) {
+            throw new ValidationException(PaymentErrorCode.CURRENT_TIME_REQUIRED);
+        }
+
+        return isOwnedBy(expectedOwner)
+                && processingExpiresAt != null
+                && processingExpiresAt.isAfter(now);
+    }
 }

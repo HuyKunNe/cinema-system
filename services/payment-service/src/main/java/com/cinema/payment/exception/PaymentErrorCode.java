@@ -225,6 +225,46 @@ public final class PaymentErrorCode implements ErrorCode {
                     "PAYMENT_PROVIDER_OPERATION_REQUIRED",
                     "Claimed provider operation is required");
 
+    public static final PaymentErrorCode PAYMENT_NOT_FOUND =
+            new PaymentErrorCode(
+                    ErrorCategory.RESOURCE, "PAYMENT_NOT_FOUND", "Payment was not found");
+
+    public static final PaymentErrorCode PAYMENT_TRANSACTION_NOT_FOUND =
+            new PaymentErrorCode(
+                    ErrorCategory.RESOURCE,
+                    "PAYMENT_TRANSACTION_NOT_FOUND",
+                    "Payment transaction was not found");
+
+    public static final PaymentErrorCode PAYMENT_TRANSACTION_LEASE_NOT_OWNED =
+            new PaymentErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "PAYMENT_TRANSACTION_LEASE_NOT_OWNED",
+                    "Payment transaction processing lease is not owned or has expired");
+
+    public static final PaymentErrorCode PAYMENT_TRANSACTION_TYPE_UNSUPPORTED =
+            new PaymentErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "PAYMENT_TRANSACTION_TYPE_UNSUPPORTED",
+                    "Payment transaction type is not supported by this operation");
+
+    public static final PaymentErrorCode PAYMENT_NOT_PROCESSABLE =
+            new PaymentErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "PAYMENT_NOT_PROCESSABLE",
+                    "Payment cannot enter processing state");
+
+    public static final PaymentErrorCode PAYMENT_HOLD_EXPIRED =
+            new PaymentErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "PAYMENT_HOLD_EXPIRED",
+                    "Payment hold expired before provider execution");
+
+    public static final PaymentErrorCode PAYMENT_TRANSACTION_DATA_MISMATCH =
+            new PaymentErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "PAYMENT_TRANSACTION_DATA_MISMATCH",
+                    "Payment transaction data does not match its payment");
+
     private static PaymentErrorCode validation(String code, String message) {
 
         return new PaymentErrorCode(ErrorCategory.VALIDATION, code, message);

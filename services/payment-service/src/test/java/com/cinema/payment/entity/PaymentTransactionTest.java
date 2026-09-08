@@ -3,19 +3,19 @@ package com.cinema.payment.entity;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
-import java.util.UUID;
-
-import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
-import org.junit.jupiter.api.Test;
-
 import com.cinema.common.core.id.UuidGenerator;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.payment.enums.PaymentTransactionStatus;
 import com.cinema.payment.enums.PaymentTransactionType;
 import com.cinema.payment.exception.PaymentErrorCode;
+
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.UUID;
 
 class PaymentTransactionTest {
 
@@ -353,6 +353,46 @@ class PaymentTransactionTest {
         assertValidation(
                 () -> transaction.claim("payment-worker-1", claimedAt, claimedAt),
                 PaymentErrorCode.PROCESSING_EXPIRATION_INVALID);
+    }
+
+    @Test
+    void ownedUnexpiredLeaseShouldBeActive() {
+
+        PaymentTransaction transaction = validTransaction();
+
+        OffsetDateTime claimedAt = OffsetDateTime.parse("2026-09-08T10:00:00Z");
+
+        transaction.claim("payment-worker-1", claimedAt, claimedAt.plusSeconds(30));
+
+        assertThat(transaction.hasActiveLease("payment-worker-1", claimedAt.plusSeconds(29)))
+                .isTrue();
+    }
+
+    @Test
+    void leaseShouldBeInactiveAtExpirationBoundary() {
+
+        PaymentTransaction transaction = validTransaction();
+
+        OffsetDateTime claimedAt = OffsetDateTime.parse("2026-09-08T10:00:00Z");
+
+        OffsetDateTime leaseExpiresAt = claimedAt.plusSeconds(30);
+
+        transaction.claim("payment-worker-1", claimedAt, leaseExpiresAt);
+
+        assertThat(transaction.hasActiveLease("payment-worker-1", leaseExpiresAt)).isFalse();
+    }
+
+    @Test
+    void leaseShouldBeInactiveForDifferentOwner() {
+
+        PaymentTransaction transaction = validTransaction();
+
+        OffsetDateTime claimedAt = OffsetDateTime.parse("2026-09-08T10:00:00Z");
+
+        transaction.claim("payment-worker-1", claimedAt, claimedAt.plusSeconds(30));
+
+        assertThat(transaction.hasActiveLease("payment-worker-2", claimedAt.plusSeconds(1)))
+                .isFalse();
     }
 
     private static PaymentTransaction validTransaction() {

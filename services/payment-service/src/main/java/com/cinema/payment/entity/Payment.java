@@ -324,4 +324,17 @@ public class Payment extends BaseEntity {
         failureMessage = null;
         completedAt = now;
     }
+
+    public void startProcessing() {
+
+        if (status == PaymentStatus.PROCESSING) {
+            return;
+        }
+
+        if (status != PaymentStatus.RECEIVED) {
+            throw new ConflictException(PaymentErrorCode.PAYMENT_NOT_PROCESSABLE);
+        }
+
+        status = PaymentStatus.PROCESSING;
+    }
 }

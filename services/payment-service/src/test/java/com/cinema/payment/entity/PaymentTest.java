@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.cinema.common.core.id.UuidGenerator;
+import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.payment.enums.PaymentStatus;
 import com.cinema.payment.enums.RefundStatus;
@@ -292,6 +293,78 @@ class PaymentTest {
                                 SOURCE_EVENT_ID,
                                 null),
                 PaymentErrorCode.CORRELATION_ID_REQUIRED);
+    }
+
+    @Test
+    void receivedPaymentShouldEnterProcessing() {
+
+        Payment payment =
+                payment(
+                        BOOKING_ID,
+                        USER_ID,
+                        1,
+                        new BigDecimal("250000.00"),
+                        "VND",
+                        "MOCK",
+                        REQUESTED_AT.plusMinutes(10),
+                        REQUESTED_AT,
+                        SOURCE_EVENT_ID,
+                        CORRELATION_ID);
+
+        payment.startProcessing();
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PROCESSING);
+
+        assertThat(payment.isReceived()).isFalse();
+        assertThat(payment.isTerminal()).isFalse();
+    }
+
+    @Test
+    void processingTransitionShouldBeIdempotentForLeaseRecovery() {
+
+        Payment payment =
+                payment(
+                        BOOKING_ID,
+                        USER_ID,
+                        1,
+                        new BigDecimal("250000.00"),
+                        "VND",
+                        "MOCK",
+                        REQUESTED_AT.plusMinutes(10),
+                        REQUESTED_AT,
+                        SOURCE_EVENT_ID,
+                        CORRELATION_ID);
+
+        payment.startProcessing();
+        payment.startProcessing();
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PROCESSING);
+    }
+
+    @Test
+    void terminalPaymentShouldNotEnterProcessing() {
+
+        Payment payment =
+                payment(
+                        BOOKING_ID,
+                        USER_ID,
+                        1,
+                        new BigDecimal("250000.00"),
+                        "VND",
+                        "MOCK",
+                        REQUESTED_AT.plusMinutes(10),
+                        REQUESTED_AT,
+                        SOURCE_EVENT_ID,
+                        CORRELATION_ID);
+
+        payment.expire(REQUESTED_AT.plusMinutes(10));
+
+        assertThatThrownBy(payment::startProcessing)
+                .isInstanceOf(ConflictException.class)
+                .satisfies(
+                        throwable ->
+                                assertThat(((ConflictException) throwable).getErrorCode())
+                                        .isEqualTo(PaymentErrorCode.PAYMENT_NOT_PROCESSABLE));
     }
 
     private static Payment payment(
