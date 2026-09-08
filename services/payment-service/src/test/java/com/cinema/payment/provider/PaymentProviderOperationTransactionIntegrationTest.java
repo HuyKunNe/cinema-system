@@ -8,6 +8,7 @@ import com.cinema.payment.provider.model.ClaimedProviderChargeOperation;
 import com.cinema.payment.provider.model.ProviderChargeCommand;
 import com.cinema.payment.provider.model.ProviderChargeResult;
 import com.cinema.payment.provider.model.ProviderOutcome;
+import com.cinema.payment.service.PaymentProviderOperationWorker;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,8 @@ class PaymentProviderOperationTransactionIntegrationTest {
 
     @Autowired private PlatformTransactionManager transactionManager;
 
+    @Autowired private PaymentProviderOperationWorker operationWorker;
+
     @Test
     void executionOutsideTransactionShouldBeAllowed() {
 
@@ -53,6 +56,18 @@ class PaymentProviderOperationTransactionIntegrationTest {
         ClaimedProviderChargeOperation operation = operation();
 
         assertThatThrownBy(() -> transactionTemplate.execute(status -> executor.execute(operation)))
+                .isInstanceOf(IllegalTransactionStateException.class);
+    }
+
+    @Test
+    void workerInsideExistingTransactionShouldBeRejected() {
+
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+
+        assertThatThrownBy(
+                        () ->
+                                transactionTemplate.executeWithoutResult(
+                                        status -> operationWorker.processNextBatch()))
                 .isInstanceOf(IllegalTransactionStateException.class);
     }
 
