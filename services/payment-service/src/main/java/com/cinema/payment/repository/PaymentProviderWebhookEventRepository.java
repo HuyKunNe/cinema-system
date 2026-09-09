@@ -16,7 +16,7 @@ public interface PaymentProviderWebhookEventRepository
 
     long countByProviderAndProviderEventId(String provider, String providerEventId);
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Modifying(flushAutomatically = true)
     @Query(
             value =
                     """

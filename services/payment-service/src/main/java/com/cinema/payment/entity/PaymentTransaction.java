@@ -547,4 +547,89 @@ public class PaymentTransaction {
 
         return normalizedMessage;
     }
+
+    public void completeSuccessfullyFromWebhook(
+            String eventId, String reference, OffsetDateTime completedAt) {
+
+        requireWebhookResultApplicable();
+        validateProviderEventId(eventId);
+        validateProviderReference(reference);
+        validateCompletionTime(completedAt);
+
+        status = PaymentTransactionStatus.SUCCEEDED;
+        providerEventId = eventId.strip();
+        providerReference = reference.strip();
+        failureCode = null;
+        failureMessage = null;
+        this.completedAt = completedAt;
+
+        clearProcessingLease();
+    }
+
+    public void completeFailedFromWebhook(
+            String eventId,
+            String reference,
+            String code,
+            String message,
+            OffsetDateTime completedAt) {
+
+        requireWebhookResultApplicable();
+        validateProviderEventId(eventId);
+        validateProviderReference(reference);
+        validateFailureCode(code);
+        validateCompletionTime(completedAt);
+
+        status = PaymentTransactionStatus.FAILED;
+        providerEventId = eventId.strip();
+        providerReference = reference.strip();
+        failureCode = code.strip();
+        failureMessage = normalizeFailureMessage(message);
+        this.completedAt = completedAt;
+
+        clearProcessingLease();
+    }
+
+    public void markPendingFromWebhook(
+            String eventId, String reference, String code, String message) {
+
+        requireWebhookResultApplicable();
+        validateProviderEventId(eventId);
+        validateProviderReference(reference);
+
+        status = PaymentTransactionStatus.PENDING_PROVIDER;
+        providerEventId = eventId.strip();
+        providerReference = reference.strip();
+        failureCode = normalizeFailureCode(code);
+        failureMessage = normalizeFailureMessage(message);
+        completedAt = null;
+
+        clearProcessingLease();
+    }
+
+    public void recordWebhookEvidence(String eventId) {
+
+        validateProviderEventId(eventId);
+
+        providerEventId = eventId.strip();
+    }
+
+    private void requireWebhookResultApplicable() {
+
+        if (status != PaymentTransactionStatus.PROCESSING
+                && status != PaymentTransactionStatus.PENDING_PROVIDER) {
+
+            throw new ConflictException(PaymentErrorCode.PAYMENT_PROVIDER_RESULT_NOT_APPLICABLE);
+        }
+    }
+
+    private static void validateProviderEventId(String eventId) {
+
+        if (eventId == null || eventId.isBlank()) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_WEBHOOK_EVENT_ID_REQUIRED);
+        }
+
+        if (eventId.strip().length() > 255) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_WEBHOOK_EVENT_ID_INVALID);
+        }
+    }
 }
