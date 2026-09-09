@@ -311,9 +311,28 @@ public final class PaymentErrorCode implements ErrorCode {
                     "PAYMENT_PROVIDER_WEBHOOK_RESULT_INVALID",
                     "Verified provider webhook result is invalid");
 
+    public static final ErrorCode PROVIDER_WEBHOOK_NOT_SUPPORTED =
+            validation(
+                    "PAYMENT_PROVIDER_WEBHOOK_NOT_SUPPORTED",
+                    "Payment provider webhook is not supported");
+
+    public static final ErrorCode PROVIDER_WEBHOOK_BODY_TOO_LARGE =
+            validation(
+                    "PAYMENT_PROVIDER_WEBHOOK_BODY_TOO_LARGE",
+                    "Payment provider webhook body exceeds the configured limit");
+
+    public static final ErrorCode PROVIDER_WEBHOOK_CONFIGURATION_INVALID =
+            system(
+                    "PAYMENT_PROVIDER_WEBHOOK_CONFIGURATION_INVALID",
+                    "Payment provider webhook configuration is invalid");
+
     private static PaymentErrorCode validation(String code, String message) {
 
         return new PaymentErrorCode(ErrorCategory.VALIDATION, code, message);
+    }
+
+    private static PaymentErrorCode system(String code, String message) {
+        return new PaymentErrorCode(ErrorCategory.SYSTEM, code, message);
     }
 
     private final ErrorCategory category;

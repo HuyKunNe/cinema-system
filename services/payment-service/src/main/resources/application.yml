@@ -97,3 +97,5 @@ cinema:
       retry:
         interval: ${PAYMENT_KAFKA_RETRY_INTERVAL:1s}
         maximum-retries: ${PAYMENT_KAFKA_MAXIMUM_RETRIES:3}
+    webhook:
+      maximum-body-size: ${PAYMENT_PROVIDER_WEBHOOK_MAXIMUM_BODY_SIZE:64KB}
