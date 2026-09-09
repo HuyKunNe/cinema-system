@@ -331,6 +331,11 @@ public final class PaymentErrorCode implements ErrorCode {
                     "PAYMENT_PROVIDER_WEBHOOK_VERIFIER_RESULT_INVALID",
                     "Payment provider webhook verifier returned an invalid result");
 
+    public static final PaymentErrorCode PROVIDER_WEBHOOK_REQUIRED =
+            validation(
+                    "PAYMENT_PROVIDER_WEBHOOK_REQUIRED",
+                    "Verified payment provider webhook is required");
+
     private static PaymentErrorCode validation(String code, String message) {
 
         return new PaymentErrorCode(ErrorCategory.VALIDATION, code, message);

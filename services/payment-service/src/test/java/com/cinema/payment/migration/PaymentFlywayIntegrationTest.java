@@ -20,7 +20,12 @@ import java.util.Map;
 class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
 
     private static final List<String> EXPECTED_TABLES =
-            List.of("outbox_events", "payment_transactions", "payments", "processed_events");
+            List.of(
+                    "outbox_events",
+                    "payment_provider_webhook_events",
+                    "payment_transactions",
+                    "payments",
+                    "processed_events");
 
     @Autowired private Flyway flyway;
 
@@ -37,7 +42,7 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
 
         assertThat(migrationInfo.all()).filteredOn(info -> info.getState().isFailed()).isEmpty();
 
-        assertThat(migrationInfo.applied()).hasSize(4);
+        assertThat(migrationInfo.applied()).hasSize(5);
     }
 
     @Test
@@ -52,13 +57,14 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                             '1',
                             '2',
                             '3',
-                            '4'
+                            '4',
+                            '5'
                         )
                           AND success = TRUE
                         """,
                         Integer.class);
 
-        assertThat(count).isEqualTo(4);
+        assertThat(count).isEqualTo(5);
     }
 
     @Test
@@ -80,6 +86,7 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                               'payments',
                               'payment_transactions',
                               'processed_events',
+                              'payment_provider_webhook_events',
                               'outbox_events'
                           )
                         ORDER BY table_name
@@ -138,10 +145,18 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                                       'causation_id'
                                   )
                               )
+                            OR
+                            (
+                                table_name = 'payment_provider_webhook_events'
+                                AND column_name IN (
+                                    'id',
+                                    'payment_transaction_id'
+                                )
+                            )
                           )
                         """);
 
-        assertThat(columns).hasSize(13);
+        assertThat(columns).hasSize(15);
 
         assertThat(columns)
                 .allSatisfy(
@@ -174,7 +189,8 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                               'uk_payment_transactions_provider_idempotency',
                               'uk_payment_transactions_provider_event',
                               'uk_payment_transactions_provider_reference',
-                              'uk_processed_events_event_consumer'
+                              'uk_processed_events_event_consumer',
+                              'uk_payment_provider_webhook_events_provider_event'
                           )
                         """,
                         String.class);
@@ -187,7 +203,8 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                         "uk_payment_transactions_provider_idempotency",
                         "uk_payment_transactions_provider_event",
                         "uk_payment_transactions_provider_reference",
-                        "uk_processed_events_event_consumer");
+                        "uk_processed_events_event_consumer",
+                        "uk_payment_provider_webhook_events_provider_event");
     }
 
     @Test
@@ -203,7 +220,10 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                         """,
                         String.class);
 
-        assertThat(constraints).containsExactly("fk_payment_transactions_payment");
+        assertThat(constraints)
+                .containsExactlyInAnyOrder(
+                        "fk_payment_transactions_payment",
+                        "fk_payment_provider_webhook_events_transaction");
     }
 
     @Test
@@ -227,7 +247,8 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                               'idx_outbox_events_processing_owner',
                               'idx_outbox_events_aggregate',
                               'idx_outbox_events_correlation',
-                              'idx_payment_transactions_ready_claim'
+                              'idx_payment_transactions_ready_claim',
+                              'idx_payment_provider_webhook_events_transaction'
                           )
                         """,
                         String.class);
@@ -245,7 +266,8 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                         "idx_outbox_events_processing_owner",
                         "idx_outbox_events_aggregate",
                         "idx_outbox_events_correlation",
-                        "idx_payment_transactions_ready_claim");
+                        "idx_payment_transactions_ready_claim",
+                        "idx_payment_provider_webhook_events_transaction");
     }
 
     @Test
