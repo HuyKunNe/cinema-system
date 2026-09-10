@@ -317,13 +317,17 @@ Additional requirements:
 - `payment_attempt` and transaction `attempt_number` are positive;
 - state enums are stored as strings and constrained to approved values;
 - timestamps use microsecond precision and UTC-compatible mappings;
+
+```markdown
 - provider reference uniqueness is scoped by provider;
 - Outbox schema matches `common-outbox` exactly;
 - Hibernate uses `ddl-auto: validate` and Flyway owns DDL.
-  `payment_provider_webhook_events` is the authoritative provider-callback
-  idempotency history. `payment_transactions.provider_event_id` records the latest
-  callback evidence applied to the transaction; it does not replace the immutable
-  callback marker history.
+
+`payment_provider_webhook_events` is the authoritative provider-callback
+idempotency history. `payment_transactions.provider_event_id` records the latest
+callback evidence applied to the transaction; it does not replace the immutable
+callback marker history.
+```
 
 ---
 
@@ -475,6 +479,8 @@ non-negative amount
 three-letter currency
 requestedAt < holdExpiresAt
 ```
+
+````
 
 The consumer then performs one short local transaction:
 
@@ -988,3 +994,4 @@ The following choices remain deferred without weakening this design:
 Every later choice must preserve database ownership, provider idempotency,
 webhook authentication, sensitive-data minimization, Transactional Outbox, and
 idempotent consumer rules.
+````

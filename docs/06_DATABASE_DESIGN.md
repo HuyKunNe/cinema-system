@@ -1420,10 +1420,14 @@ processed_at
 ```
 
 Required invariants:
+
+```text
 UNIQUE(provider, provider_event_id)
 FOREIGN KEY(payment_transaction_id) REFERENCES payment_transactions(id)
 amount DECIMAL(19, 2)
 currency normalized to three uppercase letters
+```
+
 The table is the authoritative callback-idempotency history. It must not store
 signatures, secrets, authorization headers, unrestricted raw payloads, or
 provider credentials.

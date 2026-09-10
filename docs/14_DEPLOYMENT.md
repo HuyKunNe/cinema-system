@@ -34,7 +34,6 @@ deployable. Only completed roadmap checkpoints define operational capability.
 | Inventory Service    | R24    | Implemented with hardened independent Resource Server security                          |
 | User Service         | R25.13 | Identity platform and integration through R25.13 implemented                            |
 | Booking Service      | R26    | Implemented with independent Resource Server and Saga integration                       |
-| Payment Service      | R27.4  | Implemented through payment-requested consumption; provider execution not implemented   |
 | Payment Service      | R27.6  | Provider operation and verified webhook processing implemented; terminal Outbox pending |
 | Notification Service | R28    | Not implemented                                                                         |
 

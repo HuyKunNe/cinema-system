@@ -74,7 +74,6 @@ class SeatReservationRequestedKafkaIntegrationTest {
     private static final String MYSQL_IMAGE = "mysql:8.4.0";
 
     private static final String KAFKA_IMAGE = "apache/kafka:4.0.0";
-    ;
 
     @Container
     static final MySQLContainer<?> MYSQL =

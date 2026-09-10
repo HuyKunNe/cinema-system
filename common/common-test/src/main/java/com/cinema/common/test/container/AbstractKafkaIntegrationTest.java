@@ -13,7 +13,6 @@ import org.testcontainers.kafka.KafkaContainer;
 public abstract class AbstractKafkaIntegrationTest {
 
     private static final String KAFKA_IMAGE = "apache/kafka:4.0.0";
-    ;
 
     @Container protected static final KafkaContainer KAFKA = new KafkaContainer(KAFKA_IMAGE);
 

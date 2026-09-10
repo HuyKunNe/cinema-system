@@ -60,7 +60,6 @@ implemented.
 | R27.1–R27.6 — Payment request, provider, and webhook processing | Completed |
 | R27.7 — Terminal Payment result Outbox publication              | Next      |
 | R27.8–R27.13 — Remaining Payment Saga integration               | Planned   |
-| R27.6–R27.13 — Remaining Payment Saga integration               | Planned   |
 | R28 — Notification Service                                      | Planned   |
 
 Latest completed checkpoint:
