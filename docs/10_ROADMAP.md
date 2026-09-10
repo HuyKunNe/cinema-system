@@ -1,8 +1,8 @@
 # Project Roadmap
 
-**Version:** R27.6 Implementation
-**Current target:** R27.6 — Authenticated webhook and provider-result processing
-**Last updated:** 2026-09-08
+**Version:** R27.7 Implementation
+**Current target:** R27.7 — Payment result Outbox publication
+**Last updated:** 2026-09-10
 
 ---
 
@@ -1567,8 +1567,8 @@ Payment Service will own:
 | R27.3      | Payment aggregate and Flyway schema                         | DONE    |
 | R27.4      | `payment-requested` validation and idempotent consumption   | DONE    |
 | R27.5      | Provider port, operation worker, and provider idempotency   | DONE    |
-| R27.6      | Authenticated webhook and provider-result processing        | NEXT    |
-| R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | PLANNED |
+| R27.6      | Authenticated webhook and provider-result processing        | DONE    |
+| R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | NEXT    |
 | R27.8      | Booking payment-result consumers                            | PLANNED |
 | R27.9      | Inventory confirmation and compensation consumers           | PLANNED |
 | R27.10     | Refund, reconciliation, permissions, and audit controls     | PLANNED |
@@ -1634,9 +1634,20 @@ R27.5 completed the initial provider-execution baseline:
 The R27.5 worker is not scheduled. R27.7 must add atomic terminal result Outbox
 publication before scheduled provider execution is enabled.
 
-R27.6 is the active checkpoint. It adds authenticated provider callback
-processing without changing Payment database ownership or exposing provider
-credentials.
+R27.6 completed authenticated provider-callback processing:
+
+- immutable untrusted-request and trusted-result contracts;
+- strict body-size and provider allowlist enforcement;
+- provider-owned verification and acknowledgement behavior;
+- provider-event idempotency through a Flyway-owned marker table;
+- fixed `Payment -> PaymentTransaction` locking;
+- transactional forward-only result application;
+- duplicate, stale, race, and rollback verification;
+- public-at-the-JWT-boundary webhook routing protected by provider verification;
+- sanitized HTTP failure-boundary verification.
+
+R27.7 is the active checkpoint. It must atomically persist terminal Payment state
+and exactly one canonical `payment-succeeded` or `payment-failed` Outbox record.
 
 R27 provider execution must use a stable provider idempotency key and must not
 run while a database transaction or row lock remains open. Retryable or unknown
@@ -1840,7 +1851,7 @@ Do not:
 | Inventory Service       | R24            | ✅ Completed                                                       |
 | User Service            | R25            | ✅ Completed                                                       |
 | Booking Service         | R26            | ✅ Completed                                                       |
-| Payment Service         | R27            | ⏳ In progress — R27.1–R27.5 completed                             |
+| Payment Service         | R27            | ⏳ In progress — R27.1–R27.6 completed                             |
 | Notification Service    | R28            | ⏳ Planned                                                         |
 | Production Readiness    | To be assigned | ⏳ Planned                                                         |
 
@@ -1851,6 +1862,10 @@ The latest completed service round is:
 The next implementation round is:
 
 > **R27 — Payment Service**
+
+The active implementation checkpoint is:
+
+> **R27.7 — `payment-succeeded` and `payment-failed` Outbox publication**
 
 ADR-013 selects User Service with Spring Authorization Server as the
 authoritative issuer. R25 User Service and R26 Booking Service are complete.

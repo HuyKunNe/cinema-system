@@ -1,8 +1,8 @@
 # Changelog
 
-**Version:** 0.8
-**Current baseline:** R1–R26 and R27.1–R27.4 completed; R27.5 next
-**Last reviewed:** 2026-09-08
+**Version:** 0.9
+**Current baseline:** R1–R26 and R27.1–R27.6 completed; R27.7 next
+**Last reviewed:** 2026-09-10
 
 ---
 
@@ -37,9 +37,9 @@ R25.1–R25.15          Completed
 R25                   User Service completed
 R26.1–R26.13          Completed
 R26                   Booking Service completed
-R27.1–R27.4           Completed
+R27.1–R27.6           Completed
 R27                   Payment Service in progress
-R27.5                 Next
+R27.7                 Next
 R28                   Planned
 ```
 
@@ -47,7 +47,45 @@ R28                   Planned
 
 # Unreleased
 
+## 2026-09-10
+
+### R27.6 Authenticated Provider Webhooks
+
+- Added immutable raw webhook request and trusted callback contracts.
+- Added configurable callback body-size validation.
+- Added normalized provider verifier registration and allowlisting.
+- Added provider-specific verification and acknowledgement boundaries.
+- Added the provider webhook HTTP endpoint.
+- Allowed the callback endpoint through customer JWT security while retaining
+  mandatory provider-specific request authentication.
+- Added Flyway-owned immutable provider callback markers.
+- Enforced `(provider, providerEventId)` idempotency.
+- Added fixed `Payment -> PaymentTransaction` lock ordering.
+- Added transactional success, failure, pending, unknown, duplicate, confirmed,
+  and stale callback handling.
+- Verified duplicate callbacks create one marker and one business transition.
+- Verified concurrent callbacks serialize safely.
+- Verified failed callback application rolls back its event marker.
+- Verified invalid signatures and malformed requests do not mutate Payment data.
+- Verified provider acknowledgements through the full HTTP and MySQL boundary.
+- Confirmed production MoMo/VNPay adapters remain deferred.
+- Confirmed terminal payment-result Outbox publication remains R27.7.
+- Completed R27.6 and advanced the active checkpoint to R27.7.
+
 ## 2026-09-08
+
+### R27.5 Provider Execution Baseline
+
+- Added provider-neutral charge contracts and outcome categories.
+- Added the provider registry and deterministic MOCK adapter.
+- Added bounded provider-operation claiming and processing leases.
+- Added expired-lease recovery with stable provider idempotency.
+- Added MySQL `READ_COMMITTED` and `FOR UPDATE SKIP LOCKED` claiming.
+- Enforced provider execution outside database transactions.
+- Added lease-owner-guarded result application.
+- Added late-success reconciliation handling.
+- Verified concurrency, lease recovery, crash recovery, and provider idempotency.
+- Kept scheduled execution disabled until terminal Outbox publication is available.
 
 ### R27.4 Payment Request Consumption
 

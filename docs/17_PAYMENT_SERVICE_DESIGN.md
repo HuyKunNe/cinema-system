@@ -1,8 +1,8 @@
 # Payment Service Design
 
-**Version:** R27.5
-**Status:** Provider port, operation worker, and provider idempotency implemented
-**Last updated:** 2026-09-08
+**Version:** R27.6
+**Status:** Authenticated webhook ingress and idempotent provider-result application implemented
+**Last updated:** 2026-09-10
 
 ---
 
@@ -55,6 +55,7 @@ Payment Service owns:
 ```text
 payments
 payment_transactions
+payment_provider_webhook_events
 processed_events
 outbox_events
 ```
@@ -304,6 +305,7 @@ payments(booking_id, payment_attempt) UNIQUE
 payments(source_event_id) UNIQUE
 payment_transactions(provider, idempotency_key) UNIQUE
 payment_transactions(provider, provider_event_id) UNIQUE when event ID exists
+payment_provider_webhook_events(provider, provider_event_id) UNIQUE
 processed_events(event_id, consumer_name) UNIQUE
 ```
 
@@ -318,6 +320,10 @@ Additional requirements:
 - provider reference uniqueness is scoped by provider;
 - Outbox schema matches `common-outbox` exactly;
 - Hibernate uses `ddl-auto: validate` and Flyway owns DDL.
+  `payment_provider_webhook_events` is the authoritative provider-callback
+  idempotency history. `payment_transactions.provider_event_id` records the latest
+  callback evidence applied to the transaction; it does not replace the immutable
+  callback marker history.
 
 ---
 
@@ -407,6 +413,50 @@ R27.5 does not implement:
 - terminal payment-result Outbox publication;
 - Booking payment-result consumption;
 - automatic refund or reconciliation processing.
+
+### R27.6 implementation state
+
+R27.6 implements:
+
+- immutable raw webhook request, verified callback, application-result, and
+  provider-acknowledgement contracts;
+- configurable webhook body-size validation;
+- normalized provider allowlist and verifier registry;
+- provider-specific signature, timestamp, replay, event-type, and payload
+  verification boundary;
+- strict separation between untrusted raw input and trusted provider results;
+- `POST /api/v1/payments/webhooks/{provider}`;
+- JWT-security allowlisting for the provider callback endpoint;
+- provider-specific acknowledgement generation;
+- Flyway-owned `payment_provider_webhook_events`;
+- immutable provider callback evidence;
+- `(provider, providerEventId)` callback idempotency;
+- MySQL atomic duplicate registration;
+- fixed `Payment -> PaymentTransaction` lock ordering;
+- forward-only success, failure, pending, unknown, duplicate, stale, and
+  existing-result handling;
+- rollback of the callback marker when result application fails;
+- unit, MVC security, MySQL race, rollback, and full HTTP boundary verification.
+
+The webhook endpoint is `permitAll` only at the customer JWT Resource Server
+boundary. It is not an unauthenticated business operation. Every supported
+production provider must authenticate its callback inside its
+`PaymentProviderWebhookVerifier` before the payload becomes trusted.
+
+R27.6 does not implement:
+
+- production MoMo or VNPay credentials, network clients, or signature adapters;
+- scheduled provider-operation execution;
+- atomic `payment-succeeded` or `payment-failed` Outbox publication;
+- Booking payment-result consumption;
+- automatic refund or reconciliation processing.
+
+The repository currently uses a deterministic test-only verifier for HTTP
+integration verification. Test provider headers and signature values must not
+appear in production source or configuration.
+
+R27.7 must persist the terminal Payment result and its canonical Outbox event in
+the same local transaction before scheduled provider execution is enabled.
 
 ## 9. `payment-requested` Consumer Transaction
 
@@ -609,12 +659,13 @@ provider messages are prohibited from the event.
 Provider webhook endpoints do not use customer bearer authentication. They use
 provider-specific request authentication.
 
-| Request                                                 | R27.2 rule                |
-| ------------------------------------------------------- | ------------------------- |
-| `OPTIONS /**`                                           | permit for CORS preflight |
-| `/actuator/health`, `/actuator/info`                    | permit                    |
-| `GET /api/v1/payments/{paymentId}`                      | require `payment:read`    |
-| refund, reconciliation, webhook, and all other requests | deny                      |
+| Request                                      | R27.6 rule                            |
+| -------------------------------------------- | ------------------------------------- |
+| `OPTIONS /**`                                | permit for CORS preflight             |
+| `/actuator/health`, `/actuator/info`         | permit                                |
+| `GET /api/v1/payments/{paymentId}`           | require `payment:read`                |
+| `POST /api/v1/payments/webhooks/{provider}`  | permit JWT; require provider verifier |
+| refund, reconciliation, and all other routes | deny                                  |
 
 The endpoint contract is provider-adapter owned under:
 
@@ -622,23 +673,29 @@ The endpoint contract is provider-adapter owned under:
 POST /api/v1/payments/webhooks/{provider}
 ```
 
-Processing must:
+Processing performs:
 
-1. apply a strict payload-size limit;
-2. retain the raw body required for signature verification;
-3. resolve the provider from an allowlist;
-4. verify signature, timestamp, and replay protection before trusting payload;
-5. reject unsupported algorithms and event types;
-6. validate provider event and payment references;
-7. enforce `(provider, providerEventId)` uniqueness;
-8. lock the Payment aggregate;
-9. apply only an allowed forward transition;
-10. create a result Outbox event only once;
-11. persist bounded processing evidence;
-12. return the provider-required acknowledgement without exposing internals.
+1. capture the raw request body and headers;
+2. reject an empty or oversized body;
+3. normalize and resolve the provider through the verifier registry;
+4. authenticate the provider request before trusting any callback field;
+5. parse the provider payload into an immutable verified result;
+6. validate provider event ID, provider reference, outcome, amount, currency,
+   timestamps, and bounded failure evidence;
+7. locate the CHARGE transaction from its provider reference;
+8. lock `Payment` before `PaymentTransaction`;
+9. verify trusted callback data against locally persisted financial data;
+10. atomically register `(provider, providerEventId)`;
+11. apply only an allowed forward transition;
+12. retain duplicate and stale callback evidence without repeating a transition;
+13. return the provider-specific acknowledgement.
 
-Webhook logs must not include signatures, secrets, card data, or unrestricted
-raw bodies.
+R27.6 does not create `payment-succeeded` or `payment-failed`. R27.7 adds the
+terminal Outbox event to the same transaction that commits the terminal Payment
+state. Until then, scheduled provider execution remains disabled.
+
+Webhook logs must not include signatures, secrets, authorization headers, card
+data, or unrestricted raw request bodies.
 
 ---
 

@@ -387,27 +387,30 @@ delivery. It must not import Inventory Service code or access
 
 ## payment-service
 
-Implemented through R27.4. It owns:
+Implemented through R27.6. It owns:
 
 - Payment aggregates and payment-attempt lifecycle
 - Payment transactions and provider-operation evidence
+- Immutable provider webhook event markers
 - Payment-local `processed_events`
 - Payment-local Transactional Outbox records
-- Payment provider selection and provider idempotency boundaries
 - Canonical `payment-requested` consumption
-- Duplicate delivery and conflicting-attempt detection
-- Kafka retry and sanitized dead-letter handling
+- Provider selection, claiming, leases, and provider idempotency
+- Provider-specific webhook verification and acknowledgements
+- Transactional provider-result application
 - Payment-owned refund and reconciliation state
 
-Implemented runtime behavior currently stops after creating a `RECEIVED`
-Payment and a `READY` CHARGE operation, or an `EXPIRED` Payment when the
-reservation deadline has passed.
+Implemented runtime behavior includes Payment request consumption, READY CHARGE
+creation, provider-operation claiming and application of verified provider
+callbacks.
 
-Provider execution, authenticated webhooks, terminal result Outbox publication,
-refund operations, and reconciliation remain later R27 checkpoints.
+The provider worker remains unscheduled. Terminal `payment-succeeded` and
+`payment-failed` Outbox publication is R27.7 scope. Production MoMo/VNPay
+credentials, network clients, and signature adapters are not implemented.
 
 Payment Service must not import Booking or Inventory implementation classes,
-access their databases, or store payment credentials.
+access their databases, store prohibited payment credentials, or trust an
+unverified provider callback.
 
 ## notification-service
 

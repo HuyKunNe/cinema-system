@@ -283,14 +283,15 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                                is_nullable
                         FROM information_schema.columns
                         WHERE table_schema = DATABASE()
-                          AND column_name = 'amount'
-                          AND table_name IN (
-                              'payments',
-                              'payment_transactions'
+                            AND column_name = 'amount'
+                            AND table_name IN (
+                                'payments',
+                                'payment_transactions',
+                                'payment_provider_webhook_events'
                           )
                         """);
 
-        assertThat(columns).hasSize(2);
+        assertThat(columns).hasSize(3);
 
         assertThat(columns)
                 .allSatisfy(

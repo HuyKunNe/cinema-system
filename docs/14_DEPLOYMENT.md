@@ -1,6 +1,6 @@
 # Deployment Guide
 
-Version: R27.4
+Version: R27.6
 
 ---
 
@@ -11,13 +11,12 @@ supported by the Cinema Booking System repository.
 
 Current baseline:
 
-- R1–R26 and R27.1–R27.4 are completed.
-- User Service is the authoritative OAuth2/OpenID Connect issuer.
-- Gateway, Movie Service, Inventory Service, Booking Service, and Payment
-  Service independently validate access tokens where applicable.
-- Payment Service is implemented through canonical `payment-requested`
-  consumption.
-- R27.5 provider execution is not implemented yet.
+- R1–R26 and R27.1–R27.6 are completed.
+- Payment Service consumes `payment-requested`, manages provider operations, and
+  accepts callbacks through the provider-verification boundary.
+- The provider worker is not scheduled.
+- Production MoMo/VNPay adapters are not implemented.
+- Terminal payment-result Outbox publication remains R27.7.
 
 A placeholder Maven module or Config Server file does not make a service
 deployable. Only completed roadmap checkpoints define operational capability.
@@ -26,17 +25,18 @@ deployable. Only completed roadmap checkpoints define operational capability.
 
 # Current Deployment Status
 
-| Component            | Round  | Status                                                                                |
-| -------------------- | ------ | ------------------------------------------------------------------------------------- |
-| Config Server        | R20    | Implemented                                                                           |
-| Discovery Server     | R21    | Implemented                                                                           |
-| API Gateway          | R25.13 | Reactive Resource Server security and explicit routes implemented                     |
-| Movie Service        | R23    | Implemented with independent Resource Server security                                 |
-| Inventory Service    | R24    | Implemented with hardened independent Resource Server security                        |
-| User Service         | R25.13 | Identity platform and integration through R25.13 implemented                          |
-| Booking Service      | R26    | Implemented with independent Resource Server and Saga integration                     |
-| Payment Service      | R27.4  | Implemented through payment-requested consumption; provider execution not implemented |
-| Notification Service | R28    | Not implemented                                                                       |
+| Component            | Round  | Status                                                                                  |
+| -------------------- | ------ | --------------------------------------------------------------------------------------- |
+| Config Server        | R20    | Implemented                                                                             |
+| Discovery Server     | R21    | Implemented                                                                             |
+| API Gateway          | R25.13 | Reactive Resource Server security and explicit routes implemented                       |
+| Movie Service        | R23    | Implemented with independent Resource Server security                                   |
+| Inventory Service    | R24    | Implemented with hardened independent Resource Server security                          |
+| User Service         | R25.13 | Identity platform and integration through R25.13 implemented                            |
+| Booking Service      | R26    | Implemented with independent Resource Server and Saga integration                       |
+| Payment Service      | R27.4  | Implemented through payment-requested consumption; provider execution not implemented   |
+| Payment Service      | R27.6  | Provider operation and verified webhook processing implemented; terminal Outbox pending |
+| Notification Service | R28    | Not implemented                                                                         |
 
 The Gateway validates bearer access tokens as a reactive OAuth2 Resource Server.
 It validates signature, issuer, timestamps and the required `cinema-api` audience
@@ -162,6 +162,27 @@ must be declared explicitly in `gateway-service.yml`.
 trusted User Service environment. They must not point to arbitrary public test
 issuers in a production-capable profile.
 
+## Payment Service
+
+| Variable                                     | Required                  | Development default                 |
+| -------------------------------------------- | ------------------------- | ----------------------------------- |
+| `PAYMENT_SERVICE_PORT`                       | No                        | `8085`                              |
+| `PAYMENT_DB_URL`                             | No                        | Local MySQL `cinema_payment_db` URL |
+| `PAYMENT_DB_USERNAME`                        | Yes                       | None                                |
+| `PAYMENT_DB_PASSWORD`                        | Yes                       | None                                |
+| `PAYMENT_PROVIDER`                           | No                        | `MOCK`                              |
+| `PAYMENT_PROVIDER_OPERATION_BATCH_SIZE`      | No                        | `20`                                |
+| `PAYMENT_PROVIDER_OPERATION_LEASE_DURATION`  | No                        | `30s`                               |
+| `PAYMENT_PROVIDER_WEBHOOK_MAXIMUM_BODY_SIZE` | No                        | `64KB`                              |
+| `PAYMENT_KAFKA_ENABLED`                      | No                        | `true`                              |
+| `CINEMA_AUTH_ISSUER`                         | Yes for protected runtime | None                                |
+| `CINEMA_AUTH_JWK_SET_URI`                    | Yes for protected runtime | None                                |
+| `CINEMA_AUTH_AUDIENCE`                       | No                        | `cinema-api`                        |
+
+Provider webhook secrets and credentials are intentionally absent because no
+production provider adapter is implemented. They must later be supplied through
+secret management, never committed configuration.
+
 ## Future User Service
 
 The exact environment-variable names become authoritative only when the User
@@ -244,6 +265,7 @@ Current databases:
 cinema_movie_db
 cinema_inventory_db
 cinema_booking_db
+cinema_payment_db
 ```
 
 Example MySQL preparation must be adapted to the local credential policy:
@@ -252,6 +274,7 @@ Example MySQL preparation must be adapted to the local credential policy:
 CREATE DATABASE cinema_movie_db;
 CREATE DATABASE cinema_inventory_db;
 CREATE DATABASE cinema_booking_db;
+CREATE DATABASE cinema_payment_db;
 ```
 
 Do not use one application account with access to every service database in

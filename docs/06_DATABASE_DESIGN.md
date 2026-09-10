@@ -1,7 +1,7 @@
 # Database Design
 
-Version: R27.1
-Last updated: 2026-08-26
+Version: R27.6
+Last updated: 2026-09-10
 
 This document defines the authoritative database ownership, schema design rules,
 table responsibilities, relationships, constraints, indexing strategy, and
@@ -1270,6 +1270,7 @@ Payment Service owns:
 ```text
 payments
 payment_transactions
+payment_provider_webhook_events
 processed_events
 outbox_events
 ```
@@ -1397,6 +1398,35 @@ processing lease, and every retry of the same provider operation reuses the same
 idempotency key.
 
 ---
+
+## Payment Provider Webhook Events Table
+
+`payment_provider_webhook_events` stores immutable, bounded evidence for
+provider callbacks that crossed the provider-authentication boundary.
+
+Conceptual columns:
+
+```text
+id
+payment_transaction_id
+provider
+provider_event_id
+provider_reference
+outcome
+amount
+currency
+occurred_at
+processed_at
+```
+
+Required invariants:
+UNIQUE(provider, provider_event_id)
+FOREIGN KEY(payment_transaction_id) REFERENCES payment_transactions(id)
+amount DECIMAL(19, 2)
+currency normalized to three uppercase letters
+The table is the authoritative callback-idempotency history. It must not store
+signatures, secrets, authorization headers, unrestricted raw payloads, or
+provider credentials.
 
 # Notification Service Database
 
@@ -2157,40 +2187,41 @@ The service must distinguish between:
 
 # Schema Ownership Summary
 
-| Table                            | Owning service         |
-| -------------------------------- | ---------------------- |
-| `movies`                         | Movie Service          |
-| `genres`                         | Movie Service          |
-| `movie_genres`                   | Movie Service          |
-| `users`                          | User Service           |
-| `user_profiles`                  | User Service           |
-| `user_credentials`               | User Service           |
-| `roles`                          | User Service           |
-| `permissions`                    | User Service           |
-| `user_roles`                     | User Service           |
-| `role_permissions`               | User Service           |
-| `email_verification_tokens`      | User Service           |
-| `password_reset_tokens`          | User Service           |
-| `oauth2_registered_client`       | User Service           |
-| `oauth2_authorization`           | User Service           |
-| `oauth2_authorization_consent`   | User Service           |
-| `oauth2_refresh_token_history`   | User Service           |
-| `oauth2_revocation_audit_events` | User Service           |
-| `user_mfa_methods`               | User Service           |
-| `security_audit_events`          | User Service           |
-| `cinemas`                        | Inventory Service      |
-| `rooms`                          | Inventory Service      |
-| `seats`                          | Inventory Service      |
-| `showtimes`                      | Inventory Service      |
-| `show_seats`                     | Inventory Service      |
-| `bookings`                       | Booking Service        |
-| `booking_seats`                  | Booking Service        |
-| `payments`                       | Payment Service        |
-| `payment_transactions`           | Payment Service        |
-| `notifications`                  | Notification Service   |
-| `notification_deliveries`        | Notification Service   |
-| `outbox_events`                  | The publishing service |
-| `processed_events`               | The consuming service  |
+| Table                             | Owning service         |
+| --------------------------------- | ---------------------- |
+| `movies`                          | Movie Service          |
+| `genres`                          | Movie Service          |
+| `movie_genres`                    | Movie Service          |
+| `users`                           | User Service           |
+| `user_profiles`                   | User Service           |
+| `user_credentials`                | User Service           |
+| `roles`                           | User Service           |
+| `permissions`                     | User Service           |
+| `user_roles`                      | User Service           |
+| `role_permissions`                | User Service           |
+| `email_verification_tokens`       | User Service           |
+| `password_reset_tokens`           | User Service           |
+| `oauth2_registered_client`        | User Service           |
+| `oauth2_authorization`            | User Service           |
+| `oauth2_authorization_consent`    | User Service           |
+| `oauth2_refresh_token_history`    | User Service           |
+| `oauth2_revocation_audit_events`  | User Service           |
+| `user_mfa_methods`                | User Service           |
+| `security_audit_events`           | User Service           |
+| `cinemas`                         | Inventory Service      |
+| `rooms`                           | Inventory Service      |
+| `seats`                           | Inventory Service      |
+| `showtimes`                       | Inventory Service      |
+| `show_seats`                      | Inventory Service      |
+| `bookings`                        | Booking Service        |
+| `booking_seats`                   | Booking Service        |
+| `payments`                        | Payment Service        |
+| `payment_transactions`            | Payment Service        |
+| `notifications`                   | Notification Service   |
+| `notification_deliveries`         | Notification Service   |
+| `outbox_events`                   | The publishing service |
+| `processed_events`                | The consuming service  |
+| `payment_provider_webhook_events` | Payment Service        |
 
 The same technical table name may exist in multiple service databases.
 

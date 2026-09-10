@@ -25,6 +25,8 @@ The `docs` directory is the project's source of truth.
 - R27.3 — Payment aggregate and Flyway schema
 - R27.4 — `payment-requested` validation and idempotent consumption
 - R27.5 — Provider port, operation worker, and provider idempotency
+- R27.6 — Authenticated webhook and provider-result processing
+
 ## Completed Inventory Round
 
 > **R24 — Inventory Service**
@@ -162,13 +164,21 @@ R27.2 — Payment Service bootstrap and Resource Server security    — DONE
 R27.3 — Payment aggregate and Flyway schema                       — DONE
 R27.4 — payment-requested validation and idempotent consumption   — DONE
 R27.5 — Provider port, operation worker, and provider idempotency — DONE
+R27.6 — Authenticated webhook and provider-result processing      — DONE
 ```
 
 Current checkpoint:
 
 ```text
-R27.6 — Authenticated webhook and provider-result processing — NEXT
+R27.7 — payment-succeeded and payment-failed Outbox publication — NEXT
 ```
+
+R27.6 accepts provider callbacks only after provider-specific verification. The
+HTTP endpoint does not require a customer bearer token, but this must never be
+described as an unauthenticated payment decision.
+
+Production MoMo/VNPay integration is not implemented. R27.7 must atomically
+persist terminal Payment state and its canonical Outbox event.
 
 Payment Service owns payment attempts, provider interaction, provider
 idempotency, payment-result events, refund state and Payment-owned persistence.
@@ -653,7 +663,7 @@ Movie, Inventory, User and Booking Service have completed their applicable
 implementation and verification requirements.
 
 R26 Booking Service is closed. R27 Payment Service is in progress.
-R27.1–R27.5 are complete. R27.6 is the active implementation checkpoint.
+R27.1–R27.6 are complete. R27.7 is the active implementation checkpoint.
 
 ---
 

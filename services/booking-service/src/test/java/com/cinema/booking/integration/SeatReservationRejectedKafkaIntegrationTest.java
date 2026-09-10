@@ -54,7 +54,8 @@ class SeatReservationRejectedKafkaIntegrationTest {
 
     private static final String MYSQL_IMAGE = "mysql:8.4.0";
 
-    private static final String KAFKA_IMAGE = "apache/kafka-native:4.0.0";
+    private static final String KAFKA_IMAGE = "apache/kafka:4.0.0";
+    ;
 
     private static final OffsetDateTime NOW = OffsetDateTime.parse("2026-08-24T10:00:00Z");
 

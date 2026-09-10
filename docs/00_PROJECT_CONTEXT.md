@@ -1,6 +1,6 @@
 # Cinema Booking System
 
-Version: 0.8 (R27.4 Completed; R27.5 Provider Execution Next)
+Version: 0.9 (R27.6 Completed; R27.7 Payment Result Outbox Next)
 
 ---
 
@@ -62,6 +62,8 @@ Hệ thống được thiết kế để mô phỏng nền tảng của các chu
 - ✅ R27.2 — Payment Service bootstrap and Resource Server security
 - ✅ R27.3 — Payment aggregate and Flyway schema
 - ✅ R27.4 — `payment-requested` validation and idempotent consumption
+- ✅ R27.5 — Provider port, operation worker, and provider idempotency
+- ✅ R27.6 — Authenticated webhook and provider-result processing
 
 Inventory Service owns:
 
@@ -128,11 +130,11 @@ Current implementation round:
 
 Latest completed checkpoint:
 
-- R27.4 — `payment-requested` validation and idempotent consumption — DONE
+- R27.6 — Authenticated webhook and provider-result processing — DONE
 
 Next checkpoint:
 
-- R27.5 — Provider port, operation worker, and provider idempotency — NEXT
+- R27.7 — `payment-succeeded` and `payment-failed` Outbox publication — NEXT
 
 R25.14 verifies JWT trust and temporal validation, UUID v7 subjects, roles and
 permissions, Authorization Code with PKCE, controlled Client Credentials,

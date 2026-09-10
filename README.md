@@ -43,32 +43,33 @@ implemented.
 
 # Current Status
 
-| Scope                                                       | Status    |
-| ----------------------------------------------------------- | --------- |
-| R1-R24                                                      | Completed |
-| R25.1–R25.10 — User Service security and OAuth2 foundations | Completed |
-| R25.11.1–R25.11.7 — Refresh security and revocation         | Completed |
-| R25.11.8 — Sensitive-change revocation triggers             | Completed |
-| R25.11.9 — Durable security-event recording                 | Completed |
-| R25.11.10 — Concurrent refresh and reuse verification       | Completed |
-| R25.11.11 — Cleanup, verification and documentation closure | Completed |
-| R25.12 — Profile and account lifecycle APIs                 | Completed |
-| R25.13 — Gateway and Resource Server integration            | Completed |
-| R25.14 — Security and protocol verification                 | Completed |
-| R25.15 — Stabilization and closure                          | Completed |
-| R26 — Booking Service                                       | Completed |
-| R27.1–R27.4 — Payment foundation and event consumption      | Completed |
-| R27.5 — Provider port, worker, and provider idempotency     | Next      |
-| R27.6–R27.13 — Remaining Payment Saga integration           | Planned   |
-| R28 — Notification Service                                  | Planned   |
+| Scope                                                           | Status    |
+| --------------------------------------------------------------- | --------- |
+| R1-R24                                                          | Completed |
+| R25.1–R25.10 — User Service security and OAuth2 foundations     | Completed |
+| R25.11.1–R25.11.7 — Refresh security and revocation             | Completed |
+| R25.11.8 — Sensitive-change revocation triggers                 | Completed |
+| R25.11.9 — Durable security-event recording                     | Completed |
+| R25.11.10 — Concurrent refresh and reuse verification           | Completed |
+| R25.11.11 — Cleanup, verification and documentation closure     | Completed |
+| R25.12 — Profile and account lifecycle APIs                     | Completed |
+| R25.13 — Gateway and Resource Server integration                | Completed |
+| R25.14 — Security and protocol verification                     | Completed |
+| R25.15 — Stabilization and closure                              | Completed |
+| R26 — Booking Service                                           | Completed |
+| R27.1–R27.6 — Payment request, provider, and webhook processing | Completed |
+| R27.7 — Terminal Payment result Outbox publication              | Next      |
+| R27.8–R27.13 — Remaining Payment Saga integration               | Planned   |
+| R27.6–R27.13 — Remaining Payment Saga integration               | Planned   |
+| R28 — Notification Service                                      | Planned   |
 
 Latest completed checkpoint:
 
-> **R27.4 — `payment-requested` validation and idempotent consumption**
+> **R27.6 — Authenticated webhook and provider-result processing**
 
 Current checkpoint:
 
-> **R27.5 — Provider port, operation worker, and provider idempotency**
+> **R27.7 — `payment-succeeded` and `payment-failed` Outbox publication**
 
 > See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 
@@ -397,22 +398,27 @@ sequence-diagram documents.
 
 ## Payment Service
 
-Implemented through R27.4:
+Implemented through R27.6:
 
 - Independent OAuth2 Resource Server security
-- Flyway-owned `payments`, `payment_transactions`, `processed_events`, and
-  `outbox_events`
-- Payment-attempt and provider-operation idempotency constraints
-- Canonical `payment-requested` envelope and payload validation
-- Idempotent processed-event registration
-- Atomic Payment and READY CHARGE transaction creation
-- Stable provider idempotency keys
-- Expired-request rejection before provider execution
-- Bounded Kafka retry and sanitized dead-letter publication
-- Unit, MySQL, concurrency, and Kafka integration verification
+- Flyway-owned Payment persistence and reliability tables
+- Canonical `payment-requested` consumption
+- Payment-attempt, Kafka, provider-operation, and provider-event idempotency
+- Provider-neutral charge contracts
+- Bounded MySQL provider-operation claiming and lease recovery
+- Stable provider idempotency across retries
+- Provider calls outside database transactions
+- Immutable raw webhook and verified-result contracts
+- Provider verifier registry and strict callback body limits
+- Provider-authenticated webhook ingress
+- Immutable provider-event marker history
+- Fixed `Payment -> PaymentTransaction` lock ordering
+- Transactional success, failure, pending, unknown, duplicate, and stale handling
+- MVC security, MySQL concurrency, rollback, and HTTP integration verification
 
-Provider execution, webhooks, terminal payment-result events, refunds, and
-reconciliation remain later R27 checkpoints.
+Production MoMo/VNPay adapters, scheduled provider execution, terminal
+payment-result Outbox publication, Booking result consumers, refunds, and
+reconciliation remain later R27 scope.
 
 # Build and Test
 

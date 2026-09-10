@@ -1,8 +1,8 @@
 # Security
 
-**Version:** R27.1
-**Status:** Implemented security baseline plus Payment contract requirements
-**Last updated:** 2026-08-26
+**Version:** R27.6
+**Status:** Implemented security baseline including provider webhook trust boundary
+**Last updated:** 2026-09-10
 
 This document defines the security architecture, trust boundaries, authentication,
 authorization, token handling, service-to-service protection, secret management,
@@ -1436,6 +1436,32 @@ A provider event ID must be recorded to prevent duplicate business effects.
 The webhook must not trust a payment status merely because it appears in JSON.
 
 ---
+
+## Implemented Payment Webhook Boundary
+
+R27.6 implements:
+
+- `POST /api/v1/payments/webhooks/{provider}`;
+- explicit JWT security allowlisting for this provider-to-service endpoint;
+- normalized provider allowlisting through the verifier registry;
+- raw-body preservation for provider signature verification;
+- configurable request-body limits;
+- provider-specific authentication before callback fields become trusted;
+- immutable verified callback contracts;
+- provider-event idempotency and transactional result application;
+- bounded, provider-specific acknowledgements;
+- sanitized public failures.
+
+`permitAll` in `PaymentSecurityConfig` means that a customer OAuth2 bearer token
+is not required. It does not authorize trusting the callback payload. The
+provider verifier remains the authentication boundary.
+
+The deterministic `TESTPAY` verifier and `X-Test-Signature` header exist only in
+test source. Production source and configuration must not contain those values.
+
+Production deployment must not enable a provider webhook until its real
+signature algorithm, secret/key custody, timestamp tolerance, replay policy, and
+acknowledgement contract have been implemented and verified.
 
 # Input Validation
 

@@ -1,8 +1,8 @@
 # System Architecture
 
-**Version:** R27.1
-**Status:** Booking Service completed; Payment architecture is the active target
-**Last updated:** 2026-08-26
+**Version:** R27.6
+**Status:** Payment webhooks implemented; Payment result publication is the active target
+**Last updated:** 2026-09-10
 
 This document defines the authoritative architecture of Cinema Booking System.
 
@@ -302,12 +302,16 @@ Responsibilities:
 - Processing refunds
 - Publishing payment result events
 - Idempotently consuming payment commands
+- Authenticating provider callbacks through provider-owned verifiers
+- Recording immutable provider-event idempotency markers
+- Applying verified results under Payment-owned database locks
 
 Owned tables may include:
 
 ```text
 payments
 payment_transactions
+payment_provider_webhook_events
 processed_events
 outbox_events
 ```

@@ -1,6 +1,6 @@
 # Sequence Diagrams
 
-Version: R27.1
+Version: R27.6
 
 ---
 
@@ -19,6 +19,8 @@ This document visualizes implemented interactions and approved target flows.
 | OAuth2 registered clients and approved grant flows      | Implemented and verified through R25.14 |
 | Gateway reactive Resource Server                        | Implemented in R25.13                   |
 | Hardened multi-instance Outbox retry/claim              | Implemented and verified through R26.6  |
+| Payment provider webhook trust and application          | Implemented and verified in R27.6       |
+| Payment terminal-result Outbox publication              | Target for R27.7                        |
 
 A target diagram is an approved interaction contract, not proof that every
 participant currently exists.
@@ -195,6 +197,33 @@ The implementation uses the approved coordination and database transaction
 boundaries. Database locks and constraints remain the final state guarantee.
 
 Booking Service must never query or update `show_seats`.
+
+---
+
+# Implemented Provider Webhook Flow
+
+```mermaid
+sequenceDiagram
+    participant Provider
+    participant HTTP as Webhook Controller
+    participant Verifier
+    participant Application
+    participant DB as Payment Database
+
+    Provider->>HTTP: Raw body and provider headers
+    HTTP->>Verifier: Validate size and authenticate request
+    Verifier-->>HTTP: Immutable verified result
+    HTTP->>Application: Apply verified result
+    Application->>DB: Lock Payment then PaymentTransaction
+    Application->>DB: Insert provider-event marker
+    Application->>DB: Apply allowed forward transition
+    DB-->>Application: Commit atomically
+    Application-->>Provider: Provider-specific acknowledgement
+```
+
+Duplicate provider event IDs return the provider acknowledgement without
+repeating the Payment transition. Failed application rolls back the event
+marker. Terminal result Outbox publication begins in R27.7.
 
 ---
 
