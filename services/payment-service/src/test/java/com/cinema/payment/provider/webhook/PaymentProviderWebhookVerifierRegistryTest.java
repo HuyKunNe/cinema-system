@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.cinema.common.exception.exception.InternalServerException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.payment.exception.PaymentErrorCode;
+import com.cinema.payment.provider.webhook.model.PaymentProviderWebhookApplicationResult;
+import com.cinema.payment.provider.webhook.model.ProviderWebhookAcknowledgement;
 import com.cinema.payment.provider.webhook.model.ProviderWebhookRequest;
 import com.cinema.payment.provider.webhook.model.VerifiedProviderWebhook;
 
@@ -94,6 +96,13 @@ class PaymentProviderWebhookVerifierRegistryTest {
         public VerifiedProviderWebhook verifyAndParse(ProviderWebhookRequest request) {
             throw new UnsupportedOperationException(
                     "Verification is not required by this registry unit test");
+        }
+
+        @Override
+        public ProviderWebhookAcknowledgement acknowledgement(
+                PaymentProviderWebhookApplicationResult result) {
+
+            return ProviderWebhookAcknowledgement.noContent();
         }
     }
 }

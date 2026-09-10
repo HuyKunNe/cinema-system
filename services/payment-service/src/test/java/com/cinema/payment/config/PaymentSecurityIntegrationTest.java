@@ -1,13 +1,16 @@
 package com.cinema.payment.config;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.cinema.common.security.config.SecurityConfiguration;
-import com.cinema.common.security.config.ServletSecurityConfiguration;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,9 +30,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.UUID;
+import com.cinema.common.security.config.SecurityConfiguration;
+import com.cinema.common.security.config.ServletSecurityConfiguration;
+import com.cinema.payment.controller.PaymentProviderWebhookController;
+import com.cinema.payment.provider.webhook.model.ProviderWebhookAcknowledgement;
+import com.cinema.payment.service.PaymentProviderWebhookHandlingService;
 
-@WebMvcTest
+@WebMvcTest(
+        controllers = {
+            PaymentSecurityIntegrationTest.PaymentSecurityProbeController.class,
+            PaymentProviderWebhookController.class
+        })
 @ActiveProfiles("test")
 @Import({
     PaymentSecurityConfig.class,
@@ -46,6 +57,8 @@ class PaymentSecurityIntegrationTest {
     @MockitoBean private JwtDecoder jwtDecoder;
 
     @MockitoBean private JpaMetamodelMappingContext jpaMetamodelMappingContext;
+
+    @MockitoBean private PaymentProviderWebhookHandlingService webhookHandlingService;
 
     @Test
     void unauthenticatedPaymentQueryShouldBeRejected() throws Exception {
@@ -102,9 +115,22 @@ class PaymentSecurityIntegrationTest {
 
         @GetMapping("/{paymentId}")
         @ResponseStatus(HttpStatus.NO_CONTENT)
-        void findById(@PathVariable UUID paymentId) {}
+        void findById(@PathVariable("paymentId") UUID paymentId) {}
 
         @PostMapping("/{paymentId}/refunds")
-        void refund(@PathVariable UUID paymentId) {}
+        void refund(@PathVariable("paymentId") UUID paymentId) {}
+    }
+
+    @Test
+    void unauthenticatedProviderWebhookShouldBeAllowed() throws Exception {
+
+        when(webhookHandlingService.handle(eq("MOMO"), anyMap(), any(byte[].class)))
+                .thenReturn(ProviderWebhookAcknowledgement.noContent());
+
+        mockMvc.perform(
+                        post("/api/v1/payments/webhooks/MOMO")
+                                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                                .content("{}"))
+                .andExpect(status().isNoContent());
     }
 }

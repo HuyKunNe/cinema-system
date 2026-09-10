@@ -22,6 +22,8 @@ public class PaymentSecurityConfig {
 
     private static final String PAYMENT_QUERY_ENDPOINT = "/api/v1/payments/*";
 
+    private static final String PAYMENT_WEBHOOK_ENDPOINT = "/api/v1/payments/webhooks/*";
+
     @Bean
     SecurityFilterChain paymentSecurityFilterChain(
             HttpSecurity http,
@@ -39,6 +41,8 @@ public class PaymentSecurityConfig {
                                         .requestMatchers(HttpMethod.OPTIONS, "/**")
                                         .permitAll()
                                         .requestMatchers("/actuator/health", "/actuator/info")
+                                        .permitAll()
+                                        .requestMatchers(HttpMethod.POST, PAYMENT_WEBHOOK_ENDPOINT)
                                         .permitAll()
                                         .requestMatchers(HttpMethod.GET, PAYMENT_QUERY_ENDPOINT)
                                         .hasAuthority(PAYMENT_READ_AUTHORITY)
