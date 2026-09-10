@@ -22,6 +22,7 @@ import com.cinema.payment.provider.webhook.model.VerifiedProviderWebhook;
 import com.cinema.payment.repository.PaymentRepository;
 import com.cinema.payment.repository.PaymentTransactionRepository;
 import com.cinema.payment.service.PaymentProviderWebhookEventRegistrationService;
+import com.cinema.payment.service.PaymentResultOutboxService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,6 +53,8 @@ class PaymentProviderWebhookApplicationServiceImplTest {
 
     @Mock private PaymentProviderWebhookEventRegistrationService eventRegistrationService;
 
+    @Mock private PaymentResultOutboxService paymentResultOutboxService;
+
     private PaymentProviderWebhookApplicationServiceImpl service;
 
     @BeforeEach
@@ -60,7 +63,11 @@ class PaymentProviderWebhookApplicationServiceImplTest {
 
         service =
                 new PaymentProviderWebhookApplicationServiceImpl(
-                        paymentRepository, transactionRepository, eventRegistrationService, clock);
+                        paymentRepository,
+                        transactionRepository,
+                        eventRegistrationService,
+                        paymentResultOutboxService,
+                        clock);
     }
 
     @Test
@@ -81,19 +88,27 @@ class PaymentProviderWebhookApplicationServiceImplTest {
         PaymentProviderWebhookApplicationResult result = service.apply(webhook);
 
         assertThat(result.disposition()).isEqualTo(ProviderWebhookApplicationDisposition.APPLIED);
+
         assertThat(result.paymentStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+
         assertThat(result.transactionStatus()).isEqualTo(PaymentTransactionStatus.SUCCEEDED);
 
         assertThat(aggregate.payment().getProviderReference()).isEqualTo(PROVIDER_REFERENCE);
+
         assertThat(aggregate.transaction().getProviderEventId()).isEqualTo("event-success-001");
 
         InOrder order = inOrder(transactionRepository, paymentRepository, eventRegistrationService);
 
         order.verify(transactionRepository)
                 .findByProviderAndProviderReference("MOMO", PROVIDER_REFERENCE);
+
         order.verify(paymentRepository).findByIdForUpdate(aggregate.payment().getId());
+
         order.verify(transactionRepository).findByIdForUpdate(aggregate.transaction().getId());
+
         order.verify(eventRegistrationService).register(aggregate.transaction().getId(), webhook);
+
+        verify(paymentResultOutboxService).persistIfTerminal(aggregate.payment());
     }
 
     @Test
@@ -118,6 +133,8 @@ class PaymentProviderWebhookApplicationServiceImplTest {
         assertThat(aggregate.transaction().getStatus())
                 .isEqualTo(PaymentTransactionStatus.PENDING_PROVIDER);
         assertThat(aggregate.transaction().getProviderEventId()).isNull();
+
+        verify(paymentResultOutboxService, never()).persistIfTerminal(aggregate.payment());
     }
 
     @Test
@@ -142,6 +159,7 @@ class PaymentProviderWebhookApplicationServiceImplTest {
         assertThat(result.transactionStatus()).isEqualTo(PaymentTransactionStatus.FAILED);
         assertThat(aggregate.payment().getFailureCode()).isEqualTo("PAYMENT_DECLINED");
         assertThat(aggregate.transaction().getProviderEventId()).isEqualTo("event-failure-001");
+        verify(paymentResultOutboxService).persistIfTerminal(aggregate.payment());
     }
 
     @Test
@@ -176,6 +194,8 @@ class PaymentProviderWebhookApplicationServiceImplTest {
                 .isEqualTo(PaymentTransactionStatus.SUCCEEDED);
         assertThat(aggregate.transaction().getProviderEventId())
                 .isEqualTo("existing-success-event");
+
+        verify(paymentResultOutboxService, never()).persistIfTerminal(aggregate.payment());
     }
 
     @Test
@@ -201,6 +221,8 @@ class PaymentProviderWebhookApplicationServiceImplTest {
 
         verify(eventRegistrationService, never())
                 .register(aggregate.transaction().getId(), webhook);
+
+        verify(paymentResultOutboxService, never()).persistIfTerminal(aggregate.payment());
     }
 
     private void prepareRepositoryLookups(

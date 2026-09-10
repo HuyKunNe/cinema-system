@@ -3,6 +3,8 @@ package com.cinema.payment.service.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.cinema.common.core.id.UuidGenerator;
@@ -20,6 +22,7 @@ import com.cinema.payment.provider.model.ProviderChargeResult;
 import com.cinema.payment.provider.model.ProviderOutcome;
 import com.cinema.payment.repository.PaymentRepository;
 import com.cinema.payment.repository.PaymentTransactionRepository;
+import com.cinema.payment.service.PaymentResultOutboxService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,6 +50,8 @@ class PaymentProviderResultApplicationServiceImplTest {
 
     @Mock private PaymentTransactionRepository transactionRepository;
 
+    @Mock private PaymentResultOutboxService paymentResultOutboxService;
+
     private PaymentProviderResultApplicationServiceImpl service;
 
     @BeforeEach
@@ -56,7 +61,10 @@ class PaymentProviderResultApplicationServiceImplTest {
 
         service =
                 new PaymentProviderResultApplicationServiceImpl(
-                        paymentRepository, transactionRepository, clock);
+                        paymentRepository,
+                        transactionRepository,
+                        paymentResultOutboxService,
+                        clock);
     }
 
     @Test
@@ -86,6 +94,8 @@ class PaymentProviderResultApplicationServiceImplTest {
         assertThat(fixture.transaction().getProcessingExpiresAt()).isNull();
 
         verifyLockOrder(fixture);
+
+        verify(paymentResultOutboxService).persistIfTerminal(fixture.payment());
     }
 
     @Test
@@ -104,6 +114,8 @@ class PaymentProviderResultApplicationServiceImplTest {
         assertThat(fixture.payment().getStatus()).isEqualTo(PaymentStatus.RECONCILIATION_REQUIRED);
 
         assertThat(fixture.transaction().getStatus()).isEqualTo(PaymentTransactionStatus.SUCCEEDED);
+
+        verify(paymentResultOutboxService).persistIfTerminal(fixture.payment());
     }
 
     @Test
@@ -132,6 +144,8 @@ class PaymentProviderResultApplicationServiceImplTest {
         assertThat(fixture.payment().getFailureMessage()).isEqualTo("Payment was declined");
 
         assertThat(fixture.payment().getCompletedAt()).isEqualTo(NOW);
+
+        verify(paymentResultOutboxService).persistIfTerminal(fixture.payment());
     }
 
     @Test
@@ -159,7 +173,10 @@ class PaymentProviderResultApplicationServiceImplTest {
         assertThat(fixture.payment().getProviderReference()).isEqualTo("mock-pending-reference");
 
         assertThat(fixture.payment().getCompletedAt()).isNull();
+
         assertThat(fixture.transaction().getCompletedAt()).isNull();
+
+        verify(paymentResultOutboxService).persistIfTerminal(fixture.payment());
     }
 
     @Test
@@ -190,8 +207,12 @@ class PaymentProviderResultApplicationServiceImplTest {
                 .isEqualTo("Provider charge outcome could not be determined");
 
         assertThat(fixture.payment().isTerminal()).isFalse();
+
         assertThat(fixture.payment().getFailureCode()).isNull();
+
         assertThat(fixture.payment().getCompletedAt()).isNull();
+
+        verify(paymentResultOutboxService).persistIfTerminal(fixture.payment());
     }
 
     @Test
@@ -221,6 +242,8 @@ class PaymentProviderResultApplicationServiceImplTest {
                                                         .PAYMENT_TRANSACTION_LEASE_NOT_OWNED));
 
         assertThat(fixture.payment().getStatus()).isEqualTo(PaymentStatus.PROCESSING);
+
+        verify(paymentResultOutboxService, never()).persistIfTerminal(fixture.payment());
     }
 
     private void stubLockedEntities(Fixture fixture) {

@@ -15,6 +15,7 @@ import com.cinema.payment.exception.PaymentErrorCode;
 import com.cinema.payment.repository.PaymentRepository;
 import com.cinema.payment.repository.PaymentTransactionRepository;
 import com.cinema.payment.service.PaymentRequestedConsumerService;
+import com.cinema.payment.service.PaymentResultOutboxService;
 import com.cinema.payment.service.ProcessedEventRegistrationService;
 
 import org.springframework.stereotype.Service;
@@ -45,6 +46,8 @@ public class PaymentRequestedConsumerServiceImpl implements PaymentRequestedCons
 
     private final PaymentProperties paymentProperties;
 
+    private final PaymentResultOutboxService paymentResultOutboxService;
+
     private final Clock clock;
 
     public PaymentRequestedConsumerServiceImpl(
@@ -55,6 +58,7 @@ public class PaymentRequestedConsumerServiceImpl implements PaymentRequestedCons
             PaymentRepository paymentRepository,
             PaymentTransactionRepository transactionRepository,
             PaymentProperties paymentProperties,
+            PaymentResultOutboxService paymentResultOutboxService,
             Clock clock) {
 
         this.messageValidator = messageValidator;
@@ -64,6 +68,7 @@ public class PaymentRequestedConsumerServiceImpl implements PaymentRequestedCons
         this.paymentRepository = paymentRepository;
         this.transactionRepository = transactionRepository;
         this.paymentProperties = paymentProperties;
+        this.paymentResultOutboxService = paymentResultOutboxService;
         this.clock = clock;
     }
 
@@ -126,6 +131,8 @@ public class PaymentRequestedConsumerServiceImpl implements PaymentRequestedCons
             payment.expire(now);
 
             Payment expiredPayment = paymentRepository.save(payment);
+
+            paymentResultOutboxService.persistIfTerminal(expiredPayment);
 
             return Result.expired(expiredPayment.getId());
         }

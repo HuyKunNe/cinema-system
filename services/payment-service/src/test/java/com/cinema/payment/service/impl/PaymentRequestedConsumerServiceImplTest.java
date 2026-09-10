@@ -26,6 +26,7 @@ import com.cinema.payment.exception.PaymentErrorCode;
 import com.cinema.payment.repository.PaymentRepository;
 import com.cinema.payment.repository.PaymentTransactionRepository;
 import com.cinema.payment.service.PaymentRequestedConsumerService;
+import com.cinema.payment.service.PaymentResultOutboxService;
 import com.cinema.payment.service.ProcessedEventRegistrationService;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 
@@ -46,61 +47,45 @@ import java.util.UUID;
 @ExtendWith(MockitoExtension.class)
 class PaymentRequestedConsumerServiceImplTest {
 
-    private static final OffsetDateTime NOW =
-            OffsetDateTime.parse("2026-08-26T10:00:00Z");
+    private static final OffsetDateTime NOW = OffsetDateTime.parse("2026-08-26T10:00:00Z");
 
-    private static final OffsetDateTime REQUESTED_AT =
-            NOW.minusMinutes(1);
+    private static final OffsetDateTime REQUESTED_AT = NOW.minusMinutes(1);
 
-    private static final OffsetDateTime HOLD_EXPIRES_AT =
-            NOW.plusMinutes(9);
+    private static final OffsetDateTime HOLD_EXPIRES_AT = NOW.plusMinutes(9);
 
-    private static final UUID BOOKING_ID =
-            UuidGenerator.next();
+    private static final UUID BOOKING_ID = UuidGenerator.next();
 
-    private static final UUID USER_ID =
-            UuidGenerator.next();
+    private static final UUID USER_ID = UuidGenerator.next();
 
-    private static final UUID EVENT_ID =
-            UuidGenerator.next();
+    private static final UUID EVENT_ID = UuidGenerator.next();
 
-    private static final UUID CORRELATION_ID =
-            UuidGenerator.next();
+    private static final UUID CORRELATION_ID = UuidGenerator.next();
 
-    private static final UUID CAUSATION_ID =
-            UuidGenerator.next();
+    private static final UUID CAUSATION_ID = UuidGenerator.next();
 
-    @Mock
-    private PaymentRequestedMessageValidator messageValidator;
+    @Mock private PaymentRequestedMessageValidator messageValidator;
 
-    @Mock
-    private PaymentRequestedPayloadReader payloadReader;
+    @Mock private PaymentRequestedPayloadReader payloadReader;
 
-    @Mock
-    private PaymentRequestedPayloadValidator payloadValidator;
+    @Mock private PaymentRequestedPayloadValidator payloadValidator;
 
-    @Mock
-    private ProcessedEventRegistrationService
-            processedEventRegistrationService;
+    @Mock private ProcessedEventRegistrationService processedEventRegistrationService;
 
-    @Mock
-    private PaymentRepository paymentRepository;
+    @Mock private PaymentRepository paymentRepository;
 
-    @Mock
-    private PaymentTransactionRepository transactionRepository;
+    @Mock private PaymentTransactionRepository paymentTransactionRepository;
+
+    @Mock private PaymentResultOutboxService paymentResultOutboxService;
 
     private PaymentRequestedConsumerServiceImpl service;
+
+    private PaymentProperties paymentProperties = new PaymentProperties("MOCK");
 
     @BeforeEach
     void setUp() {
 
-        Clock clock =
-                Clock.fixed(
-                        NOW.toInstant(),
-                        ZoneOffset.UTC);
+        Clock clock = Clock.fixed(NOW.toInstant(), ZoneOffset.UTC);
 
-        PaymentProperties properties =
-                new PaymentProperties("MOCK");
 
         service =
                 new PaymentRequestedConsumerServiceImpl(
@@ -109,251 +94,165 @@ class PaymentRequestedConsumerServiceImplTest {
                         payloadValidator,
                         processedEventRegistrationService,
                         paymentRepository,
-                        transactionRepository,
-                        properties,
+                        paymentTransactionRepository,
+                        paymentProperties,
+                        paymentResultOutboxService,
                         clock);
     }
 
     @Test
     void newRequestShouldCreatePaymentAndReadyCharge() {
 
-        PaymentRequestedPayload payload =
-                validPayload();
+        PaymentRequestedPayload payload = validPayload();
 
-        OutboxEventMessage message =
-                message(
-                        EVENT_ID,
-                        CORRELATION_ID,
-                        BOOKING_ID);
+        OutboxEventMessage message = message(EVENT_ID, CORRELATION_ID, BOOKING_ID);
 
-        when(payloadReader.read(message))
-                .thenReturn(payload);
+        when(payloadReader.read(message)).thenReturn(payload);
 
         when(processedEventRegistrationService.register(
                         EVENT_ID,
-                        PaymentEventContract
-                                .PAYMENT_REQUESTED_CONSUMER,
+                        PaymentEventContract.PAYMENT_REQUESTED_CONSUMER,
                         PaymentEventContract.PAYMENT_REQUESTED,
-                        PaymentEventContract
-                                .PAYMENT_REQUESTED_VERSION))
+                        PaymentEventContract.PAYMENT_REQUESTED_VERSION))
                 .thenReturn(true);
 
-        when(paymentRepository
-                        .findByBookingIdAndPaymentAttempt(
-                                BOOKING_ID,
-                                1))
+        when(paymentRepository.findByBookingIdAndPaymentAttempt(BOOKING_ID, 1))
                 .thenReturn(Optional.empty());
 
         when(paymentRepository.save(any(Payment.class)))
-                .thenAnswer(
-                        invocation ->
-                                invocation.getArgument(0));
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         PaymentRequestedConsumerService.Result result =
-                service.handle(
-                        BOOKING_ID.toString(),
-                        message);
+                service.handle(BOOKING_ID.toString(), message);
 
-        assertThat(result.status())
-                .isEqualTo(
-                        PaymentRequestedConsumerService.Status.CREATED);
+        assertThat(result.status()).isEqualTo(PaymentRequestedConsumerService.Status.CREATED);
 
         assertThat(result.paymentId()).isNotNull();
 
-        verify(messageValidator)
-                .validate(
-                        BOOKING_ID.toString(),
-                        message);
+        verify(messageValidator).validate(BOOKING_ID.toString(), message);
 
         verify(payloadReader).read(message);
 
-        verify(payloadValidator)
-                .validate(message, payload);
+        verify(payloadValidator).validate(message, payload);
 
-        ArgumentCaptor<Payment> paymentCaptor =
-                ArgumentCaptor.forClass(Payment.class);
+        ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
 
-        verify(paymentRepository)
-                .save(paymentCaptor.capture());
+        verify(paymentRepository).save(paymentCaptor.capture());
 
-        Payment savedPayment =
-                paymentCaptor.getValue();
+        Payment savedPayment = paymentCaptor.getValue();
 
-        assertThat(savedPayment.getId())
-                .isEqualTo(result.paymentId());
+        assertThat(savedPayment.getId()).isEqualTo(result.paymentId());
 
-        assertThat(savedPayment.getBookingId())
-                .isEqualTo(BOOKING_ID);
+        assertThat(savedPayment.getBookingId()).isEqualTo(BOOKING_ID);
 
-        assertThat(savedPayment.getUserId())
-                .isEqualTo(USER_ID);
+        assertThat(savedPayment.getUserId()).isEqualTo(USER_ID);
 
-        assertThat(savedPayment.getAmount())
-                .isEqualByComparingTo("180000.00");
+        assertThat(savedPayment.getAmount()).isEqualByComparingTo("180000.00");
 
-        assertThat(savedPayment.getCurrency())
-                .isEqualTo("VND");
+        assertThat(savedPayment.getCurrency()).isEqualTo("VND");
 
-        assertThat(savedPayment.getProvider())
-                .isEqualTo("MOCK");
+        assertThat(savedPayment.getProvider()).isEqualTo("MOCK");
 
-        assertThat(savedPayment.getStatus())
-                .isEqualTo(PaymentStatus.RECEIVED);
+        assertThat(savedPayment.getStatus()).isEqualTo(PaymentStatus.RECEIVED);
 
         ArgumentCaptor<PaymentTransaction> transactionCaptor =
-                ArgumentCaptor.forClass(
-                        PaymentTransaction.class);
+                ArgumentCaptor.forClass(PaymentTransaction.class);
 
-        verify(transactionRepository)
-                .save(transactionCaptor.capture());
+        verify(paymentTransactionRepository).save(transactionCaptor.capture());
 
-        PaymentTransaction transaction =
-                transactionCaptor.getValue();
+        PaymentTransaction transaction = transactionCaptor.getValue();
 
-        assertThat(transaction.getPaymentId())
-                .isEqualTo(savedPayment.getId());
+        assertThat(transaction.getPaymentId()).isEqualTo(savedPayment.getId());
 
-        assertThat(transaction.getProvider())
-                .isEqualTo("MOCK");
+        assertThat(transaction.getProvider()).isEqualTo("MOCK");
 
-        assertThat(transaction.getStatus())
-                .isEqualTo(
-                        PaymentTransactionStatus.READY);
+        assertThat(transaction.getStatus()).isEqualTo(PaymentTransactionStatus.READY);
 
-        assertThat(transaction.getAmount())
-                .isEqualByComparingTo("180000.00");
+        assertThat(transaction.getAmount()).isEqualByComparingTo("180000.00");
 
-        assertThat(transaction.getCurrency())
-                .isEqualTo("VND");
+        assertThat(transaction.getCurrency()).isEqualTo("VND");
 
-        assertThat(transaction.getIdempotencyKey())
-                .isEqualTo(
-                        "charge:" + savedPayment.getId());
+        assertThat(transaction.getIdempotencyKey()).isEqualTo("charge:" + savedPayment.getId());
 
-        assertThat(transaction.getRequestedAt())
-                .isEqualTo(NOW);
+        assertThat(transaction.getRequestedAt()).isEqualTo(NOW);
     }
 
     @Test
     void duplicateSameEventShouldReturnAlreadyProcessed() {
 
-        PaymentRequestedPayload payload =
-                validPayload();
+        PaymentRequestedPayload payload = validPayload();
 
-        OutboxEventMessage message =
-                message(
-                        EVENT_ID,
-                        CORRELATION_ID,
-                        BOOKING_ID);
+        OutboxEventMessage message = message(EVENT_ID, CORRELATION_ID, BOOKING_ID);
 
-        when(payloadReader.read(message))
-                .thenReturn(payload);
+        when(payloadReader.read(message)).thenReturn(payload);
 
         when(processedEventRegistrationService.register(
                         EVENT_ID,
-                        PaymentEventContract
-                                .PAYMENT_REQUESTED_CONSUMER,
+                        PaymentEventContract.PAYMENT_REQUESTED_CONSUMER,
                         PaymentEventContract.PAYMENT_REQUESTED,
-                        PaymentEventContract
-                                .PAYMENT_REQUESTED_VERSION))
+                        PaymentEventContract.PAYMENT_REQUESTED_VERSION))
                 .thenReturn(false);
 
         PaymentRequestedConsumerService.Result result =
-                service.handle(
-                        BOOKING_ID.toString(),
-                        message);
+                service.handle(BOOKING_ID.toString(), message);
 
         assertThat(result.status())
-                .isEqualTo(
-                        PaymentRequestedConsumerService.Status
-                                .ALREADY_PROCESSED);
+                .isEqualTo(PaymentRequestedConsumerService.Status.ALREADY_PROCESSED);
 
         assertThat(result.paymentId()).isNull();
 
-        verify(messageValidator)
-                .validate(
-                        BOOKING_ID.toString(),
-                        message);
+        verify(messageValidator).validate(BOOKING_ID.toString(), message);
 
         verify(payloadReader).read(message);
 
-        verify(payloadValidator)
-                .validate(message, payload);
+        verify(payloadValidator).validate(message, payload);
 
-        verifyNoInteractions(
-                paymentRepository,
-                transactionRepository);
+        verifyNoInteractions(paymentRepository, paymentTransactionRepository);
     }
 
     @Test
     void consistentDifferentEventShouldReturnExistingPayment() {
 
-        UUID existingSourceEventId =
-                UuidGenerator.next();
+        UUID existingSourceEventId = UuidGenerator.next();
 
-        UUID duplicateEventId =
-                UuidGenerator.next();
+        UUID duplicateEventId = UuidGenerator.next();
 
-        Payment existing =
-                existingPayment(
-                        existingSourceEventId,
-                        CORRELATION_ID);
+        Payment existing = existingPayment(existingSourceEventId, CORRELATION_ID);
 
-        PaymentRequestedPayload payload =
-                validPayload();
+        PaymentRequestedPayload payload = validPayload();
 
-        OutboxEventMessage message =
-                message(
-                        duplicateEventId,
-                        CORRELATION_ID,
-                        BOOKING_ID);
+        OutboxEventMessage message = message(duplicateEventId, CORRELATION_ID, BOOKING_ID);
 
-        when(payloadReader.read(message))
-                .thenReturn(payload);
+        when(payloadReader.read(message)).thenReturn(payload);
 
         when(processedEventRegistrationService.register(
                         duplicateEventId,
-                        PaymentEventContract
-                                .PAYMENT_REQUESTED_CONSUMER,
+                        PaymentEventContract.PAYMENT_REQUESTED_CONSUMER,
                         PaymentEventContract.PAYMENT_REQUESTED,
-                        PaymentEventContract
-                                .PAYMENT_REQUESTED_VERSION))
+                        PaymentEventContract.PAYMENT_REQUESTED_VERSION))
                 .thenReturn(true);
 
-        when(paymentRepository
-                        .findByBookingIdAndPaymentAttempt(
-                                BOOKING_ID,
-                                1))
+        when(paymentRepository.findByBookingIdAndPaymentAttempt(BOOKING_ID, 1))
                 .thenReturn(Optional.of(existing));
 
         PaymentRequestedConsumerService.Result result =
-                service.handle(
-                        BOOKING_ID.toString(),
-                        message);
+                service.handle(BOOKING_ID.toString(), message);
 
-        assertThat(result.status())
-                .isEqualTo(
-                        PaymentRequestedConsumerService.Status.EXISTING);
+        assertThat(result.status()).isEqualTo(PaymentRequestedConsumerService.Status.EXISTING);
 
-        assertThat(result.paymentId())
-                .isEqualTo(existing.getId());
+        assertThat(result.paymentId()).isEqualTo(existing.getId());
 
-        verify(paymentRepository, never())
-                .save(any(Payment.class));
+        verify(paymentRepository, never()).save(any(Payment.class));
 
-        verifyNoInteractions(transactionRepository);
+        verifyNoInteractions(paymentTransactionRepository);
     }
 
     @Test
     void conflictingAmountShouldBeRejected() {
 
-        UUID duplicateEventId =
-                UuidGenerator.next();
+        UUID duplicateEventId = UuidGenerator.next();
 
-        Payment existing =
-                existingPayment(
-                        UuidGenerator.next(),
-                        CORRELATION_ID);
+        Payment existing = existingPayment(UuidGenerator.next(), CORRELATION_ID);
 
         PaymentRequestedPayload conflictingPayload =
                 new PaymentRequestedPayload(
@@ -365,122 +264,75 @@ class PaymentRequestedConsumerServiceImplTest {
                         HOLD_EXPIRES_AT,
                         REQUESTED_AT);
 
-        OutboxEventMessage message =
-                message(
-                        duplicateEventId,
-                        CORRELATION_ID,
-                        BOOKING_ID);
+        OutboxEventMessage message = message(duplicateEventId, CORRELATION_ID, BOOKING_ID);
 
-        when(payloadReader.read(message))
-                .thenReturn(conflictingPayload);
+        when(payloadReader.read(message)).thenReturn(conflictingPayload);
 
         when(processedEventRegistrationService.register(
                         duplicateEventId,
-                        PaymentEventContract
-                                .PAYMENT_REQUESTED_CONSUMER,
+                        PaymentEventContract.PAYMENT_REQUESTED_CONSUMER,
                         PaymentEventContract.PAYMENT_REQUESTED,
-                        PaymentEventContract
-                                .PAYMENT_REQUESTED_VERSION))
+                        PaymentEventContract.PAYMENT_REQUESTED_VERSION))
                 .thenReturn(true);
 
-        when(paymentRepository
-                        .findByBookingIdAndPaymentAttempt(
-                                BOOKING_ID,
-                                1))
+        when(paymentRepository.findByBookingIdAndPaymentAttempt(BOOKING_ID, 1))
                 .thenReturn(Optional.of(existing));
 
-        assertThatThrownBy(
-                        () ->
-                                service.handle(
-                                        BOOKING_ID.toString(),
-                                        message))
+        assertThatThrownBy(() -> service.handle(BOOKING_ID.toString(), message))
                 .isInstanceOf(ConflictException.class)
                 .satisfies(
                         throwable ->
-                                assertThat(
-                                                ((ConflictException) throwable)
-                                                        .getErrorCode())
+                                assertThat(((ConflictException) throwable).getErrorCode())
                                         .isEqualTo(
-                                                PaymentErrorCode
-                                                        .PAYMENT_ATTEMPT_PAYLOAD_MISMATCH));
+                                                PaymentErrorCode.PAYMENT_ATTEMPT_PAYLOAD_MISMATCH));
 
-        verify(paymentRepository, never())
-                .save(any(Payment.class));
+        verify(paymentRepository, never()).save(any(Payment.class));
 
-        verifyNoInteractions(transactionRepository);
+        verifyNoInteractions(paymentTransactionRepository);
     }
 
     @Test
     void conflictingCorrelationIdShouldBeRejected() {
 
-        UUID duplicateEventId =
-                UuidGenerator.next();
+        UUID duplicateEventId = UuidGenerator.next();
 
-        Payment existing =
-                existingPayment(
-                        UuidGenerator.next(),
-                        CORRELATION_ID);
+        Payment existing = existingPayment(UuidGenerator.next(), CORRELATION_ID);
 
-        OutboxEventMessage message =
-                message(
-                        duplicateEventId,
-                        UuidGenerator.next(),
-                        BOOKING_ID);
+        OutboxEventMessage message = message(duplicateEventId, UuidGenerator.next(), BOOKING_ID);
 
-        PaymentRequestedPayload payload =
-                validPayload();
+        PaymentRequestedPayload payload = validPayload();
 
-        when(payloadReader.read(message))
-                .thenReturn(payload);
+        when(payloadReader.read(message)).thenReturn(payload);
 
         when(processedEventRegistrationService.register(
                         eq(duplicateEventId),
-                        eq(
-                                PaymentEventContract
-                                        .PAYMENT_REQUESTED_CONSUMER),
-                        eq(
-                                PaymentEventContract
-                                        .PAYMENT_REQUESTED),
-                        eq(
-                                PaymentEventContract
-                                        .PAYMENT_REQUESTED_VERSION)))
+                        eq(PaymentEventContract.PAYMENT_REQUESTED_CONSUMER),
+                        eq(PaymentEventContract.PAYMENT_REQUESTED),
+                        eq(PaymentEventContract.PAYMENT_REQUESTED_VERSION)))
                 .thenReturn(true);
 
-        when(paymentRepository
-                        .findByBookingIdAndPaymentAttempt(
-                                BOOKING_ID,
-                                1))
+        when(paymentRepository.findByBookingIdAndPaymentAttempt(BOOKING_ID, 1))
                 .thenReturn(Optional.of(existing));
 
-        assertThatThrownBy(
-                        () ->
-                                service.handle(
-                                        BOOKING_ID.toString(),
-                                        message))
+        assertThatThrownBy(() -> service.handle(BOOKING_ID.toString(), message))
                 .isInstanceOf(ConflictException.class)
                 .satisfies(
                         throwable ->
-                                assertThat(
-                                                ((ConflictException) throwable)
-                                                        .getErrorCode())
+                                assertThat(((ConflictException) throwable).getErrorCode())
                                         .isEqualTo(
-                                                PaymentErrorCode
-                                                        .PAYMENT_ATTEMPT_PAYLOAD_MISMATCH));
+                                                PaymentErrorCode.PAYMENT_ATTEMPT_PAYLOAD_MISMATCH));
 
-        verify(paymentRepository, never())
-                .save(any(Payment.class));
+        verify(paymentRepository, never()).save(any(Payment.class));
 
-        verifyNoInteractions(transactionRepository);
+        verifyNoInteractions(paymentTransactionRepository);
     }
 
     @Test
     void expiredRequestShouldCreateExpiredPaymentWithoutCharge() {
 
-        OffsetDateTime expiredRequestedAt =
-                NOW.minusMinutes(10);
+        OffsetDateTime expiredRequestedAt = NOW.minusMinutes(10);
 
-        OffsetDateTime expiredHoldAt =
-                NOW.minusMinutes(1);
+        OffsetDateTime expiredHoldAt = NOW.minusMinutes(1);
 
         PaymentRequestedPayload payload =
                 new PaymentRequestedPayload(
@@ -492,63 +344,41 @@ class PaymentRequestedConsumerServiceImplTest {
                         expiredHoldAt,
                         expiredRequestedAt);
 
-        OutboxEventMessage message =
-                message(
-                        EVENT_ID,
-                        CORRELATION_ID,
-                        BOOKING_ID);
+        OutboxEventMessage message = message(EVENT_ID, CORRELATION_ID, BOOKING_ID);
 
-        when(payloadReader.read(message))
-                .thenReturn(payload);
+        when(payloadReader.read(message)).thenReturn(payload);
 
         when(processedEventRegistrationService.register(
                         EVENT_ID,
-                        PaymentEventContract
-                                .PAYMENT_REQUESTED_CONSUMER,
+                        PaymentEventContract.PAYMENT_REQUESTED_CONSUMER,
                         PaymentEventContract.PAYMENT_REQUESTED,
-                        PaymentEventContract
-                                .PAYMENT_REQUESTED_VERSION))
+                        PaymentEventContract.PAYMENT_REQUESTED_VERSION))
                 .thenReturn(true);
 
-        when(paymentRepository
-                        .findByBookingIdAndPaymentAttempt(
-                                BOOKING_ID,
-                                1))
+        when(paymentRepository.findByBookingIdAndPaymentAttempt(BOOKING_ID, 1))
                 .thenReturn(Optional.empty());
 
         when(paymentRepository.save(any(Payment.class)))
-                .thenAnswer(
-                        invocation ->
-                                invocation.getArgument(0));
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         PaymentRequestedConsumerService.Result result =
-                service.handle(
-                        BOOKING_ID.toString(),
-                        message);
+                service.handle(BOOKING_ID.toString(), message);
 
-        assertThat(result.status())
-                .isEqualTo(
-                        PaymentRequestedConsumerService.Status.EXPIRED);
+        assertThat(result.status()).isEqualTo(PaymentRequestedConsumerService.Status.EXPIRED);
 
-        ArgumentCaptor<Payment> paymentCaptor =
-                ArgumentCaptor.forClass(Payment.class);
+        ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
 
-        verify(paymentRepository)
-                .save(paymentCaptor.capture());
+        verify(paymentRepository).save(paymentCaptor.capture());
 
-        Payment expiredPayment =
-                paymentCaptor.getValue();
+        Payment expiredPayment = paymentCaptor.getValue();
 
-        assertThat(expiredPayment.getStatus())
-                .isEqualTo(PaymentStatus.EXPIRED);
+        assertThat(expiredPayment.getStatus()).isEqualTo(PaymentStatus.EXPIRED);
 
-        assertThat(expiredPayment.getFailureCode())
-                .isEqualTo("RESERVATION_EXPIRED");
+        assertThat(expiredPayment.getFailureCode()).isEqualTo("RESERVATION_EXPIRED");
 
-        assertThat(expiredPayment.getCompletedAt())
-                .isEqualTo(NOW);
+        assertThat(expiredPayment.getCompletedAt()).isEqualTo(NOW);
 
-        verifyNoInteractions(transactionRepository);
+        verifyNoInteractions(paymentTransactionRepository);
     }
 
     private static PaymentRequestedPayload validPayload() {
@@ -563,9 +393,7 @@ class PaymentRequestedConsumerServiceImplTest {
                 REQUESTED_AT);
     }
 
-    private static Payment existingPayment(
-            UUID sourceEventId,
-            UUID correlationId) {
+    private static Payment existingPayment(UUID sourceEventId, UUID correlationId) {
 
         return new Payment(
                 BOOKING_ID,
@@ -580,18 +408,14 @@ class PaymentRequestedConsumerServiceImplTest {
                 correlationId);
     }
 
-    private static OutboxEventMessage message(
-            UUID eventId,
-            UUID correlationId,
-            UUID bookingId) {
+    private static OutboxEventMessage message(UUID eventId, UUID correlationId, UUID bookingId) {
 
         return new OutboxEventMessage(
                 eventId,
                 bookingId,
                 "BOOKING",
                 PaymentEventContract.PAYMENT_REQUESTED,
-                PaymentEventContract
-                        .PAYMENT_REQUESTED_VERSION,
+                PaymentEventContract.PAYMENT_REQUESTED_VERSION,
                 REQUESTED_AT,
                 "booking-service",
                 correlationId,

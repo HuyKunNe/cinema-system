@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.cinema.common.core.id.UuidGenerator;
 import com.cinema.common.exception.exception.UnauthorizedException;
 import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.common.outbox.repository.OutboxRepository;
 import com.cinema.common.test.annotation.IntegrationTest;
 import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
 import com.cinema.payment.entity.Payment;
@@ -84,11 +85,14 @@ class PaymentProviderWebhookHttpIntegrationTest extends AbstractMySqlIntegration
 
     @Autowired private PaymentProviderWebhookEventRepository webhookEventRepository;
 
+    @Autowired private OutboxRepository outboxRepository;
+
     @BeforeEach
     void cleanDatabase() {
         webhookEventRepository.deleteAllInBatch();
         transactionRepository.deleteAllInBatch();
         paymentRepository.deleteAllInBatch();
+        outboxRepository.deleteAllInBatch();
     }
 
     @Test
@@ -152,6 +156,8 @@ class PaymentProviderWebhookHttpIntegrationTest extends AbstractMySqlIntegration
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
 
         assertThat(transaction.getStatus()).isEqualTo(PaymentTransactionStatus.SUCCEEDED);
+
+        assertThat(outboxRepository.count()).isEqualTo(1);
     }
 
     @Test
@@ -171,6 +177,8 @@ class PaymentProviderWebhookHttpIntegrationTest extends AbstractMySqlIntegration
         assertThat(webhookEventRepository.count()).isZero();
 
         assertPendingAggregate(aggregate);
+
+        assertThat(outboxRepository.count()).isZero();
     }
 
     @Test
@@ -203,6 +211,8 @@ class PaymentProviderWebhookHttpIntegrationTest extends AbstractMySqlIntegration
                         jsonPath("$.error.code").value("PAYMENT_PROVIDER_WEBHOOK_BODY_TOO_LARGE"));
 
         assertThat(webhookEventRepository.count()).isZero();
+
+        assertThat(outboxRepository.count()).isZero();
     }
 
     @Test
@@ -221,6 +231,8 @@ class PaymentProviderWebhookHttpIntegrationTest extends AbstractMySqlIntegration
                                 .value("Payment transaction data does not match its payment"));
 
         assertThat(webhookEventRepository.count()).isZero();
+
+        assertThat(outboxRepository.count()).isZero();
 
         assertPendingAggregate(aggregate);
     }

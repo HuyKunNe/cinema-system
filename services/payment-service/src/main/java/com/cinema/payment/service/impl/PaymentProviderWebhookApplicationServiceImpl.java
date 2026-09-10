@@ -17,6 +17,7 @@ import com.cinema.payment.repository.PaymentRepository;
 import com.cinema.payment.repository.PaymentTransactionRepository;
 import com.cinema.payment.service.PaymentProviderWebhookApplicationService;
 import com.cinema.payment.service.PaymentProviderWebhookEventRegistrationService;
+import com.cinema.payment.service.PaymentResultOutboxService;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,17 +35,21 @@ public class PaymentProviderWebhookApplicationServiceImpl
 
     private final PaymentProviderWebhookEventRegistrationService eventRegistrationService;
 
+    private final PaymentResultOutboxService paymentResultOutboxService;
+
     private final Clock clock;
 
     public PaymentProviderWebhookApplicationServiceImpl(
             PaymentRepository paymentRepository,
             PaymentTransactionRepository transactionRepository,
             PaymentProviderWebhookEventRegistrationService eventRegistrationService,
+            PaymentResultOutboxService paymentResultOutboxService,
             Clock clock) {
 
         this.paymentRepository = paymentRepository;
         this.transactionRepository = transactionRepository;
         this.eventRegistrationService = eventRegistrationService;
+        this.paymentResultOutboxService = paymentResultOutboxService;
         this.clock = clock;
     }
 
@@ -95,6 +100,10 @@ public class PaymentProviderWebhookApplicationServiceImpl
 
         ProviderWebhookApplicationDisposition disposition =
                 applyOutcome(payment, transaction, webhook, observedAt);
+
+        if (disposition == ProviderWebhookApplicationDisposition.APPLIED) {
+            paymentResultOutboxService.persistIfTerminal(payment);
+        }
 
         return result(payment, transaction, disposition);
     }

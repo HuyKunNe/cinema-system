@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.cinema.common.core.id.UuidGenerator;
 import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.outbox.repository.OutboxRepository;
 import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
 import com.cinema.payment.entity.Payment;
 import com.cinema.payment.entity.PaymentTransaction;
@@ -64,11 +65,14 @@ class PaymentProviderWebhookMySqlIntegrationTest extends AbstractMySqlIntegratio
 
     @Autowired private PaymentProviderWebhookApplicationService applicationService;
 
+    @Autowired private OutboxRepository outboxRepository;
+
     @BeforeEach
     void cleanDatabase() {
         webhookEventRepository.deleteAllInBatch();
         transactionRepository.deleteAllInBatch();
         paymentRepository.deleteAllInBatch();
+        outboxRepository.deleteAllInBatch();
     }
 
     @Test
@@ -105,6 +109,8 @@ class PaymentProviderWebhookMySqlIntegrationTest extends AbstractMySqlIntegratio
         assertThat(persistedTransaction.getStatus()).isEqualTo(PaymentTransactionStatus.SUCCEEDED);
 
         assertThat(persistedTransaction.getProviderEventId()).isEqualTo(webhook.providerEventId());
+
+        assertThat(outboxRepository.count()).isEqualTo(1);
     }
 
     @Test

@@ -13,6 +13,7 @@ import com.cinema.payment.provider.model.ProviderChargeResult;
 import com.cinema.payment.repository.PaymentRepository;
 import com.cinema.payment.repository.PaymentTransactionRepository;
 import com.cinema.payment.service.PaymentProviderResultApplicationService;
+import com.cinema.payment.service.PaymentResultOutboxService;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,15 +29,19 @@ public class PaymentProviderResultApplicationServiceImpl
 
     private final PaymentTransactionRepository transactionRepository;
 
+    private final PaymentResultOutboxService paymentResultOutboxService;
+
     private final Clock clock;
 
     public PaymentProviderResultApplicationServiceImpl(
             PaymentRepository paymentRepository,
             PaymentTransactionRepository transactionRepository,
+            PaymentResultOutboxService paymentResultOutboxService,
             Clock clock) {
 
         this.paymentRepository = paymentRepository;
         this.transactionRepository = transactionRepository;
+        this.paymentResultOutboxService = paymentResultOutboxService;
         this.clock = clock;
     }
 
@@ -81,6 +86,8 @@ public class PaymentProviderResultApplicationServiceImpl
         OffsetDateTime resultTime = OffsetDateTime.now(clock);
 
         applyOutcome(operation.processingOwner(), payment, transaction, result, resultTime);
+
+        paymentResultOutboxService.persistIfTerminal(payment);
 
         return new AppliedProviderChargeResult(
                 payment.getId(), transaction.getId(), payment.getStatus(), transaction.getStatus());
