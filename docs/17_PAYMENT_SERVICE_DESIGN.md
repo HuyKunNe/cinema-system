@@ -941,8 +941,8 @@ R27 verification must cover:
 | R27.3      | Payment aggregate and Flyway schema                         | DONE    |
 | R27.4      | `payment-requested` validation and idempotent consumption   | DONE    |
 | R27.5      | Provider port, operation worker, and provider idempotency   | DONE    |
-| R27.6      | Authenticated webhook and provider-result processing        | NEXT    |
-| R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | PLANNED |
+| R27.6      | Authenticated webhook and provider-result processing        | DONE    |
+| R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | NEXT    |
 | R27.8      | Booking payment-result consumers                            | PLANNED |
 | R27.9      | Inventory confirmation and compensation consumers           | PLANNED |
 | R27.10     | Refund, reconciliation, permissions, and audit controls     | PLANNED |

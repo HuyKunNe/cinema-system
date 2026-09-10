@@ -28,7 +28,8 @@ Implementation status:
 - Payment Service consumption of canonical `payment-requested` version `1`,
   Payment-attempt creation, processed-event idempotency, bounded Kafka retry,
   and sanitized dead-letter handling are implemented and verified.
-- Provider execution and production of `payment-succeeded` and `payment-failed` remain later R27 scope.ayment Service processing and the production of `payment-succeeded` and `payment-failed` remain R27 scope.
+- Provider execution and authenticated webhook result application are implemented through R27.6.
+- Production of `payment-succeeded` and `payment-failed` remains R27.7 scope.
 - Inventory and Notification consumption of Booking lifecycle events remains
   future integration work until the corresponding consumers are implemented
   and verified.
