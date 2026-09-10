@@ -347,6 +347,20 @@ public final class PaymentErrorCode implements ErrorCode {
                     "PAYMENT_PROVIDER_WEBHOOK_AUTHENTICATION_FAILED",
                     "Payment provider webhook authentication failed");
 
+    public static final PaymentErrorCode PAYMENT_REQUIRED =
+            validation("PAYMENT_REQUIRED", "Payment is required");
+
+    public static final PaymentErrorCode PAYMENT_RESULT_OUTBOX_NOT_APPLICABLE =
+            new PaymentErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "PAYMENT_RESULT_OUTBOX_NOT_APPLICABLE",
+                    "Payment result Outbox event is not applicable to the current payment state");
+
+    public static final PaymentErrorCode OUTBOX_PAYLOAD_SERIALIZATION_FAILED =
+            system(
+                    "PAYMENT_OUTBOX_PAYLOAD_SERIALIZATION_FAILED",
+                    "Payment Outbox payload serialization failed");
+
     private static PaymentErrorCode validation(String code, String message) {
 
         return new PaymentErrorCode(ErrorCategory.VALIDATION, code, message);
