@@ -341,6 +341,12 @@ public final class PaymentErrorCode implements ErrorCode {
                     "PAYMENT_PROVIDER_WEBHOOK_ACKNOWLEDGEMENT_INVALID",
                     "Payment provider webhook acknowledgement is invalid");
 
+    public static final PaymentErrorCode PROVIDER_WEBHOOK_AUTHENTICATION_FAILED =
+            new PaymentErrorCode(
+                    ErrorCategory.SECURITY,
+                    "PAYMENT_PROVIDER_WEBHOOK_AUTHENTICATION_FAILED",
+                    "Payment provider webhook authentication failed");
+
     private static PaymentErrorCode validation(String code, String message) {
 
         return new PaymentErrorCode(ErrorCategory.VALIDATION, code, message);
