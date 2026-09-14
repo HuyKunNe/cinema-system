@@ -2,14 +2,23 @@ package com.cinema.booking.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.math.BigDecimal;
-import java.time.Duration;
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.function.BooleanSupplier;
+import com.cinema.booking.entity.Booking;
+import com.cinema.booking.entity.BookingSeat;
+import com.cinema.booking.enums.BookingStatus;
+import com.cinema.booking.event.BookingEventContract;
+import com.cinema.booking.event.payload.ReservedSeatPayload;
+import com.cinema.booking.event.payload.SeatReservedPayload;
+import com.cinema.booking.repository.BookingRepository;
+import com.cinema.booking.repository.BookingSeatRepository;
+import com.cinema.booking.repository.ProcessedEventRepository;
+import com.cinema.common.core.id.UuidGenerator;
+import com.cinema.common.outbox.entity.OutboxEventEntity;
+import com.cinema.common.outbox.model.OutboxEventMessage;
+import com.cinema.common.outbox.repository.OutboxRepository;
+import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.persistence.EntityManager;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -28,28 +37,18 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.kafka.KafkaContainer;
 
-import com.cinema.booking.entity.Booking;
-import com.cinema.booking.entity.BookingSeat;
-import com.cinema.booking.enums.BookingStatus;
-import com.cinema.booking.event.BookingEventContract;
-import com.cinema.booking.event.payload.ReservedSeatPayload;
-import com.cinema.booking.event.payload.SeatReservedPayload;
-import com.cinema.booking.repository.BookingRepository;
-import com.cinema.booking.repository.BookingSeatRepository;
-import com.cinema.booking.repository.ProcessedEventRepository;
-import com.cinema.common.core.id.UuidGenerator;
-import com.cinema.common.outbox.entity.OutboxEventEntity;
-import com.cinema.common.outbox.model.OutboxEventMessage;
-import com.cinema.common.outbox.repository.OutboxRepository;
-import com.cinema.common.test.annotation.IntegrationTest;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 
-import jakarta.persistence.EntityManager;
-
-@IntegrationTest
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Testcontainers(disabledWithoutDocker = true)
-class SeatReservedKafkaIntegrationTest {
+class SeatReservedKafkaIntegrationTest extends AbstractMySqlIntegrationTest {
 
     private static final String TOPIC = "seat-reserved";
 
@@ -449,13 +448,13 @@ class SeatReservedKafkaIntegrationTest {
 
     private void cleanDatabase() {
 
-        outboxRepository.deleteAll();
+        outboxRepository.deleteAllInBatch();
 
-        processedEventRepository.deleteAll();
+        processedEventRepository.deleteAllInBatch();
 
-        bookingSeatRepository.deleteAll();
+        bookingSeatRepository.deleteAllInBatch();
 
-        bookingRepository.deleteAll();
+        bookingRepository.deleteAllInBatch();
     }
 
     private record TestContext(
