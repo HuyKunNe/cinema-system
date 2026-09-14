@@ -1,7 +1,7 @@
 # Event Catalog
 
-Version: R27.4
-Last updated: 2026-09-08
+Version: R27.7
+Last updated: 2026-09-14
 
 This document defines the authoritative Kafka event contracts, ownership,
 versioning, routing, metadata, payload requirements, producer and consumer
@@ -28,8 +28,8 @@ Implementation status:
 - Payment Service consumption of canonical `payment-requested` version `1`,
   Payment-attempt creation, processed-event idempotency, bounded Kafka retry,
   and sanitized dead-letter handling are implemented and verified.
-- Provider execution and authenticated webhook result application are implemented through R27.6.
-- Production of `payment-succeeded` and `payment-failed` remains R27.7 scope.
+- Provider execution and authenticated webhook result application are implemented and verified through R27.6.
+- Payment Service creation of canonical `payment-succeeded` and `payment-failed` Outbox events is implemented and verified through R27.7. Booking consumption remains R27.8 scope, while end-to-end Kafka publication, retry, and DLT verification remains R27.11 scope.
 - Inventory and Notification consumption of Booking lifecycle events remains
   future integration work until the corresponding consumers are implemented
   and verified.
@@ -726,14 +726,20 @@ Payment Service must:
 9. record a terminal provider result and create `payment-succeeded` or
    `payment-failed` in a later atomic local transaction.
 
-Implementation status through R27.4:
+Implementation status through R27.7:
 
-- steps 1–7 are implemented and verified;
+- steps 1–9 are implemented and verified;
 - an accepted non-expired request creates one `RECEIVED` Payment and one
   `READY` CHARGE operation;
-- an already expired request creates one `EXPIRED` Payment and no CHARGE;
-- provider execution remains R27.5;
-- terminal payment-result Outbox publication remains R27.7.
+- an already-expired request atomically creates one `EXPIRED` Payment and one
+  terminal `payment-failed` Outbox event without creating a CHARGE operation;
+- provider execution uses bounded claiming, processing leases, and stable
+  provider idempotency keys;
+- provider calls execute outside database transactions;
+- authenticated webhook and provider-worker terminal outcomes atomically persist
+  Payment state, PaymentTransaction state, and one canonical result Outbox event;
+- duplicate and stale outcomes do not create another terminal result event;
+- Booking consumption of terminal payment results remains R27.8 scope.
 
 An already expired request may be finalized as `RESERVATION_EXPIRED` without
 calling the provider. Retryable or ambiguous provider outcomes remain internal

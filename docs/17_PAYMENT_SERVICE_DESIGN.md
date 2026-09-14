@@ -1,8 +1,8 @@
 # Payment Service Design
 
-**Version:** R27.6
-**Status:** Authenticated webhook ingress and idempotent provider-result application implemented
-**Last updated:** 2026-09-10
+**Version:** R27.7
+**Status:** Atomic terminal payment-result Outbox publication and guarded provider scheduling implemented
+**Last updated:** 2026-09-14
 
 ---
 
@@ -406,9 +406,9 @@ R27.5 implements:
 - crash-window verification after provider acceptance and before local result commit;
 - unit, transaction-boundary, MySQL concurrency, lease-recovery, and provider-idempotency verification.
 
-The R27.5 worker has no scheduled or public trigger. Scheduled execution remains
-disabled until R27.7 can persist terminal Payment state and its canonical result
-Outbox event atomically.
+The R27.5 worker had no scheduled or public trigger. Scheduled execution remained
+disabled until R27.7 added atomic terminal Payment state and canonical result
+Outbox persistence.
 
 R27.5 does not implement:
 
@@ -459,8 +459,61 @@ The repository currently uses a deterministic test-only verifier for HTTP
 integration verification. Test provider headers and signature values must not
 appear in production source or configuration.
 
-R27.7 must persist the terminal Payment result and its canonical Outbox event in
-the same local transaction before scheduled provider execution is enabled.
+### R27.7 implementation state
+
+R27.7 implements:
+
+- immutable `PaymentSucceededPayload` and `PaymentFailedPayload` contracts;
+- canonical `payment-succeeded` and `payment-failed` Outbox factories;
+- UUID v7 event identifiers and trusted server timestamps;
+- Payment-owned aggregate and partition metadata;
+- propagation of source correlation and causation identifiers;
+- terminal `payment-failed` events with `retryable = false`;
+- atomic terminal Payment, PaymentTransaction, and Outbox persistence;
+- terminal result creation for provider-worker success and failure;
+- terminal result creation for authenticated webhook success and failure;
+- terminal `RESERVATION_EXPIRED` result creation for already-expired
+  `payment-requested` events;
+- duplicate, stale, worker-versus-webhook race, and terminal-result idempotency
+  verification;
+- rollback of Payment state, PaymentTransaction state, provider webhook markers,
+  and Outbox records when terminal Outbox creation fails;
+- an opt-in scheduled provider-operation trigger;
+- bounded scheduled batch execution with top-level failure isolation;
+- MySQL and Kafka integration tests using Flyway-owned schemas.
+
+Terminal provider result processing commits the following changes in one local
+transaction:
+
+```text
+Payment terminal transition
+PaymentTransaction terminal transition when a transaction exists
+Provider webhook marker when the result originated from a webhook
+payment-succeeded or payment-failed Outbox record
+```
+
+A failure while constructing or persisting the terminal Outbox record rolls back
+all state changes in that local transaction.
+
+Provider-operation scheduling is disabled by default:
+
+```text
+cinema.payment.provider-operation.scheduling-enabled=false
+```
+
+Enabling scheduling is an explicit operational decision. Scheduled execution
+continues to use the existing bounded claim, processing lease, stable provider
+idempotency key, execution-outside-transaction, and lock-ordered result
+application boundaries.
+
+R27.7 does not implement:
+
+- production MoMo or VNPay credentials, HTTP clients, or signature adapters;
+- Booking consumption of `payment-succeeded` or `payment-failed`;
+- Inventory confirmation or payment-failure compensation consumers;
+- automatic refund or reconciliation execution;
+- end-to-end Kafka publication, retry, and DLT verification for terminal
+  payment-result events.
 
 ## 9. `payment-requested` Consumer Transaction
 
@@ -480,8 +533,6 @@ three-letter currency
 requestedAt < holdExpiresAt
 ```
 
-````
-
 The consumer then performs one short local transaction:
 
 ```text
@@ -495,17 +546,13 @@ Persist source event ID and correlation ID
 Commit
 ```
 
-Through R27.4, expired request handling persists the terminal Payment state but
-does not yet publish `payment-failed`. R27.7 must add terminal result Outbox
-publication atomically with the approved terminal-result transaction before R27
-closure.
+Through R27.7, an already-expired `payment-requested` event atomically persists the terminal `EXPIRED` Payment, its processed-event marker, and one canonical `payment-failed` Outbox record. It does not create a CHARGE transaction or call the provider.
+
+The emitted failure uses the approved `RESERVATION_EXPIRED` code and `retryable = false`.
 
 The transaction must not call the provider.
 
-A duplicate event with the same event ID is a no-op. A different event ID for
-the same `(bookingId, paymentAttempt)` is accepted only when its normalized
-payload exactly matches the existing Payment. A mismatch is a contract conflict
-and must not create another payment or charge.
+A duplicate event with the same event ID is a no-op. A different event ID for the same `(bookingId, paymentAttempt)` is accepted only when its normalized payload exactly matches the existing Payment. A mismatch is a contract conflict and must not create another payment or charge.
 
 ---
 
@@ -527,11 +574,15 @@ Create terminal Outbox event only for a terminal outcome
 Commit
 ```
 
+Through R27.7, the final result transaction persists terminal Payment state, terminal PaymentTransaction state, and the canonical payment-result Outbox record atomically.
+
+`PENDING` and `UNKNOWN` provider outcomes remain non-terminal and do not create `payment-succeeded` or `payment-failed`.
+
+The provider-operation scheduler is an opt-in runtime trigger. It processes one bounded batch per invocation and does not introduce an enclosing transaction around the provider call.
+
 Provider calls must never hold database locks.
 
-If the process stops after the provider accepted a charge but before Payment
-state commits, the retry uses the same provider idempotency key. A provider
-adapter without idempotent request support is not approved for automatic retry.
+If the process stops after the provider accepted a charge but before Payment state commits, the retry uses the same provider idempotency key. A provider adapter without idempotent request support is not approved for automatic retry.
 
 The initial deterministic local/test adapter is:
 
@@ -608,6 +659,10 @@ Create payment-succeeded Outbox event
 Commit
 ```
 
+The Payment transition, CHARGE completion, and `payment-succeeded` Outbox insertion commit or roll back together.
+
+A duplicate provider operation result does not create another terminal Outbox record. A consistent webhook result observed after the terminal transition may be retained as provider evidence but must not repeat the Payment transition or Outbox insertion.
+
 Canonical payload:
 
 ```text
@@ -639,6 +694,10 @@ Change Payment -> FAILED or EXPIRED
 Create payment-failed Outbox event with retryable=false
 Commit
 ```
+
+The Payment transition, applicable CHARGE completion, and `payment-failed` Outbox insertion commit or roll back together.
+
+An already-expired `payment-requested` event has no CHARGE transaction. Its processed-event marker, terminal `EXPIRED` Payment, and `payment-failed` Outbox record still commit atomically.
 
 Approved version `1` failure codes are:
 
@@ -696,9 +755,9 @@ Processing performs:
 12. retain duplicate and stale callback evidence without repeating a transition;
 13. return the provider-specific acknowledgement.
 
-R27.6 does not create `payment-succeeded` or `payment-failed`. R27.7 adds the
-terminal Outbox event to the same transaction that commits the terminal Payment
-state. Until then, scheduled provider execution remains disabled.
+Through R27.7, an applied terminal webhook result creates `payment-succeeded` or `payment-failed` in the same local transaction that commits the Payment state, PaymentTransaction state, and provider webhook marker.
+
+Duplicate, confirmed-existing, and stale callbacks do not create another terminal Outbox event. A failure during terminal Outbox creation rolls back the webhook marker and all terminal state changes.
 
 Webhook logs must not include signatures, secrets, authorization headers, card
 data, or unrestricted raw request bodies.
@@ -928,6 +987,17 @@ R27 verification must cover:
 - refund idempotency and reconciliation controls when enabled;
 - Payment dependency-boundary verification;
 - Payment never accessing Booking or Inventory tables;
+- canonical payment-result payload and envelope serialization;
+- terminal `payment-failed` with `retryable = false`;
+- atomic provider-worker terminal state and Outbox persistence;
+- atomic webhook terminal state, marker, and Outbox persistence;
+- expired payment-request terminal failure publication;
+- duplicate provider-result idempotency;
+- duplicate and distinct concurrent webhook ordering;
+- one terminal Outbox record under concurrent result delivery;
+- complete rollback when terminal Outbox creation fails;
+- scheduler batch delegation and top-level failure isolation;
+- scheduler disabled-by-default runtime configuration;
 - focused and root `mvn clean verify`.
 
 ---
@@ -942,8 +1012,8 @@ R27 verification must cover:
 | R27.4      | `payment-requested` validation and idempotent consumption   | DONE    |
 | R27.5      | Provider port, operation worker, and provider idempotency   | DONE    |
 | R27.6      | Authenticated webhook and provider-result processing        | DONE    |
-| R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | NEXT    |
-| R27.8      | Booking payment-result consumers                            | PLANNED |
+| R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | DONE    |
+| R27.8      | Booking payment-result consumers                            | NEXT    |
 | R27.9      | Inventory confirmation and compensation consumers           | PLANNED |
 | R27.10     | Refund, reconciliation, permissions, and audit controls     | PLANNED |
 | R27.11     | Kafka retry, DLT, and publication verification              | PLANNED |
@@ -994,4 +1064,31 @@ The following choices remain deferred without weakening this design:
 Every later choice must preserve database ownership, provider idempotency,
 webhook authentication, sensitive-data minimization, Transactional Outbox, and
 idempotent consumer rules.
-````
+
+```
+
+## R27.7 Exit Criteria
+
+R27.7 is complete when:
+
+- canonical `payment-succeeded` and `payment-failed` payloads are immutable;
+- Outbox factories produce the approved version `1` envelope;
+- aggregate ID is the Payment ID;
+- partition key is the Booking ID;
+- correlation and causation identifiers come from the source
+  `payment-requested` event;
+- terminal failures always use `retryable = false`;
+- provider-worker terminal results persist state and Outbox atomically;
+- authenticated webhook terminal results persist state, callback marker, and
+  Outbox atomically;
+- already-expired payment requests persist one terminal failure Outbox event;
+- duplicate, stale, and concurrent results cannot create a second terminal
+  Outbox event;
+- Outbox creation failure rolls back every change in the terminal-result
+  transaction;
+- scheduled provider execution remains opt-in and provider calls remain outside
+  database transactions;
+- focused Payment verification and the root Maven reactor verification pass.
+
+---
+```

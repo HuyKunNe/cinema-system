@@ -158,33 +158,24 @@ R27 Payment Service is in progress.
 
 Completed checkpoints:
 
-```text
-R27.1 — Payment architecture and contract closure                 — DONE
-R27.2 — Payment Service bootstrap and Resource Server security    — DONE
-R27.3 — Payment aggregate and Flyway schema                       — DONE
-R27.4 — payment-requested validation and idempotent consumption   — DONE
-R27.5 — Provider port, operation worker, and provider idempotency — DONE
-R27.6 — Authenticated webhook and provider-result processing      — DONE
-```
+````text
+R27.1 — Payment architecture and contract closure                    — DONE
+R27.2 — Payment Service bootstrap and Resource Server security       — DONE
+R27.3 — Payment aggregate and Flyway schema                          — DONE
+R27.4 — payment-requested validation and idempotent consumption      — DONE
+R27.5 — Provider port, operation worker, and provider idempotency    — DONE
+R27.6 — Authenticated webhook and provider-result processing         — DONE
+R27.7 — payment-succeeded and payment-failed Outbox publication      — DONE
 
 Current checkpoint:
 
-```text
-R27.7 — payment-succeeded and payment-failed Outbox publication — NEXT
-```
+R27.8 — Booking payment-result consumers — NEXT
 
-R27.6 accepts provider callbacks only after provider-specific verification. The
-HTTP endpoint does not require a customer bearer token, but this must never be
-described as an unauthenticated payment decision.
+Production MoMo/VNPay integration is not implemented. R27.7 provides provider-neutral terminal-result persistence and an opt-in scheduled execution boundary without introducing production provider credentials or network adapters.
 
-Production MoMo/VNPay integration is not implemented. R27.7 must atomically
-persist terminal Payment state and its canonical Outbox event.
+Payment Service owns payment attempts, provider interaction, provider idempotency, payment-result events, refund state and Payment-owned persistence.
 
-Payment Service owns payment attempts, provider interaction, provider
-idempotency, payment-result events, refund state and Payment-owned persistence.
-
-R27 must consume the canonical `payment-requested` event without importing
-Booking entities, repositories or database tables.
+R27 must consume the canonical `payment-requested` event without importing Booking entities, repositories or database tables.
 
 R25.13 completed:
 
@@ -663,7 +654,7 @@ Movie, Inventory, User and Booking Service have completed their applicable
 implementation and verification requirements.
 
 R26 Booking Service is closed. R27 Payment Service is in progress.
-R27.1–R27.6 are complete. R27.7 is the active implementation checkpoint.
+R27.1–R27.7 are complete. R27.8 is the active implementation checkpoint.
 
 ---
 
@@ -809,60 +800,50 @@ R25 and R26 subsequently met their documented completion requirements.
 
 # Current Next Step
 
-- R27.6 — Authenticated webhook and provider-result processing
+- R27.8 — Booking payment-result consumers
 
-R27.1–R27.5 are complete. Payment Service now has:
+R27.1–R27.7 are complete. Payment Service now has:
 
 - an independent secured application;
 - Flyway-owned Payment persistence;
 - canonical and idempotent `payment-requested` consumption;
 - stable provider-operation idempotency keys;
-- a provider-neutral charge port;
-- a normalized provider registry;
-- a deterministic local/test `MOCK` adapter;
-- bounded `READ_COMMITTED` and `SKIP LOCKED` operation claiming;
+- bounded MySQL `READ_COMMITTED` and `SKIP LOCKED` claiming;
 - processing-owner leases and expired-lease recovery;
-- immutable claimed-operation snapshots;
-- provider execution protected by `Propagation.NEVER`;
-- lease-guarded result application;
-- safe pending and unknown outcome handling;
-- late-success routing to `RECONCILIATION_REQUIRED`;
-- crash-window and multi-instance MySQL verification.
+- provider execution outside database transactions;
+- authenticated and idempotent webhook processing;
+- immutable terminal payment-result payloads;
+- canonical `payment-succeeded` and `payment-failed` Outbox factories;
+- atomic terminal state and Outbox persistence;
+- duplicate, stale, race, and rollback verification;
+- an opt-in scheduled provider-operation trigger.
 
-The provider worker has no scheduled or public trigger through R27.5. It must not
-be scheduled before R27.7 adds atomic terminal result Outbox publication.
+R27.8 must add Booking-owned consumers for:
 
-R27.6 must add:
+```text
+payment-succeeded
+payment-failed
+```
 
-- provider allowlist resolution at the webhook boundary;
-- raw-body preservation for signature verification;
-- strict payload-size limits;
-- provider-specific signature and timestamp verification;
-- replay protection;
-- provider-event idempotency;
-- Payment and transaction lookup by safe provider references;
-- lock ordering compatible with the R27.5 worker;
-- webhook-versus-worker race handling;
-- exact provider-required acknowledgements without exposing internal errors.
+The consumers must:
 
-R27.6 must not:
+- validate the complete canonical envelope before domain processing;
+- use (eventId, consumerName) processed-event idempotency;
+- lock the Booking aggregate before applying a transition;
+- verify bookingId, amount, currency, correlation, and causation;
+- confirm only an eligible RESERVED Booking after payment-succeeded;
+- move an eligible RESERVED Booking to PAYMENT_FAILED after a terminal payment-failed;
+- create booking-confirmed or seat-release-requested atomically with the Booking transition and processed-event marker;
+- treat delayed or conflicting terminal results as reconciliation cases;
+- never access Payment Service persistence directly.
 
-- accept unsigned callbacks;
-- trust parsed JSON before signature verification;
-- log signatures, secrets, or unrestricted raw bodies;
-- publish terminal Kafka events directly;
-- introduce real production credentials;
-- access Booking or Inventory persistence.
+R27.8 must not:
 
-R27.1 architecture and contract closure is complete.
-R27.1–R27.4 are complete. Payment Service now has an independent secured
-application, Flyway-owned persistence, canonical `payment-requested`
-consumption, processed-event idempotency, stable provider-operation
-idempotency keys, bounded Kafka retry, and sanitized DLT handling.
-
-R27.5 must add the provider-neutral port, bounded operation claiming, processing
-leases, and execution outside database transactions. It must not introduce
-production credentials or call providers while holding database locks.
+- import Payment entities or repositories into Booking Service;
+- confirm an expired, cancelled, rejected, or payment-failed Booking silently;
+- release seats directly from Booking persistence;
+- trust provider-native fields;
+- publish directly to Kafka inside the Booking transaction.
 
 Preserve all completed R26 Booking boundaries.
 
@@ -889,3 +870,4 @@ Authoritative integration-event contracts:
 ```text
 docs/07_EVENT_CATALOG.md
 ```
+````
