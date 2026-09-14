@@ -2,9 +2,12 @@ package com.cinema.payment.provider.webhook;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 
 import com.cinema.common.core.id.UuidGenerator;
 import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.InternalServerException;
 import com.cinema.common.outbox.repository.OutboxRepository;
 import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
 import com.cinema.payment.entity.Payment;
@@ -12,6 +15,9 @@ import com.cinema.payment.entity.PaymentTransaction;
 import com.cinema.payment.enums.PaymentStatus;
 import com.cinema.payment.enums.PaymentTransactionStatus;
 import com.cinema.payment.enums.PaymentTransactionType;
+import com.cinema.payment.event.PaymentEventContract;
+import com.cinema.payment.event.PaymentSucceededOutboxFactory;
+import com.cinema.payment.exception.PaymentErrorCode;
 import com.cinema.payment.provider.model.ProviderOutcome;
 import com.cinema.payment.provider.webhook.model.PaymentProviderWebhookApplicationResult;
 import com.cinema.payment.provider.webhook.model.ProviderWebhookApplicationDisposition;
@@ -21,6 +27,8 @@ import com.cinema.payment.repository.PaymentRepository;
 import com.cinema.payment.repository.PaymentTransactionRepository;
 import com.cinema.payment.service.PaymentProviderWebhookApplicationService;
 
+import jakarta.persistence.EntityManager;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +37,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -66,6 +75,10 @@ class PaymentProviderWebhookMySqlIntegrationTest extends AbstractMySqlIntegratio
     @Autowired private PaymentProviderWebhookApplicationService applicationService;
 
     @Autowired private OutboxRepository outboxRepository;
+
+    @Autowired private EntityManager entityManager;
+
+    @MockitoSpyBean private PaymentSucceededOutboxFactory succeededOutboxFactory;
 
     @BeforeEach
     void cleanDatabase() {
@@ -167,6 +180,131 @@ class PaymentProviderWebhookMySqlIntegrationTest extends AbstractMySqlIntegratio
             assertThat(persistedTransaction.getProviderEventId())
                     .isEqualTo(webhook.providerEventId());
 
+            assertThat(outboxRepository.findAll())
+                    .singleElement()
+                    .satisfies(
+                            event -> {
+                                assertThat(event.getEventType())
+                                        .isEqualTo(PaymentEventContract.PAYMENT_SUCCEEDED);
+
+                                assertThat(event.getAggregateId())
+                                        .isEqualTo(persistedPayment.getId());
+
+                                assertThat(event.getPartitionKey())
+                                        .isEqualTo(persistedPayment.getBookingId().toString());
+                            });
+        } finally {
+            startWorkers.countDown();
+            executorService.shutdownNow();
+        }
+    }
+
+    @Test
+    void outboxFailureShouldRollbackWebhookMarkerAndTerminalState() {
+
+        TestAggregate aggregate = persistPendingAggregate();
+
+        VerifiedProviderWebhook webhook = succeededWebhook("provider-event-outbox-rollback");
+
+        doThrow(new InternalServerException(PaymentErrorCode.OUTBOX_PAYLOAD_SERIALIZATION_FAILED))
+                .when(succeededOutboxFactory)
+                .create(any(Payment.class));
+
+        assertThatThrownBy(() -> applicationService.apply(webhook))
+                .isInstanceOf(InternalServerException.class);
+
+        entityManager.clear();
+
+        Payment payment = paymentRepository.findById(aggregate.payment().getId()).orElseThrow();
+
+        PaymentTransaction transaction =
+                transactionRepository.findById(aggregate.transaction().getId()).orElseThrow();
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING_PROVIDER);
+
+        assertThat(payment.getProviderReference()).isEqualTo(PROVIDER_REFERENCE);
+
+        assertThat(transaction.getStatus()).isEqualTo(PaymentTransactionStatus.PENDING_PROVIDER);
+
+        assertThat(transaction.getProviderEventId()).isNull();
+
+        assertThat(
+                        webhookEventRepository.countByProviderAndProviderEventId(
+                                PROVIDER, webhook.providerEventId()))
+                .isZero();
+
+        assertThat(outboxRepository.count()).isZero();
+    }
+
+    @Test
+    void concurrentDistinctSuccessWebhooksShouldCreateOneTerminalOutbox() throws Exception {
+        TestAggregate aggregate = persistPendingAggregate();
+
+        VerifiedProviderWebhook firstWebhook =
+                succeededWebhook("provider-event-concurrent-success-first");
+
+        VerifiedProviderWebhook secondWebhook =
+                succeededWebhook("provider-event-concurrent-success-second");
+
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+
+        CountDownLatch workersReady = new CountDownLatch(2);
+        CountDownLatch startWorkers = new CountDownLatch(1);
+
+        try {
+            Future<ProviderWebhookApplicationDisposition> firstWorker =
+                    executorService.submit(
+                            () -> applyAfterStart(firstWebhook, workersReady, startWorkers));
+
+            Future<ProviderWebhookApplicationDisposition> secondWorker =
+                    executorService.submit(
+                            () -> applyAfterStart(secondWebhook, workersReady, startWorkers));
+
+            await(workersReady);
+            startWorkers.countDown();
+
+            ProviderWebhookApplicationDisposition firstDisposition =
+                    firstWorker.get(15, TimeUnit.SECONDS);
+
+            ProviderWebhookApplicationDisposition secondDisposition =
+                    secondWorker.get(15, TimeUnit.SECONDS);
+
+            assertThat(List.of(firstDisposition, secondDisposition))
+                    .containsExactlyInAnyOrder(
+                            ProviderWebhookApplicationDisposition.APPLIED,
+                            ProviderWebhookApplicationDisposition.IGNORED_STALE);
+
+            assertThat(
+                            webhookEventRepository.countByProviderAndProviderEventId(
+                                    PROVIDER, firstWebhook.providerEventId()))
+                    .isEqualTo(1);
+
+            assertThat(
+                            webhookEventRepository.countByProviderAndProviderEventId(
+                                    PROVIDER, secondWebhook.providerEventId()))
+                    .isEqualTo(1);
+
+            assertThat(webhookEventRepository.count()).isEqualTo(2);
+
+            Payment persistedPayment =
+                    paymentRepository.findById(aggregate.payment().getId()).orElseThrow();
+
+            PaymentTransaction persistedTransaction =
+                    transactionRepository.findById(aggregate.transaction().getId()).orElseThrow();
+
+            assertThat(persistedPayment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+
+            assertThat(persistedPayment.getProviderReference()).isEqualTo(PROVIDER_REFERENCE);
+
+            assertThat(persistedTransaction.getStatus())
+                    .isEqualTo(PaymentTransactionStatus.SUCCEEDED);
+
+            assertThat(persistedTransaction.getProviderReference()).isEqualTo(PROVIDER_REFERENCE);
+
+            assertThat(persistedTransaction.getProviderEventId())
+                    .isIn(firstWebhook.providerEventId(), secondWebhook.providerEventId());
+
+            assertThat(outboxRepository.count()).isEqualTo(1);
         } finally {
             startWorkers.countDown();
             executorService.shutdownNow();
@@ -217,6 +355,13 @@ class PaymentProviderWebhookMySqlIntegrationTest extends AbstractMySqlIntegratio
 
         assertThat(persistedTransaction.getProviderEventId())
                 .isEqualTo(succeededWebhook.providerEventId());
+
+        assertThat(outboxRepository.findAll())
+                .singleElement()
+                .satisfies(
+                        event ->
+                                assertThat(event.getEventType())
+                                        .isEqualTo(PaymentEventContract.PAYMENT_SUCCEEDED));
     }
 
     @Test
@@ -247,6 +392,8 @@ class PaymentProviderWebhookMySqlIntegrationTest extends AbstractMySqlIntegratio
                 .isEqualTo(PaymentTransactionStatus.PENDING_PROVIDER);
 
         assertThat(persistedTransaction.getProviderEventId()).isNull();
+
+        assertThat(outboxRepository.count()).isZero();
     }
 
     private ProviderWebhookApplicationDisposition applyAfterStart(

@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 
 import com.cinema.common.core.id.UuidGenerator;
+import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.InternalServerException;
 import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.common.outbox.model.OutboxEventMessage;
@@ -285,6 +286,47 @@ class PaymentTerminalResultOutboxIntegrationTest extends AbstractMySqlIntegratio
         assertThat(transaction.getProcessingOwner()).isEqualTo(PROCESSING_OWNER);
 
         assertThat(outboxRepository.count()).isZero();
+    }
+
+    @Test
+    void duplicateProviderSuccessShouldNotCreateAnotherTerminalOutbox() {
+
+        ProviderFixture fixture = persistClaimedProviderOperation();
+
+        ProviderChargeResult providerResult =
+                new ProviderChargeResult(
+                        ProviderOutcome.SUCCEEDED,
+                        "mock-provider-reference-duplicate",
+                        null,
+                        null,
+                        null);
+
+        resultApplicationService.apply(fixture.operation(), providerResult);
+
+        assertThatThrownBy(
+                        () -> resultApplicationService.apply(fixture.operation(), providerResult))
+                .isInstanceOf(ConflictException.class);
+
+        entityManager.clear();
+
+        Payment payment = paymentRepository.findById(fixture.paymentId()).orElseThrow();
+
+        PaymentTransaction transaction =
+                transactionRepository.findById(fixture.transactionId()).orElseThrow();
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+
+        assertThat(transaction.getStatus()).isEqualTo(PaymentTransactionStatus.SUCCEEDED);
+
+        assertThat(outboxRepository.findAll())
+                .singleElement()
+                .satisfies(
+                        event -> {
+                            assertThat(event.getEventType())
+                                    .isEqualTo(PaymentEventContract.PAYMENT_SUCCEEDED);
+
+                            assertThat(event.getAggregateId()).isEqualTo(payment.getId());
+                        });
     }
 
     private ProviderFixture persistClaimedProviderOperation() {
