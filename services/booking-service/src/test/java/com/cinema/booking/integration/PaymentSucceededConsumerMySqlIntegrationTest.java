@@ -230,6 +230,125 @@ class PaymentSucceededConsumerMySqlIntegrationTest extends AbstractMySqlIntegrat
         }
     }
 
+    @Test
+    void concurrentDistinctPaymentEventsShouldAllowOnlyOneConfirmation() throws Exception {
+
+        TestContext context = persistReservedBooking();
+
+        OutboxEventMessage firstMessage =
+                paymentSucceededMessage(context, UuidGenerator.next(), UuidGenerator.next());
+
+        OutboxEventMessage secondMessage =
+                paymentSucceededMessage(context, UuidGenerator.next(), UuidGenerator.next());
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        CountDownLatch ready = new CountDownLatch(2);
+
+        CountDownLatch start = new CountDownLatch(1);
+
+        try {
+            Future<ConcurrentOutcome> first =
+                    executor.submit(
+                            () ->
+                                    handleConcurrently(
+                                            context.bookingId(), firstMessage, ready, start));
+
+            Future<ConcurrentOutcome> second =
+                    executor.submit(
+                            () ->
+                                    handleConcurrently(
+                                            context.bookingId(), secondMessage, ready, start));
+
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+
+            start.countDown();
+
+            List<ConcurrentOutcome> outcomes =
+                    List.of(first.get(30, TimeUnit.SECONDS), second.get(30, TimeUnit.SECONDS));
+
+            assertThat(outcomes)
+                    .filteredOn(outcome -> outcome.failure() == null)
+                    .extracting(ConcurrentOutcome::status)
+                    .containsExactly(PaymentSucceededConsumerService.Status.CONFIRMED);
+
+            assertThat(outcomes)
+                    .filteredOn(outcome -> outcome.failure() != null)
+                    .singleElement()
+                    .satisfies(
+                            outcome ->
+                                    assertThat(outcome.failure())
+                                            .isInstanceOf(ConflictException.class));
+
+            entityManager.clear();
+
+            Booking reloaded = bookingRepository.findById(context.bookingId()).orElseThrow();
+
+            assertThat(reloaded.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
+
+            assertThat(reloaded.getConfirmedAt()).isNotNull();
+
+            /*
+             * Event thua đã insert marker trước khi lock Booking,
+             * nhưng marker phải rollback cùng failed transition.
+             */
+            assertThat(processedEventRepository.count()).isEqualTo(1);
+
+            assertThat(
+                            List.of(
+                                    processedEventRepository.existsByEventIdAndConsumerName(
+                                            firstMessage.eventId(),
+                                            BookingEventContract.PAYMENT_SUCCEEDED_CONSUMER),
+                                    processedEventRepository.existsByEventIdAndConsumerName(
+                                            secondMessage.eventId(),
+                                            BookingEventContract.PAYMENT_SUCCEEDED_CONSUMER)))
+                    .containsExactlyInAnyOrder(true, false);
+
+            List<OutboxEventEntity> confirmedEvents =
+                    outboxRepository.findAll().stream()
+                            .filter(
+                                    event ->
+                                            BookingEventContract.BOOKING_CONFIRMED.equals(
+                                                    event.getEventType()))
+                            .toList();
+
+            assertThat(confirmedEvents).hasSize(1);
+
+            OutboxEventEntity confirmedEvent = confirmedEvents.getFirst();
+
+            assertThat(confirmedEvent.getAggregateId()).isEqualTo(context.bookingId());
+
+            assertThat(confirmedEvent.getPartitionKey()).isEqualTo(context.bookingId().toString());
+
+            assertThat(confirmedEvent.getEventType())
+                    .isEqualTo(BookingEventContract.BOOKING_CONFIRMED);
+
+            assertThat(confirmedEvent.getEventVersion())
+                    .isEqualTo(BookingEventContract.BOOKING_CONFIRMED_VERSION);
+
+            assertThat(confirmedEvent.getTopic()).isEqualTo(BookingEventContract.BOOKING_CONFIRMED);
+
+            /*
+             * Causation ID phải thuộc chính xác một trong hai event đầu vào.
+             */
+            assertThat(confirmedEvent.getCausationId())
+                    .isIn(firstMessage.eventId(), secondMessage.eventId());
+
+            if (confirmedEvent.getCausationId().equals(firstMessage.eventId())) {
+
+                assertThat(confirmedEvent.getCorrelationId())
+                        .isEqualTo(firstMessage.correlationId());
+
+            } else {
+
+                assertThat(confirmedEvent.getCorrelationId())
+                        .isEqualTo(secondMessage.correlationId());
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
     private TestContext persistReservedBooking() {
 
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC).withNano(0);
@@ -292,6 +411,33 @@ class PaymentSucceededConsumerMySqlIntegrationTest extends AbstractMySqlIntegrat
                 objectMapper.valueToTree(payload));
     }
 
+    private ConcurrentOutcome handleConcurrently(
+            UUID bookingId,
+            OutboxEventMessage message,
+            CountDownLatch ready,
+            CountDownLatch start) {
+
+        try {
+            ready.countDown();
+
+            if (!start.await(10, TimeUnit.SECONDS)) {
+
+                return ConcurrentOutcome.failure(
+                        new IllegalStateException(
+                                "Timed out waiting to start concurrent payment result"));
+            }
+
+            PaymentSucceededConsumerService.Result result =
+                    consumerService.handle(bookingId.toString(), message);
+
+            return ConcurrentOutcome.success(result.status());
+
+        } catch (Throwable failure) {
+
+            return ConcurrentOutcome.failure(failure);
+        }
+    }
+
     private void assertBookingConfirmedOutbox(
             OutboxEventEntity event, TestContext context, OutboxEventMessage sourceMessage) {
 
@@ -332,4 +478,18 @@ class PaymentSucceededConsumerMySqlIntegrationTest extends AbstractMySqlIntegrat
             UUID showtimeId,
             OffsetDateTime expiresAt,
             List<BookingSeat> seats) {}
+
+    private record ConcurrentOutcome(
+            PaymentSucceededConsumerService.Status status, Throwable failure) {
+
+        private static ConcurrentOutcome success(PaymentSucceededConsumerService.Status status) {
+
+            return new ConcurrentOutcome(status, null);
+        }
+
+        private static ConcurrentOutcome failure(Throwable failure) {
+
+            return new ConcurrentOutcome(null, failure);
+        }
+    }
 }
