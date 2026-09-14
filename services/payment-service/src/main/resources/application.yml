@@ -88,6 +88,9 @@ cinema:
     provider-operation:
       batch-size: ${PAYMENT_PROVIDER_OPERATION_BATCH_SIZE:20}
       lease-duration: ${PAYMENT_PROVIDER_OPERATION_LEASE_DURATION:30s}
+      scheduling-enabled: ${PAYMENT_PROVIDER_OPERATION_SCHEDULING_ENABLED:false}
+      scheduler-initial-delay: ${PAYMENT_PROVIDER_OPERATION_SCHEDULER_INITIAL_DELAY:5s}
+      scheduler-delay: ${PAYMENT_PROVIDER_OPERATION_SCHEDULER_DELAY:1s}
     kafka:
       enabled: ${PAYMENT_KAFKA_ENABLED:true}
       topics:

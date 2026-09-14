@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.cinema.common.core.id.UuidGenerator;
 import com.cinema.common.outbox.model.OutboxEventMessage;
 import com.cinema.common.outbox.repository.OutboxRepository;
-import com.cinema.common.test.annotation.IntegrationTest;
+import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
 import com.cinema.payment.entity.Payment;
 import com.cinema.payment.entity.PaymentTransaction;
 import com.cinema.payment.enums.PaymentStatus;
@@ -47,10 +47,9 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 
-@IntegrationTest
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Testcontainers(disabledWithoutDocker = true)
-class PaymentRequestedKafkaIntegrationTest {
+class PaymentRequestedKafkaIntegrationTest extends AbstractMySqlIntegrationTest {
 
     private static final String TOPIC = "payment-requested";
 
@@ -394,13 +393,13 @@ class PaymentRequestedKafkaIntegrationTest {
 
     private void cleanDatabase() {
 
-        outboxRepository.deleteAll();
+        outboxRepository.deleteAllInBatch();
 
-        processedEventRepository.deleteAll();
+        processedEventRepository.deleteAllInBatch();
 
-        transactionRepository.deleteAll();
+        transactionRepository.deleteAllInBatch();
 
-        paymentRepository.deleteAll();
+        paymentRepository.deleteAllInBatch();
     }
 
     private record TestContext(
