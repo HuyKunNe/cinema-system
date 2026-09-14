@@ -1,6 +1,30 @@
 package com.cinema.booking.integration;
 
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
+
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.kafka.KafkaContainer;
 
 import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
@@ -17,32 +41,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.persistence.EntityManager;
 
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.header.Headers;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.kafka.KafkaContainer;
-
-import java.time.Duration;
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.function.BooleanSupplier;
-
 @IntegrationTest
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Testcontainers(disabledWithoutDocker = true)
 class SeatReservationRejectedKafkaIntegrationTest {
 
@@ -60,29 +60,10 @@ class SeatReservationRejectedKafkaIntegrationTest {
 
     private static final OffsetDateTime EXPIRES_AT = OffsetDateTime.parse("2026-08-24T10:10:00Z");
 
-    @Container
-    static final MySQLContainer<?> MYSQL =
-            new MySQLContainer<>(MYSQL_IMAGE)
-                    .withDatabaseName("booking_rejected_kafka_test")
-                    .withUsername("cinema")
-                    .withPassword("cinema");
-
     @Container static final KafkaContainer KAFKA = new KafkaContainer(KAFKA_IMAGE);
 
     @DynamicPropertySource
     static void registerInfrastructure(DynamicPropertyRegistry registry) {
-
-        registry.add("spring.datasource.url", MYSQL::getJdbcUrl);
-
-        registry.add("spring.datasource.username", MYSQL::getUsername);
-
-        registry.add("spring.datasource.password", MYSQL::getPassword);
-
-        registry.add("spring.datasource.driver-class-name", MYSQL::getDriverClassName);
-
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
-
-        registry.add("spring.flyway.enabled", () -> true);
 
         registry.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
 

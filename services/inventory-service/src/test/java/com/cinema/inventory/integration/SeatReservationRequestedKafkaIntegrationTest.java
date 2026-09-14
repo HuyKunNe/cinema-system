@@ -40,9 +40,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.kafka.KafkaContainer;
@@ -61,6 +61,7 @@ import java.util.function.BooleanSupplier;
 
 @IntegrationTest
 @Testcontainers(disabledWithoutDocker = true)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Import(SeatReservationRequestedKafkaIntegrationTest.FixedClockConfiguration.class)
 class SeatReservationRequestedKafkaIntegrationTest {
 
@@ -71,33 +72,12 @@ class SeatReservationRequestedKafkaIntegrationTest {
     private static final OffsetDateTime NOW =
             OffsetDateTime.ofInstant(CURRENT_INSTANT, ZoneOffset.UTC);
 
-    private static final String MYSQL_IMAGE = "mysql:8.4.0";
-
     private static final String KAFKA_IMAGE = "apache/kafka:4.0.0";
-
-    @Container
-    static final MySQLContainer<?> MYSQL =
-            new MySQLContainer<>(MYSQL_IMAGE)
-                    .withDatabaseName("inventory_kafka_test")
-                    .withUsername("cinema")
-                    .withPassword("cinema");
 
     @Container static final KafkaContainer KAFKA = new KafkaContainer(KAFKA_IMAGE);
 
     @DynamicPropertySource
     static void registerInfrastructure(DynamicPropertyRegistry registry) {
-
-        registry.add("spring.datasource.url", MYSQL::getJdbcUrl);
-
-        registry.add("spring.datasource.username", MYSQL::getUsername);
-
-        registry.add("spring.datasource.password", MYSQL::getPassword);
-
-        registry.add("spring.datasource.driver-class-name", MYSQL::getDriverClassName);
-
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
-
-        registry.add("spring.flyway.enabled", () -> true);
 
         registry.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
 
@@ -113,10 +93,9 @@ class SeatReservationRequestedKafkaIntegrationTest {
                 "cinema.inventory.kafka.consumer-group",
                 () -> "inventory-seat-reservation-integration");
 
-        registry.add("cinema.inventory.kafka.topics." + "seat-reservation-requested", () -> TOPIC);
+        registry.add("cinema.inventory.kafka.topics.seat-reservation-requested", () -> TOPIC);
 
         registry.add("cinema.outbox.enabled", () -> false);
-
         registry.add("cinema.outbox.producer", () -> "inventory-service");
     }
 
