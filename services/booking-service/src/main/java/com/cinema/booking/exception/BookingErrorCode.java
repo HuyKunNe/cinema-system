@@ -234,6 +234,18 @@ public final class BookingErrorCode implements ErrorCode {
                     "BOOKING_EVENT_OCCURRED_AT_REQUIRED",
                     "Event occurrence time is required");
 
+    public static final BookingErrorCode EVENT_CAUSATION_ID_REQUIRED =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_EVENT_CAUSATION_ID_REQUIRED",
+                    "Event causation ID is required");
+
+    public static final BookingErrorCode EVENT_CAUSATION_ID_INVALID =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_EVENT_CAUSATION_ID_INVALID",
+                    "Event causation ID must be a UUID v7");
+
     public static final BookingErrorCode EVENT_PAYLOAD_INVALID =
             new BookingErrorCode(
                     ErrorCategory.VALIDATION,
