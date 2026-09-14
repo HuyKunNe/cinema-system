@@ -280,6 +280,16 @@ public final class BookingErrorCode implements ErrorCode {
                     "BOOKING_CURRENT_TIME_REQUIRED",
                     "Current time is required");
 
+    public static final BookingErrorCode PAYMENT_ID_REQUIRED =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_PAYMENT_ID_REQUIRED",
+                    "Payment ID is required");
+
+    public static final BookingErrorCode BOOKING_NOT_CONFIRMED =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS, "BOOKING_NOT_CONFIRMED", "Booking is not confirmed");
+
     private final ErrorCategory category;
 
     private final String code;

@@ -165,6 +165,18 @@ public class Booking extends BaseEntity {
         this.status = BookingStatus.REJECTED;
     }
 
+    public void confirm(OffsetDateTime now) {
+
+        requireCurrentTime(now);
+        requireReserved();
+        if (!expiresAt.isAfter(now)) {
+            throw new ConflictException(BookingErrorCode.BOOKING_RESERVATION_EXPIRED);
+        }
+
+        this.status = BookingStatus.CONFIRMED;
+        this.confirmedAt = now;
+    }
+
     public void cancel(OffsetDateTime now) {
 
         requireCurrentTime(now);

@@ -48,5 +48,9 @@ public final class BookingEventContract {
 
     public static final String PAYMENT_FAILED_CONSUMER = "booking-payment-failed";
 
+    public static final String BOOKING_CONFIRMED = "booking-confirmed";
+
+    public static final String BOOKING_CONFIRMED_VERSION = "1";
+
     private BookingEventContract() {}
 }
