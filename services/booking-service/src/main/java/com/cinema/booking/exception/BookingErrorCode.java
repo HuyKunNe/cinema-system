@@ -290,6 +290,12 @@ public final class BookingErrorCode implements ErrorCode {
             new BookingErrorCode(
                     ErrorCategory.BUSINESS, "BOOKING_NOT_CONFIRMED", "Booking is not confirmed");
 
+    public static final BookingErrorCode PAYMENT_RESULT_MISMATCH =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_PAYMENT_RESULT_MISMATCH",
+                    "Payment result does not match the reserved booking");
+
     private final ErrorCategory category;
 
     private final String code;
