@@ -1,8 +1,8 @@
 # Payment Service Design
 
-**Version:** R27.7
-**Status:** Atomic terminal payment-result Outbox publication and guarded provider scheduling implemented
-**Last updated:** 2026-09-14
+**Version:** R27.8
+**Status:** Booking terminal payment-result integration implemented and verified
+**Last updated:** 2026-09-15
 
 ---
 
@@ -545,6 +545,41 @@ R27.7 does not implement:
 - automatic refund or reconciliation execution;
 - end-to-end Kafka publication, retry, and DLT verification for terminal
   payment-result events.
+
+### R27.8 Implementation State
+
+R27.8 implements Booking-owned consumption of:
+
+```text
+payment-succeeded
+payment-failed
+```
+
+Implemented guarantees include:
+
+- strict canonical envelope and immutable payload validation;
+- separate stable consumer identities for success and failure;
+- `(eventId, consumerName)` processed-event idempotency;
+- pessimistic Booking aggregate locking;
+- atomic `RESERVED -> CONFIRMED` and `booking-confirmed` persistence;
+- atomic `RESERVED -> PAYMENT_FAILED` and `seat-release-requested` persistence;
+- authoritative amount and currency verification for successful payments;
+- approved stable failure-code handling;
+- exclusion of unrestricted provider messages from Booking compensation events;
+- rollback of the processed-event marker and Booking transition when resulting Outbox creation or persistence fails;
+- bounded Kafka retry and sanitized dead-letter handling;
+- duplicate, distinct-event, delayed-result and competing-result verification.
+
+When success and failure compete for the same Booking, exactly one transaction may commit. The losing transaction must roll back its processed-event marker and must not create a second resulting Outbox event.
+
+R27.8 does not implement:
+
+- Inventory consumption of `booking-confirmed`;
+- Inventory consumption of `seat-release-requested`;
+- Inventory consumption of `booking-cancelled` or `booking-expired`;
+- production MoMo or VNPay adapters;
+- automatic reconciliation or refund execution;
+- Notification Service consumption.
 
 ## 9. `payment-requested` Consumer Transaction
 
@@ -1091,23 +1126,42 @@ R27 verification must cover:
 
 ---
 
+## 22.1 R27.8 Exit Criteria
+
+R27.8 is complete when:
+
+- Booking consumes canonical `payment-succeeded` and `payment-failed` version `1`;
+- invalid envelopes and payloads cannot mutate Booking state;
+- duplicate deliveries do not repeat transitions or Outbox creation;
+- successful payment confirms only an eligible `RESERVED` Booking;
+- terminal payment failure changes only an eligible `RESERVED` Booking to `PAYMENT_FAILED`;
+- success creates exactly one `booking-confirmed` Outbox event;
+- failure creates exactly one `seat-release-requested` Outbox event;
+- processed-event markers, Booking transitions and resulting Outbox records commit or roll back together;
+- delayed terminal results cannot reverse a decided Booking;
+- concurrent success and failure allow exactly one terminal winner;
+- the losing competing result leaves no processed-event marker or Outbox event;
+- focused Booking tests and root Maven verification pass.
+
+---
+
 ## 23. Implementation Order
 
-| Checkpoint | Scope                                                       | Status  |
-| ---------- | ----------------------------------------------------------- | ------- |
-| R27.1      | Payment architecture and contract closure                   | DONE    |
-| R27.2      | Payment Service bootstrap and Resource Server security      | DONE    |
-| R27.3      | Payment aggregate and Flyway schema                         | DONE    |
-| R27.4      | `payment-requested` validation and idempotent consumption   | DONE    |
-| R27.5      | Provider port, operation worker, and provider idempotency   | DONE    |
-| R27.6      | Authenticated webhook and provider-result processing        | DONE    |
-| R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | DONE    |
-| R27.8      | Booking payment-result consumers                            | NEXT    |
-| R27.9      | Inventory confirmation and compensation consumers           | PLANNED |
-| R27.10     | Refund, reconciliation, permissions, and audit controls     | PLANNED |
-| R27.11     | Kafka retry, DLT, and publication verification              | PLANNED |
-| R27.12     | Saga integration, race, and concurrency verification        | PLANNED |
-| R27.13     | Stabilization, documentation, and closure                   | PLANNED |
+| Checkpoint | Scope                                                     | Status  |
+| ---------- | --------------------------------------------------------- | ------- |
+| R27.1      | Payment architecture and contract closure                 | DONE    |
+| R27.2      | Payment Service bootstrap and Resource Server security    | DONE    |
+| R27.3      | Payment aggregate and Flyway schema                       | DONE    |
+| R27.4      | `payment-requested` validation and idempotent consumption | DONE    |
+| R27.5      | Provider port, operation worker, and provider idempotency | DONE    |
+| R27.6      | Authenticated webhook and provider-result processing      | DONE    |
+| R27.8      | Booking payment-result consumers                          | DONE    |
+| R27.9      | Inventory confirmation and compensation consumers         | NEXT    |
+| R27.9      | Inventory confirmation and compensation consumers         | PLANNED |
+| R27.10     | Refund, reconciliation, permissions, and audit controls   | PLANNED |
+| R27.11     | Kafka retry, DLT, and publication verification            | PLANNED |
+| R27.12     | Saga integration, race, and concurrency verification      | PLANNED |
+| R27.13     | Stabilization, documentation, and closure                 | PLANNED |
 
 No checkpoint may introduce real provider credentials, direct cross-service
 database access, non-idempotent charges, or direct Kafka publication after a

@@ -170,7 +170,11 @@ R27.7 — payment-succeeded and payment-failed Outbox publication      — DONE
 
 Current checkpoint:
 
-R27.8 — Booking payment-result consumers — NEXT
+```text
+R27.9 — Inventory confirmation and compensation consumers — NEXT
+```
+
+R27.1–R27.8 are complete.
 
 Production MoMo/VNPay integration is not implemented. R27.7 provides provider-neutral terminal-result persistence and an opt-in scheduled execution boundary without introducing production provider credentials or network adapters.
 
@@ -819,77 +823,35 @@ R25 and R26 subsequently met their documented completion requirements.
 
 # Current Next Step
 
-- R27.8 — Booking payment-result consumers
+- R27.9 — Inventory confirmation and compensation consumers
 
-R27.1–R27.7 are complete. Payment Service now has:
-
-- an independent secured application;
-- Flyway-owned Payment persistence;
-- canonical and idempotent `payment-requested` consumption;
-- stable provider-operation idempotency keys;
-- bounded MySQL `READ_COMMITTED` and `SKIP LOCKED` claiming;
-- processing-owner leases and expired-lease recovery;
-- provider execution outside database transactions;
-- authenticated and idempotent webhook processing;
-- immutable terminal payment-result payloads;
-- canonical `payment-succeeded` and `payment-failed` Outbox factories;
-- atomic terminal state and Outbox persistence;
-- duplicate, stale, race, and rollback verification;
-- an opt-in scheduled provider-operation trigger.
-
-R27.8 must add Booking-owned consumers for:
+R27.8 completed Booking-owned consumption of:
 
 ```text
 payment-succeeded
 payment-failed
 ```
 
-The consumers must:
+The completed Booking payment-result baseline includes:
 
-- validate the complete canonical envelope before domain processing;
-- use (eventId, consumerName) processed-event idempotency;
-- lock the Booking aggregate before applying a transition;
-- verify bookingId, amount, currency, correlation, and causation;
-- confirm only an eligible RESERVED Booking after payment-succeeded;
-- move an eligible RESERVED Booking to PAYMENT_FAILED after a terminal payment-failed;
-- create booking-confirmed or seat-release-requested atomically with the Booking transition and processed-event marker;
-- treat delayed or conflicting terminal results as reconciliation cases;
-- never access Payment Service persistence directly.
+- strict canonical envelope and immutable payload validation;
+- processed-event idempotency;
+- pessimistic Booking locking;
+- atomic `RESERVED -> CONFIRMED` and `booking-confirmed` Outbox creation;
+- atomic `RESERVED -> PAYMENT_FAILED` and `seat-release-requested` Outbox creation;
+- rollback when resulting Outbox creation fails;
+- Kafka retry and sanitized DLT behavior;
+- duplicate and distinct-event concurrency verification;
+- delayed terminal-result rejection;
+- competing success-versus-failure ordering with exactly one winner.
 
-R27.8 must not:
-
-- import Payment entities or repositories into Booking Service;
-- confirm an expired, cancelled, rejected, or payment-failed Booking silently;
-- release seats directly from Booking persistence;
-- trust provider-native fields;
-- publish directly to Kafka inside the Booking transaction.
-
-Preserve all completed R26 Booking boundaries.
-
-Payment Service must:
-
-- consume canonical `payment-requested` events idempotently;
-- own payment attempts and provider references;
-- never store card number, CVV or unrestricted provider credentials in events;
-- preserve correlation and causation metadata;
-- use Transactional Outbox for payment-result publication;
-- avoid direct access to Booking persistence;
-- publish canonical `payment-succeeded` or `payment-failed` results;
-- treat provider callbacks and retries as at-least-once operations;
-- enforce provider idempotency independently of Kafka idempotency.
-
-Authoritative Booking baseline:
+R27.9 must add Inventory-owned consumers for:
 
 ```text
-docs/16_BOOKING_SERVICE_DESIGN.md
+booking-confirmed
+seat-release-requested
+booking-cancelled
+booking-expired
 ```
 
-Authoritative integration-event contracts:
-
-```text
-docs/07_EVENT_CATALOG.md
-```
-
-```
-
-```
+Inventory must conditionally modify only ShowSeats that are still owned by the matching Booking.

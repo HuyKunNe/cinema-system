@@ -1,8 +1,8 @@
 # Changelog
 
 **Version:** 0.9
-**Current baseline:** R1–R26 and R27.1–R27.6 completed; R27.7 next
-**Last reviewed:** 2026-09-10
+**Current baseline:** R1–R26 and R27.1–R27.8 completed; R27.9 next
+**Last reviewed:** 2026-09-15
 
 ---
 
@@ -47,6 +47,24 @@ R28                   Planned
 
 # Unreleased
 
+## 2026-09-15
+
+### R27.8 Booking Payment-Result Consumers
+
+- Added strict Booking-side readers and validators for canonical `payment-succeeded` and `payment-failed` events.
+- Added processed-event idempotency for both terminal result consumers.
+- Added pessimistic Booking locking before terminal transitions.
+- Added atomic `RESERVED -> CONFIRMED` and `booking-confirmed` Outbox creation.
+- Added atomic `RESERVED -> PAYMENT_FAILED` and `seat-release-requested` Outbox creation.
+- Preserved source correlation and causation identifiers.
+- Excluded unrestricted provider failure messages from compensation events.
+- Added rollback verification for both resulting Outbox paths.
+- Added Booking-side Kafka retry and sanitized DLT verification.
+- Verified duplicate and distinct concurrent result handling.
+- Verified delayed success and delayed failure cannot reverse decided Booking state.
+- Verified competing success and failure create exactly one Booking transition, one processed-event marker and one resulting Outbox event.
+- Completed R27.8 and advanced the active checkpoint to R27.9.
+
 ## 2026-09-10
 
 ### R27.6 Authenticated Provider Webhooks
@@ -56,13 +74,11 @@ R28                   Planned
 - Added normalized provider verifier registration and allowlisting.
 - Added provider-specific verification and acknowledgement boundaries.
 - Added the provider webhook HTTP endpoint.
-- Allowed the callback endpoint through customer JWT security while retaining
-  mandatory provider-specific request authentication.
+- Allowed the callback endpoint through customer JWT security while retaining mandatory provider-specific request authentication.
 - Added Flyway-owned immutable provider callback markers.
 - Enforced `(provider, providerEventId)` idempotency.
 - Added fixed `Payment -> PaymentTransaction` lock ordering.
-- Added transactional success, failure, pending, unknown, duplicate, confirmed,
-  and stale callback handling.
+- Added transactional success, failure, pending, unknown, duplicate, confirmed, and stale callback handling.
 - Verified duplicate callbacks create one marker and one business transition.
 - Verified concurrent callbacks serialize safely.
 - Verified failed callback application rolls back its event marker.

@@ -1,8 +1,8 @@
 # Project Roadmap
 
-**Version:** R27.7 Implementation
-**Current target:** R27.7 — Payment result Outbox publication
-**Last updated:** 2026-09-10
+**Version:** R27.8 Completed
+**Current target:** R27.9 — Inventory confirmation and compensation consumers
+**Last updated:** 2026-09-15
 
 ---
 
@@ -1568,9 +1568,9 @@ Payment Service will own:
 | R27.4      | `payment-requested` validation and idempotent consumption   | DONE    |
 | R27.5      | Provider port, operation worker, and provider idempotency   | DONE    |
 | R27.6      | Authenticated webhook and provider-result processing        | DONE    |
-| R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | NEXT    |
-| R27.8      | Booking payment-result consumers                            | PLANNED |
-| R27.9      | Inventory confirmation and compensation consumers           | PLANNED |
+| R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | DONE    |
+| R27.8      | Booking payment-result consumers                            | DONE    |
+| R27.9      | Inventory confirmation and compensation consumers           | NEXT    |
 | R27.10     | Refund, reconciliation, permissions, and audit controls     | PLANNED |
 | R27.11     | Kafka retry, DLT, and publication verification              | PLANNED |
 | R27.12     | Saga integration, race, and concurrency verification        | PLANNED |
@@ -1851,7 +1851,7 @@ Do not:
 | Inventory Service       | R24            | ✅ Completed                                                       |
 | User Service            | R25            | ✅ Completed                                                       |
 | Booking Service         | R26            | ✅ Completed                                                       |
-| Payment Service         | R27            | ⏳ In progress — R27.1–R27.6 completed                             |
+| Payment Service         | R27            | ⏳ In progress — R27.1–R27.8 completed                             |
 | Notification Service    | R28            | ⏳ Planned                                                         |
 | Production Readiness    | To be assigned | ⏳ Planned                                                         |
 
@@ -1865,7 +1865,7 @@ The next implementation round is:
 
 The active implementation checkpoint is:
 
-> **R27.7 — `payment-succeeded` and `payment-failed` Outbox publication**
+> **R27.9 — Inventory confirmation and compensation consumers**
 
 ADR-013 selects User Service with Spring Authorization Server as the
 authoritative issuer. R25 User Service and R26 Booking Service are complete.

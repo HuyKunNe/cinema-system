@@ -1,15 +1,14 @@
 # Booking Service Design
 
-**Version:** R26
-**Status:** Implemented and verified
-**Last updated:** 2026-08-25
+**Version:** R27.8
+**Status:** Booking payment-result consumers implemented and verified
+**Last updated:** 2026-09-15
 
 ---
 
 ## 1. Purpose
 
-Booking Service owns the customer booking aggregate and coordinates the booking
-Saga through integration events.
+Booking Service owns the customer booking aggregate and coordinates the booking Saga through integration events.
 
 This document defines the approved implementation baseline for R26.
 
@@ -446,6 +445,70 @@ No payment request may be created for a rejected Booking.
 
 ---
 
+### 10.1 Payment Result Consumption
+
+Booking Service consumes canonical version `1` terminal Payment events:
+
+```text
+payment-succeeded
+payment-failed
+```
+
+Both consumers:
+
+- validate the complete canonical envelope before domain processing;
+- deserialize and strictly validate the immutable payload;
+- register `(eventId, consumerName)` processed-event idempotency;
+- pessimistically lock the Booking aggregate;
+- require the Booking to be `RESERVED`;
+- persist the Booking transition, processed-event marker and resulting Outbox event in one local transaction;
+- never access Payment Service persistence;
+- never publish directly to Kafka from the domain transaction.
+
+For `payment-succeeded`, the atomic transition is:
+
+```text
+RESERVED -> CONFIRMED
+Set confirmedAt using trusted server time
+Create booking-confirmed Outbox event
+Commit
+```
+
+The consumer validates that the authoritative Booking amount and currency match the payment result. The resulting `booking-confirmed` event preserves source correlation and uses the `payment-succeeded` event ID as causation.
+
+For terminal `payment-failed`, the atomic transition is:
+
+```text
+RESERVED -> PAYMENT_FAILED
+Store the approved stable failure code
+Create seat-release-requested Outbox event
+Commit
+```
+
+The unrestricted provider failure message is not persisted in the Booking and is not propagated into `seat-release-requested`.
+
+A duplicate event is a successful no-op. A distinct delayed event that cannot apply its expected transition rolls back its processed-event marker.
+
+Concurrent `payment-succeeded` and `payment-failed` events are serialized by the Booking pessimistic lock. Exactly one event may transition the Booking and create one resulting Outbox event:
+
+```text
+Success wins
+    -> Booking = CONFIRMED
+    -> one booking-confirmed
+    -> no seat-release-requested
+
+Failure wins
+    -> Booking = PAYMENT_FAILED
+    -> one seat-release-requested
+    -> no booking-confirmed
+```
+
+The losing transaction must roll back its processed-event marker and must not reverse the decided Booking state.
+
+A delayed success for `PAYMENT_FAILED`, `CANCELLED`, `EXPIRED`, `REJECTED` or another terminal state requires reconciliation. Booking Service must not silently restore or confirm the Booking.
+
+---
+
 ## 11. Expiration and Cancellation
 
 Booking expiration is based on persisted `expires_at`. Application-instance
@@ -706,6 +769,21 @@ R26 tests must cover:
 - sensitive payment data excluded from the event;
 - Booking Service dependency-boundary checks;
 - Booking Service never accessing `show_seats`.
+- strict `payment-succeeded` and `payment-failed` envelope validation;
+- immutable payment-result payload reading and validation;
+- duplicate payment-result processed-event idempotency;
+- transactional `RESERVED -> CONFIRMED` handling;
+- transactional `RESERVED -> PAYMENT_FAILED` handling;
+- atomic `booking-confirmed` Outbox creation;
+- atomic `seat-release-requested` Outbox creation;
+- rollback when either resulting Outbox factory fails;
+- MySQL duplicate and distinct-event concurrency;
+- Kafka retry and sanitized DLT handling for both terminal result topics;
+- delayed success after payment failure;
+- delayed failure after confirmation;
+- concurrent success-versus-failure ordering;
+- exactly one processed-event marker and one resulting Outbox event under a
+  competing terminal-result race.
 
 ---
 

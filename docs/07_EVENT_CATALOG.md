@@ -1,7 +1,7 @@
 # Event Catalog
 
-Version: R27.7
-Last updated: 2026-09-14
+Version: R27.8
+Last updated: 2026-09-15
 
 This document defines the authoritative Kafka event contracts, ownership,
 versioning, routing, metadata, payload requirements, producer and consumer
@@ -781,7 +781,10 @@ Implementation status through R27.7:
 - provider calls execute outside database transactions;
 - authenticated webhook and provider-worker terminal outcomes atomically persist Payment state, PaymentTransaction state, and one canonical result Outbox event;
 - duplicate and stale outcomes do not create another terminal result event;
-- Booking consumption of terminal payment results remains R27.8 scope.
+- Payment Service creation of canonical `payment-succeeded` and `payment-failed` Outbox events is implemented and verified through R27.7.
+- Booking Service consumption of canonical `payment-succeeded` and `payment-failed`, including transactional state transitions, processed-event idempotency, resulting Outbox creation, Kafka retry/DLT behavior and competing result ordering, is implemented and verified through R27.8.
+- End-to-end publication verification beginning from Payment Outbox claiming remains R27.11 scope.
+- Inventory consumption of `booking-confirmed`, `seat-release-requested`, `booking-cancelled` and `booking-expired` remains R27.9 scope.
 
 An already expired request may be finalized as `RESERVATION_EXPIRED` without calling the provider. Retryable or ambiguous provider outcomes remain internal Payment state and do not create a terminal result event.
 
@@ -845,27 +848,27 @@ Reports that payment completed successfully.
 
 Sensitive payment credentials must not be included.
 
-## Consumer behavior
+## Consumer Behavior
 
-Booking Service must:
+Booking Service atomically performs:
 
 ```text
-Check processed event
-Verify booking exists
-Verify amount and currency match
-Verify expected booking status is RESERVED
-Update RESERVED → CONFIRMED
-Set confirmed_at
-Store processed event
-Create booking-confirmed outbox event
+Validate canonical envelope and payload
+Register processed-event marker
+Lock Booking
+Verify Booking is RESERVED
+Verify amount and currency
+Update RESERVED -> CONFIRMED
+Set confirmed_at using trusted server time
+Create booking-confirmed Outbox event
 Commit
 ```
 
-A duplicate event must not confirm the booking twice or create duplicate downstream
-side effects.
+A duplicate event is a successful no-op.
 
-A payment received after booking expiration requires an explicit reconciliation or
-refund policy. It must not silently restore an expired booking.
+A delayed or competing event that observes a decided Booking state must not reverse that state. Its processed-event marker and any partial changes must roll back.
+
+A payment result received after Booking expiration requires reconciliation. It must not silently restore or confirm an expired Booking.
 
 ---
 
@@ -913,21 +916,27 @@ as a temporary provider outage remain inside Payment Service until retry is
 exhausted and the outcome is known. An unknown outcome requires reconciliation
 and must not be reported as terminal failure.
 
-## Consumer behavior
+## Consumer Behavior
 
-Booking Service must:
+Booking Service atomically performs:
 
 ```text
-Check processed event
-Verify expected booking state
-Update RESERVED → PAYMENT_FAILED
-Store processed event
-Create seat-release-requested outbox event
+Validate canonical envelope and payload
+Resolve the approved stable failure code
+Register processed-event marker
+Lock Booking
+Verify Booking is RESERVED
+Update RESERVED -> PAYMENT_FAILED
+Persist only the approved stable failure code
+Create seat-release-requested Outbox event
 Commit
 ```
 
-Internal provider errors and stack traces must not be placed in public event
-messages.
+The provider-native message is not copied into the Booking compensation event.
+
+A duplicate event is a successful no-op. A delayed or competing failure must not reverse `CONFIRMED`, `CANCELLED`, `EXPIRED` or another decided state.
+
+Concurrent success and failure for the same Booking must create exactly one Booking transition and one downstream Outbox event.
 
 ---
 
