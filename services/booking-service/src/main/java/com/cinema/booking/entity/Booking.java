@@ -297,4 +297,16 @@ public class Booking extends BaseEntity {
             throw new ValidationException(BookingErrorCode.CURRENT_TIME_REQUIRED);
         }
     }
+
+    public void failPayment(String failureReason) {
+
+        requireReserved();
+
+        if (failureReason == null || failureReason.isBlank()) {
+            throw new ValidationException(BookingErrorCode.PAYMENT_FAILURE_REASON_REQUIRED);
+        }
+
+        this.status = BookingStatus.PAYMENT_FAILED;
+        this.rejectionReason = failureReason.trim();
+    }
 }

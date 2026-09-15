@@ -296,6 +296,18 @@ public final class BookingErrorCode implements ErrorCode {
                     "BOOKING_PAYMENT_RESULT_MISMATCH",
                     "Payment result does not match the reserved booking");
 
+    public static final BookingErrorCode PAYMENT_FAILURE_REASON_REQUIRED =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_PAYMENT_FAILURE_REASON_REQUIRED",
+                    "Payment failure reason is required");
+
+    public static final BookingErrorCode BOOKING_NOT_PAYMENT_FAILED =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_NOT_PAYMENT_FAILED",
+                    "Booking is not payment failed");
+
     private final ErrorCategory category;
 
     private final String code;

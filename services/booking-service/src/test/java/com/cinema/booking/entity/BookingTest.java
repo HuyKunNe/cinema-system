@@ -1,13 +1,16 @@
 package com.cinema.booking.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.cinema.booking.enums.BookingStatus;
+import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
@@ -129,5 +132,61 @@ class BookingTest {
                                 REQUEST_FINGERPRINT,
                                 NOW.minusSeconds(1),
                                 NOW));
+    }
+
+    @Test
+    void reservedBookingShouldTransitionToPaymentFailed() {
+
+        Booking booking = reservedBooking();
+
+        booking.failPayment("PAYMENT_DECLINED");
+
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.PAYMENT_FAILED);
+
+        assertThat(booking.getRejectionReason()).isEqualTo("PAYMENT_DECLINED");
+
+        assertThat(booking.getConfirmedAt()).isNull();
+
+        assertThat(booking.getCancelledAt()).isNull();
+    }
+
+    @Test
+    void pendingBookingShouldNotTransitionToPaymentFailed() {
+
+        Booking booking =
+                new Booking(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        "payment-failure-test",
+                        REQUEST_FINGERPRINT,
+                        NOW.plusMinutes(10),
+                        NOW);
+
+        assertThatThrownBy(() -> booking.failPayment("PAYMENT_DECLINED"))
+                .isInstanceOf(ConflictException.class);
+    }
+
+    @Test
+    void missingPaymentFailureReasonShouldBeRejected() {
+
+        Booking booking = reservedBooking();
+
+        assertThatThrownBy(() -> booking.failPayment(" ")).isInstanceOf(ValidationException.class);
+    }
+
+    private Booking reservedBooking() {
+
+        Booking booking =
+                new Booking(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        "payment-failure-test",
+                        REQUEST_FINGERPRINT,
+                        NOW.plusMinutes(10),
+                        NOW);
+
+        booking.reserve(new BigDecimal("210000.00"), "VND");
+
+        return booking;
     }
 }

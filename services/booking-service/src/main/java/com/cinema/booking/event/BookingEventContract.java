@@ -52,5 +52,9 @@ public final class BookingEventContract {
 
     public static final String BOOKING_CONFIRMED_VERSION = "1";
 
+    public static final String SEAT_RELEASE_REQUESTED = "seat-release-requested";
+
+    public static final String SEAT_RELEASE_REQUESTED_VERSION = "1";
+
     private BookingEventContract() {}
 }
