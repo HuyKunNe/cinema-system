@@ -326,7 +326,13 @@ public final class InventoryErrorCode implements ErrorCode {
                     ErrorCategory.VALIDATION,
                     "INVENTORY_EVENT_CAUSATION_ID_INVALID",
                     "Event causation ID must be a UUID v7");
-                    
+
+    public static final InventoryErrorCode BOOKING_CONFIRMATION_MISMATCH =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_BOOKING_CONFIRMATION_MISMATCH",
+                    "Booking confirmation does not match held inventory");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;
