@@ -321,6 +321,12 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PROCESSED_AT_REQUIRED",
                     "Processed event timestamp is required");
 
+    public static final InventoryErrorCode EVENT_CAUSATION_ID_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_EVENT_CAUSATION_ID_INVALID",
+                    "Event causation ID must be a UUID v7");
+                    
     private final String code;
     private final String message;
     private final ErrorCategory category;
