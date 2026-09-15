@@ -30,5 +30,13 @@ public final class InventoryEventContract {
 
     public static final String BOOKING_AGGREGATE_TYPE = "BOOKING";
 
+    public static final String SEAT_RELEASE_REQUESTED = "seat-release-requested";
+
+    public static final String SEAT_RELEASE_REQUESTED_VERSION = "1";
+
+    public static final String SEAT_RELEASE_REQUESTED_CONSUMER = "inventory-seat-release";
+
+    public static final String SEAT_RELEASE_REASON_PAYMENT_FAILED = "PAYMENT_FAILED";
+
     private InventoryEventContract() {}
 }
