@@ -51,8 +51,11 @@ cinema:
     kafka:
       enabled: false
       consumer-group: inventory-seat-reservation-test
+      consumer-groups:
+        booking-confirmed: inventory-booking-confirmed-test
       topics:
         seat-reservation-requested: seat-reservation-requested
+        booking-confirmed: booking-confirmed
       retry:
         interval: 10ms
         maximum-retries: 2

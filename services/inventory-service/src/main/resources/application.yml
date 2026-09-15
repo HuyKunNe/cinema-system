@@ -42,7 +42,6 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
-
 springdoc:
   api-docs:
     enabled: true
@@ -88,8 +87,12 @@ cinema:
       enabled: ${INVENTORY_KAFKA_ENABLED:true}
       consumer-group: ${INVENTORY_KAFKA_CONSUMER_GROUP:inventory-seat-reservation}
 
+      consumer-groups:
+        booking-confirmed: ${INVENTORY_BOOKING_CONFIRMED_CONSUMER_GROUP:inventory-booking-confirmed}
+
       topics:
         seat-reservation-requested: ${SEAT_RESERVATION_REQUESTED_TOPIC:seat-reservation-requested}
+        booking-confirmed: ${BOOKING_CONFIRMED_TOPIC:booking-confirmed}
 
       retry:
         interval: ${INVENTORY_KAFKA_RETRY_INTERVAL:1s}
