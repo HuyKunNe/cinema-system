@@ -20,6 +20,15 @@ public final class InventoryEventContract {
 
     public static final String CURRENCY_VND = "VND";
 
+    public static final String BOOKING_CONFIRMED = "booking-confirmed";
+
+    public static final String BOOKING_CONFIRMED_VERSION = "1";
+
+    public static final String BOOKING_CONFIRMED_CONSUMER = "inventory-booking-confirmed";
+
+    public static final String BOOKING_PRODUCER = "booking-service";
+
+    public static final String BOOKING_AGGREGATE_TYPE = "BOOKING";
+
     private InventoryEventContract() {}
 }
-
