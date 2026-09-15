@@ -293,13 +293,54 @@ Create seat-reservation-requested Outbox row
 Commit
 ```
 
-Booking Service must not keep this transaction open while calling another
-service.
+Booking Service must not keep this transaction open while calling another service.
 
-The API returns an accepted Booking representation after the local transaction
-commits.
+The API returns an accepted Booking representation after the local transaction commits.
 
 ---
+
+### 9.1 Single Reservation Deadline
+
+Booking Service establishes one absolute reservation deadline when the Booking is created:
+
+```text
+expiresAt = trusted server creation time + reservationExpiration
+```
+
+The default reservation duration is `10m`. It may be changed only through the approved configuration:
+
+```text
+cinema.booking.reservation-expiration
+BOOKING_RESERVATION_EXPIRATION
+```
+
+Selecting seats only in a client interface does not create a Booking and does not reserve or lock any ShowSeat. The reservation window starts only when Booking Service accepts and persists the new `PENDING` Booking.
+
+The same persisted `expiresAt` applies to the complete requested seat set and every subsequent step of the initial Booking Saga:
+
+```text
+Booking creation
+Seat reservation
+Payment-attempt creation
+Customer provider checkout
+Provider result application
+Booking confirmation
+```
+
+The deadline must not be recalculated, reset or extended when:
+
+- Inventory changes the requested seats to `HELD`;
+- Booking changes from `PENDING` to `RESERVED`;
+- Booking publishes `payment-requested`;
+- Payment creates or claims a provider operation;
+- a provider checkout URL is generated;
+- the customer opens or submits a provider checkout;
+- a provider operation is retried;
+- a provider callback or query result is received.
+
+Asynchronous event delivery and processing consume part of the same reservation window. No service grants a new full reservation duration after an intermediate step succeeds.
+
+All seats belonging to one Booking share the same absolute reservation deadline.
 
 ## 10. Seat Reservation Result
 
@@ -310,18 +351,16 @@ Validate the canonical event envelope and payload
 Insert the processed-event marker
 Lock the Booking aggregate
 Validate PENDING state
-Validate showtime, expiration and exact requested seat set
+Validate showtime, persisted expiration and exact requested seat set
 Complete authoritative BookingSeat snapshots
 Validate the authoritative total amount
 Set total amount and currency
 Change PENDING -> RESERVED
-Create payment-requested Outbox event
+Automatically create payment-requested using the persisted Booking expiration
 Commit
 ```
 
-The processed-event marker, Booking state transition, BookingSeat snapshot
-completion and `payment-requested` Outbox insertion form one atomic local
-transaction.
+The processed-event marker, Booking state transition, BookingSeat snapshot completion and `payment-requested` Outbox insertion form one atomic local transaction.
 
 The canonical `payment-requested` payload contains:
 
@@ -334,6 +373,14 @@ paymentAttempt
 holdExpiresAt
 requestedAt
 ```
+
+`holdExpiresAt` must equal the persisted `Booking.expiresAt`.
+
+`requestedAt` records the trusted server time at which Booking Service creates the `payment-requested` event. It does not start a new payment window.
+
+Booking Service publishes the initial `payment-requested` event automatically after accepting the authoritative `seat-reserved` result. The initial Payment attempt is therefore not deferred until a later client-side payment-button action.
+
+Any customer interaction with a hosted provider checkout remains bound to the same `holdExpiresAt`.
 
 The initial payment attempt is:
 
@@ -461,9 +508,28 @@ wins. Cancellation must not create a `booking-cancelled` event for an expired
 reservation.
 
 Concurrent expiration attempts are serialized by the Booking pessimistic lock.
-Exactly one transaction may change the Booking to `EXPIRED` and create the
-corresponding Outbox record. Later attempts observe the decided state and
-return without another transition or event.
+Exactly one transaction may change the Booking to `EXPIRED` and create the corresponding Outbox record. Later attempts observe the decided state and return without another transition or event.
+
+The persisted expiration boundary is inclusive for expiration decisions:
+
+```text
+trusted now < expiresAt -> the reservation window remains open
+
+trusted now >= expiresAt -> the reservation is expired
+```
+
+Starting an operation shortly before `expiresAt` does not grant additional time. Every terminal Booking or Payment decision must re-evaluate the persisted deadline using trusted server time after acquiring the applicable aggregate lock.
+
+For example:
+
+```text
+Booking created:             10:00:00
+Persisted expiresAt:         10:10:00
+Customer submits payment:    10:09:59
+Effective deadline:          10:10:00
+```
+
+The customer does not receive another ten-minute payment window.
 
 The lifecycle event contracts are:
 

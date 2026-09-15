@@ -158,7 +158,7 @@ R27 Payment Service is in progress.
 
 Completed checkpoints:
 
-````text
+```text
 R27.1 — Payment architecture and contract closure                    — DONE
 R27.2 — Payment Service bootstrap and Resource Server security       — DONE
 R27.3 — Payment aggregate and Flyway schema                          — DONE
@@ -166,6 +166,7 @@ R27.4 — payment-requested validation and idempotent consumption      — DONE
 R27.5 — Provider port, operation worker, and provider idempotency    — DONE
 R27.6 — Authenticated webhook and provider-result processing         — DONE
 R27.7 — payment-succeeded and payment-failed Outbox publication      — DONE
+```
 
 Current checkpoint:
 
@@ -462,6 +463,24 @@ Booking Service does not validate seat availability against the Inventory
 database.
 
 ---
+
+## Reservation and Payment Deadline Invariants
+
+- Booking creation establishes one absolute persisted reservation deadline.
+- The default reservation duration is `10m` unless externally configured.
+- Client-side seat selection alone does not reserve a ShowSeat.
+- All seats belonging to one Booking share the same reservation deadline.
+- Inventory pessimistic row locks exist only for the local reservation transaction.
+- Persisted `HELD`, `held_by_booking_id` and `hold_expires_at` state enforce the seat hold after the Inventory transaction commits.
+- `seat-reserved` must preserve the Booking expiration deadline.
+- Booking publishes the initial `payment-requested` event automatically after accepting `seat-reserved`.
+- `payment-requested.requestedAt` does not start a new payment window.
+- Payment creation, provider checkout, provider retry and provider callback processing must not reset or extend `holdExpiresAt`.
+- Asynchronous Kafka and service-processing delays consume the original reservation window.
+- The expiration boundary is `trusted now >= holdExpiresAt`.
+- A normal provider success must be confirmed before `holdExpiresAt`.
+- A provider success first confirmed at or after `holdExpiresAt` requires reconciliation and must not silently confirm the Booking.
+- A future minimum checkout window must remain separate from the reservation deadline and must not extend `holdExpiresAt`.
 
 # Inventory Service Responsibilities
 
@@ -870,4 +889,7 @@ Authoritative integration-event contracts:
 ```text
 docs/07_EVENT_CATALOG.md
 ```
-````
+
+```
+
+```

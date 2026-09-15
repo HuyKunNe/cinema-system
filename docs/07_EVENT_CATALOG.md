@@ -498,27 +498,51 @@ Booking Service must not update `show_seats`.
 | `requestedAt`        |      Yes | Request creation time                |
 | `holdExpiresAt`      |      Yes | Requested hold deadline              |
 
-## Consumer behavior
+## Deadline Semantics
+
+`holdExpiresAt` is the single absolute reservation deadline created by Booking Service:
+
+```text
+holdExpiresAt = Booking.expiresAt
+```
+
+The complete requested seat set shares this deadline. Inventory Service must not calculate a new hold duration when it consumes the event.
+
+Client-side seat selection alone does not create this event and does not reserve any ShowSeat.
+
+Inventory acquires pessimistic database locks only while processing its local reservation transaction. Those database locks end when the transaction commits or rolls back.
+
+After commit, seat exclusivity is represented by persisted business state:
+
+```text
+status = HELD
+held_by_booking_id = bookingId
+hold_expires_at = holdExpiresAt
+```
+
+A database row lock therefore does not remain active for the complete reservation duration.
+
+## Consumer Behavior
 
 Inventory Service must:
 
-1. Check `processed_events`.
-2. Normalize and validate seat numbers.
-3. Reject duplicate seat numbers.
-4. Acquire distributed locks in deterministic order only when the approved
-   multi-seat workflow requires them.
-5. Load all requested `show_seats`.
-6. Confirm all seats exist.
-7. Confirm all seats are `AVAILABLE`, or are an idempotent valid hold by the
-   same booking.
-8. Change the complete set to `HELD` atomically.
-9. Store `held_by_booking_id` and `hold_expires_at`.
-10. Store the processed event.
-11. Create either `seat-reserved` or `seat-reservation-rejected`.
-12. Commit the local transaction.
-13. Release locks.
+1. validate the canonical envelope and payload;
+2. check `processed_events`;
+3. normalize and validate seat numbers;
+4. reject duplicate seat numbers;
+5. load and pessimistically lock all requested `show_seats` in deterministic seat-number order;
+6. confirm that the complete requested seat set exists;
+7. confirm that every requested seat is `AVAILABLE`, or is an idempotent valid hold owned by the same Booking;
+8. reject the complete request when any requested seat cannot be held;
+9. change the complete requested set to `HELD` atomically;
+10. store `held_by_booking_id` and the event-provided `hold_expires_at`;
+11. store the processed-event marker;
+12. create either `seat-reserved` or `seat-reservation-rejected`;
+13. commit the local transaction.
 
-Partial reservation is not allowed.
+Partial reservation is prohibited.
+
+The pessimistic database locks are transaction-scoped. The persisted `HELD` state provides reservation exclusivity after commit.
 
 ---
 
@@ -710,6 +734,30 @@ booking.
 }
 ```
 
+## Deadline Semantics
+
+The `payment-requested` event does not grant Payment Service a new payment duration.
+
+```text
+requestedAt = time Booking Service created payment-requested
+
+holdExpiresAt = original absolute Booking reservation deadline
+```
+
+Booking Service creates `payment-requested` automatically after it accepts `seat-reserved`.
+
+A later customer checkout action does not create a new event deadline and does not extend the seat hold.
+
+All consumers and result handlers use the following expiration boundary:
+
+```text
+trusted now < holdExpiresAt
+    -> the reservation window remains open
+
+trusted now >= holdExpiresAt
+    -> the reservation window is expired
+```
+
 ## Consumer behavior
 
 Payment Service must:
@@ -718,39 +766,54 @@ Payment Service must:
 2. check `processed_events`;
 3. resolve or create the idempotent `(bookingId, paymentAttempt)` aggregate;
 4. verify duplicate payload consistency;
-5. store Payment-owned state and a provider operation with a stable provider
-   idempotency key;
+5. store Payment-owned state and a provider operation with a stable provider idempotency key;
 6. store the processed event;
 7. commit its short local transaction without calling the provider;
 8. execute the provider operation outside the database transaction;
-9. record a terminal provider result and create `payment-succeeded` or
-   `payment-failed` in a later atomic local transaction.
+9. record a terminal provider result and create `payment-succeeded` or `payment-failed` in a later atomic local transaction.
 
 Implementation status through R27.7:
 
 - steps 1–9 are implemented and verified;
-- an accepted non-expired request creates one `RECEIVED` Payment and one
-  `READY` CHARGE operation;
-- an already-expired request atomically creates one `EXPIRED` Payment and one
-  terminal `payment-failed` Outbox event without creating a CHARGE operation;
-- provider execution uses bounded claiming, processing leases, and stable
-  provider idempotency keys;
+- an accepted non-expired request creates one `RECEIVED` Payment and one `READY` CHARGE operation;
+- an already-expired request atomically creates one `EXPIRED` Payment and one terminal `payment-failed` Outbox event without creating a CHARGE operation;
+- provider execution uses bounded claiming, processing leases, and stable provider idempotency keys;
 - provider calls execute outside database transactions;
-- authenticated webhook and provider-worker terminal outcomes atomically persist
-  Payment state, PaymentTransaction state, and one canonical result Outbox event;
+- authenticated webhook and provider-worker terminal outcomes atomically persist Payment state, PaymentTransaction state, and one canonical result Outbox event;
 - duplicate and stale outcomes do not create another terminal result event;
 - Booking consumption of terminal payment results remains R27.8 scope.
 
-An already expired request may be finalized as `RESERVATION_EXPIRED` without
-calling the provider. Retryable or ambiguous provider outcomes remain internal
-Payment state and do not create a terminal result event.
+An already expired request may be finalized as `RESERVATION_EXPIRED` without calling the provider. Retryable or ambiguous provider outcomes remain internal Payment state and do not create a terminal result event.
 
 Provider calls require an explicit idempotency strategy.
 
-A database processed-event check alone does not guarantee that an external payment
-provider will not receive a duplicate request.
+A database processed-event check alone does not guarantee that an external payment provider will not receive a duplicate request.
 
 ---
+
+A Payment attempt created before `holdExpiresAt` remains bound to the same absolute deadline.
+
+If terminal success is first authenticated and confirmed at or after the deadline, Payment Service must route the result to reconciliation rather than publish a normal `payment-succeeded` event.
+
+Example:
+
+```text
+08:30:15 Booking created
+08:40:15 holdExpiresAt
+08:40:14 Customer submits payment
+08:40:16 Success first confirmed by Payment Service
+```
+
+Approved result:
+
+```text
+Payment = RECONCILIATION_REQUIRED
+No normal payment-succeeded event
+Booking is not silently confirmed
+Refund or reconciliation policy decides the financial outcome
+```
+
+An expired Payment request or late provider result must not silently restore the Booking reservation or extend the Inventory hold.
 
 # `payment-succeeded`
 

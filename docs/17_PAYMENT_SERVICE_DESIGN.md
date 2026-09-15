@@ -171,6 +171,37 @@ retry/expiration policy reaches a terminal decision.
 
 ---
 
+### 5.3 Reservation and Payment Timing Contract
+
+`holdExpiresAt` is the absolute Booking reservation deadline established by Booking Service. Payment Service treats this timestamp as immutable trusted event data after canonical validation.
+
+`requestedAt` is the time at which Booking Service created the
+`payment-requested` event. It is not the beginning of a new payment timeout.
+
+Payment Service must not extend, replace or recalculate `holdExpiresAt` when:
+
+- the Payment aggregate is created;
+- a CHARGE transaction is created;
+- a provider operation is claimed;
+- a provider checkout URL is created;
+- the customer opens or submits the provider checkout;
+- a provider call is retried;
+- a webhook is received;
+- a provider result is queried or applied.
+
+The initial reservation window includes Kafka delivery, Payment processing and provider interaction time.
+
+Example:
+
+```text
+Booking created:                    10:00:00
+Payment attempt created:            10:00:03
+Customer submits provider payment:  10:09:59
+Persisted holdExpiresAt:            10:10:00
+```
+
+Submitting payment at `10:09:59` does not create another ten-minute window.
+
 ## 6. Payment Aggregate
 
 Approved Payment fields:
@@ -554,6 +585,24 @@ The transaction must not call the provider.
 
 A duplicate event with the same event ID is a no-op. A different event ID for the same `(bookingId, paymentAttempt)` is accepted only when its normalized payload exactly matches the existing Payment. A mismatch is a contract conflict and must not create another payment or charge.
 
+Payment Service makes the initial expiration decision using trusted server time:
+
+```text
+trusted now < holdExpiresAt
+    -> create the initial Payment
+    -> create one READY CHARGE operation
+
+trusted now >= holdExpiresAt
+    -> create an EXPIRED Payment
+    -> do not create a CHARGE operation
+    -> do not call the provider
+    -> create payment-failed with RESERVATION_EXPIRED
+```
+
+Receiving `payment-requested` before the deadline permits creation of the Payment attempt. It does not guarantee that a later provider success can be applied normally.
+
+The deadline must be checked again when an authoritative terminal provider result is applied.
+
 ---
 
 ## 10. Provider Execution Boundary
@@ -675,9 +724,49 @@ providerReference
 paidAt
 ```
 
-If success is first observed at or after `holdExpiresAt`, Payment must not
-silently publish normal success. It enters `RECONCILIATION_REQUIRED` and follows
-the approved reconciliation/refund policy.
+A provider success may produce the normal `payment-succeeded` event only when the success is authoritatively observed before `holdExpiresAt`.
+
+```text
+success observed before holdExpiresAt
+    -> Payment may transition to SUCCEEDED
+    -> complete the CHARGE transaction
+    -> create payment-succeeded
+
+success first observed at or after holdExpiresAt
+    -> do not create normal payment-succeeded
+    -> transition Payment to RECONCILIATION_REQUIRED
+    -> follow the approved reconciliation or refund policy
+```
+
+This rule applies even when:
+
+- the Payment aggregate was created before expiration;
+- the CHARGE operation was created or claimed before expiration;
+- the customer submitted payment immediately before expiration;
+- the provider reports that the financial charge occurred before expiration, but Payment Service could not authenticate and confirm the result locally until after expiration;
+- the result arrives through a delayed webhook;
+- the result is discovered through a later provider query.
+
+A late provider success must not silently confirm an expired Booking. Inventory may already have released the held seats or assigned them to another Booking.
+
+---
+
+### 13.1 Future Minimum Checkout Window
+
+A future hosted-checkout API may refuse to initiate a new customer redirect when the remaining reservation time is below a configured minimum checkout window.
+
+This policy is not implemented by the current automatic `payment-requested` consumer and must not be claimed as current behavior.
+
+If introduced, the minimum checkout window:
+
+- must be checked by the backend using trusted server time;
+- must have an explicit configuration property;
+- must have an explicit public error contract;
+- must not extend or recalculate `holdExpiresAt`;
+- must not replace the terminal late-success reconciliation rule;
+- must be covered by exact-boundary, concurrency and delayed-callback tests.
+
+Frontend countdown validation may improve user experience, but it is not an authoritative expiration guarantee.
 
 ---
 
