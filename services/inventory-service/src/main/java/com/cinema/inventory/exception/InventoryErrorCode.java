@@ -333,6 +333,12 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_BOOKING_CONFIRMATION_MISMATCH",
                     "Booking confirmation does not match held inventory");
 
+    public static final InventoryErrorCode SEAT_RELEASE_MISMATCH =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SEAT_RELEASE_MISMATCH",
+                    "Seat release request does not match held inventory");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

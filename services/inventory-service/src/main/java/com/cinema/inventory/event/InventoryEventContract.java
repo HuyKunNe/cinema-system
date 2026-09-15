@@ -38,5 +38,9 @@ public final class InventoryEventContract {
 
     public static final String SEAT_RELEASE_REASON_PAYMENT_FAILED = "PAYMENT_FAILED";
 
+    public static final String SEAT_RELEASED = "seat-released";
+
+    public static final String SEAT_RELEASED_VERSION = "1";
+
     private InventoryEventContract() {}
 }
