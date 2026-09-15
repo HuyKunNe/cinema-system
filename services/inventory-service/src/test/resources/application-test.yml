@@ -53,9 +53,11 @@ cinema:
       consumer-group: inventory-seat-reservation-test
       consumer-groups:
         booking-confirmed: inventory-booking-confirmed-test
+        seat-release-requested: inventory-seat-release-test
       topics:
         seat-reservation-requested: seat-reservation-requested
         booking-confirmed: booking-confirmed
+        seat-release-requested: seat-release-requested
       retry:
         interval: 10ms
         maximum-retries: 2

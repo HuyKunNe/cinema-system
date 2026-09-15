@@ -89,10 +89,12 @@ cinema:
 
       consumer-groups:
         booking-confirmed: ${INVENTORY_BOOKING_CONFIRMED_CONSUMER_GROUP:inventory-booking-confirmed}
+        seat-release-requested: ${INVENTORY_SEAT_RELEASE_CONSUMER_GROUP:inventory-seat-release}
 
       topics:
         seat-reservation-requested: ${SEAT_RESERVATION_REQUESTED_TOPIC:seat-reservation-requested}
         booking-confirmed: ${BOOKING_CONFIRMED_TOPIC:booking-confirmed}
+        seat-release-requested: ${SEAT_RELEASE_REQUESTED_TOPIC:seat-release-requested}
 
       retry:
         interval: ${INVENTORY_KAFKA_RETRY_INTERVAL:1s}
