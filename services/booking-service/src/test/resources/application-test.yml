@@ -46,11 +46,13 @@ cinema:
         seat-reserved: seat-reserved
         seat-reservation-rejected: seat-reservation-rejected
         payment-succeeded: payment-succeeded
+        payment-failed: payment-failed
 
       consumer-groups:
         seat-reserved: booking-seat-reserved-test
         seat-reservation-rejected: booking-seat-rejected-test
         payment-succeeded: booking-payment-succeeded-test
+        payment-failed: booking-payment-failed-test
       retry:
         interval: 10ms
         maximum-retries: 2
