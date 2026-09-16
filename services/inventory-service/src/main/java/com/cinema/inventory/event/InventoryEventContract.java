@@ -42,5 +42,19 @@ public final class InventoryEventContract {
 
     public static final String SEAT_RELEASED_VERSION = "1";
 
+    public static final String BOOKING_CANCELLED = "booking-cancelled";
+
+    public static final String BOOKING_CANCELLED_VERSION = "1";
+
+    public static final String BOOKING_CANCELLED_CONSUMER = "inventory-booking-cancelled";
+
+    public static final String BOOKING_CANCELLATION_REASON_USER_REQUESTED = "USER_REQUESTED";
+
+    public static final String BOOKING_EXPIRED = "booking-expired";
+
+    public static final String BOOKING_EXPIRED_VERSION = "1";
+
+    public static final String BOOKING_EXPIRED_CONSUMER = "inventory-booking-expired";
+
     private InventoryEventContract() {}
 }
