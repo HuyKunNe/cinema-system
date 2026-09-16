@@ -450,4 +450,25 @@ public class Payment extends BaseEntity {
 
         return normalizedMessage;
     }
+
+    public void requestRefund() {
+
+        if (status != PaymentStatus.SUCCEEDED) {
+            throw new ConflictException(PaymentErrorCode.PAYMENT_NOT_REFUNDABLE);
+        }
+
+        if (refundStatus == RefundStatus.PENDING) {
+            return;
+        }
+
+        if (refundStatus != RefundStatus.NOT_REQUESTED) {
+            throw new ConflictException(PaymentErrorCode.REFUND_ALREADY_TERMINAL);
+        }
+
+        if (providerReference == null || providerReference.isBlank()) {
+            throw new ConflictException(PaymentErrorCode.REFUND_PROVIDER_REFERENCE_MISSING);
+        }
+
+        refundStatus = RefundStatus.PENDING;
+    }
 }

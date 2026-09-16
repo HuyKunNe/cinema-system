@@ -367,6 +367,80 @@ class PaymentTest {
                                         .isEqualTo(PaymentErrorCode.PAYMENT_NOT_PROCESSABLE));
     }
 
+    @Test
+    void successfulPaymentShouldEnterPendingRefund() {
+
+        Payment payment = successfulPayment();
+
+        payment.requestRefund();
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+
+        assertThat(payment.getRefundStatus()).isEqualTo(RefundStatus.PENDING);
+    }
+
+    @Test
+    void duplicatePendingRefundRequestShouldBeIdempotent() {
+
+        Payment payment = successfulPayment();
+
+        payment.requestRefund();
+        payment.requestRefund();
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+
+        assertThat(payment.getRefundStatus()).isEqualTo(RefundStatus.PENDING);
+    }
+
+    @Test
+    void nonSuccessfulPaymentShouldNotBeRefundable() {
+
+        OffsetDateTime requestedAt = OffsetDateTime.parse("2026-09-16T10:00:00Z");
+
+        Payment payment =
+                payment(
+                        UuidGenerator.next(),
+                        UuidGenerator.next(),
+                        1,
+                        new BigDecimal("250000.00"),
+                        "VND",
+                        "MOCK",
+                        requestedAt.plusMinutes(10),
+                        requestedAt,
+                        UuidGenerator.next(),
+                        UuidGenerator.next());
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.RECEIVED);
+
+        assertThatThrownBy(payment::requestRefund).isInstanceOf(ConflictException.class);
+
+        assertThat(payment.getRefundStatus()).isEqualTo(RefundStatus.NOT_REQUESTED);
+    }
+
+    private static Payment successfulPayment() {
+
+        OffsetDateTime requestedAt = OffsetDateTime.parse("2026-09-16T10:00:00Z");
+
+        Payment payment =
+                new Payment(
+                        UuidGenerator.next(),
+                        UuidGenerator.next(),
+                        1,
+                        new BigDecimal("250000.00"),
+                        "VND",
+                        "MOCK",
+                        requestedAt.plusMinutes(10),
+                        requestedAt,
+                        UuidGenerator.next(),
+                        UuidGenerator.next());
+
+        payment.startProcessing();
+
+        payment.completeProviderSuccess("provider-charge-123", requestedAt.plusMinutes(1));
+
+        return payment;
+    }
+
     private static Payment payment(
             UUID bookingId,
             UUID userId,

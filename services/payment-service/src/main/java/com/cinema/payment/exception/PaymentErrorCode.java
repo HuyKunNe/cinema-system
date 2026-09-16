@@ -396,6 +396,41 @@ public final class PaymentErrorCode implements ErrorCode {
                     "PAYMENT_FINANCIAL_AUDIT_METADATA_INVALID",
                     "Financial audit metadata must not exceed 2000 characters");
 
+    public static final PaymentErrorCode REFUND_REQUEST_REQUIRED =
+            validation("PAYMENT_REFUND_REQUEST_REQUIRED", "Refund request is required");
+
+    public static final PaymentErrorCode REFUND_REQUESTED_AT_REQUIRED =
+            validation("PAYMENT_REFUND_REQUESTED_AT_REQUIRED", "Refund request time is required");
+
+    public static final PaymentErrorCode REFUND_REASON_INVALID =
+            validation(
+                    "PAYMENT_REFUND_REASON_INVALID",
+                    "Refund reason must not exceed 500 characters");
+
+    public static final PaymentErrorCode PAYMENT_NOT_REFUNDABLE =
+            new PaymentErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "PAYMENT_NOT_REFUNDABLE",
+                    "Payment is not eligible for refund");
+
+    public static final PaymentErrorCode REFUND_ALREADY_TERMINAL =
+            new PaymentErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "PAYMENT_REFUND_ALREADY_TERMINAL",
+                    "Refund has already reached a terminal state");
+
+    public static final PaymentErrorCode REFUND_PROVIDER_REFERENCE_MISSING =
+            new PaymentErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "PAYMENT_REFUND_PROVIDER_REFERENCE_MISSING",
+                    "Successful payment does not have a provider reference");
+
+    public static final PaymentErrorCode REFUND_TRANSACTION_DATA_MISMATCH =
+            new PaymentErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "PAYMENT_REFUND_TRANSACTION_DATA_MISMATCH",
+                    "Existing refund transaction does not match the payment");
+
     private static PaymentErrorCode validation(String code, String message) {
 
         return new PaymentErrorCode(ErrorCategory.VALIDATION, code, message);
