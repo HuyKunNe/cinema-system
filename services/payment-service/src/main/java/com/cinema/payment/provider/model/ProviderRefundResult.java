@@ -39,6 +39,12 @@ public record ProviderRefundResult(
                 failureCode = null;
                 failureMessage = null;
             }
+
+            case UNKNOWN -> {
+                if (failureCode == null) {
+                    throw new ValidationException(PaymentErrorCode.PROVIDER_RESULT_INVALID);
+                }
+            }
         }
     }
 
@@ -55,6 +61,13 @@ public record ProviderRefundResult(
     public static ProviderRefundResult pending(String providerReference) {
 
         return new ProviderRefundResult(ProviderOutcome.PENDING, providerReference, null, null);
+    }
+
+    public static ProviderRefundResult unknown(
+            String providerReference, String failureCode, String failureMessage) {
+
+        return new ProviderRefundResult(
+                ProviderOutcome.UNKNOWN, providerReference, failureCode, failureMessage);
     }
 
     private static String normalize(String value, int maximumLength) {

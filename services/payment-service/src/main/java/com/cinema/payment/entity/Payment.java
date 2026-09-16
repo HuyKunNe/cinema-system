@@ -471,4 +471,42 @@ public class Payment extends BaseEntity {
 
         refundStatus = RefundStatus.PENDING;
     }
+
+    public void completeRefundSuccess() {
+
+        requireRefundResultApplicable();
+
+        refundStatus = RefundStatus.SUCCEEDED;
+    }
+
+    public void completeRefundFailure() {
+
+        requireRefundResultApplicable();
+
+        refundStatus = RefundStatus.FAILED;
+    }
+
+    public void recordPendingRefund() {
+
+        requireRefundResultApplicable();
+
+        /*
+         * A pending or ambiguous provider result must not be converted into
+         * a terminal refund outcome.
+         *
+         * Reconciliation case persistence is introduced in R27.10.6.
+         */
+        refundStatus = RefundStatus.PENDING;
+    }
+
+    private void requireRefundResultApplicable() {
+
+        if (status != PaymentStatus.SUCCEEDED) {
+            throw new ConflictException(PaymentErrorCode.PAYMENT_NOT_REFUNDABLE);
+        }
+
+        if (refundStatus != RefundStatus.PENDING) {
+            throw new ConflictException(PaymentErrorCode.REFUND_NOT_PENDING);
+        }
+    }
 }

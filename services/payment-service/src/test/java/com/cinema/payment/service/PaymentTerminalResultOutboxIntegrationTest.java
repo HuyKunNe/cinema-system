@@ -25,6 +25,7 @@ import com.cinema.payment.provider.model.ClaimedProviderChargeOperation;
 import com.cinema.payment.provider.model.ProviderChargeCommand;
 import com.cinema.payment.provider.model.ProviderChargeResult;
 import com.cinema.payment.provider.model.ProviderOutcome;
+import com.cinema.payment.repository.FinancialAuditRecordRepository;
 import com.cinema.payment.repository.PaymentProviderWebhookEventRepository;
 import com.cinema.payment.repository.PaymentRepository;
 import com.cinema.payment.repository.PaymentTransactionRepository;
@@ -85,6 +86,8 @@ class PaymentTerminalResultOutboxIntegrationTest extends AbstractMySqlIntegratio
 
     @Autowired private EntityManager entityManager;
 
+    @Autowired private FinancialAuditRecordRepository auditRepository;
+
     @MockitoSpyBean private PaymentSucceededOutboxFactory succeededOutboxFactory;
 
     @BeforeEach
@@ -95,6 +98,8 @@ class PaymentTerminalResultOutboxIntegrationTest extends AbstractMySqlIntegratio
         webhookEventRepository.deleteAllInBatch();
 
         processedEventRepository.deleteAllInBatch();
+
+        auditRepository.deleteAllInBatch();
 
         transactionRepository.deleteAllInBatch();
 

@@ -77,4 +77,46 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
                     """,
             nativeQuery = true)
     List<PaymentTransaction> findReadyTransactions(@Param("batchSize") int batchSize);
+
+    @Query(
+            value =
+                    """
+                    SELECT *
+                    FROM payment_transactions
+                        FORCE INDEX (
+                            idx_payment_transactions_claim
+                        )
+                    WHERE transaction_type = 'REFUND'
+                      AND status = 'PROCESSING'
+                      AND processing_expires_at IS NOT NULL
+                      AND processing_expires_at <= :now
+                    ORDER BY
+                        processing_expires_at ASC,
+                        requested_at ASC,
+                        id ASC
+                    LIMIT :batchSize
+                    FOR UPDATE SKIP LOCKED
+                    """,
+            nativeQuery = true)
+    List<PaymentTransaction> findExpiredProcessingRefundTransactions(
+            @Param("now") OffsetDateTime now, @Param("batchSize") int batchSize);
+
+    @Query(
+            value =
+                    """
+                    SELECT *
+                    FROM payment_transactions
+                        FORCE INDEX (
+                            idx_payment_transactions_ready_claim
+                        )
+                    WHERE transaction_type = 'REFUND'
+                      AND status = 'READY'
+                    ORDER BY
+                        requested_at ASC,
+                        id ASC
+                    LIMIT :batchSize
+                    FOR UPDATE SKIP LOCKED
+                    """,
+            nativeQuery = true)
+    List<PaymentTransaction> findReadyRefundTransactions(@Param("batchSize") int batchSize);
 }

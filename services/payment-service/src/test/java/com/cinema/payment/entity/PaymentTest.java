@@ -417,6 +417,63 @@ class PaymentTest {
         assertThat(payment.getRefundStatus()).isEqualTo(RefundStatus.NOT_REQUESTED);
     }
 
+    @Test
+    void successfulRefundShouldPreserveSuccessfulPaymentState() {
+
+        Payment payment = successfulPayment();
+
+        payment.requestRefund();
+
+        payment.completeRefundSuccess();
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+        assertThat(payment.getRefundStatus()).isEqualTo(RefundStatus.SUCCEEDED);
+        assertThat(payment.getProviderReference()).isEqualTo("provider-charge-123");
+    }
+
+    @Test
+    void failedRefundShouldPreserveSuccessfulCharge() {
+
+        Payment payment = successfulPayment();
+
+        payment.requestRefund();
+
+        payment.completeRefundFailure();
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+        assertThat(payment.getRefundStatus()).isEqualTo(RefundStatus.FAILED);
+        assertThat(payment.getProviderReference()).isEqualTo("provider-charge-123");
+    }
+
+    @Test
+    void pendingRefundResultShouldRemainPending() {
+
+        Payment payment = successfulPayment();
+
+        payment.requestRefund();
+
+        payment.recordPendingRefund();
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+        assertThat(payment.getRefundStatus()).isEqualTo(RefundStatus.PENDING);
+    }
+
+    @Test
+    void terminalRefundShouldRejectAnotherProviderResult() {
+
+        Payment payment = successfulPayment();
+
+        payment.requestRefund();
+        payment.completeRefundSuccess();
+
+        assertThatThrownBy(payment::completeRefundFailure)
+                .isInstanceOf(ConflictException.class)
+                .satisfies(
+                        throwable ->
+                                assertThat(((ConflictException) throwable).getErrorCode())
+                                        .isEqualTo(PaymentErrorCode.REFUND_NOT_PENDING));
+    }
+
     private static Payment successfulPayment() {
 
         OffsetDateTime requestedAt = OffsetDateTime.parse("2026-09-16T10:00:00Z");

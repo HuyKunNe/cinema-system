@@ -2,6 +2,7 @@ package com.cinema.payment.scheduler;
 
 import com.cinema.payment.provider.model.PaymentProviderOperationBatchResult;
 import com.cinema.payment.service.PaymentProviderOperationWorker;
+import com.cinema.payment.service.RefundPaymentProviderOperationWorker;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,24 +20,41 @@ public class PaymentProviderOperationScheduler {
     private static final Logger LOGGER =
             LoggerFactory.getLogger(PaymentProviderOperationScheduler.class);
 
-    private final PaymentProviderOperationWorker operationWorker;
+    private final PaymentProviderOperationWorker chargeWorker;
 
-    public PaymentProviderOperationScheduler(PaymentProviderOperationWorker operationWorker) {
+    private final RefundPaymentProviderOperationWorker refundWorker;
 
-        this.operationWorker = operationWorker;
+    public PaymentProviderOperationScheduler(
+            PaymentProviderOperationWorker chargeWorker,
+            RefundPaymentProviderOperationWorker refundWorker) {
+
+        this.chargeWorker = chargeWorker;
+        this.refundWorker = refundWorker;
     }
 
     @Scheduled(
-            initialDelayString = "${cinema.payment.provider-operation.scheduler-initial-delay:5s}",
-            fixedDelayString = "${cinema.payment.provider-operation.scheduler-delay:1s}")
+            initialDelayString =
+                    "${cinema.payment.provider-operation.scheduler-initial-delay:5s}",
+            fixedDelayString =
+                    "${cinema.payment.provider-operation.scheduler-delay:1s}")
     public void processNextBatch() {
 
+        processChargeBatch();
+
+        processRefundBatch();
+    }
+
+    private void processChargeBatch() {
+
         try {
-            PaymentProviderOperationBatchResult result = operationWorker.processNextBatch();
+
+            PaymentProviderOperationBatchResult result =
+                    chargeWorker.processNextBatch();
 
             if (result.claimedCount() > 0) {
+
                 LOGGER.info(
-                        "Payment provider operation batch completed: "
+                        "Payment provider charge operation batch completed: "
                                 + "claimedCount={}, appliedCount={}, failedCount={}",
                         result.claimedCount(),
                         result.appliedCount(),
@@ -44,15 +62,46 @@ public class PaymentProviderOperationScheduler {
             }
 
         } catch (RuntimeException exception) {
+
             /*
-             * Do not include provider responses, credentials, request payloads,
-             * exception messages, or other unrestricted provider data.
+             * Do not allow a charge pipeline failure to prevent refund
+             * processing during the same scheduler execution.
              *
-             * A top-level claiming failure must not permanently stop subsequent
-             * scheduled executions.
+             * Do not log unrestricted provider data or exception messages.
              */
             LOGGER.error(
-                    "Payment provider operation batch failed: failureType={}",
+                    "Payment provider charge operation batch failed: failureType={}",
+                    exception.getClass().getSimpleName());
+        }
+    }
+
+    private void processRefundBatch() {
+
+        try {
+
+            PaymentProviderOperationBatchResult result =
+                    refundWorker.processNextBatch();
+
+            if (result.claimedCount() > 0) {
+
+                LOGGER.info(
+                        "Payment provider refund operation batch completed: "
+                                + "claimedCount={}, appliedCount={}, failedCount={}",
+                        result.claimedCount(),
+                        result.appliedCount(),
+                        result.failedCount());
+            }
+
+        } catch (RuntimeException exception) {
+
+            /*
+             * Do not allow a refund pipeline failure to terminate future
+             * scheduler executions.
+             *
+             * Do not log unrestricted provider data or exception messages.
+             */
+            LOGGER.error(
+                    "Payment provider refund operation batch failed: failureType={}",
                     exception.getClass().getSimpleName());
         }
     }
