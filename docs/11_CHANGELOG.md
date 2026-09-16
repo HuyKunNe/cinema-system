@@ -1,8 +1,8 @@
 # Changelog
 
 **Version:** 0.9
-**Current baseline:** R1–R26 and R27.1–R27.8 completed; R27.9 next
-**Last reviewed:** 2026-09-15
+**Current baseline:** R1–R26 and R27.1–R27.9 completed; R27.10 next
+**Last reviewed:** 2026-09-16
 
 ---
 
@@ -31,21 +31,47 @@ the roadmap.
 
 Current status:
 
-```text
-R1-R24                Completed
-R25.1–R25.15          Completed
-R25                   User Service completed
-R26.1–R26.13          Completed
-R26                   Booking Service completed
-R27.1–R27.6           Completed
-R27                   Payment Service in progress
-R27.7                 Next
-R28                   Planned
-```
+| R1-R24              | Completed         |
+| ------------------- | ----------------- |
+| R25.1–R25.15        | Completed         |
+| R25 User Service    | completed         |
+| R26.1–R26.13        | Completed         |
+| R26 Booking         | Service completed |
+| R27.1–R27.9         | Completed         |
+| R27 Payment Service | in progress       |
+| R27.10              | Next              |
+| R28                 | Planned           |
 
 ---
 
 # Unreleased
+
+## 2026-09-16
+
+### R27.9 Inventory Confirmation and Compensation Consumers
+
+- Added strict Inventory-side readers and validators for canonical
+  `booking-confirmed`, `seat-release-requested`, `booking-cancelled`, and
+  `booking-expired` events.
+- Added Inventory-owned processed-event idempotency for the R27 Saga consumers.
+- Added transactional `HELD -> BOOKED` processing for `booking-confirmed`.
+- Added transactional `HELD -> AVAILABLE` compensation for
+  `seat-release-requested`.
+- Added canonical `seat-released` Outbox creation for explicit payment-failure
+  compensation.
+- Added transactional lifecycle release handling for `booking-cancelled` and
+  `booking-expired`.
+- Preserved the invariant that `BOOKED` ShowSeats are never released by
+  compensation or lifecycle events.
+- Verified duplicate and concurrent event delivery against MySQL.
+- Verified cancellation and expiration convergence and cross-lifecycle races.
+- Verified transactional rollback of ShowSeat state, processed-event markers,
+  and resulting Outbox state.
+- Added Kafka listeners for Booking confirmation, explicit seat release,
+  cancellation, and expiration flows.
+- Added bounded retry and sanitized DLT verification for Inventory Saga
+  consumers.
+- Completed R27.9 and advanced the active checkpoint to R27.10.
 
 ## 2026-09-15
 

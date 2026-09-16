@@ -1,8 +1,8 @@
 # Project Roadmap
 
-**Version:** R27.8 Completed
-**Current target:** R27.9 — Inventory confirmation and compensation consumers
-**Last updated:** 2026-09-15
+**Version:** R27.9 Completed
+**Current target:** R27.10 — Refund, reconciliation, permissions, and audit controls
+**Last updated:** 2026-09-16
 
 ---
 
@@ -1570,8 +1570,8 @@ Payment Service will own:
 | R27.6      | Authenticated webhook and provider-result processing        | DONE    |
 | R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | DONE    |
 | R27.8      | Booking payment-result consumers                            | DONE    |
-| R27.9      | Inventory confirmation and compensation consumers           | NEXT    |
-| R27.10     | Refund, reconciliation, permissions, and audit controls     | PLANNED |
+| R27.9      | Inventory confirmation and compensation consumers           | DONE    |
+| R27.10     | Refund, reconciliation, permissions, and audit controls     | NEXT    |
 | R27.11     | Kafka retry, DLT, and publication verification              | PLANNED |
 | R27.12     | Saga integration, race, and concurrency verification        | PLANNED |
 | R27.13     | Stabilization, documentation, and closure                   | PLANNED |
@@ -1646,8 +1646,41 @@ R27.6 completed authenticated provider-callback processing:
 - public-at-the-JWT-boundary webhook routing protected by provider verification;
 - sanitized HTTP failure-boundary verification.
 
-R27.7 is the active checkpoint. It must atomically persist terminal Payment state
-and exactly one canonical `payment-succeeded` or `payment-failed` Outbox record.
+R27.7 completed terminal Payment result publication:
+
+- terminal Payment state and canonical result Outbox records commit atomically;
+- exactly one canonical `payment-succeeded` or `payment-failed` event is created;
+- version `1` `payment-failed` remains terminal for Booking and uses
+  `retryable=false`.
+
+R27.8 completed Booking payment-result consumption:
+
+- canonical `payment-succeeded` and `payment-failed` validation;
+- Booking-owned processed-event idempotency;
+- `RESERVED -> CONFIRMED` with canonical `booking-confirmed` Outbox creation;
+- `RESERVED -> PAYMENT_FAILED` with canonical `seat-release-requested`
+  Outbox creation;
+- duplicate, delayed, competing-result, rollback, Kafka retry and sanitized DLT
+  verification.
+
+R27.9 completed Inventory confirmation and compensation consumption:
+
+- canonical `booking-confirmed` consumption and `HELD -> BOOKED` transition;
+- canonical `seat-release-requested` consumption and `HELD -> AVAILABLE`
+  compensation;
+- canonical `booking-cancelled` and `booking-expired` lifecycle release
+  consumption;
+- Inventory-owned processed-event idempotency;
+- canonical `seat-released` Outbox creation for explicit payment-failure
+  compensation;
+- lifecycle release convergence without releasing `BOOKED` ShowSeats;
+- MySQL duplicate, concurrent, race and rollback verification;
+- Kafka ingress for confirmation, explicit release, cancellation and expiration;
+- bounded retry and sanitized dead-letter verification.
+
+R27.10 is the active checkpoint. It adds refund, reconciliation, permission and
+financial-audit controls without changing Payment data ownership or introducing
+cross-service database access.
 
 R27 provider execution must use a stable provider idempotency key and must not
 run while a database transaction or row lock remains open. Retryable or unknown
@@ -1851,7 +1884,7 @@ Do not:
 | Inventory Service       | R24            | ✅ Completed                                                       |
 | User Service            | R25            | ✅ Completed                                                       |
 | Booking Service         | R26            | ✅ Completed                                                       |
-| Payment Service         | R27            | ⏳ In progress — R27.1–R27.8 completed                             |
+| Payment Service         | R27            | ⏳ In progress — R27.1–R27.9 completed                             |
 | Notification Service    | R28            | ⏳ Planned                                                         |
 | Production Readiness    | To be assigned | ⏳ Planned                                                         |
 
@@ -1865,7 +1898,7 @@ The next implementation round is:
 
 The active implementation checkpoint is:
 
-> **R27.9 — Inventory confirmation and compensation consumers**
+> **R27.10 — Refund, reconciliation, permissions, and audit controls**
 
 ADR-013 selects User Service with Spring Authorization Server as the
 authoritative issuer. R25 User Service and R26 Booking Service are complete.

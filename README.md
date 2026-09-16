@@ -57,18 +57,20 @@ implemented.
 | R25.14 — Security and protocol verification                     | Completed |
 | R25.15 — Stabilization and closure                              | Completed |
 | R26 — Booking Service                                           | Completed |
-| R27.1–R27.6 — Payment request, provider, and webhook processing | Completed |
-| R27.7 — Terminal Payment result Outbox publication              | Next      |
-| R27.8–R27.13 — Remaining Payment Saga integration               | Planned   |
+| R27.1–R27.7 — Payment core and terminal result publication      | Completed |
+| R27.8 — Booking payment-result consumers                        | Completed |
+| R27.9 — Inventory confirmation and compensation consumers       | Completed |
+| R27.10 — Refund, reconciliation, permissions and audit controls | Next      |
+| R27.11–R27.13 — Remaining Payment stabilization and Saga work   | Planned   |
 | R28 — Notification Service                                      | Planned   |
 
 Latest completed checkpoint:
 
-> **R27.6 — Authenticated webhook and provider-result processing**
+> **R27.9 — Inventory confirmation and compensation consumers**
 
 Current checkpoint:
 
-> **R27.7 — `payment-succeeded` and `payment-failed` Outbox publication**
+> **R27.10 — Refund, reconciliation, permissions, and audit controls**
 
 > See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 
@@ -133,6 +135,14 @@ validation does not replace downstream authorization.
 - Public, management, and service-only endpoint authorization
 - Standard JSON `401` and `403` responses
 - Flyway and Hibernate schema verification
+- Idempotent `booking-confirmed` consumption
+- Transactional `HELD -> BOOKED` confirmation
+- Idempotent `seat-release-requested` compensation
+- Transactional `HELD -> AVAILABLE` release
+- Canonical `seat-released` Outbox creation
+- Idempotent `booking-cancelled` and `booking-expired` lifecycle release
+- Kafka retry and sanitized DLT handling for Saga consumers
+- MySQL duplicate, concurrency, lifecycle-race, and rollback verification
 
 Normal ShowSeat lifecycle:
 

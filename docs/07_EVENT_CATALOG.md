@@ -1,7 +1,7 @@
 # Event Catalog
 
-Version: R27.8
-Last updated: 2026-09-15
+Version: R27.9
+Last updated: 2026-09-16
 
 This document defines the authoritative Kafka event contracts, ownership,
 versioning, routing, metadata, payload requirements, producer and consumer
@@ -26,15 +26,14 @@ Implementation status:
 - Booking Service consumption of `seat-reserved` and
   `seat-reservation-rejected` is implemented and verified.
 - Payment Service consumption of canonical `payment-requested` version `1`,
-  Payment-attempt creation, processed-event idempotency, bounded Kafka retry,
-  and sanitized dead-letter handling are implemented and verified.
-- Provider execution and authenticated webhook result application are implemented and verified through R27.6.
-- Payment Service creation of canonical `payment-succeeded` and `payment-failed` Outbox events is implemented and verified through R27.7. Booking consumption remains R27.8 scope, while end-to-end Kafka publication, retry, and DLT verification remains R27.11 scope.
-- Inventory and Notification consumption of Booking lifecycle events remains
-  future integration work until the corresponding consumers are implemented
-  and verified.
-- Documentation of a future topic is not proof that its producer or consumer
-  currently exists.
+- Payment Service creation of canonical `payment-succeeded` and `payment-failed` Outbox events is implemented and verified.
+- Booking Service consumption of `payment-succeeded` and `payment-failed` is implemented and verified through R27.8.
+- Booking Service production of `booking-confirmed` and `seat-release-requested` from terminal Payment results is implemented and verified.
+- Inventory Service consumption of `booking-confirmed`, `seat-release-requested`, `booking-cancelled`, and `booking-expired` is implemented and verified through R27.9.
+- Inventory Service production of canonical `seat-released` for explicit `seat-release-requested` compensation is implemented and verified.
+- Inventory lifecycle consumers preserve processed-event idempotency, transactional ShowSeat changes, bounded Kafka retry, sanitized DLT handling, and the invariant that `BOOKED` ShowSeats are not released.
+- Notification consumption remains future R28 integration work.
+- Broader cross-service Kafka publication verification remains R27.11 scope.
 
 ---
 
@@ -781,10 +780,14 @@ Implementation status through R27.7:
 - provider calls execute outside database transactions;
 - authenticated webhook and provider-worker terminal outcomes atomically persist Payment state, PaymentTransaction state, and one canonical result Outbox event;
 - duplicate and stale outcomes do not create another terminal result event;
-- Payment Service creation of canonical `payment-succeeded` and `payment-failed` Outbox events is implemented and verified through R27.7.
-- Booking Service consumption of canonical `payment-succeeded` and `payment-failed`, including transactional state transitions, processed-event idempotency, resulting Outbox creation, Kafka retry/DLT behavior and competing result ordering, is implemented and verified through R27.8.
-- End-to-end publication verification beginning from Payment Outbox claiming remains R27.11 scope.
-- Inventory consumption of `booking-confirmed`, `seat-release-requested`, `booking-cancelled` and `booking-expired` remains R27.9 scope.
+- Payment Service creation of canonical `payment-succeeded` and `payment-failed` Outbox events is implemented and verified.
+- Booking Service consumption of `payment-succeeded` and `payment-failed` is implemented and verified through R27.8.
+- Booking Service production of `booking-confirmed` and `seat-release-requested` from terminal Payment results is implemented and verified.
+- Inventory Service consumption of `booking-confirmed`, `seat-release-requested`, `booking-cancelled`, and `booking-expired` is implemented and verified through R27.9.
+- Inventory Service production of canonical `seat-released` for explicit `seat-release-requested` compensation is implemented and verified.
+- Inventory lifecycle consumers preserve processed-event idempotency, transactional ShowSeat changes, bounded Kafka retry, sanitized DLT handling, and the invariant that `BOOKED` ShowSeats are not released.
+- Notification consumption remains future R28 integration work.
+- Broader cross-service Kafka publication verification remains R27.11 scope.
 
 An already expired request may be finalized as `RESERVATION_EXPIRED` without calling the provider. Retryable or ambiguous provider outcomes remain internal Payment state and do not create a terminal result event.
 

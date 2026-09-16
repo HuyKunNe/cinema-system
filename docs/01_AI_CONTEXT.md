@@ -26,6 +26,9 @@ The `docs` directory is the project's source of truth.
 - R27.4 — `payment-requested` validation and idempotent consumption
 - R27.5 — Provider port, operation worker, and provider idempotency
 - R27.6 — Authenticated webhook and provider-result processing
+- R27.7 — `payment-succeeded` and `payment-failed` Outbox publication
+- R27.8 — Booking payment-result consumers
+- R27.9 — Inventory confirmation and compensation consumers
 
 ## Completed Inventory Round
 
@@ -135,6 +138,7 @@ R26.11 — Payment event preparation                        — DONE
 R26.12 — Integration and concurrency verification         — DONE
 R26.13 — Stabilization and closure                        — DONE
 R26    — Booking Service                                  — DONE
+
 ```
 
 Verified Booking baseline:
@@ -166,15 +170,34 @@ R27.4 — payment-requested validation and idempotent consumption      — DONE
 R27.5 — Provider port, operation worker, and provider idempotency    — DONE
 R27.6 — Authenticated webhook and provider-result processing         — DONE
 R27.7 — payment-succeeded and payment-failed Outbox publication      — DONE
+R27.8 — Booking payment-result consumers                             — DONE
+R27.9 — Inventory confirmation and compensation consumers            — DONE
 ```
 
 Current checkpoint:
 
 ```text
-R27.9 — Inventory confirmation and compensation consumers — NEXT
+R27.10 — Refund, reconciliation, permissions, and audit controls — NEXT
 ```
 
-R27.1–R27.8 are complete.
+R27.1–R27.9 are complete.
+
+Verified R27.9 integration baseline:
+
+- `booking-confirmed` changes only matching `HELD` ShowSeats to `BOOKED`;
+- `seat-release-requested` changes only matching `HELD` ShowSeats to
+  `AVAILABLE`;
+- `booking-cancelled` and `booking-expired` converge held inventory to
+  `AVAILABLE`;
+- lifecycle compensation never releases `BOOKED` ShowSeats;
+- Inventory consumers use processed-event idempotency;
+- explicit payment-failure compensation creates one canonical `seat-released`
+  Outbox event;
+- processed-event, ShowSeat, and applicable Outbox changes share one local
+  transaction;
+- Kafka consumers use bounded retry and sanitized dead-letter handling;
+- duplicate, concurrent, race and rollback behavior is verified with MySQL and
+  Kafka Testcontainers.
 
 Production MoMo/VNPay integration is not implemented. R27.7 provides provider-neutral terminal-result persistence and an opt-in scheduled execution boundary without introducing production provider credentials or network adapters.
 

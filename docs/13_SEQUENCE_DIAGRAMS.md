@@ -1,6 +1,6 @@
 # Sequence Diagrams
 
-Version: R27.6
+Version: R27.9
 
 ---
 
@@ -8,19 +8,22 @@ Version: R27.6
 
 This document visualizes implemented interactions and approved target flows.
 
-| Flow                                                    | Status                                  |
-| ------------------------------------------------------- | --------------------------------------- |
-| Inventory ShowSeat transitions and database concurrency | Implemented in R24                      |
-| Shared servlet Resource Server responses                | Implemented for Inventory in R25.1      |
-| Booking-to-Inventory reservation flow                   | Implemented and verified through R26    |
-| Payment and Notification continuation                   | Target for R27-R28                      |
-| User account lifecycle and email verification           | Implemented through R25.7               |
-| User Service Authorization Server/OIDC foundation       | Implemented in R25.8                    |
-| OAuth2 registered clients and approved grant flows      | Implemented and verified through R25.14 |
-| Gateway reactive Resource Server                        | Implemented in R25.13                   |
-| Hardened multi-instance Outbox retry/claim              | Implemented and verified through R26.6  |
-| Payment provider webhook trust and application          | Implemented and verified in R27.6       |
-| Payment terminal-result Outbox publication              | Target for R27.7                        |
+| Flow                                                    | Status                             |
+| ------------------------------------------------------- | ---------------------------------- |
+| Inventory ShowSeat transitions and database concurrency | Implemented in 24                  |
+| Shared servlet Resource Server responses                | Implemented for Inventory in R25.1 |
+| Booking-to-Inventory reservation flow                   | Implemented and verified in 26     |
+| Payment and Notification continuation                   | Target for 27-R28                  |
+| User account lifecycle and email verification           | Implemented in R25.7               |
+| User Service Authorization Server/OIDC foundation       | Implemented in R25.8               |
+| OAuth2 registered clients and approved grant flows      | Implemented and verified in R25.14 |
+| Gateway reactive Resource Server                        | Implemented in R25.13              |
+| Hardened multi-instance Outbox retry/claim              | Implemented and verified in R26.6  |
+| Payment provider webhook trust and application          | Implemented and verified in R27.6  |
+| Payment terminal-result Outbox publication              | Implemented and verified in R27.7  |
+| Booking terminal Payment-result consumption             | Implemented and verified in R27.8  |
+| Inventory confirmation and compensation                 | Implemented and verified in R27.9  |
+| Notification continuation                               | Target for R28                     |
 
 A target diagram is an approved interaction contract, not proof that every
 participant currently exists.
@@ -227,7 +230,7 @@ marker. Terminal result Outbox publication begins in R27.7.
 
 ---
 
-# Target Payment Success Flow
+# Implemented Payment Success and Inventory Confirmation Flow
 
 ```mermaid
 sequenceDiagram
@@ -258,7 +261,7 @@ Booking `RESERVED` and Inventory `HELD` are separate service-owned states.
 
 ---
 
-# Target Payment Failure and Seat Release Flow
+# Implemented Payment Failure and Seat Release Flow
 
 ```mermaid
 sequenceDiagram
@@ -284,17 +287,38 @@ sequenceDiagram
     Inventory->>Kafka: seat-released
 ```
 
-This explicit `seat-release-requested` path is reserved for future R27 payment
-failure compensation. R26 cancellation and expiration publish
-`booking-cancelled` and `booking-expired` instead of an additional release
-command. Future Inventory consumers still apply the same conditional rule and
-never release a `BOOKED` ShowSeat.
+Retryable timeouts, temporary provider unavailability, and unknown outcomes do not enter this terminal flow until Payment Service resolves or exhausts them according to the approved policy. Ambiguous outcomes require reconciliation.
 
-Retryable timeouts, temporary provider unavailability, and unknown outcomes do
-not enter this terminal flow until Payment Service resolves or exhausts them
-according to the approved policy. Ambiguous outcomes require reconciliation.
+The explicit `seat-release-requested` compensation path is implemented through R27.9. Inventory releases only ShowSeats still `HELD` by the matching Booking and never releases a `BOOKED` ShowSeat.
+
+Booking cancellation and expiration continue to use the canonical `booking-cancelled` and `booking-expired` lifecycle events. Inventory consumes both idempotently and converges matching held inventory to `AVAILABLE`.
 
 ---
+
+# Implemented Booking Lifecycle Inventory Release Flow
+
+```mermaid
+sequenceDiagram
+    participant Booking as Booking Service
+    participant Kafka
+    participant Inventory as Inventory Service
+    participant DB as Inventory Database
+
+    alt Booking cancelled
+        Booking->>Kafka: booking-cancelled
+        Kafka->>Inventory: Consume idempotently
+    else Booking expired
+        Booking->>Kafka: booking-expired
+        Kafka->>Inventory: Consume idempotently
+    end
+
+    Inventory->>DB: Register processed event
+    Inventory->>DB: Lock matching HELD ShowSeats
+    Inventory->>DB: HELD to AVAILABLE and clear hold metadata
+    DB-->>Inventory: Commit atomically
+```
+
+Duplicate lifecycle events are no-ops after processed-event registration detects the existing event. Distinct cancellation and expiration events converge on the same released Inventory state. BOOKED ShowSeats are not selected by the release query.
 
 # Current Transactional Outbox Flow
 
@@ -352,11 +376,7 @@ sequenceDiagram
     end
 ```
 
-The claim, lease recovery, retry, acknowledgement and stale-callback protections
-are implemented and verified. Operational metrics may continue to evolve in a
-later production-readiness round.
-The current implementation does not yet provide atomic claims, processing
-leases, delayed exponential backoff, or a terminal status.
+The claim, lease recovery, retry, acknowledgement and stale-callback protections are implemented and verified. Operational metrics may continue to evolve in a later production-readiness round.
 
 ---
 

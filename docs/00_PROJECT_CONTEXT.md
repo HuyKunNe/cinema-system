@@ -1,6 +1,6 @@
 # Cinema Booking System
 
-Version: 0.9 (R27.6 Completed; R27.7 Payment Result Outbox Next)
+Version: 0.9 (R27.9 Completed; R27.10 Refund and Reconciliation Controls Next)
 
 ---
 
@@ -64,6 +64,9 @@ Hệ thống được thiết kế để mô phỏng nền tảng của các chu
 - ✅ R27.4 — `payment-requested` validation and idempotent consumption
 - ✅ R27.5 — Provider port, operation worker, and provider idempotency
 - ✅ R27.6 — Authenticated webhook and provider-result processing
+- ✅ R27.7 — `payment-succeeded` and `payment-failed` Outbox publication
+- ✅ R27.8 — Booking payment-result consumers
+- ✅ R27.9 — Inventory confirmation and compensation consumers
 
 Inventory Service owns:
 
@@ -92,6 +95,26 @@ Completed R24 scope:
 - Integrated shared exception, response, validation and mapping modules
 - Added unit, integration, security and concurrency tests
 - Completed stabilization, exit-criteria and documentation verification
+
+## Current Payment Saga Progress
+
+Completed:
+
+```text
+R27.1  — Payment architecture and contract closure                   — DONE
+R27.2  — Payment Service bootstrap and Resource Server security      — DONE
+R27.3  — Payment aggregate and Flyway schema                         — DONE
+R27.4  — payment-requested validation and idempotent consumption     — DONE
+R27.5  — Provider port, operation worker and provider idempotency    — DONE
+R27.6  — Authenticated webhook and provider-result processing        — DONE
+R27.7  — payment-succeeded/payment-failed Outbox publication         — DONE
+R27.8  — Booking payment-result consumers                            — DONE
+R27.9  — Inventory confirmation and compensation consumers           — DONE
+R27.10 — Refund, reconciliation, permissions and audit controls      — NEXT
+
+R27.9 verifies that Booking and Inventory converge through Kafka without
+cross-service database access. Inventory remains the sole owner of show_seats.
+```
 
 ## Recently Completed
 
