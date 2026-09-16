@@ -8,6 +8,8 @@ import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.payment.exception.PaymentErrorCode;
 import com.cinema.payment.provider.model.ProviderChargeCommand;
 import com.cinema.payment.provider.model.ProviderChargeResult;
+import com.cinema.payment.provider.model.ProviderRefundCommand;
+import com.cinema.payment.provider.model.ProviderRefundResult;
 
 import org.junit.jupiter.api.Test;
 
@@ -91,6 +93,12 @@ class PaymentProviderRegistryTest {
                 ProviderChargeCommand command, String idempotencyKey) {
 
             throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public ProviderRefundResult initiateRefund(ProviderRefundCommand command, String idempotencyKey) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'initiateRefund'");
         }
     }
 }

@@ -44,7 +44,8 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
                         FORCE INDEX (
                             idx_payment_transactions_claim
                         )
-                    WHERE status = 'PROCESSING'
+                    WHERE transaction_type = 'CHARGE'
+                      AND status = 'PROCESSING'
                       AND processing_expires_at IS NOT NULL
                       AND processing_expires_at <= :now
                     ORDER BY
@@ -66,7 +67,8 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
                         FORCE INDEX (
                             idx_payment_transactions_ready_claim
                         )
-                    WHERE status = 'READY'
+                    WHERE transaction_type = 'CHARGE'
+                      AND status = 'READY'
                     ORDER BY
                         requested_at ASC,
                         id ASC

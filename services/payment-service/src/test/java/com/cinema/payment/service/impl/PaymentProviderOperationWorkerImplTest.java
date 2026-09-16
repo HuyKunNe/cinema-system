@@ -183,7 +183,7 @@ class PaymentProviderOperationWorkerImplTest {
 
         verify(preparationService, never()).prepareCharge(any(), any());
 
-        verify(operationExecutor, never()).execute(any());
+        verify(operationExecutor, never()).execute(any(ClaimedProviderChargeOperation.class));
 
         verify(resultApplicationService, never()).apply(any(), any());
     }

@@ -10,6 +10,7 @@ import com.cinema.common.exception.exception.InternalServerException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.payment.exception.PaymentErrorCode;
 import com.cinema.payment.provider.model.ClaimedProviderChargeOperation;
+import com.cinema.payment.provider.model.ClaimedProviderRefundOperation;
 import com.cinema.payment.provider.model.ProviderChargeCommand;
 import com.cinema.payment.provider.model.ProviderChargeResult;
 
@@ -60,9 +61,20 @@ class PaymentProviderOperationExecutorImplTest {
     }
 
     @Test
-    void missingOperationShouldBeRejected() {
+    void missingChargeOperationShouldBeRejected() {
 
-        assertThatThrownBy(() -> executor.execute(null))
+        assertThatThrownBy(() -> executor.execute((ClaimedProviderChargeOperation) null))
+                .isInstanceOf(ValidationException.class)
+                .satisfies(
+                        throwable ->
+                                assertThat(((ValidationException) throwable).getErrorCode())
+                                        .isEqualTo(PaymentErrorCode.PROVIDER_OPERATION_REQUIRED));
+    }
+
+    @Test
+    void missingRefundOperationShouldBeRejected() {
+
+        assertThatThrownBy(() -> executor.execute((ClaimedProviderRefundOperation) null))
                 .isInstanceOf(ValidationException.class)
                 .satisfies(
                         throwable ->

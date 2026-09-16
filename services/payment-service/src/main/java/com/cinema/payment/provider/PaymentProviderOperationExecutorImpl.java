@@ -4,7 +4,9 @@ import com.cinema.common.exception.exception.InternalServerException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.payment.exception.PaymentErrorCode;
 import com.cinema.payment.provider.model.ClaimedProviderChargeOperation;
+import com.cinema.payment.provider.model.ClaimedProviderRefundOperation;
 import com.cinema.payment.provider.model.ProviderChargeResult;
+import com.cinema.payment.provider.model.ProviderRefundResult;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -32,6 +34,26 @@ public class PaymentProviderOperationExecutorImpl implements PaymentProviderOper
 
         ProviderChargeResult result =
                 provider.initiateCharge(operation.command(), operation.idempotencyKey());
+
+        if (result == null) {
+            throw new InternalServerException(PaymentErrorCode.PROVIDER_RESULT_INVALID);
+        }
+
+        return result;
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.NEVER)
+    public ProviderRefundResult execute(ClaimedProviderRefundOperation operation) {
+
+        if (operation == null) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_OPERATION_REQUIRED);
+        }
+
+        PaymentProvider provider = providerRegistry.getRequired(operation.provider());
+
+        ProviderRefundResult result =
+                provider.initiateRefund(operation.command(), operation.idempotencyKey());
 
         if (result == null) {
             throw new InternalServerException(PaymentErrorCode.PROVIDER_RESULT_INVALID);

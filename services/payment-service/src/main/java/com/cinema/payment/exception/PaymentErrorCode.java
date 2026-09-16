@@ -431,6 +431,17 @@ public final class PaymentErrorCode implements ErrorCode {
                     "PAYMENT_REFUND_TRANSACTION_DATA_MISMATCH",
                     "Existing refund transaction does not match the payment");
 
+    public static final PaymentErrorCode PROVIDER_REFUND_COMMAND_REQUIRED =
+            validation(
+                    "PAYMENT_PROVIDER_REFUND_COMMAND_REQUIRED",
+                    "Provider refund command is required");
+
+    public static final PaymentErrorCode REFUND_NOT_PENDING =
+            new PaymentErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "PAYMENT_REFUND_NOT_PENDING",
+                    "Payment refund is not pending");
+
     private static PaymentErrorCode validation(String code, String message) {
 
         return new PaymentErrorCode(ErrorCategory.VALIDATION, code, message);

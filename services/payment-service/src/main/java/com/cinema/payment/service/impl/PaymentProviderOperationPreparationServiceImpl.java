@@ -6,10 +6,14 @@ import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.payment.entity.Payment;
 import com.cinema.payment.entity.PaymentTransaction;
+import com.cinema.payment.enums.PaymentStatus;
 import com.cinema.payment.enums.PaymentTransactionType;
+import com.cinema.payment.enums.RefundStatus;
 import com.cinema.payment.exception.PaymentErrorCode;
 import com.cinema.payment.provider.model.ClaimedProviderChargeOperation;
+import com.cinema.payment.provider.model.ClaimedProviderRefundOperation;
 import com.cinema.payment.provider.model.ProviderChargeCommand;
+import com.cinema.payment.provider.model.ProviderRefundCommand;
 import com.cinema.payment.repository.PaymentRepository;
 import com.cinema.payment.repository.PaymentTransactionRepository;
 import com.cinema.payment.service.PaymentProviderOperationPreparationService;
@@ -109,6 +113,62 @@ public class PaymentProviderOperationPreparationServiceImpl
                 command);
     }
 
+    @Override
+    @Transactional
+    public ClaimedProviderRefundOperation prepareRefund(
+            UUID transactionId, String processingOwner) {
+
+        validateTransactionId(transactionId);
+
+        String normalizedProcessingOwner = normalizeProcessingOwner(processingOwner);
+
+        PaymentTransaction transactionReference =
+                transactionRepository
+                        .findById(transactionId)
+                        .orElseThrow(
+                                () ->
+                                        new NotFoundException(
+                                                PaymentErrorCode.PAYMENT_TRANSACTION_NOT_FOUND));
+
+        Payment payment =
+                paymentRepository
+                        .findByIdForUpdate(transactionReference.getPaymentId())
+                        .orElseThrow(
+                                () -> new NotFoundException(PaymentErrorCode.PAYMENT_NOT_FOUND));
+
+        PaymentTransaction transaction =
+                transactionRepository
+                        .findByIdForUpdate(transactionId)
+                        .orElseThrow(
+                                () ->
+                                        new NotFoundException(
+                                                PaymentErrorCode.PAYMENT_TRANSACTION_NOT_FOUND));
+
+        OffsetDateTime now = OffsetDateTime.now(clock);
+
+        validateOwnership(transaction, normalizedProcessingOwner, now);
+
+        validateRefundTransaction(transaction);
+
+        validateConsistency(payment, transaction);
+
+        validateRefundPayment(payment);
+
+        ProviderRefundCommand command =
+                new ProviderRefundCommand(
+                        payment.getId(),
+                        payment.getProviderReference(),
+                        payment.getAmount(),
+                        payment.getCurrency());
+
+        return new ClaimedProviderRefundOperation(
+                transaction.getId(),
+                normalizedProcessingOwner,
+                transaction.getProvider(),
+                transaction.getIdempotencyKey(),
+                command);
+    }
+
     private static void validateOwnership(
             PaymentTransaction transaction, String processingOwner, OffsetDateTime now) {
 
@@ -159,5 +219,30 @@ public class PaymentProviderOperationPreparationServiceImpl
         }
 
         return normalizedProcessingOwner;
+    }
+
+    private static void validateRefundTransaction(PaymentTransaction transaction) {
+
+        if (transaction.getTransactionType() != PaymentTransactionType.REFUND) {
+
+            throw new ConflictException(PaymentErrorCode.PAYMENT_TRANSACTION_TYPE_UNSUPPORTED);
+        }
+    }
+
+    private static void validateRefundPayment(Payment payment) {
+
+        if (payment.getStatus() != PaymentStatus.SUCCEEDED) {
+            throw new ConflictException(PaymentErrorCode.PAYMENT_NOT_REFUNDABLE);
+        }
+
+        if (payment.getRefundStatus() != RefundStatus.PENDING) {
+
+            throw new ConflictException(PaymentErrorCode.REFUND_NOT_PENDING);
+        }
+
+        if (payment.getProviderReference() == null || payment.getProviderReference().isBlank()) {
+
+            throw new ConflictException(PaymentErrorCode.REFUND_PROVIDER_REFERENCE_MISSING);
+        }
     }
 }
