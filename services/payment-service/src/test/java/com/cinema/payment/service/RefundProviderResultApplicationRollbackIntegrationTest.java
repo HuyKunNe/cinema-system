@@ -22,6 +22,7 @@ import com.cinema.payment.provider.model.ProviderRefundResult;
 import com.cinema.payment.repository.FinancialAuditRecordRepository;
 import com.cinema.payment.repository.PaymentRepository;
 import com.cinema.payment.repository.PaymentTransactionRepository;
+import com.cinema.payment.repository.ReconciliationCaseRepository;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 class RefundProviderResultApplicationRollbackIntegrationTest extends AbstractMySqlIntegrationTest {
@@ -38,6 +40,8 @@ class RefundProviderResultApplicationRollbackIntegrationTest extends AbstractMyS
     @Autowired private PaymentRepository paymentRepository;
 
     @Autowired private PaymentTransactionRepository transactionRepository;
+
+    @Autowired private ReconciliationCaseRepository reconciliationCaseRepository;
 
     @MockitoSpyBean private FinancialAuditRecordRepository auditRepository;
 
@@ -88,6 +92,58 @@ class RefundProviderResultApplicationRollbackIntegrationTest extends AbstractMyS
         assertRolledBack(fixture);
     }
 
+    @Test
+    void auditFailureShouldRollbackPendingRefundReconciliation() {
+
+        Fixture fixture = claimedRefundFixture();
+
+        doThrow(new RuntimeException("Forced reconciliation audit failure"))
+                .when(auditRepository)
+                .save(any(FinancialAuditRecord.class));
+
+        assertThatThrownBy(
+                        () ->
+                                resultApplicationService.apply(
+                                        fixture.operation(),
+                                        ProviderRefundResult.pending(
+                                                "provider-refund-pending-rollback")))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Forced reconciliation audit failure");
+
+        assertReconciliationRolledBack(fixture);
+    }
+
+    @Test
+    void auditFailureShouldRollbackUnknownRefundReconciliation() {
+
+        Fixture fixture = claimedRefundFixture();
+
+        doThrow(new RuntimeException("Forced reconciliation audit failure"))
+                .when(auditRepository)
+                .save(any(FinancialAuditRecord.class));
+
+        assertThatThrownBy(
+                        () ->
+                                resultApplicationService.apply(
+                                        fixture.operation(),
+                                        ProviderRefundResult.unknown(
+                                                "provider-refund-unknown-rollback",
+                                                "PROVIDER_TIMEOUT",
+                                                "Provider outcome could not be determined")))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Forced reconciliation audit failure");
+
+        assertReconciliationRolledBack(fixture);
+    }
+
+    private void assertReconciliationRolledBack(Fixture fixture) {
+
+        assertRolledBack(fixture);
+
+        assertThat(reconciliationCaseRepository.findByPaymentTransactionId(fixture.transactionId()))
+                .isEmpty();
+    }
+
     private void assertRolledBack(Fixture fixture) {
 
         Payment persistedPayment = paymentRepository.findById(fixture.paymentId()).orElseThrow();
@@ -124,7 +180,8 @@ class RefundProviderResultApplicationRollbackIntegrationTest extends AbstractMyS
 
         assertThat(persistedTransaction.getProcessingOwner()).isEqualTo(fixture.processingOwner());
 
-        assertThat(persistedTransaction.getProcessingExpiresAt()).isNotNull();
+        assertThat(persistedTransaction.getProcessingExpiresAt())
+                .isEqualTo(fixture.processingExpiresAt());
 
         /*
          * REFUND_REQUESTED existed before result application and must remain.
@@ -163,9 +220,11 @@ class RefundProviderResultApplicationRollbackIntegrationTest extends AbstractMyS
 
         String owner = "refund-result-rollback-owner";
 
-        OffsetDateTime claimedAt = OffsetDateTime.now();
+        OffsetDateTime claimedAt = OffsetDateTime.now().truncatedTo(ChronoUnit.MICROS);
 
-        refundTransaction.claim(owner, claimedAt, claimedAt.plusMinutes(1));
+        OffsetDateTime processingExpiresAt = claimedAt.plusMinutes(1);
+
+        refundTransaction.claim(owner, claimedAt, processingExpiresAt);
 
         transactionRepository.saveAndFlush(refundTransaction);
 
@@ -177,6 +236,7 @@ class RefundProviderResultApplicationRollbackIntegrationTest extends AbstractMyS
                 refundTransaction.getId(),
                 payment.getProviderReference(),
                 owner,
+                processingExpiresAt,
                 operation);
     }
 
@@ -208,5 +268,6 @@ class RefundProviderResultApplicationRollbackIntegrationTest extends AbstractMyS
             java.util.UUID transactionId,
             String chargeProviderReference,
             String processingOwner,
+            OffsetDateTime processingExpiresAt,
             ClaimedProviderRefundOperation operation) {}
 }

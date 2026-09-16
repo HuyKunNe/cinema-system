@@ -442,6 +442,41 @@ public final class PaymentErrorCode implements ErrorCode {
                     "PAYMENT_REFUND_NOT_PENDING",
                     "Payment refund is not pending");
 
+    public static final PaymentErrorCode RECONCILIATION_REASON_REQUIRED =
+            validation(
+                    "PAYMENT_RECONCILIATION_REASON_REQUIRED", "Reconciliation reason is required");
+
+    public static final PaymentErrorCode RECONCILIATION_RESOLUTION_REQUIRED =
+            validation(
+                    "PAYMENT_RECONCILIATION_RESOLUTION_REQUIRED",
+                    "Reconciliation resolution is required");
+
+    public static final PaymentErrorCode RECONCILIATION_ACTOR_TYPE_REQUIRED =
+            validation(
+                    "PAYMENT_RECONCILIATION_ACTOR_TYPE_REQUIRED",
+                    "Reconciliation actor type is required");
+
+    public static final PaymentErrorCode RECONCILIATION_ACTOR_ID_REQUIRED =
+            validation(
+                    "PAYMENT_RECONCILIATION_ACTOR_ID_REQUIRED",
+                    "Reconciliation actor ID is required");
+
+    public static final PaymentErrorCode RECONCILIATION_ACTOR_ID_INVALID =
+            validation(
+                    "PAYMENT_RECONCILIATION_ACTOR_ID_INVALID",
+                    "Reconciliation actor ID must not exceed 255 characters");
+
+    public static final PaymentErrorCode RECONCILIATION_VALUE_INVALID =
+            validation(
+                    "PAYMENT_RECONCILIATION_VALUE_INVALID",
+                    "Reconciliation value exceeds the allowed length");
+
+    public static final PaymentErrorCode RECONCILIATION_CASE_NOT_OPEN =
+            new PaymentErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "PAYMENT_RECONCILIATION_CASE_NOT_OPEN",
+                    "Reconciliation case is not open");
+
     private static PaymentErrorCode validation(String code, String message) {
 
         return new PaymentErrorCode(ErrorCategory.VALIDATION, code, message);

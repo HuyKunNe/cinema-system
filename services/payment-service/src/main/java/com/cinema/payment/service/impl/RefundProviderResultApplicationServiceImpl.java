@@ -1,5 +1,11 @@
 package com.cinema.payment.service.impl;
 
+import java.time.Clock;
+import java.time.OffsetDateTime;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.cinema.common.core.id.UuidGenerator;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.InternalServerException;
@@ -8,10 +14,12 @@ import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.payment.entity.FinancialAuditRecord;
 import com.cinema.payment.entity.Payment;
 import com.cinema.payment.entity.PaymentTransaction;
+import com.cinema.payment.entity.ReconciliationCase;
 import com.cinema.payment.enums.FinancialAuditAction;
 import com.cinema.payment.enums.FinancialAuditActorType;
 import com.cinema.payment.enums.PaymentStatus;
 import com.cinema.payment.enums.PaymentTransactionType;
+import com.cinema.payment.enums.ReconciliationReason;
 import com.cinema.payment.enums.RefundStatus;
 import com.cinema.payment.exception.PaymentErrorCode;
 import com.cinema.payment.provider.model.AppliedProviderRefundResult;
@@ -20,13 +28,8 @@ import com.cinema.payment.provider.model.ProviderRefundResult;
 import com.cinema.payment.repository.FinancialAuditRecordRepository;
 import com.cinema.payment.repository.PaymentRepository;
 import com.cinema.payment.repository.PaymentTransactionRepository;
+import com.cinema.payment.repository.ReconciliationCaseRepository;
 import com.cinema.payment.service.RefundProviderResultApplicationService;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.Clock;
-import java.time.OffsetDateTime;
 
 @Service
 public class RefundProviderResultApplicationServiceImpl
@@ -40,6 +43,8 @@ public class RefundProviderResultApplicationServiceImpl
 
     private final FinancialAuditRecordRepository auditRepository;
 
+    private final ReconciliationCaseRepository reconciliationCaseRepository;
+
     private static final String REFUND_PROVIDER_ACTOR_ID = "payment-refund-provider-operation";
 
     private static final String REFUND_SUCCEEDED_REASON =
@@ -51,11 +56,13 @@ public class RefundProviderResultApplicationServiceImpl
             PaymentRepository paymentRepository,
             PaymentTransactionRepository transactionRepository,
             FinancialAuditRecordRepository auditRepository,
+            ReconciliationCaseRepository reconciliationCaseRepository,
             Clock clock) {
 
         this.paymentRepository = paymentRepository;
         this.transactionRepository = transactionRepository;
         this.auditRepository = auditRepository;
+        this.reconciliationCaseRepository = reconciliationCaseRepository;
         this.clock = clock;
     }
 
@@ -102,7 +109,7 @@ public class RefundProviderResultApplicationServiceImpl
 
         applyOutcome(operation.processingOwner(), payment, transaction, result, resultTime);
 
-        persistTerminalAudit(payment, transaction, result, resultTime);
+        persistFinancialOutcome(payment, transaction, result, resultTime);
 
         return new AppliedProviderRefundResult(
                 payment.getId(),
@@ -145,30 +152,53 @@ public class RefundProviderResultApplicationServiceImpl
         }
     }
 
-    private void persistTerminalAudit(
+    private void persistFinancialOutcome(
             Payment payment,
             PaymentTransaction transaction,
             ProviderRefundResult result,
             OffsetDateTime occurredAt) {
 
-        FinancialAuditAction action = null;
-        String reason = null;
-
         switch (result.outcome()) {
-            case SUCCEEDED -> {
-                action = FinancialAuditAction.REFUND_SUCCEEDED;
-                reason = REFUND_SUCCEEDED_REASON;
-            }
+            case SUCCEEDED ->
+                    persistTerminalAudit(
+                            payment,
+                            transaction,
+                            FinancialAuditAction.REFUND_SUCCEEDED,
+                            REFUND_SUCCEEDED_REASON,
+                            occurredAt);
 
-            case FAILED -> {
-                action = FinancialAuditAction.REFUND_FAILED;
-                reason = REFUND_FAILED_REASON;
-            }
+            case FAILED ->
+                    persistTerminalAudit(
+                            payment,
+                            transaction,
+                            FinancialAuditAction.REFUND_FAILED,
+                            REFUND_FAILED_REASON,
+                            occurredAt);
 
-            case PENDING, UNKNOWN -> {
-                return;
-            }
+            case PENDING ->
+                    openReconciliationCase(
+                            payment,
+                            transaction,
+                            ReconciliationReason.REFUND_PROVIDER_PENDING,
+                            result.providerReference(),
+                            occurredAt);
+
+            case UNKNOWN ->
+                    openReconciliationCase(
+                            payment,
+                            transaction,
+                            ReconciliationReason.REFUND_PROVIDER_UNKNOWN,
+                            result.providerReference(),
+                            occurredAt);
         }
+    }
+
+    private void persistTerminalAudit(
+            Payment payment,
+            PaymentTransaction transaction,
+            FinancialAuditAction action,
+            String reason,
+            OffsetDateTime occurredAt) {
 
         FinancialAuditRecord auditRecord =
                 new FinancialAuditRecord(
@@ -182,6 +212,65 @@ public class RefundProviderResultApplicationServiceImpl
                         occurredAt);
 
         auditRepository.save(auditRecord);
+    }
+
+    private void openReconciliationCase(
+            Payment payment,
+            PaymentTransaction transaction,
+            ReconciliationReason reason,
+            String providerReference,
+            OffsetDateTime openedAt) {
+
+        if (reconciliationCaseRepository
+                .findByPaymentTransactionId(transaction.getId())
+                .isPresent()) {
+
+            return;
+        }
+
+        ReconciliationCase reconciliationCase =
+                new ReconciliationCase(
+                        payment.getId(),
+                        transaction.getId(),
+                        reason,
+                        transaction.getProvider(),
+                        providerReference,
+                        openedAt);
+
+        reconciliationCaseRepository.save(reconciliationCase);
+
+        FinancialAuditRecord auditRecord =
+                new FinancialAuditRecord(
+                        payment.getId(),
+                        FinancialAuditAction.RECONCILIATION_OPENED,
+                        FinancialAuditActorType.SYSTEM,
+                        REFUND_PROVIDER_ACTOR_ID,
+                        reconciliationReason(reason),
+                        reconciliationAuditMetadata(transaction, reconciliationCase),
+                        UuidGenerator.next(),
+                        openedAt);
+
+        auditRepository.save(auditRecord);
+    }
+
+    private static String reconciliationReason(ReconciliationReason reason) {
+
+        return switch (reason) {
+            case REFUND_PROVIDER_PENDING -> "Refund provider returned a pending result";
+
+            case REFUND_PROVIDER_UNKNOWN -> "Refund provider outcome requires reconciliation";
+        };
+    }
+
+    private static String reconciliationAuditMetadata(
+            PaymentTransaction transaction, ReconciliationCase reconciliationCase) {
+
+        return "refundTransactionId="
+                + transaction.getId()
+                + ",reconciliationCaseId="
+                + reconciliationCase.getId()
+                + ",provider="
+                + transaction.getProvider();
     }
 
     private static String refundAuditMetadata(PaymentTransaction transaction) {

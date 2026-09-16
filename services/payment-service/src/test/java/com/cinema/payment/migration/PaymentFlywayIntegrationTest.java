@@ -43,7 +43,7 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
 
         assertThat(migrationInfo.all()).filteredOn(info -> info.getState().isFailed()).isEmpty();
 
-        assertThat(migrationInfo.applied()).hasSize(6);
+        assertThat(migrationInfo.applied()).hasSize(7);
     }
 
     @Test
@@ -227,7 +227,9 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                 .containsExactlyInAnyOrder(
                         "fk_payment_transactions_payment",
                         "fk_payment_provider_webhook_events_transaction",
-                        "fk_financial_audit_records_payment");
+                        "fk_financial_audit_records_payment",
+                        "fk_reconciliation_cases_payment",
+                        "fk_reconciliation_cases_transaction");
     }
 
     @Test

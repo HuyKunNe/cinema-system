@@ -13,11 +13,14 @@ import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.payment.entity.FinancialAuditRecord;
 import com.cinema.payment.entity.Payment;
 import com.cinema.payment.entity.PaymentTransaction;
+import com.cinema.payment.entity.ReconciliationCase;
 import com.cinema.payment.enums.FinancialAuditAction;
 import com.cinema.payment.enums.FinancialAuditActorType;
 import com.cinema.payment.enums.PaymentStatus;
 import com.cinema.payment.enums.PaymentTransactionStatus;
 import com.cinema.payment.enums.PaymentTransactionType;
+import com.cinema.payment.enums.ReconciliationReason;
+import com.cinema.payment.enums.ReconciliationStatus;
 import com.cinema.payment.enums.RefundStatus;
 import com.cinema.payment.exception.PaymentErrorCode;
 import com.cinema.payment.provider.model.AppliedProviderRefundResult;
@@ -27,6 +30,7 @@ import com.cinema.payment.provider.model.ProviderRefundResult;
 import com.cinema.payment.repository.FinancialAuditRecordRepository;
 import com.cinema.payment.repository.PaymentRepository;
 import com.cinema.payment.repository.PaymentTransactionRepository;
+import com.cinema.payment.repository.ReconciliationCaseRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,6 +60,8 @@ class RefundProviderResultApplicationServiceImplTest {
 
     @Mock private FinancialAuditRecordRepository auditRepository;
 
+    @Mock private ReconciliationCaseRepository reconciliationCaseRepository;
+
     private RefundProviderResultApplicationServiceImpl service;
 
     @BeforeEach
@@ -65,7 +71,11 @@ class RefundProviderResultApplicationServiceImplTest {
 
         service =
                 new RefundProviderResultApplicationServiceImpl(
-                        paymentRepository, transactionRepository, auditRepository, clock);
+                        paymentRepository,
+                        transactionRepository,
+                        auditRepository,
+                        reconciliationCaseRepository,
+                        clock);
     }
 
     @Test
@@ -160,57 +170,242 @@ class RefundProviderResultApplicationServiceImplTest {
     }
 
     @Test
-    void pendingResultShouldRemainNonTerminal() {
+    void pendingResultShouldRemainNonTerminalAndOpenReconciliationCase() {
 
         Fixture fixture = fixture();
 
         stubLockedEntities(fixture);
 
-        service.apply(
-                fixture.operation(), ProviderRefundResult.pending("provider-refund-pending-123"));
+        when(reconciliationCaseRepository.findByPaymentTransactionId(fixture.transaction().getId()))
+                .thenReturn(Optional.empty());
 
+        AppliedProviderRefundResult appliedResult =
+                service.apply(
+                        fixture.operation(),
+                        ProviderRefundResult.pending("provider-refund-pending-123"));
+
+        /*
+         * Original successful charge remains successful.
+         * Refund itself remains non-terminal.
+         */
         assertThat(fixture.payment().getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
 
         assertThat(fixture.payment().getRefundStatus()).isEqualTo(RefundStatus.PENDING);
 
+        assertThat(fixture.payment().getProviderReference()).isEqualTo("provider-charge-123");
+
+        /*
+         * Pending provider result is retained on the REFUND transaction
+         * without converting it into a terminal result.
+         */
         assertThat(fixture.transaction().getStatus())
                 .isEqualTo(PaymentTransactionStatus.PENDING_PROVIDER);
 
         assertThat(fixture.transaction().getProviderReference())
                 .isEqualTo("provider-refund-pending-123");
 
+        assertThat(fixture.transaction().getFailureCode()).isNull();
+
+        assertThat(fixture.transaction().getFailureMessage()).isNull();
+
         assertThat(fixture.transaction().getCompletedAt()).isNull();
 
-        verify(auditRepository, never()).save(any(FinancialAuditRecord.class));
+        assertThat(fixture.transaction().getProcessingOwner()).isNull();
+
+        assertThat(fixture.transaction().getProcessingExpiresAt()).isNull();
+
+        /*
+         * PENDING must open exactly one reconciliation case for the
+         * ambiguous REFUND transaction.
+         */
+        ArgumentCaptor<ReconciliationCase> caseCaptor =
+                ArgumentCaptor.forClass(ReconciliationCase.class);
+
+        verify(reconciliationCaseRepository).save(caseCaptor.capture());
+
+        ReconciliationCase reconciliationCase = caseCaptor.getValue();
+
+        assertThat(reconciliationCase.getPaymentId()).isEqualTo(fixture.payment().getId());
+
+        assertThat(reconciliationCase.getPaymentTransactionId())
+                .isEqualTo(fixture.transaction().getId());
+
+        assertThat(reconciliationCase.getStatus()).isEqualTo(ReconciliationStatus.OPEN);
+
+        assertThat(reconciliationCase.getReason())
+                .isEqualTo(ReconciliationReason.REFUND_PROVIDER_PENDING);
+
+        assertThat(reconciliationCase.getResolution()).isNull();
+
+        assertThat(reconciliationCase.getProvider()).isEqualTo("MOCK");
+
+        assertThat(reconciliationCase.getProviderReference())
+                .isEqualTo("provider-refund-pending-123");
+
+        assertThat(reconciliationCase.getOpenedAt()).isEqualTo(NOW);
+
+        assertThat(reconciliationCase.getResolvedAt()).isNull();
+
+        /*
+         * Opening reconciliation must create an append-only
+         * financial audit record.
+         */
+        ArgumentCaptor<FinancialAuditRecord> auditCaptor =
+                ArgumentCaptor.forClass(FinancialAuditRecord.class);
+
+        verify(auditRepository).save(auditCaptor.capture());
+
+        FinancialAuditRecord auditRecord = auditCaptor.getValue();
+
+        assertThat(auditRecord.getPaymentId()).isEqualTo(fixture.payment().getId());
+
+        assertThat(auditRecord.getAction()).isEqualTo(FinancialAuditAction.RECONCILIATION_OPENED);
+
+        assertThat(auditRecord.getActorType()).isEqualTo(FinancialAuditActorType.SYSTEM);
+
+        assertThat(auditRecord.getActorId()).isEqualTo("payment-refund-provider-operation");
+
+        assertThat(auditRecord.getOccurredAt()).isEqualTo(NOW);
+
+        assertThat(auditRecord.getMetadata())
+                .contains(fixture.transaction().getId().toString())
+                .contains(reconciliationCase.getId().toString())
+                .contains("MOCK");
+
+        /*
+         * Result returned to the caller must remain non-terminal.
+         */
+        assertThat(appliedResult.refundStatus()).isEqualTo(RefundStatus.PENDING);
+
+        assertThat(appliedResult.transactionStatus())
+                .isEqualTo(PaymentTransactionStatus.PENDING_PROVIDER);
+
+        verify(reconciliationCaseRepository)
+                .findByPaymentTransactionId(fixture.transaction().getId());
+
+        verifyLockOrder(fixture);
     }
 
     @Test
-    void unknownResultShouldRemainNonTerminal() {
+    void unknownResultShouldRemainNonTerminalAndOpenReconciliationCase() {
 
         Fixture fixture = fixture();
 
         stubLockedEntities(fixture);
 
-        service.apply(
-                fixture.operation(),
-                ProviderRefundResult.unknown(
-                        null, "REFUND_OUTCOME_UNKNOWN", "Refund outcome could not be determined"));
+        when(reconciliationCaseRepository.findByPaymentTransactionId(fixture.transaction().getId()))
+                .thenReturn(Optional.empty());
 
+        AppliedProviderRefundResult appliedResult =
+                service.apply(
+                        fixture.operation(),
+                        ProviderRefundResult.unknown(
+                                "provider-refund-unknown-123",
+                                "PROVIDER_TIMEOUT",
+                                "Provider outcome could not be determined"));
+
+        /*
+         * UNKNOWN is an ambiguous provider outcome.
+         * It must not change the successful original charge or make
+         * the refund terminal.
+         */
         assertThat(fixture.payment().getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
 
         assertThat(fixture.payment().getRefundStatus()).isEqualTo(RefundStatus.PENDING);
 
+        assertThat(fixture.payment().getProviderReference()).isEqualTo("provider-charge-123");
+
+        /*
+         * Provider ambiguity remains on the REFUND transaction so it
+         * can later be resolved through reconciliation.
+         */
         assertThat(fixture.transaction().getStatus())
                 .isEqualTo(PaymentTransactionStatus.PENDING_PROVIDER);
 
-        assertThat(fixture.transaction().getFailureCode()).isEqualTo("REFUND_OUTCOME_UNKNOWN");
+        assertThat(fixture.transaction().getProviderReference())
+                .isEqualTo("provider-refund-unknown-123");
+
+        assertThat(fixture.transaction().getFailureCode()).isEqualTo("PROVIDER_TIMEOUT");
 
         assertThat(fixture.transaction().getFailureMessage())
-                .isEqualTo("Refund outcome could not be determined");
+                .isEqualTo("Provider outcome could not be determined");
 
         assertThat(fixture.transaction().getCompletedAt()).isNull();
 
-        verify(auditRepository, never()).save(any(FinancialAuditRecord.class));
+        assertThat(fixture.transaction().getProcessingOwner()).isNull();
+
+        assertThat(fixture.transaction().getProcessingExpiresAt()).isNull();
+
+        /*
+         * UNKNOWN must open exactly one reconciliation case.
+         */
+        ArgumentCaptor<ReconciliationCase> caseCaptor =
+                ArgumentCaptor.forClass(ReconciliationCase.class);
+
+        verify(reconciliationCaseRepository).save(caseCaptor.capture());
+
+        ReconciliationCase reconciliationCase = caseCaptor.getValue();
+
+        assertThat(reconciliationCase.getPaymentId()).isEqualTo(fixture.payment().getId());
+
+        assertThat(reconciliationCase.getPaymentTransactionId())
+                .isEqualTo(fixture.transaction().getId());
+
+        assertThat(reconciliationCase.getStatus()).isEqualTo(ReconciliationStatus.OPEN);
+
+        assertThat(reconciliationCase.getReason())
+                .isEqualTo(ReconciliationReason.REFUND_PROVIDER_UNKNOWN);
+
+        assertThat(reconciliationCase.getResolution()).isNull();
+
+        assertThat(reconciliationCase.getProvider()).isEqualTo("MOCK");
+
+        assertThat(reconciliationCase.getProviderReference())
+                .isEqualTo("provider-refund-unknown-123");
+
+        assertThat(reconciliationCase.getOpenedAt()).isEqualTo(NOW);
+
+        assertThat(reconciliationCase.getResolvedAt()).isNull();
+
+        /*
+         * Opening reconciliation must be audited.
+         */
+        ArgumentCaptor<FinancialAuditRecord> auditCaptor =
+                ArgumentCaptor.forClass(FinancialAuditRecord.class);
+
+        verify(auditRepository).save(auditCaptor.capture());
+
+        FinancialAuditRecord auditRecord = auditCaptor.getValue();
+
+        assertThat(auditRecord.getPaymentId()).isEqualTo(fixture.payment().getId());
+
+        assertThat(auditRecord.getAction()).isEqualTo(FinancialAuditAction.RECONCILIATION_OPENED);
+
+        assertThat(auditRecord.getActorType()).isEqualTo(FinancialAuditActorType.SYSTEM);
+
+        assertThat(auditRecord.getActorId()).isEqualTo("payment-refund-provider-operation");
+
+        assertThat(auditRecord.getOccurredAt()).isEqualTo(NOW);
+
+        assertThat(auditRecord.getMetadata())
+                .contains(fixture.transaction().getId().toString())
+                .contains(reconciliationCase.getId().toString())
+                .contains("MOCK")
+                .doesNotContain("PROVIDER_TIMEOUT")
+                .doesNotContain("Provider outcome could not be determined");
+
+        /*
+         * Result returned to caller remains non-terminal.
+         */
+        assertThat(appliedResult.refundStatus()).isEqualTo(RefundStatus.PENDING);
+
+        assertThat(appliedResult.transactionStatus())
+                .isEqualTo(PaymentTransactionStatus.PENDING_PROVIDER);
+
+        verify(reconciliationCaseRepository)
+                .findByPaymentTransactionId(fixture.transaction().getId());
+
+        verifyLockOrder(fixture);
     }
 
     @Test
