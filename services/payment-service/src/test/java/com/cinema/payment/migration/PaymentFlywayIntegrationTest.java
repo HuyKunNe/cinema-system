@@ -25,7 +25,8 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                     "payment_provider_webhook_events",
                     "payment_transactions",
                     "payments",
-                    "processed_events");
+                    "processed_events",
+                    "financial_audit_records");
 
     @Autowired private Flyway flyway;
 
@@ -42,7 +43,7 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
 
         assertThat(migrationInfo.all()).filteredOn(info -> info.getState().isFailed()).isEmpty();
 
-        assertThat(migrationInfo.applied()).hasSize(5);
+        assertThat(migrationInfo.applied()).hasSize(6);
     }
 
     @Test
@@ -58,13 +59,14 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                             '2',
                             '3',
                             '4',
-                            '5'
+                            '5',
+                            '6'
                         )
                           AND success = TRUE
                         """,
                         Integer.class);
 
-        assertThat(count).isEqualTo(5);
+        assertThat(count).isEqualTo(6);
     }
 
     @Test
@@ -87,7 +89,8 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                               'payment_transactions',
                               'processed_events',
                               'payment_provider_webhook_events',
-                              'outbox_events'
+                              'outbox_events',
+                              'financial_audit_records'
                           )
                         ORDER BY table_name
                         """,
@@ -223,7 +226,8 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
         assertThat(constraints)
                 .containsExactlyInAnyOrder(
                         "fk_payment_transactions_payment",
-                        "fk_payment_provider_webhook_events_transaction");
+                        "fk_payment_provider_webhook_events_transaction",
+                        "fk_financial_audit_records_payment");
     }
 
     @Test

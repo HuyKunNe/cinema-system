@@ -361,6 +361,41 @@ public final class PaymentErrorCode implements ErrorCode {
                     "PAYMENT_OUTBOX_PAYLOAD_SERIALIZATION_FAILED",
                     "Payment Outbox payload serialization failed");
 
+    public static final PaymentErrorCode FINANCIAL_AUDIT_ACTION_REQUIRED =
+            validation(
+                    "PAYMENT_FINANCIAL_AUDIT_ACTION_REQUIRED",
+                    "Financial audit action is required");
+
+    public static final PaymentErrorCode FINANCIAL_AUDIT_ACTOR_TYPE_REQUIRED =
+            validation(
+                    "PAYMENT_FINANCIAL_AUDIT_ACTOR_TYPE_REQUIRED",
+                    "Financial audit actor type is required");
+
+    public static final PaymentErrorCode FINANCIAL_AUDIT_ACTOR_ID_REQUIRED =
+            validation(
+                    "PAYMENT_FINANCIAL_AUDIT_ACTOR_ID_REQUIRED",
+                    "Financial audit actor ID is required");
+
+    public static final PaymentErrorCode FINANCIAL_AUDIT_ACTOR_ID_INVALID =
+            validation(
+                    "PAYMENT_FINANCIAL_AUDIT_ACTOR_ID_INVALID",
+                    "Financial audit actor ID must not exceed 255 characters");
+
+    public static final PaymentErrorCode FINANCIAL_AUDIT_OCCURRED_AT_REQUIRED =
+            validation(
+                    "PAYMENT_FINANCIAL_AUDIT_OCCURRED_AT_REQUIRED",
+                    "Financial audit occurrence time is required");
+
+    public static final PaymentErrorCode FINANCIAL_AUDIT_REASON_INVALID =
+            validation(
+                    "PAYMENT_FINANCIAL_AUDIT_REASON_INVALID",
+                    "Financial audit reason must not exceed 500 characters");
+
+    public static final PaymentErrorCode FINANCIAL_AUDIT_METADATA_INVALID =
+            validation(
+                    "PAYMENT_FINANCIAL_AUDIT_METADATA_INVALID",
+                    "Financial audit metadata must not exceed 2000 characters");
+
     private static PaymentErrorCode validation(String code, String message) {
 
         return new PaymentErrorCode(ErrorCategory.VALIDATION, code, message);
