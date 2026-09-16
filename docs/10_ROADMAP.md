@@ -1699,6 +1699,57 @@ verify success, failure, timeout, duplicate event and delayed event scenarios.
 
 ---
 
+### R27.10 Contract Closure
+
+R27.10 adds Payment-owned refund, reconciliation, privileged financial administration, and audit controls.
+
+The approved baseline is:
+
+- refund and reconciliation remain owned by Payment Service;
+- a successful charge remains `PaymentStatus.SUCCEEDED` while refund progress is represented independently by `RefundStatus`;
+- the initial implementation supports one full refund for one successful Payment and does not support partial or multiple refunds;
+- refund provider operations use `PaymentTransactionType.REFUND`;
+- reconciliation operations use `PaymentTransactionType.RECONCILIATION`;
+- provider execution never occurs while a Payment database transaction or row lock is open;
+- refund provider retries use the stable idempotency key `refund:<paymentId>`;
+- ambiguous or late financial outcomes require explicit reconciliation and must not be converted into guessed terminal outcomes;
+- privileged financial mutations require explicit Payment permissions;
+- the initial permission contract is `payment:read`, `payment:refund`, `payment:reconcile`, and `payment:audit`;
+- privileged refund and reconciliation decisions create durable append-only financial audit records;
+- financial audit records must identify the action, target Payment, trusted actor identity, timestamp, and bounded non-sensitive decision metadata;
+- CVV, card credentials, provider secrets, raw authorization material, and unrestricted provider payloads must never be stored in audit records;
+- Payment Service remains the only owner of Payment, refund, reconciliation, provider-operation, and financial-audit persistence;
+- no cross-service database access or distributed database transaction is introduced.
+
+Initial refund state flow:
+
+```text
+NOT_REQUESTED
+      |
+      | request full refund
+      v
+   PENDING
+    /   \
+   v     v
+SUCCEEDED FAILED
+```
+
+Refund status does not reverse the original successful Payment status.
+
+Initial reconciliation flow:
+
+```text
+ambiguous / late provider outcome
+              |
+              v
+RECONCILIATION_REQUIRED
+              |
+              v
+      explicit resolution
+```
+
+A reconciliation resolution must preserve the observed provider evidence and record the privileged decision in the financial audit trail.
+
 ## ⏳ R28 — Notification Service
 
 Notification Service will own:
