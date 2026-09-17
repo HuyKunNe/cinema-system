@@ -67,7 +67,7 @@ class OutboxClaimIntegrationTest {
 
     @Container
     static final MySQLContainer<?> MYSQL =
-            new MySQLContainer<>("mysql:8.4")
+            new MySQLContainer<>("mysql:8.4.0")
                     .withDatabaseName("cinema_booking_test")
                     .withUsername("cinema")
                     .withPassword("cinema");

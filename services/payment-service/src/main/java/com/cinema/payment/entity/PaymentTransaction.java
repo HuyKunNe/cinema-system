@@ -632,4 +632,45 @@ public class PaymentTransaction {
             throw new ValidationException(PaymentErrorCode.PROVIDER_WEBHOOK_EVENT_ID_INVALID);
         }
     }
+
+    public void completeReconciledRefundSuccess(String reference, OffsetDateTime completedAt) {
+
+        requirePendingRefundReconciliation();
+        validateProviderReference(reference);
+        validateCompletionTime(completedAt);
+
+        status = PaymentTransactionStatus.SUCCEEDED;
+        providerReference = reference.strip();
+        failureCode = null;
+        failureMessage = null;
+        this.completedAt = completedAt;
+
+        clearProcessingLease();
+    }
+
+    public void completeReconciledRefundFailure(
+            String code, String message, OffsetDateTime completedAt) {
+
+        requirePendingRefundReconciliation();
+        validateFailureCode(code);
+        validateCompletionTime(completedAt);
+
+        status = PaymentTransactionStatus.FAILED;
+        failureCode = code.strip();
+        failureMessage = normalizeFailureMessage(message);
+        this.completedAt = completedAt;
+
+        clearProcessingLease();
+    }
+
+    private void requirePendingRefundReconciliation() {
+
+        if (transactionType != PaymentTransactionType.REFUND) {
+            throw new ConflictException(PaymentErrorCode.PAYMENT_TRANSACTION_TYPE_UNSUPPORTED);
+        }
+
+        if (status != PaymentTransactionStatus.PENDING_PROVIDER) {
+            throw new ConflictException(PaymentErrorCode.RECONCILIATION_TRANSACTION_NOT_PENDING);
+        }
+    }
 }

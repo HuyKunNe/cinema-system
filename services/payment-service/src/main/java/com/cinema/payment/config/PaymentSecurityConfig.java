@@ -24,6 +24,12 @@ public class PaymentSecurityConfig {
 
     private static final String PAYMENT_WEBHOOK_ENDPOINT = "/api/v1/payments/webhooks/*";
 
+    private static final String PAYMENT_REFUND_AUTHORITY = "payment:refund";
+
+    private static final String PAYMENT_RECONCILE_AUTHORITY = "payment:reconcile";
+
+    private static final String PAYMENT_AUDIT_AUTHORITY = "payment:audit";
+
     @Bean
     SecurityFilterChain paymentSecurityFilterChain(
             HttpSecurity http,
@@ -42,9 +48,20 @@ public class PaymentSecurityConfig {
                                         .permitAll()
                                         .requestMatchers("/actuator/health", "/actuator/info")
                                         .permitAll()
-                                        .requestMatchers(HttpMethod.POST, PAYMENT_WEBHOOK_ENDPOINT)
+                                        .requestMatchers(
+                                                HttpMethod.POST, "/api/v1/payments/webhooks/*")
                                         .permitAll()
-                                        .requestMatchers(HttpMethod.GET, PAYMENT_QUERY_ENDPOINT)
+                                        .requestMatchers(
+                                                HttpMethod.POST, "/api/v1/payments/*/refunds")
+                                        .hasAuthority(PAYMENT_REFUND_AUTHORITY)
+                                        .requestMatchers(
+                                                HttpMethod.POST,
+                                                "/api/v1/payments/reconciliation-cases/*/resolve",
+                                                "/api/v1/payments/reconciliation-cases/*/reject")
+                                        .hasAuthority(PAYMENT_RECONCILE_AUTHORITY)
+                                        .requestMatchers(HttpMethod.GET, "/api/v1/payments/*/audit")
+                                        .hasAuthority(PAYMENT_AUDIT_AUTHORITY)
+                                        .requestMatchers(HttpMethod.GET, "/api/v1/payments/*")
                                         .hasAuthority(PAYMENT_READ_AUTHORITY)
                                         .anyRequest()
                                         .denyAll())

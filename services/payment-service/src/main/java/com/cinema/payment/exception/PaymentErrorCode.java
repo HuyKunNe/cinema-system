@@ -477,6 +477,34 @@ public final class PaymentErrorCode implements ErrorCode {
                     "PAYMENT_RECONCILIATION_CASE_NOT_OPEN",
                     "Reconciliation case is not open");
 
+    public static final PaymentErrorCode RECONCILIATION_REQUEST_REQUIRED =
+            validation(
+                    "PAYMENT_RECONCILIATION_REQUEST_REQUIRED",
+                    "Reconciliation request is required");
+
+    public static final PaymentErrorCode RECONCILIATION_CASE_ID_REQUIRED =
+            validation(
+                    "PAYMENT_RECONCILIATION_CASE_ID_REQUIRED",
+                    "Reconciliation case ID is required");
+
+    public static final PaymentErrorCode RECONCILIATION_CASE_NOT_FOUND =
+            new PaymentErrorCode(
+                    ErrorCategory.RESOURCE,
+                    "PAYMENT_RECONCILIATION_CASE_NOT_FOUND",
+                    "Reconciliation case was not found");
+
+    public static final PaymentErrorCode RECONCILIATION_DATA_MISMATCH =
+            new PaymentErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "PAYMENT_RECONCILIATION_DATA_MISMATCH",
+                    "Reconciliation case data does not match payment data");
+
+    public static final PaymentErrorCode RECONCILIATION_TRANSACTION_NOT_PENDING =
+            new PaymentErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "PAYMENT_RECONCILIATION_TRANSACTION_NOT_PENDING",
+                    "Reconciliation payment transaction is not pending provider result");
+
     private static PaymentErrorCode validation(String code, String message) {
 
         return new PaymentErrorCode(ErrorCategory.VALIDATION, code, message);

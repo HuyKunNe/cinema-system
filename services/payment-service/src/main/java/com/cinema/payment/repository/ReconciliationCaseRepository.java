@@ -3,7 +3,12 @@ package com.cinema.payment.repository;
 import com.cinema.payment.entity.ReconciliationCase;
 import com.cinema.payment.enums.ReconciliationStatus;
 
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,4 +21,14 @@ public interface ReconciliationCaseRepository extends JpaRepository<Reconciliati
     List<ReconciliationCase> findAllByPaymentIdOrderByOpenedAtAscIdAsc(UUID paymentId);
 
     List<ReconciliationCase> findAllByStatusOrderByOpenedAtAscIdAsc(ReconciliationStatus status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            """
+            SELECT reconciliationCase
+            FROM ReconciliationCase reconciliationCase
+            WHERE reconciliationCase.id = :reconciliationCaseId
+            """)
+    Optional<ReconciliationCase> findByIdForUpdate(
+            @Param("reconciliationCaseId") UUID reconciliationCaseId);
 }
