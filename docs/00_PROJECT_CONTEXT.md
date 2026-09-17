@@ -1,6 +1,6 @@
 # Cinema Booking System
 
-Version: 0.9 (R27.9 Completed; R27.10 Refund and Reconciliation Controls In Progress)
+Version: 0.9 (R27.10 Completed; R27.11 Kafka Retry and Publication Verification Next)
 
 ---
 
@@ -67,6 +67,7 @@ Hệ thống được thiết kế để mô phỏng nền tảng của các chu
 - ✅ R27.7 — `payment-succeeded` and `payment-failed` Outbox publication
 - ✅ R27.8 — Booking payment-result consumers
 - ✅ R27.9 — Inventory confirmation and compensation consumers
+- ✅ R27.10 — Refund, reconciliation, permissions and audit controls
 
 Inventory Service owns:
 
@@ -110,7 +111,8 @@ R27.6  — Authenticated webhook and provider-result processing        — DONE
 R27.7  — payment-succeeded/payment-failed Outbox publication         — DONE
 R27.8  — Booking payment-result consumers                            — DONE
 R27.9  — Inventory confirmation and compensation consumers           — DONE
-R27.10 — Refund, reconciliation, permissions and audit controls      — IN PROGRESS
+R27.10 — Refund, reconciliation, permissions and audit controls      — DONE
+R27.11 — Kafka retry, DLT and publication verification               — NEXT
 ```
 
 Completed R27.10 financial administration HTTP/security baseline:
@@ -133,8 +135,27 @@ Implemented behavior:
 - financial audit entities are not exposed directly as HTTP contracts;
 - refund, reconciliation and audit controller/security regression tests pass.
 
-R27.10 remains active until the remaining persistence, concurrency, rollback,
-integration and checkpoint-closure gates are verified.
+R27.10 is complete.
+
+Verified R27.10 closure:
+
+- one full refund per successful Payment;
+- stable refund provider idempotency;
+- concurrent refund request idempotency;
+- atomic refund/audit persistence;
+- reconciliation resolve/reject controls;
+- MySQL reconciliation concurrency protection;
+- rollback when financial-audit persistence fails;
+- stale reconciliation entity race prevention;
+- financial-audit Payment isolation and stable ordering;
+- dedicated refund, reconciliation and audit permissions;
+- controller and Resource Server security verification;
+- Payment Service regression verification;
+- root Maven verification and documentation synchronization.
+
+Next checkpoint:
+
+- R27.11 — Kafka retry, DLT, and publication verification — NEXT
 
 R27.9 verifies that Booking and Inventory converge through Kafka without
 cross-service database access. Inventory remains the sole owner of show_seats.
@@ -329,11 +350,11 @@ Latest completed service round:
 
 Latest completed Payment checkpoint:
 
-> **R27.4 — `payment-requested` validation and idempotent consumption**
+> **R27.10 — DONE**
 
 Current checkpoint:
 
-> **R27.5 — Provider port, operation worker, and provider idempotency**
+> **R27.11 — NEXT**
 
 ADR-013 selects User Service with Spring Authorization Server as the authoritative
 issuer. The issuer, audience, RS256/JWK ownership, approved grant types, access-token

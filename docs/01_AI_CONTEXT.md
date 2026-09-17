@@ -29,6 +29,7 @@ The `docs` directory is the project's source of truth.
 - R27.7 — `payment-succeeded` and `payment-failed` Outbox publication
 - R27.8 — Booking payment-result consumers
 - R27.9 — Inventory confirmation and compensation consumers
+- R27.10 — Refund, reconciliation, permissions, and audit controls
 
 ## Completed Inventory Round
 
@@ -163,27 +164,18 @@ R27 Payment Service is in progress.
 Completed checkpoints:
 
 ```text
-R27.1 — Payment architecture and contract closure                    — DONE
-R27.2 — Payment Service bootstrap and Resource Server security       — DONE
-R27.3 — Payment aggregate and Flyway schema                          — DONE
-R27.4 — payment-requested validation and idempotent consumption      — DONE
-R27.5 — Provider port, operation worker, and provider idempotency    — DONE
-R27.6 — Authenticated webhook and provider-result processing         — DONE
-R27.7 — payment-succeeded and payment-failed Outbox publication      — DONE
-R27.8 — Booking payment-result consumers                             — DONE
-R27.9 — Inventory confirmation and compensation consumers            — DONE
+R27.1   — Payment architecture and contract closure                    — DONE
+R27.2   — Payment Service bootstrap and Resource Server security       — DONE
+R27.3   — Payment aggregate and Flyway schema                          — DONE
+R27.4   — payment-requested validation and idempotent consumption      — DONE
+R27.5   — Provider port, operation worker, and provider idempotency    — DONE
+R27.6   — Authenticated webhook and provider-result processing         — DONE
+R27.7   — payment-succeeded and payment-failed Outbox publication      — DONE
+R27.8   — Booking payment-result consumers                             — DONE
+R27.9   — Inventory confirmation and compensation consumers            — DONE
+R27.10  — Refund, reconciliation, permissions, and audit controls      — DONE
 ```
 
-Current checkpoint:
-
-```text
-R27.10 — Refund, reconciliation, permissions, and audit controls — IN PROGRESS
-```
-Completed R27.10 financial-administration boundary:
-
-```text
-R27.10.8 — HTTP endpoints, permissions and financial-audit read boundary — DONE
-```
 Verified baseline:
 
 - full refund initiation is exposed only through Payment Service;
@@ -199,8 +191,24 @@ Verified baseline:
 - focused refund, reconciliation, audit and security tests pass;
 - full Payment Service regression verification passes.
 
-R27.10 is still active; do not mark the entire checkpoint complete until the remaining
-R27.10 persistence, concurrency, rollback and closure gates pass.
+R27.10 is complete.
+
+Verified closure baseline:
+
+- refund persistence and idempotency;
+- concurrent refund-request protection;
+- refund provider-result and rollback behavior;
+- reconciliation resolve/reject persistence;
+- reconciliation concurrency protection;
+- audit-failure rollback;
+- stale reconciliation persistence-context race prevention;
+- financial-audit Payment isolation and deterministic ordering;
+- refund/reconciliation/audit HTTP contracts and authorization;
+- full Payment Service and root reactor verification.
+
+Current checkpoint:
+
+> **R27.11 — Kafka retry, DLT, and publication verification**
 
 R27.1–R27.9 are complete.
 

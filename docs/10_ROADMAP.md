@@ -1,7 +1,7 @@
 # Project Roadmap
 
-**Version:** R27.9 Completed
-**Current target:** R27.10 — Refund, reconciliation, permissions, and audit controls
+**Version:** R27.10 Completed
+**Current target:** R27.11 — Kafka retry, DLT, and publication verification
 **Last updated:** 2026-09-17
 
 ---
@@ -1560,21 +1560,21 @@ Payment Service will own:
 
 ### Implementation checkpoints
 
-| Checkpoint | Scope                                                       | Status      |
-| ---------- | ----------------------------------------------------------- | ----------- |
-| R27.1      | Payment architecture and contract closure                   | DONE        |
-| R27.2      | Payment Service bootstrap and Resource Server security      | DONE        |
-| R27.3      | Payment aggregate and Flyway schema                         | DONE        |
-| R27.4      | `payment-requested` validation and idempotent consumption   | DONE        |
-| R27.5      | Provider port, operation worker, and provider idempotency   | DONE        |
-| R27.6      | Authenticated webhook and provider-result processing        | DONE        |
-| R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | DONE        |
-| R27.8      | Booking payment-result consumers                            | DONE        |
-| R27.9      | Inventory confirmation and compensation consumers           | DONE        |
-| R27.10     | Refund, reconciliation, permissions, and audit controls     | IN PROGRESS |
-| R27.11     | Kafka retry, DLT, and publication verification              | PLANNED     |
-| R27.12     | Saga integration, race, and concurrency verification        | PLANNED     |
-| R27.13     | Stabilization, documentation, and closure                   | PLANNED     |
+| Checkpoint | Scope                                                       | Status  |
+| ---------- | ----------------------------------------------------------- | ------- |
+| R27.1      | Payment architecture and contract closure                   | DONE    |
+| R27.2      | Payment Service bootstrap and Resource Server security      | DONE    |
+| R27.3      | Payment aggregate and Flyway schema                         | DONE    |
+| R27.4      | `payment-requested` validation and idempotent consumption   | DONE    |
+| R27.5      | Provider port, operation worker, and provider idempotency   | DONE    |
+| R27.6      | Authenticated webhook and provider-result processing        | DONE    |
+| R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | DONE    |
+| R27.8      | Booking payment-result consumers                            | DONE    |
+| R27.9      | Inventory confirmation and compensation consumers           | DONE    |
+| R27.10     | Refund, reconciliation, permissions, and audit controls     | DONE    |
+| R27.11     | Kafka retry, DLT, and publication verification              | NEXT    |
+| R27.12     | Saga integration, race, and concurrency verification        | PLANNED |
+| R27.13     | Stabilization, documentation, and closure                   | PLANNED |
 
 R27.3 completed the Payment persistence baseline:
 
@@ -1773,9 +1773,43 @@ Completed behavior:
 - refund, reconciliation, audit and Payment Service regression verification;
 - removal of duplicate reconciliation aggregate validation.
 
-R27.10 is not complete yet.
+### R27.10 Completion
 
-Remaining R27.10 work must still satisfy applicable persistence, idempotency, concurrency, rollback, integration and checkpoint-closure verification before R27.10 may move to DONE.
+R27.10 is complete.
+
+Completed verification includes:
+
+- full-refund request persistence and idempotency;
+- stable `refund:<paymentId>` provider idempotency;
+- refund provider preparation and execution boundaries;
+- refund success, failure, pending and reconciliation handling;
+- atomic financial audit persistence;
+- refund-request rollback verification;
+- provider-result rollback verification;
+- reconciliation resolve and reject behavior;
+- MySQL reconciliation concurrency verification;
+- reconciliation audit-failure rollback verification;
+- stale reconciliation entity race prevention while preserving `Payment -> PaymentTransaction -> ReconciliationCase` lock ordering;
+- financial-audit Payment isolation;
+- stable financial-audit ordering by `occurredAt ASC, id ASC`;
+- refund, reconciliation and financial-audit HTTP contracts;
+- `payment:refund`, `payment:reconcile` and `payment:audit` authorization;
+- unauthenticated, forbidden and allowed-access security verification;
+- Payment Service regression verification;
+- root Maven reactor verification;
+- `git diff --check`;
+- documentation synchronization.
+
+```text
+R27.10.8  — Financial administration HTTP/security boundary  DONE
+R27.10.9  — Financial consistency verification               DONE
+R27.10.10 — Stabilization and checkpoint closure             DONE
+R27.10    — DONE
+```
+
+The next active checkpoint is:
+
+R27.11 — Kafka retry, DLT, and publication verification
 
 ## ⏳ R28 — Notification Service
 

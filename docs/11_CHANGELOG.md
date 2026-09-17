@@ -1,7 +1,7 @@
 # Changelog
 
 **Version:** 0.9
-**Current baseline:** R1–R26 and R27.1–R27.9 completed; R27.10 in progress
+**Current baseline:** R1–R26 and R27.1–R27.10 completed; R27.11 next
 **Last reviewed:** 2026-09-17
 
 ---
@@ -37,9 +37,9 @@ Current status:
 | R25 User Service    | completed         |
 | R26.1–R26.13        | Completed         |
 | R26 Booking         | Service completed |
-| R27.1–R27.9         | Completed         |
+| R27.1–R27.10        | Completed         |
 | R27 Payment Service | in progress       |
-| R27.10              | Implementation    |
+| R27.11              | Next              |
 | R28                 | Planned           |
 
 ---
@@ -47,6 +47,26 @@ Current status:
 # Unreleased
 
 ## 2026-09-17
+
+### R27.10 Financial Administration and Reconciliation Closure
+
+- Completed R27.10 refund, reconciliation, permissions and financial-audit scope.
+- Verified one full refund per successful Payment.
+- Verified stable `refund:<paymentId>` provider idempotency.
+- Added concurrent refund-request MySQL verification.
+- Added reconciliation resolve and reject MySQL concurrency verification.
+- Fixed stale managed `ReconciliationCase` behavior discovered by concurrent reject testing.
+- Preserved `Payment -> PaymentTransaction -> ReconciliationCase` lock ordering.
+- Added reconciliation reject rollback verification.
+- Verified audit-persistence failure rolls back privileged reconciliation mutations.
+- Added MySQL financial-audit persistence and read-order verification.
+- Verified financial audit reads are Payment-isolated and ordered by
+  `occurredAt ASC, id ASC`.
+- Verified refund, reconciliation and audit HTTP/security boundaries.
+- Verified the full Payment Service regression suite.
+- Verified root Maven reactor and repository formatting gates.
+- Synchronized authoritative documentation.
+- Completed R27.10 and advanced the active checkpoint to R27.11.
 
 ### R27.10.8 Payment Financial Administration HTTP and Security Boundary
 
