@@ -31,6 +31,11 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 class RefundRequestServiceMySqlIntegrationTest extends AbstractMySqlIntegrationTest {
 
@@ -149,6 +154,91 @@ class RefundRequestServiceMySqlIntegrationTest extends AbstractMySqlIntegrationT
         assertThat(auditRepository.findAllByPaymentIdOrderByOccurredAtAscIdAsc(payment.getId()))
                 .extracting(FinancialAuditRecord::getAction)
                 .containsExactly(FinancialAuditAction.REFUND_REQUESTED);
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void concurrentRefundRequestsShouldCreateExactlyOneRefundTransactionAndAudit()
+            throws Exception {
+
+        Payment payment = persistSuccessfulPayment();
+
+        CountDownLatch startGate = new CountDownLatch(1);
+
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+
+            Future<RefundRequestResult> first =
+                    executor.submit(
+                            () -> {
+                                startGate.await();
+
+                                return refundRequestService.requestRefund(
+                                        request(payment.getId(), UuidGenerator.next()));
+                            });
+
+            Future<RefundRequestResult> second =
+                    executor.submit(
+                            () -> {
+                                startGate.await();
+
+                                return refundRequestService.requestRefund(
+                                        request(payment.getId(), UuidGenerator.next()));
+                            });
+
+            startGate.countDown();
+
+            RefundRequestResult firstResult = first.get(10, TimeUnit.SECONDS);
+
+            RefundRequestResult secondResult = second.get(10, TimeUnit.SECONDS);
+
+            assertThat(firstResult.paymentId()).isEqualTo(payment.getId());
+
+            assertThat(secondResult.paymentId()).isEqualTo(payment.getId());
+
+            assertThat(firstResult.transactionId()).isEqualTo(secondResult.transactionId());
+
+            assertThat(
+                            List.of(firstResult, secondResult).stream()
+                                    .filter(result -> !result.duplicate())
+                                    .count())
+                    .isEqualTo(1);
+
+            assertThat(
+                            List.of(firstResult, secondResult).stream()
+                                    .filter(RefundRequestResult::duplicate)
+                                    .count())
+                    .isEqualTo(1);
+        }
+
+        entityManager.clear();
+
+        Payment savedPayment = paymentRepository.findById(payment.getId()).orElseThrow();
+
+        List<PaymentTransaction> refundTransactions =
+                transactionRepository
+                        .findAllByPaymentIdOrderByAttemptNumberAsc(payment.getId())
+                        .stream()
+                        .filter(
+                                transaction ->
+                                        transaction.getTransactionType()
+                                                == PaymentTransactionType.REFUND)
+                        .toList();
+
+        List<FinancialAuditRecord> audits =
+                auditRepository.findAllByPaymentIdOrderByOccurredAtAscIdAsc(payment.getId());
+
+        assertThat(savedPayment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+
+        assertThat(savedPayment.getRefundStatus()).isEqualTo(RefundStatus.PENDING);
+
+        assertThat(refundTransactions).hasSize(1);
+
+        assertThat(refundTransactions.getFirst().getIdempotencyKey())
+                .isEqualTo("refund:" + payment.getId());
+
+        assertThat(audits)
+                .filteredOn(audit -> audit.getAction() == FinancialAuditAction.REFUND_REQUESTED)
+                .hasSize(1);
     }
 
     @Test

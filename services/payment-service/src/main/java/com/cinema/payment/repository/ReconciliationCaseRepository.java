@@ -2,6 +2,7 @@ package com.cinema.payment.repository;
 
 import com.cinema.payment.entity.ReconciliationCase;
 import com.cinema.payment.enums.ReconciliationStatus;
+import com.cinema.payment.model.ReconciliationCaseLockReference;
 
 import jakarta.persistence.LockModeType;
 
@@ -30,5 +31,17 @@ public interface ReconciliationCaseRepository extends JpaRepository<Reconciliati
             WHERE reconciliationCase.id = :reconciliationCaseId
             """)
     Optional<ReconciliationCase> findByIdForUpdate(
+            @Param("reconciliationCaseId") UUID reconciliationCaseId);
+
+    @Query(
+            """
+            SELECT new com.cinema.payment.model.ReconciliationCaseLockReference(
+                reconciliationCase.paymentId,
+                reconciliationCase.paymentTransactionId
+            )
+            FROM ReconciliationCase reconciliationCase
+            WHERE reconciliationCase.id = :reconciliationCaseId
+            """)
+    Optional<ReconciliationCaseLockReference> findLockReferenceById(
             @Param("reconciliationCaseId") UUID reconciliationCaseId);
 }

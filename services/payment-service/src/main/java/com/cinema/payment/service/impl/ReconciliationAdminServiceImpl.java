@@ -15,6 +15,7 @@ import com.cinema.payment.enums.PaymentTransactionType;
 import com.cinema.payment.enums.ReconciliationStatus;
 import com.cinema.payment.enums.RefundStatus;
 import com.cinema.payment.exception.PaymentErrorCode;
+import com.cinema.payment.model.ReconciliationCaseLockReference;
 import com.cinema.payment.model.ReconciliationOperationResult;
 import com.cinema.payment.model.ReconciliationRejectRequest;
 import com.cinema.payment.model.ReconciliationResolveRequest;
@@ -60,16 +61,17 @@ public class ReconciliationAdminServiceImpl implements ReconciliationAdminServic
 
         validateResolveRequest(request);
 
-        ReconciliationCase caseReference =
+        ReconciliationCaseLockReference lockReference =
                 reconciliationCaseRepository
-                        .findById(request.reconciliationCaseId())
+                        .findLockReferenceById(request.reconciliationCaseId())
                         .orElseThrow(
                                 () ->
                                         new NotFoundException(
                                                 PaymentErrorCode.RECONCILIATION_CASE_NOT_FOUND));
 
-        UUID paymentId = caseReference.getPaymentId();
-        UUID transactionId = caseReference.getPaymentTransactionId();
+        UUID paymentId = lockReference.paymentId();
+
+        UUID transactionId = lockReference.paymentTransactionId();
 
         Payment payment =
                 paymentRepository
@@ -139,16 +141,17 @@ public class ReconciliationAdminServiceImpl implements ReconciliationAdminServic
 
         validateRejectRequest(request);
 
-        ReconciliationCase caseReference =
+        ReconciliationCaseLockReference lockReference =
                 reconciliationCaseRepository
-                        .findById(request.reconciliationCaseId())
+                        .findLockReferenceById(request.reconciliationCaseId())
                         .orElseThrow(
                                 () ->
                                         new NotFoundException(
                                                 PaymentErrorCode.RECONCILIATION_CASE_NOT_FOUND));
 
-        UUID paymentId = caseReference.getPaymentId();
-        UUID transactionId = caseReference.getPaymentTransactionId();
+        UUID paymentId = lockReference.paymentId();
+
+        UUID transactionId = lockReference.paymentTransactionId();
 
         Payment payment =
                 paymentRepository

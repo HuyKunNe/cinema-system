@@ -21,6 +21,7 @@ import com.cinema.payment.enums.ReconciliationReason;
 import com.cinema.payment.enums.ReconciliationResolution;
 import com.cinema.payment.enums.ReconciliationStatus;
 import com.cinema.payment.enums.RefundStatus;
+import com.cinema.payment.model.ReconciliationRejectRequest;
 import com.cinema.payment.model.ReconciliationResolveRequest;
 import com.cinema.payment.repository.FinancialAuditRecordRepository;
 import com.cinema.payment.repository.PaymentRepository;
@@ -172,6 +173,97 @@ class ReconciliationAdminServiceMySqlIT {
     }
 
     @Test
+    void concurrentRejectShouldAllowExactlyOneRejection() throws Exception {
+
+        Fixture fixture = persistFixture();
+
+        ReconciliationRejectRequest firstRequest =
+                rejectRequest(fixture.reconciliationCaseId(), "admin-1");
+
+        ReconciliationRejectRequest secondRequest =
+                rejectRequest(fixture.reconciliationCaseId(), "admin-2");
+
+        CountDownLatch startGate = new CountDownLatch(1);
+
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+
+            Future<OperationOutcome> first =
+                    executor.submit(
+                            () -> {
+                                startGate.await();
+
+                                return executeReject(firstRequest);
+                            });
+
+            Future<OperationOutcome> second =
+                    executor.submit(
+                            () -> {
+                                startGate.await();
+
+                                return executeReject(secondRequest);
+                            });
+
+            startGate.countDown();
+
+            OperationOutcome firstOutcome = first.get(10, TimeUnit.SECONDS);
+
+            OperationOutcome secondOutcome = second.get(10, TimeUnit.SECONDS);
+
+            long successCount =
+                    List.of(firstOutcome, secondOutcome).stream()
+                            .filter(OperationOutcome::success)
+                            .count();
+
+            long conflictCount =
+                    List.of(firstOutcome, secondOutcome).stream()
+                            .filter(outcome -> outcome.failure() instanceof ConflictException)
+                            .count();
+
+            assertThat(successCount).isEqualTo(1);
+
+            assertThat(conflictCount).isEqualTo(1);
+        }
+
+        /*
+         * Rejecting reconciliation is not a financial result.
+         * Read fresh committed state after both transactions complete.
+         */
+        Payment payment = paymentRepository.findById(fixture.paymentId()).orElseThrow();
+
+        PaymentTransaction transaction =
+                transactionRepository.findById(fixture.transactionId()).orElseThrow();
+
+        ReconciliationCase reconciliationCase =
+                reconciliationCaseRepository.findById(fixture.reconciliationCaseId()).orElseThrow();
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+
+        assertThat(payment.getRefundStatus()).isEqualTo(RefundStatus.PENDING);
+
+        assertThat(transaction.getStatus()).isEqualTo(PaymentTransactionStatus.PENDING_PROVIDER);
+
+        assertThat(transaction.getProviderReference()).isEqualTo("provider-refund-pending-123");
+
+        assertThat(transaction.getCompletedAt()).isNull();
+
+        assertThat(reconciliationCase.getStatus()).isEqualTo(ReconciliationStatus.REJECTED);
+
+        assertThat(reconciliationCase.getResolution()).isNull();
+
+        assertThat(reconciliationCase.getResolvedAt()).isNotNull();
+
+        assertThat(reconciliationCase.getResolvedBy()).isIn("admin-1", "admin-2");
+
+        List<FinancialAuditRecord> audits =
+                auditRepository.findAllByPaymentIdOrderByOccurredAtAscIdAsc(fixture.paymentId());
+
+        assertThat(audits)
+                .filteredOn(
+                        audit -> audit.getAction() == FinancialAuditAction.RECONCILIATION_REJECTED)
+                .hasSize(1);
+    }
+
+    @Test
     void auditFailureShouldRollbackEntireResolutionTransaction() {
 
         Fixture fixture = persistFixture();
@@ -234,6 +326,71 @@ class ReconciliationAdminServiceMySqlIT {
                 .isEmpty();
     }
 
+    @Test
+    void auditFailureShouldRollbackEntireRejectionTransaction() {
+
+        Fixture fixture = persistFixture();
+
+        /*
+         * Force audit persistence to fail after ReconciliationCase.reject()
+         * has mutated the managed entity.
+         */
+        doThrow(new DataIntegrityViolationException("forced audit failure"))
+                .when(auditRepository)
+                .save(any(FinancialAuditRecord.class));
+
+        ReconciliationRejectRequest request =
+                rejectRequest(fixture.reconciliationCaseId(), "rollback-admin");
+
+        assertThatThrownBy(() -> reconciliationAdminService.reject(request))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        /*
+         * Remove spy behavior before reading committed database state.
+         */
+        reset(auditRepository);
+
+        Payment payment = paymentRepository.findById(fixture.paymentId()).orElseThrow();
+
+        PaymentTransaction transaction =
+                transactionRepository.findById(fixture.transactionId()).orElseThrow();
+
+        ReconciliationCase reconciliationCase =
+                reconciliationCaseRepository.findById(fixture.reconciliationCaseId()).orElseThrow();
+
+        /*
+         * Reject is not a financial result, and failed audit persistence
+         * must roll back the case mutation as well.
+         */
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+
+        assertThat(payment.getRefundStatus()).isEqualTo(RefundStatus.PENDING);
+
+        assertThat(transaction.getStatus()).isEqualTo(PaymentTransactionStatus.PENDING_PROVIDER);
+
+        assertThat(transaction.getProviderReference()).isEqualTo("provider-refund-pending-123");
+
+        assertThat(transaction.getCompletedAt()).isNull();
+
+        assertThat(reconciliationCase.getStatus()).isEqualTo(ReconciliationStatus.OPEN);
+
+        assertThat(reconciliationCase.getResolution()).isNull();
+
+        assertThat(reconciliationCase.getResolvedAt()).isNull();
+
+        assertThat(reconciliationCase.getResolvedByType()).isNull();
+
+        assertThat(reconciliationCase.getResolvedBy()).isNull();
+
+        List<FinancialAuditRecord> audits =
+                auditRepository.findAllByPaymentIdOrderByOccurredAtAscIdAsc(fixture.paymentId());
+
+        assertThat(audits)
+                .filteredOn(
+                        audit -> audit.getAction() == FinancialAuditAction.RECONCILIATION_REJECTED)
+                .isEmpty();
+    }
+
     private OperationOutcome executeResolve(ReconciliationResolveRequest request) {
 
         try {
@@ -245,6 +402,31 @@ class ReconciliationAdminServiceMySqlIT {
 
             return OperationOutcome.failed(throwable);
         }
+    }
+
+    private OperationOutcome executeReject(ReconciliationRejectRequest request) {
+
+        try {
+            reconciliationAdminService.reject(request);
+
+            return OperationOutcome.succeeded();
+
+        } catch (Throwable throwable) {
+
+            return OperationOutcome.failed(throwable);
+        }
+    }
+
+    private static ReconciliationRejectRequest rejectRequest(
+            UUID reconciliationCaseId, String actorId) {
+
+        return new ReconciliationRejectRequest(
+                reconciliationCaseId,
+                FinancialAuditActorType.USER,
+                actorId,
+                "Insufficient evidence to determine provider outcome",
+                UuidGenerator.next(),
+                NOW);
     }
 
     private Fixture persistFixture() {

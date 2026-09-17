@@ -1,12 +1,27 @@
 package com.cinema.payment.service.impl;
 
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.InOrder;
+import org.mockito.Mock;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.cinema.common.core.id.UuidGenerator;
 import com.cinema.common.exception.exception.ConflictException;
@@ -24,6 +39,7 @@ import com.cinema.payment.enums.ReconciliationResolution;
 import com.cinema.payment.enums.ReconciliationStatus;
 import com.cinema.payment.enums.RefundStatus;
 import com.cinema.payment.exception.PaymentErrorCode;
+import com.cinema.payment.model.ReconciliationCaseLockReference;
 import com.cinema.payment.model.ReconciliationOperationResult;
 import com.cinema.payment.model.ReconciliationRejectRequest;
 import com.cinema.payment.model.ReconciliationResolveRequest;
@@ -31,22 +47,6 @@ import com.cinema.payment.repository.FinancialAuditRecordRepository;
 import com.cinema.payment.repository.PaymentRepository;
 import com.cinema.payment.repository.PaymentTransactionRepository;
 import com.cinema.payment.repository.ReconciliationCaseRepository;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InOrder;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.math.BigDecimal;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.Optional;
-import java.util.UUID;
 
 @ExtendWith(MockitoExtension.class)
 class ReconciliationAdminServiceImplTest {
@@ -423,8 +423,12 @@ class ReconciliationAdminServiceImplTest {
                 createPendingRefundTransaction(
                         UuidGenerator.next(), "MOCK", "provider-refund-other-payment");
 
-        when(reconciliationCaseRepository.findById(fixture.reconciliationCase().getId()))
-                .thenReturn(Optional.of(fixture.reconciliationCase()));
+        when(reconciliationCaseRepository.findLockReferenceById(
+                        fixture.reconciliationCase().getId()))
+                .thenReturn(
+                        Optional.of(
+                                new ReconciliationCaseLockReference(
+                                        fixture.payment().getId(), fixture.transaction().getId())));
 
         when(reconciliationCaseRepository.findByIdForUpdate(fixture.reconciliationCase().getId()))
                 .thenReturn(Optional.of(fixture.reconciliationCase()));
@@ -456,8 +460,12 @@ class ReconciliationAdminServiceImplTest {
 
     private void stubLockedEntities(Fixture fixture) {
 
-        when(reconciliationCaseRepository.findById(fixture.reconciliationCase().getId()))
-                .thenReturn(Optional.of(fixture.reconciliationCase()));
+        when(reconciliationCaseRepository.findLockReferenceById(
+                        fixture.reconciliationCase().getId()))
+                .thenReturn(
+                        Optional.of(
+                                new ReconciliationCaseLockReference(
+                                        fixture.payment().getId(), fixture.transaction().getId())));
 
         when(paymentRepository.findByIdForUpdate(fixture.payment().getId()))
                 .thenReturn(Optional.of(fixture.payment()));
@@ -476,7 +484,7 @@ class ReconciliationAdminServiceImplTest {
 
         lockOrder
                 .verify(reconciliationCaseRepository)
-                .findById(fixture.reconciliationCase().getId());
+                .findLockReferenceById(fixture.reconciliationCase().getId());
 
         lockOrder.verify(paymentRepository).findByIdForUpdate(fixture.payment().getId());
 
