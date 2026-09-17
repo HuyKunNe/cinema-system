@@ -177,8 +177,30 @@ R27.9 — Inventory confirmation and compensation consumers            — DONE
 Current checkpoint:
 
 ```text
-R27.10 — Refund, reconciliation, permissions, and audit controls — NEXT
+R27.10 — Refund, reconciliation, permissions, and audit controls — IN PROGRESS
 ```
+Completed R27.10 financial-administration boundary:
+
+```text
+R27.10.8 — HTTP endpoints, permissions and financial-audit read boundary — DONE
+```
+Verified baseline:
+
+- full refund initiation is exposed only through Payment Service;
+- refund callers require payment:refund;
+- reconciliation resolve/reject callers require payment:reconcile;
+- financial audit readers require payment:audit;
+- payment:read does not imply financial-audit access;
+- actor identity comes from the validated JWT subject and is not accepted from request bodies;
+- reconciliation resolve and reject operations use existing Payment-owned application services;
+- financial audit HTTP responses use dedicated DTOs instead of JPA entities;
+- missing Payments return the existing Payment not-found contract;
+- existing Payments with no financial audit history return an empty list;
+- focused refund, reconciliation, audit and security tests pass;
+- full Payment Service regression verification passes.
+
+R27.10 is still active; do not mark the entire checkpoint complete until the remaining
+R27.10 persistence, concurrency, rollback and closure gates pass.
 
 R27.1–R27.9 are complete.
 

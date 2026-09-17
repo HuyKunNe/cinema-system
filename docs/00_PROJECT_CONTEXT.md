@@ -1,6 +1,6 @@
 # Cinema Booking System
 
-Version: 0.9 (R27.9 Completed; R27.10 Refund and Reconciliation Controls Next)
+Version: 0.9 (R27.9 Completed; R27.10 Refund and Reconciliation Controls In Progress)
 
 ---
 
@@ -110,11 +110,34 @@ R27.6  — Authenticated webhook and provider-result processing        — DONE
 R27.7  — payment-succeeded/payment-failed Outbox publication         — DONE
 R27.8  — Booking payment-result consumers                            — DONE
 R27.9  — Inventory confirmation and compensation consumers           — DONE
-R27.10 — Refund, reconciliation, permissions and audit controls      — NEXT
+R27.10 — Refund, reconciliation, permissions and audit controls      — IN PROGRESS
+```
+
+Completed R27.10 financial administration HTTP/security baseline:
+
+```text
+R27.10.8 — Refund, reconciliation and financial-audit HTTP/security boundary — DONE
+```
+
+Implemented behavior:
+
+- POST /api/v1/payments/{paymentId}/refunds;
+- POST /api/v1/payments/reconciliation-cases/{caseId}/resolve;
+- POST /api/v1/payments/reconciliation-cases/{caseId}/reject;
+- GET /api/v1/payments/{paymentId}/audit;
+- payment:refund protects refund initiation;
+- payment:reconcile protects reconciliation decisions;
+- payment:audit protects financial audit reads;
+- client request bodies cannot supply financial actor identity;
+- financial actor identity is derived from the validated JWT subject;
+- financial audit entities are not exposed directly as HTTP contracts;
+- refund, reconciliation and audit controller/security regression tests pass.
+
+R27.10 remains active until the remaining persistence, concurrency, rollback,
+integration and checkpoint-closure gates are verified.
 
 R27.9 verifies that Booking and Inventory converge through Kafka without
 cross-service database access. Inventory remains the sole owner of show_seats.
-```
 
 ## Recently Completed
 

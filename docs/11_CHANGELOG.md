@@ -1,8 +1,8 @@
 # Changelog
 
 **Version:** 0.9
-**Current baseline:** R1–R26 and R27.1–R27.9 completed; R27.10 next
-**Last reviewed:** 2026-09-16
+**Current baseline:** R1–R26 and R27.1–R27.9 completed; R27.10 in progress
+**Last reviewed:** 2026-09-17
 
 ---
 
@@ -39,12 +39,35 @@ Current status:
 | R26 Booking         | Service completed |
 | R27.1–R27.9         | Completed         |
 | R27 Payment Service | in progress       |
-| R27.10              | Next              |
+| R27.10              | Implementation    |
 | R28                 | Planned           |
 
 ---
 
 # Unreleased
+
+## 2026-09-17
+
+### R27.10.8 Payment Financial Administration HTTP and Security Boundary
+
+- Completed the authenticated full-refund HTTP endpoint.
+- Derived refund actor identity from the validated JWT subject instead of client input.
+- Added reconciliation resolve and reject HTTP endpoints.
+- Added dedicated request DTO validation for reconciliation administration.
+- Added the Payment financial audit read endpoint.
+- Added dedicated financial-audit response DTOs and avoided exposing JPA entities.
+- Added Payment-owned financial audit read service behavior.
+- Added `payment:refund` endpoint authorization.
+- Added `payment:reconcile` endpoint authorization.
+- Added `payment:audit` endpoint authorization.
+- Verified `payment:read` does not grant financial-administration privileges.
+- Verified unauthenticated requests receive the shared `401` response.
+- Verified insufficient authorities receive the shared `403` response.
+- Verified explicitly authorized requests reach the real refund, reconciliation, and audit controllers.
+- Added refund, reconciliation, financial-audit controller and service tests.
+- Removed duplicate reconciliation aggregate validation.
+- Verified the Payment Service regression suite and `git diff --check`.
+- Kept R27.10 open for its remaining persistence, concurrency, rollback, integration and closure gates.
 
 ## 2026-09-16
 

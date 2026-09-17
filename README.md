@@ -43,26 +43,26 @@ implemented.
 
 # Current Status
 
-| Scope                                                           | Status    |
-| --------------------------------------------------------------- | --------- |
-| R1-R24                                                          | Completed |
-| R25.1–R25.10 — User Service security and OAuth2 foundations     | Completed |
-| R25.11.1–R25.11.7 — Refresh security and revocation             | Completed |
-| R25.11.8 — Sensitive-change revocation triggers                 | Completed |
-| R25.11.9 — Durable security-event recording                     | Completed |
-| R25.11.10 — Concurrent refresh and reuse verification           | Completed |
-| R25.11.11 — Cleanup, verification and documentation closure     | Completed |
-| R25.12 — Profile and account lifecycle APIs                     | Completed |
-| R25.13 — Gateway and Resource Server integration                | Completed |
-| R25.14 — Security and protocol verification                     | Completed |
-| R25.15 — Stabilization and closure                              | Completed |
-| R26 — Booking Service                                           | Completed |
-| R27.1–R27.7 — Payment core and terminal result publication      | Completed |
-| R27.8 — Booking payment-result consumers                        | Completed |
-| R27.9 — Inventory confirmation and compensation consumers       | Completed |
-| R27.10 — Refund, reconciliation, permissions and audit controls | Next      |
-| R27.11–R27.13 — Remaining Payment stabilization and Saga work   | Planned   |
-| R28 — Notification Service                                      | Planned   |
+| Scope                                                           | Status      |
+| --------------------------------------------------------------- | ----------- |
+| R1-R24                                                          | Completed   |
+| R25.1–R25.10 — User Service security and OAuth2 foundations     | Completed   |
+| R25.11.1–R25.11.7 — Refresh security and revocation             | Completed   |
+| R25.11.8 — Sensitive-change revocation triggers                 | Completed   |
+| R25.11.9 — Durable security-event recording                     | Completed   |
+| R25.11.10 — Concurrent refresh and reuse verification           | Completed   |
+| R25.11.11 — Cleanup, verification and documentation closure     | Completed   |
+| R25.12 — Profile and account lifecycle APIs                     | Completed   |
+| R25.13 — Gateway and Resource Server integration                | Completed   |
+| R25.14 — Security and protocol verification                     | Completed   |
+| R25.15 — Stabilization and closure                              | Completed   |
+| R26 — Booking Service                                           | Completed   |
+| R27.1–R27.7 — Payment core and terminal result publication      | Completed   |
+| R27.8 — Booking payment-result consumers                        | Completed   |
+| R27.9 — Inventory confirmation and compensation consumers       | Completed   |
+| R27.10 — Refund, reconciliation, permissions and audit controls | In progress |
+| R27.11–R27.13 — Remaining Payment stabilization and Saga work   | Planned     |
+| R28 — Notification Service                                      | Planned     |
 
 Latest completed checkpoint:
 
@@ -71,6 +71,19 @@ Latest completed checkpoint:
 Current checkpoint:
 
 > **R27.10 — Refund, reconciliation, permissions, and audit controls**
+
+R27.10.8 financial administration HTTP/security boundary is complete:
+
+- authenticated full-refund request endpoint;
+- reconciliation resolve and reject endpoints;
+- Payment-owned financial audit read endpoint;
+- `payment:refund`, `payment:reconcile`, and `payment:audit` authorization boundaries;
+- trusted financial actor identity derived from the validated JWT subject;
+- controller request validation;
+- dedicated `401`, `403`, and allowed-access security verification;
+- Payment Service controller and service regression verification.
+
+R27.10 remains in progress. Remaining R27.10 verification and closure gates are tracked in `docs/10_ROADMAP.md`.
 
 > See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 

@@ -1,8 +1,8 @@
 # Security
 
-**Version:** R27.6
-**Status:** Implemented security baseline including provider webhook trust boundary
-**Last updated:** 2026-09-10
+**Version:** R27.10
+**Status:** Implemented Payment financial-administration authorization baseline
+**Last updated:** 2026-09-17
 
 This document defines the security architecture, trust boundaries, authentication,
 authorization, token handling, service-to-service protection, secret management,
@@ -2429,6 +2429,44 @@ Verify:
 - Security error mapping
 - Password hashing and comparison behavior
 - Idempotent security-token consumption
+
+## Payment Financial Administration
+
+Payment Service is an independent OAuth2 Resource Server and enforces financial administration permissions at its own HTTP boundary.
+
+Approved Payment permissions:
+
+| Permission          | Capability                              |
+| ------------------- | --------------------------------------- |
+| `payment:read`      | Read approved Payment query data        |
+| `payment:refund`    | Request a supported Payment refund      |
+| `payment:reconcile` | Resolve or reject a reconciliation case |
+| `payment:audit`     | Read Payment financial audit records    |
+
+Current protected endpoints:
+
+| Method | Endpoint                                                 | Required authority  |
+| ------ | -------------------------------------------------------- | ------------------- |
+| `POST` | `/api/v1/payments/{paymentId}/refunds`                   | `payment:refund`    |
+| `POST` | `/api/v1/payments/reconciliation-cases/{caseId}/resolve` | `payment:reconcile` |
+| `POST` | `/api/v1/payments/reconciliation-cases/{caseId}/reject`  | `payment:reconcile` |
+| `GET`  | `/api/v1/payments/{paymentId}/audit`                     | `payment:audit`     |
+
+Rules:
+
+- Financial actor identity must never be accepted from a request body.
+- The authenticated actor identifier is derived from the validated JWT `sub`.
+- `payment:read` does not grant refund, reconciliation, or audit privileges.
+- `payment:refund` does not grant reconciliation or audit privileges.
+- `payment:reconcile` does not grant refund or audit privileges.
+- `payment:audit` is required independently for financial audit reads.
+- Financial audit persistence remains owned exclusively by Payment Service.
+- JPA financial-audit entities must not be exposed directly as HTTP contracts.
+- Financial audit records must not contain CVV, card credentials, provider secrets, bearer tokens, raw authorization material, or unrestricted provider payloads.
+- Provider webhook routes remain outside customer JWT authorization and continue to require provider-specific request authentication.
+- Security verification must cover unauthenticated `401`, insufficient-authority `403`, and explicitly permitted access for every privileged Payment endpoint.
+
+Implemented R27.10.8 verification covers the refund, reconciliation resolve/reject, and financial-audit read endpoints using their real controllers rather than security probe endpoints.
 
 ## MVC or WebFlux security tests
 
