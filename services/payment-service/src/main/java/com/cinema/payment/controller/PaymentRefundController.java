@@ -1,6 +1,9 @@
 package com.cinema.payment.controller;
 
 import com.cinema.payment.controller.request.RefundPaymentRequest;
+import com.cinema.payment.enums.FinancialAuditActorType;
+import com.cinema.payment.model.RefundRequest;
+import com.cinema.payment.model.RefundRequestResult;
 import com.cinema.payment.service.RefundRequestService;
 
 import jakarta.validation.Valid;
@@ -13,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 @RestController
@@ -21,29 +26,30 @@ public class PaymentRefundController {
 
     private final RefundRequestService refundRequestService;
 
-    public PaymentRefundController(RefundRequestService refundRequestService) {
+    public PaymentRefundController(
+            RefundRequestService refundRequestService) {
 
         this.refundRequestService = refundRequestService;
     }
 
     @PostMapping("/{paymentId}/refunds")
-    public ResponseEntity<?> requestRefund(
+    public ResponseEntity<RefundRequestResult> requestRefund(
             @PathVariable UUID paymentId,
             @Valid @RequestBody RefundPaymentRequest request,
             Authentication authentication) {
 
-        /*
-         * Do not accept actor identity from the client.
-         *
-         * actorId must come from the validated JWT principal:
-         *
-         * authentication.getName()
-         *
-         * Then map the HTTP request into the existing
-         * RefundRequestService contract.
-         */
+        RefundRequest refundRequest =
+                new RefundRequest(
+                        paymentId,
+                        FinancialAuditActorType.USER,
+                        authentication.getName(),
+                        request.reason(),
+                        request.correlationId(),
+                        OffsetDateTime.now(ZoneOffset.UTC));
 
-        throw new UnsupportedOperationException(
-                "Map to the existing RefundRequestService request contract");
+        RefundRequestResult result =
+                refundRequestService.requestRefund(refundRequest);
+
+        return ResponseEntity.ok(result);
     }
 }

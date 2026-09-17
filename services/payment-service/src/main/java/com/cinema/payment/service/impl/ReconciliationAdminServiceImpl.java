@@ -95,8 +95,6 @@ public class ReconciliationAdminServiceImpl implements ReconciliationAdminServic
 
         validateLockedAggregate(paymentId, transactionId, reconciliationCase, payment, transaction);
 
-        validateAggregate(reconciliationCase, payment, transaction);
-
         OffsetDateTime resolvedAt = OffsetDateTime.now(clock);
 
         switch (request.resolution()) {
@@ -175,8 +173,6 @@ public class ReconciliationAdminServiceImpl implements ReconciliationAdminServic
                                                 PaymentErrorCode.RECONCILIATION_CASE_NOT_FOUND));
 
         validateLockedAggregate(paymentId, transactionId, reconciliationCase, payment, transaction);
-
-        validateAggregate(reconciliationCase, payment, transaction);
 
         OffsetDateTime rejectedAt = OffsetDateTime.now(clock);
 
