@@ -19,45 +19,64 @@ class PaymentProviderOperationSchedulerTest {
 
     @Mock private PaymentProviderOperationWorker operationWorker;
 
-    private PaymentProviderOperationScheduler scheduler;
-
     @Mock private RefundPaymentProviderOperationWorker refundWorker;
+
+    private PaymentProviderOperationScheduler scheduler;
 
     @BeforeEach
     void setUp() {
+
         scheduler = new PaymentProviderOperationScheduler(operationWorker, refundWorker);
     }
 
     @Test
     void shouldProcessOneBoundedBatch() {
+
         PaymentProviderOperationBatchResult batchResult =
                 new PaymentProviderOperationBatchResult(3, 2, 1);
 
         when(operationWorker.processNextBatch()).thenReturn(batchResult);
 
+        when(refundWorker.processNextBatch())
+                .thenReturn(PaymentProviderOperationBatchResult.empty());
+
         scheduler.processNextBatch();
 
         verify(operationWorker).processNextBatch();
+
+        verify(refundWorker).processNextBatch();
     }
 
     @Test
     void emptyBatchShouldCompleteNormally() {
+
         when(operationWorker.processNextBatch())
+                .thenReturn(PaymentProviderOperationBatchResult.empty());
+
+        when(refundWorker.processNextBatch())
                 .thenReturn(PaymentProviderOperationBatchResult.empty());
 
         assertThatCode(scheduler::processNextBatch).doesNotThrowAnyException();
 
         verify(operationWorker).processNextBatch();
+
+        verify(refundWorker).processNextBatch();
     }
 
     @Test
     void topLevelWorkerFailureShouldNotEscapeSchedulerBoundary() {
+
         when(operationWorker.processNextBatch())
                 .thenThrow(new IllegalStateException("simulated claim failure"));
+
+        when(refundWorker.processNextBatch())
+                .thenReturn(PaymentProviderOperationBatchResult.empty());
 
         assertThatCode(scheduler::processNextBatch).doesNotThrowAnyException();
 
         verify(operationWorker).processNextBatch();
+
+        verify(refundWorker).processNextBatch();
     }
 
     @Test
@@ -101,7 +120,7 @@ class PaymentProviderOperationSchedulerTest {
         when(refundWorker.processNextBatch())
                 .thenThrow(new RuntimeException("forced refund failure"));
 
-        scheduler.processNextBatch();
+        assertThatCode(scheduler::processNextBatch).doesNotThrowAnyException();
 
         verify(operationWorker).processNextBatch();
 
