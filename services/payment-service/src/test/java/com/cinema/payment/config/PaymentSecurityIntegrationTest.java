@@ -465,6 +465,45 @@ class PaymentSecurityIntegrationTest {
                 .andExpect(status().isNoContent());
     }
 
+    @Test
+    void providerWebhookGetShouldNotBePublic() throws Exception {
+
+        mockMvc.perform(get("/api/v1/payments/webhooks/MOMO"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("SECURITY_AUTHENTICATION_REQUIRED"));
+
+        verify(webhookHandlingService, never()).handle(any(), anyMap(), any(byte[].class));
+    }
+
+    @Test
+    void nestedProviderWebhookRouteShouldNotBePublic() throws Exception {
+
+        mockMvc.perform(
+                        post("/api/v1/payments/webhooks/MOMO/replay")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("SECURITY_AUTHENTICATION_REQUIRED"));
+
+        verify(webhookHandlingService, never()).handle(any(), anyMap(), any(byte[].class));
+    }
+
+    @Test
+    void authenticatedUnapprovedPaymentRouteShouldBeDenied() throws Exception {
+
+        mockMvc.perform(
+                        get("/api/v1/payments/internal/probe")
+                                .with(
+                                        jwt().authorities(
+                                                        new SimpleGrantedAuthority(
+                                                                "payment:read"))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("SECURITY_ACCESS_DENIED"));
+    }
+
     private static String validRefundRequestBody() {
 
         return """
