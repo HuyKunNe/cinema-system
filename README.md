@@ -61,17 +61,18 @@ implemented.
 | R27.8 — Booking payment-result consumers                        | Completed |
 | R27.9 — Inventory confirmation and compensation consumers       | Completed |
 | R27.10 — Refund, reconciliation, permissions and audit controls | Completed |
-| R27.11 — Kafka retry, DLT, and publication verification         | Next      |
-| R27.12–R27.13 — Remaining Payment stabilization and Saga work   | Planned   |
+| R27.11 — Kafka retry, DLT, and publication verification         | Completed |
+| R27.12 — Saga integration, race, and concurrency verification   | Next      |
+| R27.13 — Remaining Payment stabilization and closure            | Planned   |
 | R28 — Notification Service                                      | Planned   |
 
 Latest completed checkpoint:
 
-> **R27.10 — Refund, reconciliation, permissions, and audit controls**
+> **R27.11 — Kafka retry, DLT, and publication verification**
 
 Current checkpoint:
 
-> **R27.11 — Kafka retry, DLT, and publication verification**
+> **R27.12 — Saga integration, race, and concurrency verification**
 
 R27.10.8 financial administration HTTP/security boundary is complete:
 
@@ -84,11 +85,22 @@ R27.10.8 financial administration HTTP/security boundary is complete:
 - dedicated `401`, `403`, and allowed-access security verification;
 - Payment Service controller and service regression verification.
 
-R27.10 is complete.
+R27.11 is complete.
 
-Verified financial-administration baseline includes refund idempotency, reconciliation concurrency and rollback, stable financial-audit ordering, privileged HTTP authorization, Payment Service regression verification, and repository-level closure verification.
+Verified Kafka and Outbox reliability now includes:
 
-The next checkpoint is R27.11 — Kafka retry, DLT, and publication verification.
+- bounded retry for retryable `payment-requested` consumer failures;
+- direct DLT routing for permanent validation failures;
+- sanitized DLT publication without exception class, cause, message, or stack-trace leakage;
+- canonical `payment-succeeded` and `payment-failed` Outbox publication through the real Kafka publisher path;
+- successful Outbox acknowledgement through `PROCESSING -> SENT`;
+- failed publication persistence through `PROCESSING -> FAILED`;
+- bounded exponential retry scheduling;
+- processing-lease release after publication failure;
+- maximum-attempt exhaustion that prevents automatic fourth and later publication attempts;
+- Payment Kafka and Outbox regression verification.
+
+The next checkpoint is R27.12 — Saga integration, race, and concurrency verification.
 
 > See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 

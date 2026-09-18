@@ -1,7 +1,7 @@
 # Event Catalog
 
-Version: R27.9
-Last updated: 2026-09-16
+Version: R27.11
+Last updated: 2026-09-18
 
 This document defines the authoritative Kafka event contracts, ownership,
 versioning, routing, metadata, payload requirements, producer and consumer
@@ -15,25 +15,24 @@ entities.
 
 Implementation status:
 
-- The shared Kafka and Transactional Outbox reliability foundations are
-  implemented.
-- Inventory Service consumption of `seat-reservation-requested` and production
-  of `seat-reserved` or `seat-reservation-rejected` are implemented and
-  verified.
-- Booking Service production of `seat-reservation-requested`,
-  `payment-requested`, `booking-cancelled`, and `booking-expired` is implemented
-  and verified.
-- Booking Service consumption of `seat-reserved` and
-  `seat-reservation-rejected` is implemented and verified.
-- Payment Service consumption of canonical `payment-requested` version `1`,
-- Payment Service creation of canonical `payment-succeeded` and `payment-failed` Outbox events is implemented and verified.
+- The shared Kafka and Transactional Outbox reliability foundations are implemented.
+- Inventory Service consumption of `seat-reservation-requested` and production of `seat-reserved` or `seat-reservation-rejected` are implemented and verified.
+- Booking Service production of `seat-reservation-requested`, `payment-requested`, `booking-cancelled`, and `booking-expired` is implemented and verified.
+- Booking Service consumption of `seat-reserved` and `seat-reservation-rejected` is implemented and verified.
+- Payment Service consumption of canonical `payment-requested` version `1` is implemented and verified.
+- Payment Service creation and Kafka publication of canonical `payment-succeeded` and `payment-failed` version `1` events are implemented and verified.
+- Payment `payment-requested` consumption uses bounded retry for transient failures and direct DLT routing for permanent validation failures.
+- Payment dead-letter publication preserves required routing context while excluding exception class names, causes, messages and stack traces.
+- Payment terminal-result Outbox publication preserves the persisted event ID, Booking partition key, producer identity, aggregate identity, correlation ID and causation ID.
+- Payment Outbox publication failures use bounded retry and stop being automatically claimable after `maximumAttempts` failed publications.
 - Booking Service consumption of `payment-succeeded` and `payment-failed` is implemented and verified through R27.8.
 - Booking Service production of `booking-confirmed` and `seat-release-requested` from terminal Payment results is implemented and verified.
 - Inventory Service consumption of `booking-confirmed`, `seat-release-requested`, `booking-cancelled`, and `booking-expired` is implemented and verified through R27.9.
 - Inventory Service production of canonical `seat-released` for explicit `seat-release-requested` compensation is implemented and verified.
 - Inventory lifecycle consumers preserve processed-event idempotency, transactional ShowSeat changes, bounded Kafka retry, sanitized DLT handling, and the invariant that `BOOKED` ShowSeats are not released.
 - Notification consumption remains future R28 integration work.
-- Broader cross-service Kafka publication verification remains R27.11 scope.
+- Payment Kafka ingress and terminal-result Outbox publication reliability are verified through R27.11.
+- Remaining Saga-wide race and concurrency verification is R27.12 scope.
 
 ---
 

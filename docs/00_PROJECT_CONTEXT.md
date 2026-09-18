@@ -1,6 +1,6 @@
 # Cinema Booking System
 
-Version: 0.9 (R27.10 Completed; R27.11 Kafka Retry and Publication Verification Next)
+Version: 0.9 (R27.11 Completed; R27.12 Saga Integration Verification Next)
 
 ---
 
@@ -68,6 +68,7 @@ Hệ thống được thiết kế để mô phỏng nền tảng của các chu
 - ✅ R27.8 — Booking payment-result consumers
 - ✅ R27.9 — Inventory confirmation and compensation consumers
 - ✅ R27.10 — Refund, reconciliation, permissions and audit controls
+- ✅ R27.11 — Kafka retry, DLT and publication verification
 
 Inventory Service owns:
 
@@ -112,8 +113,19 @@ R27.7  — payment-succeeded/payment-failed Outbox publication         — DONE
 R27.8  — Booking payment-result consumers                            — DONE
 R27.9  — Inventory confirmation and compensation consumers           — DONE
 R27.10 — Refund, reconciliation, permissions and audit controls      — DONE
-R27.11 — Kafka retry, DLT and publication verification               — NEXT
+R27.11 — Kafka retry, DLT and publication verification               — DONE
+R27.12 — Saga integration, race and concurrency verification         — NEXT
 ```
+
+Verified R27.11 reliability baseline:
+
+- `payment-requested` retry is bounded;
+- permanent validation failures route directly to the DLT;
+- Payment DLT records do not expose exception class names, causes, messages or stack traces;
+- canonical `payment-succeeded` and `payment-failed` Outbox rows publish to Kafka with Booking ID partition keys;
+- successful publication marks owned Outbox rows `SENT`;
+- failed publication marks owned Outbox rows `FAILED` and schedules bounded retries;
+- exhausted Outbox rows remain `FAILED` and are no longer automatically claimable.
 
 Completed R27.10 financial administration HTTP/security baseline:
 
@@ -350,11 +362,11 @@ Latest completed service round:
 
 Latest completed Payment checkpoint:
 
-> **R27.10 — DONE**
+> **R27.11 — DONE**
 
 Current checkpoint:
 
-> **R27.11 — NEXT**
+> **R27.12 — NEXT**
 
 ADR-013 selects User Service with Spring Authorization Server as the authoritative
 issuer. The issuer, audience, RS256/JWK ownership, approved grant types, access-token
@@ -383,7 +395,7 @@ R26 Booking Service implementation, Kafka integration, Transactional Outbox,
 idempotency, cancellation, expiration, payment-event preparation, concurrency
 verification and documentation closure are complete.
 
-R27 Payment Service is in progress. R27.4 is complete and R27.5 is the current implementation checkpoint.
+R27 Payment Service is in progress through its remaining integration and stabilization checkpoints. R27.1–R27.11 are complete, and R27.12 is the current implementation checkpoint.
 
 ---
 

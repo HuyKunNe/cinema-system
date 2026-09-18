@@ -46,6 +46,42 @@ Current status:
 
 # Unreleased
 
+## 2026-09-18
+
+### R27.11 Kafka Retry, DLT, and Publication Verification
+
+#### Added
+
+- Added Payment integration verification for retryable `payment-requested` Kafka consumer failures.
+- Added direct-DLT verification for non-retryable validation failures.
+- Added DLT privacy verification for previously attached and newly generated exception metadata.
+- Added real Kafka publication verification for canonical `payment-succeeded` Outbox events.
+- Added real Kafka publication verification for canonical `payment-failed` Outbox events.
+- Added Payment-level Outbox publication-failure and retry-state integration verification.
+- Added Outbox maximum-attempt exhaustion verification.
+
+#### Fixed
+
+- Hardened Payment DLT exception-header sanitation so exception implementation details already attached to an incoming record do not survive Payment dead-letter publication.
+
+#### Verified
+
+- Verified retryable consumer failures execute the configured bounded retry count before DLT recovery.
+- Verified permanent validation failures bypass retry.
+- Verified Payment DLT records do not expose exception FQCN, cause FQCN, exception message, key-exception detail, or stack trace.
+- Verified safe application and required routing metadata remain available.
+- Verified `payment-succeeded` and `payment-failed` preserve canonical Kafka envelope fields and Booking ID partition keys.
+- Verified successful publication changes owned Outbox records from `PROCESSING` to `SENT`.
+- Verified failed publication changes owned Outbox records from `PROCESSING` to `FAILED`, increments retry state, schedules the next attempt and clears the processing lease.
+- Verified retries are not claimable before `next_attempt_at`.
+- Verified exhausted records are no longer automatically claimable once `retry_count == maximumAttempts`.
+- Verified the complete Payment Kafka and Outbox R27.11 regression set.
+
+#### Status
+
+- Completed R27.11.
+- Advanced the active Payment checkpoint to R27.12 — Saga integration, race, and concurrency verification.
+
 ## 2026-09-17
 
 ### R27.10 Financial Administration and Reconciliation Closure

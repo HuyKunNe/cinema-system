@@ -30,6 +30,7 @@ The `docs` directory is the project's source of truth.
 - R27.8 — Booking payment-result consumers
 - R27.9 — Inventory confirmation and compensation consumers
 - R27.10 — Refund, reconciliation, permissions, and audit controls
+- R27.11 — Kafka retry, DLT, and publication verification
 
 ## Completed Inventory Round
 
@@ -206,11 +207,25 @@ Verified closure baseline:
 - refund/reconciliation/audit HTTP contracts and authorization;
 - full Payment Service and root reactor verification.
 
+R27.11 is complete.
+
+Verified R27.11 baseline:
+
+- retryable `payment-requested` Kafka failures use bounded retry before DLT recovery;
+- `ValidationException` is non-retryable and routes directly to `payment-requested.dlt`;
+- DLT recovery preserves the source key/value and required safe metadata while removing current and previously attached exception implementation details;
+- canonical `payment-succeeded` and `payment-failed` Outbox records publish through `KafkaOutboxPublisher` and `DefaultKafkaProducerService`;
+- successful Kafka publication conditionally changes the owned Outbox row from `PROCESSING` to `SENT`;
+- failed publication changes the owned row to `FAILED`, increments `retry_count`, schedules `next_attempt_at`, records a bounded root error message, and clears the processing lease;
+- retry delay follows the shared bounded exponential Outbox retry policy;
+- automatic retry stops when `retry_count == maximumAttempts`;
+- Payment Kafka and Outbox focused regression verification passes.
+
 Current checkpoint:
 
-> **R27.11 — Kafka retry, DLT, and publication verification**
+> **R27.12 — Saga integration, race, and concurrency verification**
 
-R27.1–R27.9 are complete.
+R27.1–R27.11 are complete.
 
 Verified R27.9 integration baseline:
 

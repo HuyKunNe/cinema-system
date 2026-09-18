@@ -711,6 +711,20 @@ Rules:
 
 DLT publication is not implemented in R26.6.
 
+Current service integration status:
+
+- Booking, Inventory, and Payment consumer flows use service-owned bounded
+  Kafka retry and DLT handling where their completed rounds require it.
+- R27.11 verifies Payment `payment-requested` DLT behavior and Payment
+  terminal-result Outbox publication.
+- Payment DLT publication excludes exception implementation details including
+  class names, causes, messages and stack traces.
+- Outbox publication failures use the shared `FAILED` retry lifecycle.
+- automatic publication stops when `retry_count` reaches
+  `maximumAttempts`.
+- manual DLT replay, DLT retention automation, and production DLT monitoring
+  remain separate operational work.
+
 Do not document a DLT topic as active until ownership, ACLs, retention, payload,
 monitoring and replay behavior are implemented and tested.
 

@@ -1,8 +1,8 @@
 # Project Roadmap
 
-**Version:** R27.10 Completed
-**Current target:** R27.11 — Kafka retry, DLT, and publication verification
-**Last updated:** 2026-09-17
+**Version:** R27.11 Completed
+**Current target:** R27.12 — Saga integration, race, and concurrency verification
+**Last updated:** 2026-09-18
 
 ---
 
@@ -1572,8 +1572,8 @@ Payment Service will own:
 | R27.8      | Booking payment-result consumers                            | DONE    |
 | R27.9      | Inventory confirmation and compensation consumers           | DONE    |
 | R27.10     | Refund, reconciliation, permissions, and audit controls     | DONE    |
-| R27.11     | Kafka retry, DLT, and publication verification              | NEXT    |
-| R27.12     | Saga integration, race, and concurrency verification        | PLANNED |
+| R27.11     | Kafka retry, DLT, and publication verification              | DONE    |
+| R27.12     | Saga integration, race, and concurrency verification        | NEXT    |
 | R27.13     | Stabilization, documentation, and closure                   | PLANNED |
 
 R27.3 completed the Payment persistence baseline:
@@ -1807,9 +1807,71 @@ R27.10.10 — Stabilization and checkpoint closure             DONE
 R27.10    — DONE
 ```
 
+### R27.11 Kafka Reliability and Publication Verification
+
+R27.11 completed Payment Kafka ingress reliability, dead-letter privacy verification, and terminal-result Outbox publication verification.
+
+Verified `payment-requested` consumer behavior:
+
+- canonical `payment-requested` delivery continues to use the existing Payment-owned validation and idempotent processing boundary;
+- retryable consumer failures use bounded fixed-backoff retry;
+- retry exhaustion publishes the original key and value to `payment-requested.dlt`;
+- permanent `ValidationException` failures bypass retry and go directly to the dead-letter topic;
+- malformed messages do not mutate Payment-owned business state;
+- DLT publication does not expose current or previously attached exception class names, causes, messages, or stack traces;
+- safe application metadata and required routing metadata remain available for controlled diagnosis and replay.
+
+Verified Payment Outbox publication behavior:
+
+- persisted `payment-succeeded` Outbox rows publish canonical `payment-succeeded` Kafka envelopes;
+- persisted `payment-failed` Outbox rows publish canonical `payment-failed` Kafka envelopes;
+- the Booking ID remains the Kafka partition key;
+- event ID, Payment aggregate ID, event version, producer identity, correlation ID, causation ID, occurrence time, and canonical payload survive publication;
+- a successful Kafka future produces the conditional `PROCESSING -> SENT` acknowledgement;
+- successful acknowledgement clears the processing lease and retry scheduling state.
+
+Verified publication failure behavior:
+
+- a failed Kafka publication produces the conditional `PROCESSING -> FAILED` transition;
+- each completed failed publication increments `retry_count`;
+- retry scheduling uses the configured bounded exponential Outbox retry policy;
+- failed attempts clear the processing lease;
+- failed records are not claimable before `next_attempt_at`;
+- eligible failed records are claimable again when the retry time is reached;
+- claiming a retry does not increment `retry_count`;
+- retry exhaustion is enforced by `retry_count < maximumAttempts`;
+- once `retry_count == maximumAttempts`, the row remains `FAILED` and is not automatically claimed again, even after `next_attempt_at` has elapsed.
+
+R27.11 regression verification covers:
+
+```text
+payment-requested happy path and duplicate delivery
+retryable Kafka consumer failure
+non-retryable validation failure
+sanitized dead-letter publication
+payment-succeeded Outbox publication
+payment-failed Outbox publication
+Outbox publication failure and retry
+Outbox retry exhaustion
+terminal Payment result and Outbox atomic persistence
+```
+
+R27.11 does not introduce manual DLT replay, DLT retention jobs, production monitoring infrastructure, or production payment-provider adapters.
+
+R27.11.1 — Retryable consumer failure and bounded retry DONE
+R27.11.2 — Non-retryable failure and direct DLT DONE
+R27.11.3 — DLT privacy and header sanitation DONE
+R27.11.4 — payment-succeeded Outbox publication DONE
+R27.11.5 — payment-failed Outbox publication DONE
+R27.11.6 — Outbox publication failure and retry state DONE
+R27.11.7 — Outbox retry exhaustion DONE
+R27.11.8 — Payment Kafka/Outbox regression verification DONE
+R27.11.9 — Documentation synchronization and closure DONE
+R27.11 — DONE
+
 The next active checkpoint is:
 
-R27.11 — Kafka retry, DLT, and publication verification
+R27.12 — Saga integration, race, and concurrency verification
 
 ## ⏳ R28 — Notification Service
 
