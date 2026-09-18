@@ -158,7 +158,7 @@ Verified Booking baseline:
   or roll back atomically;
 - focused Booking verification and the root Maven reactor verification pass.
 
-## Current Payment Round
+## Completed Payment Round
 
 R27 Payment Service is in progress.
 
@@ -177,7 +177,8 @@ R27.9   — Inventory confirmation and compensation consumers            — DON
 R27.10  — Refund, reconciliation, permissions, and audit controls      — DONE
 R27.11  — Kafka retry, DLT, and publication verification               — DONE
 R27.12  — Saga integration, race, and concurrency verification         — DONE
-R27.13  — Stabilization, documentation, and closure                    — NEXT
+R27.13  — Stabilization, documentation, and closure                    — DONE
+R27     — Payment Service                                              — DONE
 ```
 
 Verified baseline:
@@ -226,9 +227,11 @@ Verified R27.11 baseline:
 
 Current checkpoint:
 
-> **R27.13 — Stabilization, documentation, and closure**
+> **R28 — Notification Service**
 
-R27.1–R27.12 are complete.
+R27 Payment Service is complete.
+
+R27.1–R27.13 are complete.
 
 Verified R27.12 Saga baseline:
 
@@ -306,6 +309,22 @@ Authoritative decision record:
 ```text
 docs/decisions/ADR-013-spring-authorization-server.md
 ```
+
+R27 closure baseline:
+
+- Payment persistence and provider operations remain owned exclusively by Payment Service;
+- provider calls execute outside database transactions;
+- charge and refund provider operations use stable idempotency keys;
+- provider webhooks are authenticated by provider-specific verification;
+- Payment terminal events use Transactional Outbox;
+- Kafka ingress is idempotent, bounded-retry, and DLT-protected;
+- refund and reconciliation administration use explicit permissions and durable financial auditing;
+- Payment-owned schema has no cross-service foreign keys;
+- Booking, Payment, and Inventory Saga transitions are verified under duplicate, delayed, competing, and concurrent delivery;
+- Saga correlation and causation propagation is verified;
+- root `mvn clean verify` and `git diff --check` pass.
+
+The next service round is R28 Notification Service.
 
 ---
 

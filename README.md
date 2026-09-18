@@ -63,16 +63,17 @@ implemented.
 | R27.10 — Refund, reconciliation, permissions and audit controls | Completed |
 | R27.11 — Kafka retry, DLT, and publication verification         | Completed |
 | R27.12 — Saga integration, race, and concurrency verification   | Completed |
-| R27.13 — Remaining Payment stabilization and closure            | Next      |
-| R28 — Notification Service                                      | Planned   |
+| R27.13 — Remaining Payment stabilization and closure            | Completed |
+| R27 — Payment Service                                           | Completed |
+| R28 — Notification Service                                      | Next      |
 
-Latest completed checkpoint:
+Latest completed service round:
 
-> **R27.12 — Saga integration, race, and concurrency verification**
+> **R27 — Payment Service**
 
 Current checkpoint:
 
-> **R27.13 — Remaining Payment stabilization and closure**
+> **R28 — Notification Service**
 
 R27.10.8 financial administration HTTP/security boundary is complete:
 
@@ -451,27 +452,29 @@ sequence-diagram documents.
 
 ## Payment Service
 
-Implemented through R27.6:
+R27 Payment Service is complete.
 
-- Independent OAuth2 Resource Server security
-- Flyway-owned Payment persistence and reliability tables
-- Canonical `payment-requested` consumption
-- Payment-attempt, Kafka, provider-operation, and provider-event idempotency
-- Provider-neutral charge contracts
-- Bounded MySQL provider-operation claiming and lease recovery
-- Stable provider idempotency across retries
-- Provider calls outside database transactions
-- Immutable raw webhook and verified-result contracts
-- Provider verifier registry and strict callback body limits
-- Provider-authenticated webhook ingress
-- Immutable provider-event marker history
-- Fixed `Payment -> PaymentTransaction` lock ordering
-- Transactional success, failure, pending, unknown, duplicate, and stale handling
-- MVC security, MySQL concurrency, rollback, and HTTP integration verification
+Implemented and verified:
 
-Production MoMo/VNPay adapters, scheduled provider execution, terminal
-payment-result Outbox publication, Booking result consumers, refunds, and
-reconciliation remain later R27 scope.
+- independent OAuth2 Resource Server security;
+- Flyway-owned Payment persistence;
+- canonical `payment-requested` consumption;
+- provider-neutral charge and refund execution;
+- stable provider idempotency;
+- authenticated provider webhook processing;
+- terminal `payment-succeeded` and `payment-failed` publication;
+- Booking terminal-result consumption;
+- Inventory confirmation and compensation;
+- full refund and reconciliation administration;
+- financial audit persistence and access control;
+- bounded Kafka retry and sanitized DLT handling;
+- Transactional Outbox retry and exhaustion behavior;
+- Booking–Payment–Inventory Saga race and concurrency verification;
+- correlation and causation propagation;
+- full repository verification.
+
+Production-specific MoMo/VNPay adapters remain outside the completed R27 scope.
+The deterministic `MOCK` adapter remains the implemented verification provider.
 
 # Build and Test
 
@@ -584,7 +587,7 @@ resolve durable architectural decisions.
 
 ## Next
 
-- R27 Payment Service
+- R28 Notification Service
 
 ## Planned
 

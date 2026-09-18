@@ -1,15 +1,14 @@
 # Project Roadmap
 
-**Version:** R27.12 Completed
-**Current target:** R27.13 — Stabilization, documentation, and closure
+**Version:** R27 Completed
+**Current target:** R28 — Notification Service
 **Last updated:** 2026-09-18
 
 ---
 
 # Purpose
 
-This roadmap defines the approved implementation order for the Cinema Booking
-System.
+This roadmap defines the approved implementation order for the Cinema Booking System.
 
 It is the source of truth for:
 
@@ -1574,7 +1573,7 @@ Payment Service will own:
 | R27.10     | Refund, reconciliation, permissions, and audit controls     | DONE   |
 | R27.11     | Kafka retry, DLT, and publication verification              | DONE   |
 | R27.12     | Saga integration, race, and concurrency verification        | DONE   |
-| R27.13     | Stabilization, documentation, and closure                   | NEXT   |
+| R27.13     | Stabilization, documentation, and closure                   | DONE   |
 
 R27.3 completed the Payment persistence baseline:
 
@@ -1858,17 +1857,18 @@ terminal Payment result and Outbox atomic persistence
 
 R27.11 does not introduce manual DLT replay, DLT retention jobs, production monitoring infrastructure, or production payment-provider adapters.
 
-R27.11.1 — Retryable consumer failure and bounded retry DONE
-R27.11.2 — Non-retryable failure and direct DLT DONE
-R27.11.3 — DLT privacy and header sanitation DONE
-R27.11.4 — payment-succeeded Outbox publication DONE
-R27.11.5 — payment-failed Outbox publication DONE
-R27.11.6 — Outbox publication failure and retry state DONE
-R27.11.7 — Outbox retry exhaustion DONE
-R27.11.8 — Payment Kafka/Outbox regression verification DONE
-R27.11.9 — Documentation synchronization and closure DONE
-R27.11 — DONE
-R27.11 — DONE
+| Rounds                                                  | Status |
+| ------------------------------------------------------- | ------ |
+| R27.11.1 — Retryable consumer failure and bounded retry | DONE   |
+| R27.11.2 — Non-retryable failure and direct DLT         | DONE   |
+| R27.11.3 — DLT privacy and header sanitation            | DONE   |
+| R27.11.4 — payment-succeeded Outbox publication         | DONE   |
+| R27.11.5 — payment-failed Outbox publication            | DONE   |
+| R27.11.6 — Outbox publication failure and retry state   | DONE   |
+| R27.11.7 — Outbox retry exhaustion                      | DONE   |
+| R27.11.8 — Payment Kafka/Outbox regression verification | DONE   |
+| R27.11.9 — Documentation synchronization and closure    | DONE   |
+| R27.11                                                  | DONE   |
 
 ### R27.12 Saga Integration, Race, and Concurrency Verification
 
@@ -1930,9 +1930,46 @@ R27.12.9 — Documentation synchronization and closure                   DONE
 R27.12    — DONE
 ```
 
-The next active checkpoint is:
+### R27.13 Stabilization, Documentation, and Closure
 
-R27.13 — Stabilization, documentation, and closure
+R27.13 completed the final Payment Service stabilization and round-closing
+verification.
+
+Completed stabilization:
+
+- reviewed Payment production configuration and scheduler wiring;
+- hardened provider-operation scheduler tests so successful scheduler execution
+  does not rely on swallowed mock-generated exceptions;
+- synchronized Flyway verification with the complete V1–V7 Payment schema;
+- verified all Payment-owned persistence tables and internal foreign keys;
+- verified there are no cross-service database foreign keys;
+- verified OAuth2 permission isolation and fail-closed HTTP routing;
+- verified provider webhook authentication, body-size limits, and sanitized
+  external failures;
+- verified DLT exception-detail sanitation and non-sensitive scheduler logging;
+- verified final Booking, Payment, and Inventory event contract consistency;
+- synchronized the Event Catalog with the completed Saga implementation;
+- completed the root Maven reactor verification and repository formatting gate.
+
+Verification completed:
+
+```text
+R27.13.1 — R27.12 documentation/state synchronization             DONE
+R27.13.2 — Payment code/config hygiene verification               DONE
+R27.13.3 — Persistence, migration, and ownership verification     DONE
+R27.13.4 — Security, privacy, and external-boundary verification  DONE
+R27.13.5 — Event/Saga contract final consistency verification     DONE
+R27.13.6 — Full repository verification gate                      DONE
+R27.13.7 — Documentation synchronization and R27 closure          DONE
+R27.13   — DONE
+R27      — DONE
+```
+
+Payment Service is complete.
+
+The next active business-service round is:
+
+R28 — Notification Service
 
 ## ⏳ R28 — Notification Service
 
@@ -2110,30 +2147,30 @@ Do not:
 
 # Current Snapshot
 
-| Phase                   | Rounds         | Status                                                             |
-| ----------------------- | -------------- | ------------------------------------------------------------------ |
-| Foundation Layer        | R1–R10         | ✅ Completed                                                       |
-| Common Infrastructure   | R11–R19        | ✅ Completed rounds; documented hardening gaps remain where stated |
-| Infrastructure Services | R20–R22        | ✅ Completed                                                       |
-| Movie Service           | R23            | ✅ Completed                                                       |
-| Inventory Service       | R24            | ✅ Completed                                                       |
-| User Service            | R25            | ✅ Completed                                                       |
-| Booking Service         | R26            | ✅ Completed                                                       |
-| Payment Service         | R27            | ⏳ In progress — R27.1–R27.9 completed                             |
-| Notification Service    | R28            | ⏳ Planned                                                         |
-| Production Readiness    | To be assigned | ⏳ Planned                                                         |
+| Phase                   | Rounds         | Status       |
+| ----------------------- | -------------- | ------------ |
+| Foundation Layer        | R1–R10         | ✅ Completed |
+| Common Infrastructure   | R11–R19        | ✅ Completed |
+| Infrastructure Services | R20–R22        | ✅ Completed |
+| Movie Service           | R23            | ✅ Completed |
+| Inventory Service       | R24            | ✅ Completed |
+| User Service            | R25            | ✅ Completed |
+| Booking Service         | R26            | ✅ Completed |
+| Payment Service         | R27            | ✅ Completed |
+| Notification Service    | R28            | ⏳ Planned   |
+| Production Readiness    | To be assigned | ⏳ Planned   |
 
 The latest completed service round is:
 
-> **R26 — Booking Service**
+> **R27 — Payment Service**
 
 The next implementation round is:
 
-> **R27 — Payment Service**
+> **R28 — Notification Service**
 
 The active implementation checkpoint is:
 
-> **R27.10 — Refund, reconciliation, permissions, and audit controls**
+> **R28 — Notification Service**
 
 ADR-013 selects User Service with Spring Authorization Server as the
 authoritative issuer. R25 User Service and R26 Booking Service are complete.

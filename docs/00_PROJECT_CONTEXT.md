@@ -1,6 +1,6 @@
 # Cinema Booking System
 
-Version: 0.9 (R27.11 Completed; R27.12 Saga Integration Verification Next)
+Version: 0.9 (R27 Payment Service Completed; R28 Notification Service Next)
 
 ---
 
@@ -69,6 +69,9 @@ Hệ thống được thiết kế để mô phỏng nền tảng của các chu
 - ✅ R27.9 — Inventory confirmation and compensation consumers
 - ✅ R27.10 — Refund, reconciliation, permissions and audit controls
 - ✅ R27.11 — Kafka retry, DLT and publication verification
+- ✅ R27.12 — Saga integration, race and concurrency verification
+- ✅ R27.13 — Stabilization, documentation and closure
+- ✅ R27 — Payment Service
 
 Inventory Service owns:
 
@@ -102,21 +105,23 @@ Completed R24 scope:
 
 Completed:
 
-```text
-R27.1  — Payment architecture and contract closure                   — DONE
-R27.2  — Payment Service bootstrap and Resource Server security      — DONE
-R27.3  — Payment aggregate and Flyway schema                         — DONE
-R27.4  — payment-requested validation and idempotent consumption     — DONE
-R27.5  — Provider port, operation worker and provider idempotency    — DONE
-R27.6  — Authenticated webhook and provider-result processing        — DONE
-R27.7  — payment-succeeded/payment-failed Outbox publication         — DONE
-R27.8  — Booking payment-result consumers                            — DONE
-R27.9  — Inventory confirmation and compensation consumers           — DONE
-R27.10 — Refund, reconciliation, permissions and audit controls      — DONE
-R27.11 — Kafka retry, DLT and publication verification               — DONE
-R27.12 — Saga integration, race and concurrency verification         — DONE
-R27.13 — Stabilization, documentation and closure                    — NEXT
-```
+| Round                                                            | Status |
+| ---------------------------------------------------------------- | ------ |
+| R27.1 — Payment architecture and contract closure                | DONE   |
+| R27.2 — Payment Service bootstrap and Resource Server security   | DONE   |
+| R27.3 — Payment aggregate and Flyway schema                      | DONE   |
+| R27.4 — payment-requested validation and idempotent consumption  | DONE   |
+| R27.5 — Provider port, operation worker and provider idempotency | DONE   |
+| R27.6 — Authenticated webhook and provider-result processing     | DONE   |
+| R27.7 — payment-succeeded/payment-failed Outbox publication      | DONE   |
+| R27.8 — Booking payment-result consumers                         | DONE   |
+| R27.9 — Inventory confirmation and compensation consumers        | DONE   |
+| R27.10 — Refund, reconciliation, permissions and audit controls  | DONE   |
+| R27.11 — Kafka retry, DLT and publication verification           | DONE   |
+| R27.12 — Saga integration, race and concurrency verification     | DONE   |
+| R27.13 — Stabilization, documentation and closure                | DONE   |
+| R27 — Payment Service                                            | DONE   |
+| R28 — Notification Service                                       | NEXT   |
 
 Verified R27.12 Saga baseline:
 
@@ -375,17 +380,17 @@ Completed User round:
 
 > **R25 — User Service**
 
-Latest completed service round:
-
-> **R26 — Booking Service**
-
 Latest completed Payment checkpoint:
 
-> **R27.12 — DONE**
+> **R27.13 — DONE**
+
+Latest completed service round:
+
+> **R27 — Payment Service**
 
 Current checkpoint:
 
-> **R27.13 — NEXT**
+> **R28 — Notification Service**
 
 ADR-013 selects User Service with Spring Authorization Server as the authoritative
 issuer. The issuer, audience, RS256/JWK ownership, approved grant types, access-token
@@ -404,18 +409,13 @@ OIDC logout validates the ID-token hint, registered redirect URI and hashed sess
 `sid`, invalidates the HTTP session and applicable authorization tokens, and revokes
 refresh-token history.
 
-R25.11 refresh security, revocation, durable auditing, concurrency verification and
-documentation closure are complete. R25.12 profile and account lifecycle APIs,
-ownership enforcement and privileged-operation auditing are complete. R25.13 Gateway
-and Resource Server integration is complete. R25.14 security and protocol verification
-and R25.15 stabilization and closure are complete. R25 User Service is closed.
+R25.11 refresh security, revocation, durable auditing, concurrency verification and documentation closure are complete. R25.12 profile and account lifecycle APIs, ownership enforcement and privileged-operation auditing are complete. R25.13 Gateway and Resource Server integration is complete. R25.14 security and protocol verification and R25.15 stabilization and closure are complete. R25 User Service is closed.
 
-R26 Booking Service implementation, Kafka integration, Transactional Outbox,
-idempotency, cancellation, expiration, payment-event preparation, concurrency
-verification and documentation closure are complete.
+R26 Booking Service implementation, Kafka integration, Transactional Outbox, idempotency, cancellation, expiration, payment-event preparation, concurrency verification and documentation closure are complete.
 
-R27 Payment Service is in progress through its final stabilization and closure checkpoint.
-R27.1–R27.12 are complete, and R27.13 is the current implementation checkpoint.
+R27 Payment Service is complete. R27.1–R27.13 are closed and the principal Booking–Payment–Inventory Saga has completed its implementation, reliability, concurrency, security, persistence, and documentation verification.
+
+R28 Notification Service is the next business-service round.
 
 ---
 

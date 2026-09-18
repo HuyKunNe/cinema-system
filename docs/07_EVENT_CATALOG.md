@@ -1,6 +1,6 @@
 # Event Catalog
 
-Version: R27.12
+Version: R27
 Last updated: 2026-09-18
 
 This document defines the authoritative Kafka event contracts, ownership,
@@ -35,6 +35,9 @@ Implementation status:
 - Saga-wide success, compensation, duplicate, delayed-event, race, concurrency, and tracing behavior is verified through R27.12.
 - Booking, Payment, and Inventory event boundaries preserve the approved correlation and causation chain.
 - R27.12 Saga integration verification is complete.
+- R27 Payment Service is complete.
+- The principal Booking–Payment–Inventory Saga contracts are implemented and verified.
+- Notification Service consumption remains R28 scope.
 
 ---
 

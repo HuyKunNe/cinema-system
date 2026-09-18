@@ -1,7 +1,7 @@
 # Changelog
 
 **Version:** 0.9
-**Current baseline:** R1–R26 and R27.1–R27.12 completed; R27.13 next
+**Current baseline:** R1–R27 completed; R28 next
 **Last reviewed:** 2026-09-18
 
 ---
@@ -31,22 +31,51 @@ the roadmap.
 
 Current status:
 
-| R1-R24              | Completed         |
-| ------------------- | ----------------- |
-| R25.1–R25.15        | Completed         |
-| R25 User Service    | completed         |
-| R26.1–R26.13        | Completed         |
-| R26 Booking         | Service completed |
-| R27.1–R27.12        | Completed         |
-| R27 Payment Service | in progress       |
-| R27.13              | Next              |
-| R28                 | Planned           |
+| R1-R24              | Completed |
+| ------------------- | --------- |
+| R25.1–R25.15        | Completed |
+| R25 User Service    | completed |
+| R26.1–R26.13        | Completed |
+| R26 Booking         | Completed |
+| R27.1–R27.13        | Completed |
+| R27 Payment Service | completed |
+| R28                 | Next      |
 
 ---
 
 # Unreleased
 
 ## 2026-09-18
+
+### R27.13 Payment Stabilization and Closure
+
+#### Fixed
+
+- Hardened Payment provider-operation scheduler tests so normal execution does not depend on swallowed mock-generated exceptions.
+- Synchronized Payment Flyway verification with the V7 reconciliation schema.
+- Added final fail-closed Payment HTTP boundary verification.
+- Expanded final Payment and Inventory event contract verification.
+
+#### Verified
+
+- Verified Payment provider-operation scheduling remains disabled by default unless explicitly enabled.
+- Verified Payment configuration and bean wiring contain no remaining closure blockers.
+- Verified Flyway V1–V7 migrations and Hibernate validation.
+- Verified Payment-owned schema and internal foreign-key ownership.
+- Verified no Payment database foreign key crosses a service boundary.
+- Verified refund, reconciliation, audit, and payment-read permission isolation.
+- Verified unapproved Payment routes remain fail closed.
+- Verified provider webhook authentication and request-size boundaries.
+- Verified Payment DLT privacy and non-sensitive logging boundaries.
+- Verified final Booking, Payment, and Inventory event names, versions, routing, payload contracts, correlation, and causation semantics.
+- Verified the full root Maven reactor with `mvn clean verify`.
+- Verified repository formatting with `git diff --check`.
+
+#### Status
+
+- Completed R27.13.
+- Completed R27 Payment Service.
+- Advanced the active business-service round to R28 — Notification Service.
 
 ### R27.12 Saga Integration, Race, and Concurrency Verification
 
