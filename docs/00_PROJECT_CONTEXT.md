@@ -114,8 +114,27 @@ R27.8  — Booking payment-result consumers                            — DONE
 R27.9  — Inventory confirmation and compensation consumers           — DONE
 R27.10 — Refund, reconciliation, permissions and audit controls      — DONE
 R27.11 — Kafka retry, DLT and publication verification               — DONE
-R27.12 — Saga integration, race and concurrency verification         — NEXT
+R27.12 — Saga integration, race and concurrency verification         — DONE
+R27.13 — Stabilization, documentation and closure                    — NEXT
 ```
+
+Verified R27.12 Saga baseline:
+
+- success-path Booking -> Payment -> Booking -> Inventory convergence is verified;
+- terminal Payment failure compensation converges Inventory from `HELD` to
+  `AVAILABLE`;
+- competing Payment success/failure results produce exactly one Booking terminal
+  winner;
+- cancellation and expiration cannot be reversed by delayed Payment results;
+- lifecycle versus Payment-result concurrency converges to one valid Booking
+  state;
+- competing Inventory confirmation and release events converge the complete
+  seat set to either `BOOKED` or `AVAILABLE`;
+- duplicate and delayed Saga events remain idempotent;
+- losing transactional event handlers roll back their processed-event markers;
+- Saga correlation IDs remain stable across service boundaries;
+- successor Outbox causation IDs preserve the relevant source-event chain;
+- full Saga concurrency regression passes.
 
 Verified R27.11 reliability baseline:
 
@@ -362,11 +381,11 @@ Latest completed service round:
 
 Latest completed Payment checkpoint:
 
-> **R27.11 — DONE**
+> **R27.12 — DONE**
 
 Current checkpoint:
 
-> **R27.12 — NEXT**
+> **R27.13 — NEXT**
 
 ADR-013 selects User Service with Spring Authorization Server as the authoritative
 issuer. The issuer, audience, RS256/JWK ownership, approved grant types, access-token
@@ -395,7 +414,8 @@ R26 Booking Service implementation, Kafka integration, Transactional Outbox,
 idempotency, cancellation, expiration, payment-event preparation, concurrency
 verification and documentation closure are complete.
 
-R27 Payment Service is in progress through its remaining integration and stabilization checkpoints. R27.1–R27.11 are complete, and R27.12 is the current implementation checkpoint.
+R27 Payment Service is in progress through its final stabilization and closure checkpoint.
+R27.1–R27.12 are complete, and R27.13 is the current implementation checkpoint.
 
 ---
 

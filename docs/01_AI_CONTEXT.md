@@ -175,6 +175,9 @@ R27.7   — payment-succeeded and payment-failed Outbox publication      — DON
 R27.8   — Booking payment-result consumers                             — DONE
 R27.9   — Inventory confirmation and compensation consumers            — DONE
 R27.10  — Refund, reconciliation, permissions, and audit controls      — DONE
+R27.11  — Kafka retry, DLT, and publication verification               — DONE
+R27.12  — Saga integration, race, and concurrency verification         — DONE
+R27.13  — Stabilization, documentation, and closure                    — NEXT
 ```
 
 Verified baseline:
@@ -223,9 +226,23 @@ Verified R27.11 baseline:
 
 Current checkpoint:
 
-> **R27.12 — Saga integration, race, and concurrency verification**
+> **R27.13 — Stabilization, documentation, and closure**
 
-R27.1–R27.11 are complete.
+R27.1–R27.12 are complete.
+
+Verified R27.12 Saga baseline:
+
+- success-path Saga convergence across Booking, Payment, and Inventory is verified;
+- Payment failure compensation converges Booking and Inventory correctly;
+- Payment success/failure terminal races allow exactly one Booking winner;
+- cancellation and expiration versus Payment-result races converge to one valid terminal Booking state;
+- competing `booking-confirmed` and `seat-release-requested` Inventory events allow one complete seat-set transition;
+- duplicate and delayed Saga events remain idempotent;
+- failed competing event transactions roll back processed-event markers;
+- correlation IDs are preserved across Saga boundaries;
+- causation IDs identify the relevant source Saga event;
+- Payment persists `payment-requested` trace identity and propagates it to terminal result events;
+- full root Saga regression verification passes.
 
 Verified R27.9 integration baseline:
 

@@ -62,17 +62,17 @@ implemented.
 | R27.9 — Inventory confirmation and compensation consumers       | Completed |
 | R27.10 — Refund, reconciliation, permissions and audit controls | Completed |
 | R27.11 — Kafka retry, DLT, and publication verification         | Completed |
-| R27.12 — Saga integration, race, and concurrency verification   | Next      |
-| R27.13 — Remaining Payment stabilization and closure            | Planned   |
+| R27.12 — Saga integration, race, and concurrency verification   | Completed |
+| R27.13 — Remaining Payment stabilization and closure            | Next      |
 | R28 — Notification Service                                      | Planned   |
 
 Latest completed checkpoint:
 
-> **R27.11 — Kafka retry, DLT, and publication verification**
+> **R27.12 — Saga integration, race, and concurrency verification**
 
 Current checkpoint:
 
-> **R27.12 — Saga integration, race, and concurrency verification**
+> **R27.13 — Remaining Payment stabilization and closure**
 
 R27.10.8 financial administration HTTP/security boundary is complete:
 
@@ -100,7 +100,21 @@ Verified Kafka and Outbox reliability now includes:
 - maximum-attempt exhaustion that prevents automatic fourth and later publication attempts;
 - Payment Kafka and Outbox regression verification.
 
-The next checkpoint is R27.12 — Saga integration, race, and concurrency verification.
+R27.12 is complete.
+
+Verified Saga integration and concurrency now includes:
+
+- successful Booking -> Payment -> Booking -> Inventory convergence;
+- Payment-failure compensation through explicit seat release;
+- Payment success/failure terminal-result races;
+- Booking cancellation/expiration versus Payment-result races;
+- Inventory confirmation versus release races;
+- duplicate and delayed cross-Saga event idempotency;
+- processed-event rollback for losing competing transactions;
+- cross-service correlation and causation propagation;
+- full Saga concurrency regression verification.
+
+The next checkpoint is R27.13 — Remaining Payment stabilization and closure.
 
 > See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 

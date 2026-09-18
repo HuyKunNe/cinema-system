@@ -1,8 +1,8 @@
 # Changelog
 
 **Version:** 0.9
-**Current baseline:** R1–R26 and R27.1–R27.10 completed; R27.11 next
-**Last reviewed:** 2026-09-17
+**Current baseline:** R1–R26 and R27.1–R27.12 completed; R27.13 next
+**Last reviewed:** 2026-09-18
 
 ---
 
@@ -37,9 +37,9 @@ Current status:
 | R25 User Service    | completed         |
 | R26.1–R26.13        | Completed         |
 | R26 Booking         | Service completed |
-| R27.1–R27.10        | Completed         |
+| R27.1–R27.12        | Completed         |
 | R27 Payment Service | in progress       |
-| R27.11              | Next              |
+| R27.13              | Next              |
 | R28                 | Planned           |
 
 ---
@@ -47,6 +47,34 @@ Current status:
 # Unreleased
 
 ## 2026-09-18
+
+### R27.12 Saga Integration, Race, and Concurrency Verification
+
+#### Added
+
+- Added Booking lifecycle versus Payment-result race verification.
+- Added Inventory confirmation versus compensation race verification.
+- Added Payment trace-propagation integration verification.
+
+#### Verified
+
+- Verified successful Saga convergence through Booking, Payment, and Inventory.
+- Verified terminal Payment failure compensation through `seat-release-requested` and `seat-released`.
+- Verified concurrent `payment-succeeded` and `payment-failed` handling allows exactly one Booking terminal winner.
+- Verified cancellation and expiration are not reversed by delayed Payment results.
+- Verified concurrent lifecycle and Payment-result processing converges to one valid Booking state.
+- Verified competing Inventory confirmation and release processing allows one complete seat-set winner without partial terminal state.
+- Verified duplicate and delayed Saga events remain idempotent.
+- Verified losing transactional consumers do not retain processed-event markers.
+- Verified correlation IDs remain stable across Saga boundaries.
+- Verified causation IDs identify the relevant source Saga event.
+- Verified Payment preserves `payment-requested` trace identity through terminal Payment result publication.
+- Verified the full repository Saga concurrency regression suite.
+
+#### Status
+
+- Completed R27.12.
+- Advanced the active Payment checkpoint to R27.13 — Stabilization, documentation, and closure.
 
 ### R27.11 Kafka Retry, DLT, and Publication Verification
 

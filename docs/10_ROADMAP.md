@@ -1,7 +1,7 @@
 # Project Roadmap
 
-**Version:** R27.11 Completed
-**Current target:** R27.12 — Saga integration, race, and concurrency verification
+**Version:** R27.12 Completed
+**Current target:** R27.13 — Stabilization, documentation, and closure
 **Last updated:** 2026-09-18
 
 ---
@@ -1560,21 +1560,21 @@ Payment Service will own:
 
 ### Implementation checkpoints
 
-| Checkpoint | Scope                                                       | Status  |
-| ---------- | ----------------------------------------------------------- | ------- |
-| R27.1      | Payment architecture and contract closure                   | DONE    |
-| R27.2      | Payment Service bootstrap and Resource Server security      | DONE    |
-| R27.3      | Payment aggregate and Flyway schema                         | DONE    |
-| R27.4      | `payment-requested` validation and idempotent consumption   | DONE    |
-| R27.5      | Provider port, operation worker, and provider idempotency   | DONE    |
-| R27.6      | Authenticated webhook and provider-result processing        | DONE    |
-| R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | DONE    |
-| R27.8      | Booking payment-result consumers                            | DONE    |
-| R27.9      | Inventory confirmation and compensation consumers           | DONE    |
-| R27.10     | Refund, reconciliation, permissions, and audit controls     | DONE    |
-| R27.11     | Kafka retry, DLT, and publication verification              | DONE    |
-| R27.12     | Saga integration, race, and concurrency verification        | NEXT    |
-| R27.13     | Stabilization, documentation, and closure                   | PLANNED |
+| Checkpoint | Scope                                                       | Status |
+| ---------- | ----------------------------------------------------------- | ------ |
+| R27.1      | Payment architecture and contract closure                   | DONE   |
+| R27.2      | Payment Service bootstrap and Resource Server security      | DONE   |
+| R27.3      | Payment aggregate and Flyway schema                         | DONE   |
+| R27.4      | `payment-requested` validation and idempotent consumption   | DONE   |
+| R27.5      | Provider port, operation worker, and provider idempotency   | DONE   |
+| R27.6      | Authenticated webhook and provider-result processing        | DONE   |
+| R27.7      | `payment-succeeded` and `payment-failed` Outbox publication | DONE   |
+| R27.8      | Booking payment-result consumers                            | DONE   |
+| R27.9      | Inventory confirmation and compensation consumers           | DONE   |
+| R27.10     | Refund, reconciliation, permissions, and audit controls     | DONE   |
+| R27.11     | Kafka retry, DLT, and publication verification              | DONE   |
+| R27.12     | Saga integration, race, and concurrency verification        | DONE   |
+| R27.13     | Stabilization, documentation, and closure                   | NEXT   |
 
 R27.3 completed the Payment persistence baseline:
 
@@ -1868,10 +1868,71 @@ R27.11.7 — Outbox retry exhaustion DONE
 R27.11.8 — Payment Kafka/Outbox regression verification DONE
 R27.11.9 — Documentation synchronization and closure DONE
 R27.11 — DONE
+R27.11 — DONE
+
+### R27.12 Saga Integration, Race, and Concurrency Verification
+
+R27.12 completed cross-service Saga convergence, race, idempotency, tracing, and
+concurrency verification across Booking, Payment, and Inventory.
+
+Verified success-path convergence:
+
+- Booking reservation produces canonical `payment-requested`;
+- Payment consumes the request idempotently and preserves the Booking Saga trace;
+- successful Payment produces canonical `payment-succeeded`;
+- Booking consumes the terminal result and transitions `RESERVED -> CONFIRMED`;
+- Booking produces canonical `booking-confirmed`;
+- Inventory consumes confirmation and transitions matching `HELD -> BOOKED`.
+
+Verified failure-path convergence:
+
+- terminal Payment failure produces canonical `payment-failed`;
+- Booking transitions `RESERVED -> PAYMENT_FAILED`;
+- Booking produces canonical `seat-release-requested`;
+- Inventory transitions matching `HELD -> AVAILABLE`;
+- Inventory produces one canonical `seat-released` event.
+
+Verified race and concurrency behavior:
+
+- concurrent `payment-succeeded` and `payment-failed` events allow exactly one
+  Booking terminal winner;
+- losing terminal-result transactions roll back their processed-event markers;
+- cancellation and expiration cannot be reversed by delayed Payment results;
+- concurrent Booking lifecycle and Payment-result processing converges to one
+  valid terminal Booking state;
+- competing Inventory `booking-confirmed` and `seat-release-requested` events
+  allow one complete seat-set transition;
+- Inventory never converges to a mixed partially booked/partially released seat
+  set;
+- duplicate and delayed Saga events do not repeat business effects or reverse
+  decided terminal state.
+
+Verified tracing:
+
+- one correlation ID is preserved across the Saga;
+- each successor Outbox event records the relevant source Saga event as its
+  causation ID;
+- Payment persists the `payment-requested` event ID as its source event and
+  propagates it into terminal Payment events.
+
+Verification completed:
+
+```text
+R27.12.1 — Success-path Saga convergence verification                 DONE
+R27.12.2 — Payment-failure compensation convergence verification      DONE
+R27.12.3 — Payment success/failure terminal race verification         DONE
+R27.12.4 — Booking lifecycle/payment-result race verification         DONE
+R27.12.5 — Inventory confirmation/release competing-event verification DONE
+R27.12.6 — Duplicate/delayed cross-Saga event verification            DONE
+R27.12.7 — Cross-service correlation/causation chain verification      DONE
+R27.12.8 — Full Saga concurrency regression                            DONE
+R27.12.9 — Documentation synchronization and closure                   DONE
+R27.12    — DONE
+```
 
 The next active checkpoint is:
 
-R27.12 — Saga integration, race, and concurrency verification
+R27.13 — Stabilization, documentation, and closure
 
 ## ⏳ R28 — Notification Service
 
