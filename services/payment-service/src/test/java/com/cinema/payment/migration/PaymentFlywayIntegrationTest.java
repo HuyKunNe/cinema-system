@@ -21,12 +21,13 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
 
     private static final List<String> EXPECTED_TABLES =
             List.of(
+                    "financial_audit_records",
                     "outbox_events",
                     "payment_provider_webhook_events",
                     "payment_transactions",
                     "payments",
                     "processed_events",
-                    "financial_audit_records");
+                    "reconciliation_cases");
 
     @Autowired private Flyway flyway;
 
@@ -60,13 +61,14 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                             '3',
                             '4',
                             '5',
-                            '6'
+                            '6',
+                            '7'
                         )
                           AND success = TRUE
                         """,
                         Integer.class);
 
-        assertThat(count).isEqualTo(6);
+        assertThat(count).isEqualTo(7);
     }
 
     @Test
@@ -85,13 +87,14 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                         FROM information_schema.tables
                         WHERE table_schema = DATABASE()
                           AND table_name IN (
-                              'payments',
-                              'payment_transactions',
-                              'processed_events',
-                              'payment_provider_webhook_events',
-                              'outbox_events',
-                              'financial_audit_records'
-                          )
+                            'payments',
+                            'payment_transactions',
+                            'processed_events',
+                            'payment_provider_webhook_events',
+                            'outbox_events',
+                            'financial_audit_records',
+                            'reconciliation_cases'
+                        )
                         ORDER BY table_name
                         """,
                         String.class);
