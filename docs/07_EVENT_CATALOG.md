@@ -1,6 +1,6 @@
 # Event Catalog
 
-Version: R27.11
+Version: R27.12
 Last updated: 2026-09-18
 
 This document defines the authoritative Kafka event contracts, ownership,
@@ -32,7 +32,9 @@ Implementation status:
 - Inventory lifecycle consumers preserve processed-event idempotency, transactional ShowSeat changes, bounded Kafka retry, sanitized DLT handling, and the invariant that `BOOKED` ShowSeats are not released.
 - Notification consumption remains future R28 integration work.
 - Payment Kafka ingress and terminal-result Outbox publication reliability are verified through R27.11.
-- Remaining Saga-wide race and concurrency verification is R27.12 scope.
+- Saga-wide success, compensation, duplicate, delayed-event, race, concurrency, and tracing behavior is verified through R27.12.
+- Booking, Payment, and Inventory event boundaries preserve the approved correlation and causation chain.
+- R27.12 Saga integration verification is complete.
 
 ---
 
@@ -189,9 +191,24 @@ Example causal chain:
 ```text
 seat-reservation-requested.eventId = E1
 seat-reserved.causationId = E1
+
+seat-reserved.eventId = E2
 payment-requested.causationId = E2
+
+payment-requested.eventId = E3
 payment-succeeded.causationId = E3
+
+payment-succeeded.eventId = E4
 booking-confirmed.causationId = E4
+
+payment-requested.eventId = E3
+payment-failed.causationId = E3
+
+payment-failed.eventId = E4
+seat-release-requested.causationId = E4
+
+seat-release-requested.eventId = E5
+seat-released.causationId = E5
 ```
 
 All events in this chain use the same `correlationId`.
