@@ -239,6 +239,28 @@ class AuthorizationCodePkceTokenIntegrationTest extends AbstractMySqlIntegration
                 .andExpect(jsonPath("$.error").value("invalid_grant"));
     }
 
+    @Test
+    void shouldRedirectUnauthenticatedAuthorizationRequestToLogin() throws Exception {
+
+        registerPublicClient();
+
+        String codeChallenge = createCodeChallenge(CODE_VERIFIER);
+
+        mockMvc.perform(
+                        get("/oauth2/authorize")
+                                .queryParam("response_type", "code")
+                                .queryParam("client_id", CLIENT_ID)
+                                .queryParam("redirect_uri", REDIRECT_URI)
+                                .queryParam("scope", "booking:read")
+                                .queryParam("state", "browser-login-test")
+                                .queryParam("code_challenge", codeChallenge)
+                                .queryParam("code_challenge_method", "S256"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .redirectedUrlPattern("**/login"));
+    }
+
     private User createActiveUser() {
         return executeInTransaction(
                 () -> {

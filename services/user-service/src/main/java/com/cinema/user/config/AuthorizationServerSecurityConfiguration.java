@@ -14,6 +14,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
+import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
@@ -33,7 +34,8 @@ public class AuthorizationServerSecurityConfiguration {
     SecurityFilterChain authorizationServerSecurityFilterChain(
             HttpSecurity http,
             SessionRegistry sessionRegistry,
-            OidcLogoutRevocationSuccessHandler logoutSuccessHandler)
+            OidcLogoutRevocationSuccessHandler logoutSuccessHandler,
+            AuthorizationServerSettings authorizationServerSettings)
             throws Exception {
 
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
@@ -42,6 +44,7 @@ public class AuthorizationServerSecurityConfiguration {
         http.setSharedObject(SessionRegistry.class, sessionRegistry);
 
         http.securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
+                .cors(cors -> {})
                 .with(
                         authorizationServerConfigurer,
                         authorizationServer ->
@@ -66,6 +69,15 @@ public class AuthorizationServerSecurityConfiguration {
                                                                                                     .addAll(
                                                                                                             APPROVED_GRANT_TYPES);
                                                                                         }))))
+                .authorizeHttpRequests(
+                        authorize ->
+                                authorize
+                                        .requestMatchers(
+                                                authorizationServerSettings
+                                                        .getAuthorizationEndpoint())
+                                        .authenticated()
+                                        .anyRequest()
+                                        .permitAll())
                 .exceptionHandling(
                         exceptions ->
                                 exceptions.authenticationEntryPoint(
@@ -86,7 +98,8 @@ public class AuthorizationServerSecurityConfiguration {
 
         HttpSessionRequestCache requestCache = new HttpSessionRequestCache();
 
-        http.authenticationProvider(userAuthenticationProvider)
+        http.cors(cors -> {})
+                .authenticationProvider(userAuthenticationProvider)
                 .authorizeHttpRequests(
                         authorize ->
                                 authorize
@@ -121,11 +134,13 @@ public class AuthorizationServerSecurityConfiguration {
 
     @Bean
     SessionRegistry sessionRegistry() {
+
         return new SessionRegistryImpl();
     }
 
     @Bean
     static HttpSessionEventPublisher httpSessionEventPublisher() {
+
         return new HttpSessionEventPublisher();
     }
 }
