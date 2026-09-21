@@ -30,6 +30,10 @@ public class PaymentSecurityConfig {
 
     private static final String PAYMENT_AUDIT_AUTHORITY = "payment:audit";
 
+    private static final String[] SWAGGER_ENDPOINTS = {
+        "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**"
+    };
+
     @Bean
     SecurityFilterChain paymentSecurityFilterChain(
             HttpSecurity http,
@@ -45,6 +49,8 @@ public class PaymentSecurityConfig {
                         authorize ->
                                 authorize
                                         .requestMatchers(HttpMethod.OPTIONS, "/**")
+                                        .permitAll()
+                                        .requestMatchers(SWAGGER_ENDPOINTS)
                                         .permitAll()
                                         .requestMatchers("/actuator/health", "/actuator/info")
                                         .permitAll()

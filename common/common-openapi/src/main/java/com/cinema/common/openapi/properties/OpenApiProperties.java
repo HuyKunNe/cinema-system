@@ -2,14 +2,12 @@ package com.cinema.common.openapi.properties;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(
-        prefix = "cinema.openapi")
+@ConfigurationProperties(prefix = "cinema.openapi")
 public class OpenApiProperties {
 
     private String title = "Cinema Booking System API";
 
-    private String description =
-            "API documentation for Cinema Booking System";
+    private String description = "API documentation for Cinema Booking System";
 
     private String version = "1.0.0";
 
@@ -21,95 +19,88 @@ public class OpenApiProperties {
 
     private String serverDescription = "Application server";
 
+    private String authorizationUrl = "http://localhost:8082/oauth2/authorize";
+
+    private String tokenUrl = "http://localhost:8082/oauth2/token";
+
     public String getTitle() {
-
         return title;
-
     }
 
-    public void setTitle(
-            String title) {
+    public void setTitle(String title) {
 
         this.title = title;
-
     }
 
     public String getDescription() {
-
         return description;
-
     }
 
-    public void setDescription(
-            String description) {
+    public void setDescription(String description) {
 
         this.description = description;
-
     }
 
     public String getVersion() {
-
         return version;
-
     }
 
-    public void setVersion(
-            String version) {
+    public void setVersion(String version) {
 
         this.version = version;
-
     }
 
     public String getContactName() {
-
         return contactName;
-
     }
 
-    public void setContactName(
-            String contactName) {
+    public void setContactName(String contactName) {
 
         this.contactName = contactName;
-
     }
 
     public String getContactEmail() {
-
         return contactEmail;
-
     }
 
-    public void setContactEmail(
-            String contactEmail) {
+    public void setContactEmail(String contactEmail) {
 
         this.contactEmail = contactEmail;
-
     }
 
     public String getServerUrl() {
-
         return serverUrl;
-
     }
 
-    public void setServerUrl(
-            String serverUrl) {
+    public void setServerUrl(String serverUrl) {
 
         this.serverUrl = serverUrl;
-
     }
 
     public String getServerDescription() {
-
         return serverDescription;
-
     }
 
-    public void setServerDescription(
-            String serverDescription) {
+    public void setServerDescription(String serverDescription) {
 
         this.serverDescription = serverDescription;
-
     }
 
+    public String getAuthorizationUrl() {
+        return authorizationUrl;
+    }
+
+    public void setAuthorizationUrl(String authorizationUrl) {
+
+        this.authorizationUrl = authorizationUrl;
+    }
+
+    public String getTokenUrl() {
+        return tokenUrl;
+    }
+
+    public void setTokenUrl(String tokenUrl) {
+
+        this.tokenUrl = tokenUrl;
+    }
 }

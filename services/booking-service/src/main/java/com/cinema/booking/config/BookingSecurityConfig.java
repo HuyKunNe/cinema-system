@@ -20,6 +20,10 @@ public class BookingSecurityConfig {
 
     private static final String[] BOOKING_ENDPOINTS = {"/api/v1/bookings", "/api/v1/bookings/**"};
 
+    private static final String[] SWAGGER_ENDPOINTS = {
+        "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**"
+    };
+
     @Bean
     SecurityFilterChain bookingSecurityFilterChain(
             HttpSecurity http,
@@ -35,6 +39,8 @@ public class BookingSecurityConfig {
                         authorize ->
                                 authorize
                                         .requestMatchers(HttpMethod.OPTIONS, "/**")
+                                        .permitAll()
+                                        .requestMatchers(SWAGGER_ENDPOINTS)
                                         .permitAll()
                                         .requestMatchers("/actuator/health", "/actuator/info")
                                         .permitAll()

@@ -15,11 +15,22 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
-@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@ConditionalOnWebApplication(
+        type = ConditionalOnWebApplication.Type.SERVLET)
 public class MovieSecurityConfig {
 
+    private static final String[] SWAGGER_ENDPOINTS = {
+        "/swagger-ui.html",
+        "/swagger-ui/**",
+        "/v3/api-docs",
+        "/v3/api-docs/**"
+    };
+
     private static final String[] CATALOG_ENDPOINTS = {
-        "/api/v1/movies", "/api/v1/movies/**", "/api/v1/genres", "/api/v1/genres/**"
+        "/api/v1/movies",
+        "/api/v1/movies/**",
+        "/api/v1/genres",
+        "/api/v1/genres/**"
     };
 
     @Bean
@@ -30,35 +41,56 @@ public class MovieSecurityConfig {
             CinemaAccessDeniedHandler accessDeniedHandler)
             throws Exception {
 
-        http.csrf(csrf -> csrf.disable())
+        http.csrf(
+                        csrf ->
+                                csrf.disable())
                 .sessionManagement(
-                        session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                        session ->
+                                session.sessionCreationPolicy(
+                                        SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(
                         authorize ->
                                 authorize
-                                        .requestMatchers(HttpMethod.OPTIONS, "/**")
+                                        .requestMatchers(
+                                                HttpMethod.OPTIONS,
+                                                "/**")
                                         .permitAll()
-                                        .requestMatchers("/actuator/health", "/actuator/info")
+                                        .requestMatchers(
+                                                SWAGGER_ENDPOINTS)
                                         .permitAll()
-                                        .requestMatchers(HttpMethod.GET, CATALOG_ENDPOINTS)
+                                        .requestMatchers(
+                                                "/actuator/health",
+                                                "/actuator/info")
                                         .permitAll()
-                                        .requestMatchers(CATALOG_ENDPOINTS)
-                                        .hasAuthority("movie:manage")
+                                        .requestMatchers(
+                                                HttpMethod.GET,
+                                                CATALOG_ENDPOINTS)
+                                        .permitAll()
+                                        .requestMatchers(
+                                                CATALOG_ENDPOINTS)
+                                        .hasAuthority(
+                                                "movie:manage")
                                         .anyRequest()
                                         .denyAll())
                 .exceptionHandling(
                         exceptions ->
                                 exceptions
-                                        .authenticationEntryPoint(authenticationEntryPoint)
-                                        .accessDeniedHandler(accessDeniedHandler))
+                                        .authenticationEntryPoint(
+                                                authenticationEntryPoint)
+                                        .accessDeniedHandler(
+                                                accessDeniedHandler))
                 .oauth2ResourceServer(
                         oauth2 ->
-                                oauth2.authenticationEntryPoint(authenticationEntryPoint)
-                                        .accessDeniedHandler(accessDeniedHandler)
+                                oauth2
+                                        .authenticationEntryPoint(
+                                                authenticationEntryPoint)
+                                        .accessDeniedHandler(
+                                                accessDeniedHandler)
                                         .jwt(
                                                 jwt ->
-                                                        jwt.jwtAuthenticationConverter(
-                                                                jwtAuthenticationConverter)));
+                                                        jwt
+                                                                .jwtAuthenticationConverter(
+                                                                        jwtAuthenticationConverter)));
 
         return http.build();
     }

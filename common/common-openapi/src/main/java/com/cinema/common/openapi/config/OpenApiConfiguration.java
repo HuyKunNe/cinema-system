@@ -15,55 +15,131 @@ import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.OAuthFlow;
+import io.swagger.v3.oas.models.security.OAuthFlows;
+import io.swagger.v3.oas.models.security.Scopes;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 
 @AutoConfiguration
-@EnableConfigurationProperties(OpenApiProperties.class)
+@EnableConfigurationProperties(
+        OpenApiProperties.class)
 public class OpenApiConfiguration {
 
-    public static final String BEARER_AUTH = "bearerAuth";
+    public static final String OAUTH2 =
+            "oauth2";
 
     @Bean
     @ConditionalOnMissingBean
     public OpenAPI cinemaOpenApi(
             OpenApiProperties properties) {
 
-        OpenAPI openApi = new OpenAPI()
-                .info(
-                        buildInfo(properties))
-                .components(
-                        buildComponents())
-                .addSecurityItem(
-                        new SecurityRequirement()
-                                .addList(BEARER_AUTH));
+        OpenAPI openApi =
+                new OpenAPI()
+                        .info(
+                                buildInfo(
+                                        properties))
+                        .components(
+                                buildComponents(
+                                        properties))
+                        .addSecurityItem(
+                                new SecurityRequirement()
+                                        .addList(
+                                                OAUTH2));
 
-        List<Server> servers = buildServers(properties);
+        List<Server> servers =
+                buildServers(
+                        properties);
 
         if (!servers.isEmpty()) {
-
-            openApi.setServers(servers);
-
+            openApi.setServers(
+                    servers);
         }
 
         return openApi;
+    }
 
+    private Components buildComponents(
+            OpenApiProperties properties) {
+
+        Scopes scopes =
+                new Scopes()
+                        .addString(
+                                "openid",
+                                "OpenID Connect")
+                        .addString(
+                                "profile",
+                                "Read profile")
+                        .addString(
+                                "email",
+                                "Read email")
+                        .addString(
+                                "booking:create",
+                                "Create bookings")
+                        .addString(
+                                "booking:read",
+                                "Read bookings")
+                        .addString(
+                                "booking:cancel",
+                                "Cancel bookings")
+                        .addString(
+                                "movie:manage",
+                                "Manage movies and genres")
+                        .addString(
+                                "showtime:manage",
+                                "Manage showtimes")
+                        .addString(
+                                "inventory:manage",
+                                "Manage cinema inventory")
+                        .addString(
+                                "payment:read",
+                                "Read payments")
+                        .addString(
+                                "user:manage",
+                                "Manage users");
+
+        OAuthFlow authorizationCode =
+                new OAuthFlow()
+                        .authorizationUrl(
+                                properties
+                                        .getAuthorizationUrl())
+                        .tokenUrl(
+                                properties
+                                        .getTokenUrl())
+                        .scopes(
+                                scopes);
+
+        SecurityScheme oauth2 =
+                new SecurityScheme()
+                        .type(
+                                SecurityScheme.Type.OAUTH2)
+                        .flows(
+                                new OAuthFlows()
+                                        .authorizationCode(
+                                                authorizationCode));
+
+        return new Components()
+                .addSecuritySchemes(
+                        OAUTH2,
+                        oauth2);
     }
 
     private Info buildInfo(
             OpenApiProperties properties) {
 
-        Contact contact = new Contact()
-                .name(
-                        properties.getContactName());
+        Contact contact =
+                new Contact()
+                        .name(
+                                properties
+                                        .getContactName());
 
         if (StringUtils.hasText(
                 properties.getContactEmail())) {
 
             contact.setEmail(
-                    properties.getContactEmail());
-
+                    properties
+                            .getContactEmail());
         }
 
         return new Info()
@@ -75,55 +151,38 @@ public class OpenApiConfiguration {
                         properties.getVersion())
                 .contact(
                         contact);
-
-    }
-
-    private Components buildComponents() {
-
-        SecurityScheme bearerScheme = new SecurityScheme()
-                .name(BEARER_AUTH)
-                .type(
-                        SecurityScheme.Type.HTTP)
-                .scheme("bearer")
-                .bearerFormat("JWT")
-                .description(
-                        "JWT access token");
-
-        return new Components()
-                .addSecuritySchemes(
-                        BEARER_AUTH,
-                        bearerScheme);
-
     }
 
     private List<Server> buildServers(
             OpenApiProperties properties) {
 
-        List<Server> servers = new ArrayList<>();
+        List<Server> servers =
+                new ArrayList<>();
 
         if (!StringUtils.hasText(
                 properties.getServerUrl())) {
 
             return servers;
-
         }
 
-        Server server = new Server()
-                .url(
-                        properties.getServerUrl());
+        Server server =
+                new Server()
+                        .url(
+                                properties
+                                        .getServerUrl());
 
         if (StringUtils.hasText(
-                properties.getServerDescription())) {
+                properties
+                        .getServerDescription())) {
 
             server.setDescription(
-                    properties.getServerDescription());
-
+                    properties
+                            .getServerDescription());
         }
 
-        servers.add(server);
+        servers.add(
+                server);
 
         return servers;
-
     }
-
 }
