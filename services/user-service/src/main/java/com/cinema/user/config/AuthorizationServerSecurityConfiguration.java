@@ -98,7 +98,10 @@ public class AuthorizationServerSecurityConfiguration {
                                                 "/api/v1/users/*/enable")
                                         .hasAuthority("user:manage")
                                         .requestMatchers(
-                                                "/actuator/health", "/actuator/info", "/error")
+                                                "/actuator/health",
+                                                "/actuator/info",
+                                                "/error",
+                                                "/favicon.ico")
                                         .permitAll()
                                         .anyRequest()
                                         .authenticated())

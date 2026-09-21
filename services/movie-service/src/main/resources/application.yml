@@ -1,64 +1,84 @@
 server:
-    port: ${MOVIE_SERVICE_PORT:8081}
+  port: ${MOVIE_SERVICE_PORT:8081}
 
 spring:
-    application:
-        name: movie-service
+  application:
+    name: movie-service
 
-    config:
-        import: "optional:configserver:http://localhost:8888"
+  config:
+    import: "optional:configserver:http://localhost:8888"
 
-    datasource:
-        url: ${MOVIE_DB_URL:jdbc:mysql://localhost:3306/cinema_movie_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-        username: ${MOVIE_DB_USERNAME}
-        password: ${MOVIE_DB_PASSWORD}
-        driver-class-name: com.mysql.cj.jdbc.Driver
+  datasource:
+    url: ${MOVIE_DB_URL:jdbc:mysql://localhost:3306/cinema_movie_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${MOVIE_DB_USERNAME}
+    password: ${MOVIE_DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
-    jpa:
-        open-in-view: false
-        hibernate:
-            ddl-auto: validate
-        properties:
-            hibernate:
-                format_sql: true
-                jdbc:
-                    time_zone: UTC
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
 
-    flyway:
-        enabled: true
-        locations: classpath:db/migration
-        validate-on-migrate: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
 
 springdoc:
-    api-docs:
-        enabled: true
-        path: /v3/api-docs
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
 
-    swagger-ui:
-        enabled: true
-        path: /swagger-ui.html
-        disable-swagger-default-url: true
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
 
+    oauth2-redirect-url: http://localhost:8081/swagger-ui/oauth2-redirect.html
+    persist-authorization: false
+
+    oauth:
+      client-id: cinema-swagger
+      app-name: Cinema Swagger
+      use-pkce-with-authorization-code-grant: true
+
+      scopes:
+        - openid
+        - profile
+        - email
+        - booking:create
+        - booking:read
+        - booking:cancel
+        - movie:manage
+        - showtime:manage
+        - inventory:manage
+        - payment:read
+        - user:manage
 eureka:
-    client:
-        service-url:
-            defaultZone: http://localhost:8761/eureka/
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
 
-    instance:
-        prefer-ip-address: true
-        instance-id: ${spring.application.name}:${server.port}
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
 
 management:
-    endpoints:
-        web:
-            exposure:
-                include: health,info
+  endpoints:
+    web:
+      exposure:
+        include: health,info
 
-    endpoint:
-        health:
-            show-details: always
+  endpoint:
+    health:
+      show-details: always
 
 logging:
-    level:
-        com.netflix.discovery: INFO
-        org.hibernate.SQL: DEBUG
+  level:
+    com.netflix.discovery: INFO
+    org.hibernate.SQL: DEBUG

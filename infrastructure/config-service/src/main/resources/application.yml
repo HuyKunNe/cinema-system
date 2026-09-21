@@ -55,22 +55,3 @@ logging:
       [${spring.application.name:config-service},
       %X{traceId:-},
       %X{spanId:-}]
-springdoc:
-  swagger-ui:
-    persist-authorization: true
-
-    oauth:
-      client-id: cinema-swagger
-      use-pkce-with-authorization-code-grant: true
-      scopes:
-        - openid
-        - profile
-        - email
-        - booking:create
-        - booking:read
-        - booking:cancel
-        - movie:manage
-        - showtime:manage
-        - inventory:manage
-        - payment:read
-        - user:manage

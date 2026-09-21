@@ -1,48 +1,68 @@
 cinema:
-    platform:
-        name: Cinema Booking System
+  platform:
+    name: Cinema Booking System
 
 spring:
-    jackson:
-        serialization:
-            write-dates-as-timestamps: false
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
 
-    jpa:
-        open-in-view: false
+  jpa:
+    open-in-view: false
 
-    kafka:
-        producer:
-            properties:
-                spring.json.add.type.headers: false
+  kafka:
+    producer:
+      properties:
+        spring.json.add.type.headers: false
 
-        consumer:
-            auto-offset-reset: earliest
+    consumer:
+      auto-offset-reset: earliest
 
 management:
-    endpoints:
-        web:
-            exposure:
-                include:
-                    - health
-                    - info
-                    - metrics
-                    - prometheus
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - metrics
+          - prometheus
 
-    endpoint:
-        health:
-            show-details: when-authorized
+  endpoint:
+    health:
+      show-details: when-authorized
 
-    tracing:
-        sampling:
-            probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
 
-        export:
-            otlp:
-                enabled: ${OTEL_EXPORTER_ENABLED:false}
+    export:
+      otlp:
+        enabled: ${OTEL_EXPORTER_ENABLED:false}
 
 logging:
-    pattern:
-        correlation: >-
-            [${spring.application.name:cinema-service},
-            %X{traceId:-},
-            %X{spanId:-}]
+  pattern:
+    correlation: >-
+      [${spring.application.name:cinema-service},
+      %X{traceId:-},
+      %X{spanId:-}]
+springdoc:
+  swagger-ui:
+    persist-authorization: true
+
+    oauth:
+      client-id: cinema-swagger
+      use-pkce-with-authorization-code-grant: true
+
+      scopes:
+        - openid
+        - profile
+        - email
+        - booking:create
+        - booking:read
+        - booking:cancel
+        - movie:manage
+        - showtime:manage
+        - inventory:manage
+        - payment:read
+        - user:manage
