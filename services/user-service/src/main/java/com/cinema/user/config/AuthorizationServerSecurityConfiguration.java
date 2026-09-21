@@ -114,7 +114,8 @@ public class AuthorizationServerSecurityConfiguration {
                                                 "/actuator/health",
                                                 "/actuator/info",
                                                 "/error",
-                                                "/favicon.ico")
+                                                "/favicon.ico",
+                                                "/.well-known/appspecific/**")
                                         .permitAll()
                                         .anyRequest()
                                         .authenticated())

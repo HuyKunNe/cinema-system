@@ -26,10 +26,21 @@ $env:BOOKING_DB_URL="jdbc:mysql://localhost:3306/cinema_booking_db?createDatabas
 $env:BOOKING_DB_USERNAME = "root"
 $env:BOOKING_DB_PASSWORD = "huykun17"
 --------------PAYMENT SERVICE------------------------------
-$env:PAYMENT_DB_URL="jdbc:mysql://localhost:3306/payment_user_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+$env:PAYMENT_DB_URL="jdbc:mysql://localhost:3306/cinema_payment_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
 $env:PAYMENT_DB_USERNAME = "root"
 $env:PAYMENT_DB_PASSWORD = "huykun17"
 -------------------------------------------------------------
+
+$env:CINEMA_AUTH_ISSUER = "http://localhost:8082"
+$env:CINEMA_AUTH_JWK_SET_URI = "http://localhost:8082/oauth2/jwks"
+$env:CINEMA_AUTH_AUDIENCE = "cinema-api"
+
+$env:CONFIG_SERVER_URL = "http://localhost:8888"
+
+$env:EUREKA_URL = "http://localhost:8761/eureka/"
+$env:EUREKA_SERVER_URL = "http://localhost:8761/eureka/"
+
+$env:KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
 
 $env:USER_JWT_SIGNING_ENABLED="true"
 $env:USER_JWT_SIGNING_KEY_ID="cinema-local-key-1"
