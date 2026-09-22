@@ -31,6 +31,9 @@ The `docs` directory is the project's source of truth.
 - R27.9 — Inventory confirmation and compensation consumers
 - R27.10 — Refund, reconciliation, permissions, and audit controls
 - R27.11 — Kafka retry, DLT, and publication verification
+- R27.12 — Saga integration, race and concurrency verification
+- R27.13 — Stabilization, documentation and closure
+- R27 — Payment Service
 
 ## Completed Inventory Round
 
@@ -160,7 +163,9 @@ Verified Booking baseline:
 
 ## Completed Payment Round
 
-R27 Payment Service is in progress.
+R27 Payment Service is complete.
+
+All checkpoints R27.1 through R27.13 are completed. Production-specific payment provider adapters remain outside the completed R27 scope; the deterministic `MOCK` provider remains the verification implementation.
 
 Completed checkpoints:
 
@@ -610,6 +615,24 @@ Success topic:
 seat-reserved
 ```
 
+For multi-row lifecycle release, Inventory Service must not lock rows using only a mutable ownership predicate.
+
+Required flow:
+
+```text
+findIdsByShowtimeIdAndBookingId
+        ↓
+sort UUIDs
+        ↓
+findAllByShowtimeIdAndIdsForUpdate
+        ↓
+isHeldBy re-check
+        ↓
+conditional release
+```
+
+The ID lookup is not the authorization decision. The ownership decision is made again after the pessimistic locks are acquired.
+
 The canonical success payload includes authoritative Inventory seat IDs, seat
 numbers, seat types, prices, total amount, currency, hold time and hold
 expiration. The exact versioned contract is defined in
@@ -768,14 +791,16 @@ explicitly requested.
 
 # Business Service Status
 
-| Round | Service              | Status      |
-| ----- | -------------------- | ----------- |
-| R23   | Movie Service        | DONE        |
-| R24   | Inventory Service    | DONE        |
-| R25   | User Service         | DONE        |
-| R26   | Booking Service      | DONE        |
-| R27   | Payment Service      | IN PROGRESS |
-| R28   | Notification Service | PLANNED     |
+| Round | Service              | Status   |
+| ----- | -------------------- | -------- |
+| R23   | Movie Service        | DONE     |
+| R24   | Inventory Service    | DONE     |
+| R25   | User Service         | DONE     |
+| R26   | Booking Service      | DONE     |
+| R27   | Payment Service      | DONE     |
+| R28   | Notification Service | DEFERRED |
+
+Current maintenance work is Inventory lifecycle-release lock hardening. R28 is not active.
 
 Movie, Inventory, User and Booking Service have completed their applicable
 implementation and verification requirements.
@@ -927,35 +952,14 @@ R25 and R26 subsequently met their documented completion requirements.
 
 # Current Next Step
 
-- R27.9 — Inventory confirmation and compensation consumers
+Complete verification of the Inventory lifecycle-release lock hardening:
 
-R27.8 completed Booking-owned consumption of:
+1. Compile the updated consumer unit tests.
+2. Verify cancellation and expiration release behavior.
+3. Verify the already-released-after-ID-lookup race.
+4. Run MySQL lifecycle concurrency integration tests.
+5. Run the complete Inventory test suite.
+6. Run root `mvn clean verify`.
+7. Mark the maintenance checkpoint complete only after every gate passes.
 
-```text
-payment-succeeded
-payment-failed
-```
-
-The completed Booking payment-result baseline includes:
-
-- strict canonical envelope and immutable payload validation;
-- processed-event idempotency;
-- pessimistic Booking locking;
-- atomic `RESERVED -> CONFIRMED` and `booking-confirmed` Outbox creation;
-- atomic `RESERVED -> PAYMENT_FAILED` and `seat-release-requested` Outbox creation;
-- rollback when resulting Outbox creation fails;
-- Kafka retry and sanitized DLT behavior;
-- duplicate and distinct-event concurrency verification;
-- delayed terminal-result rejection;
-- competing success-versus-failure ordering with exactly one winner.
-
-R27.9 must add Inventory-owned consumers for:
-
-```text
-booking-confirmed
-seat-release-requested
-booking-cancelled
-booking-expired
-```
-
-Inventory must conditionally modify only ShowSeats that are still owned by the matching Booking.
+Do not begin R28 while it remains deferred.

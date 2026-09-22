@@ -1,6 +1,10 @@
 package com.cinema.inventory.service.impl;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -8,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
+import com.cinema.inventory.dto.request.CreateSeatRangeRequest;
 import com.cinema.inventory.dto.request.CreateSeatRequest;
 import com.cinema.inventory.dto.request.UpdateSeatRequest;
 import com.cinema.inventory.dto.response.SeatResponse;
@@ -22,114 +27,139 @@ import com.cinema.inventory.service.SeatService;
 @Service
 public class SeatServiceImpl implements SeatService {
 
-  private final SeatRepository seatRepository;
-  private final RoomRepository roomRepository;
-  private final SeatMapper seatMapper;
+    private final SeatRepository seatRepository;
+    private final RoomRepository roomRepository;
+    private final SeatMapper seatMapper;
 
-  public SeatServiceImpl(
-      SeatRepository seatRepository,
-      RoomRepository roomRepository,
-      SeatMapper seatMapper) {
-    this.seatRepository = seatRepository;
-    this.roomRepository = roomRepository;
-    this.seatMapper = seatMapper;
-  }
-
-  @Override
-  @Transactional
-  public SeatResponse create(
-      UUID roomId,
-      CreateSeatRequest request) {
-
-    Room room = findRoom(roomId);
-
-    if (!room.isActive()) {
-      throw new ConflictException(
-          InventoryErrorCode.ROOM_INACTIVE);
+    public SeatServiceImpl(
+            SeatRepository seatRepository, RoomRepository roomRepository, SeatMapper seatMapper) {
+        this.seatRepository = seatRepository;
+        this.roomRepository = roomRepository;
+        this.seatMapper = seatMapper;
     }
 
-    String normalizedSeatNumber = normalize(request.seatNumber());
+    @Override
+    @Transactional
+    public SeatResponse create(UUID roomId, CreateSeatRequest request) {
 
-    if (seatRepository
-        .existsByRoom_IdAndSeatNumberIgnoreCase(
-            roomId,
-            normalizedSeatNumber)) {
-      throw new ConflictException(
-          InventoryErrorCode.SEAT_NUMBER_ALREADY_EXISTS);
+        Room room = findRoom(roomId);
+
+        if (!room.isActive()) {
+            throw new ConflictException(InventoryErrorCode.ROOM_INACTIVE);
+        }
+
+        String normalizedSeatNumber = normalize(request.seatNumber());
+
+        if (seatRepository.existsByRoom_IdAndSeatNumberIgnoreCase(roomId, normalizedSeatNumber)) {
+            throw new ConflictException(InventoryErrorCode.SEAT_NUMBER_ALREADY_EXISTS);
+        }
+
+        Seat seat =
+                new Seat(
+                        room,
+                        normalizedSeatNumber,
+                        normalize(request.rowLabel()),
+                        request.seatType());
+
+        Seat savedSeat = seatRepository.save(seat);
+
+        return seatMapper.toResponse(savedSeat);
     }
 
-    Seat seat = new Seat(
-        room,
-        normalizedSeatNumber,
-        normalize(request.rowLabel()),
-        request.seatType());
+    @Override
+    @Transactional
+    public List<SeatResponse> createRange(UUID roomId, CreateSeatRangeRequest request) {
 
-    Seat savedSeat = seatRepository.save(seat);
+        Room room = findRoom(roomId);
 
-    return seatMapper.toResponse(savedSeat);
-  }
+        if (!room.isActive()) {
+            throw new ConflictException(InventoryErrorCode.ROOM_INACTIVE);
+        }
 
-  @Override
-  @Transactional(readOnly = true)
-  public SeatResponse getById(UUID seatId) {
-    return seatMapper.toResponse(findSeat(seatId));
-  }
+        String normalizedRowLabel = normalize(request.rowLabel()).toUpperCase(Locale.ROOT);
 
-  @Override
-  @Transactional(readOnly = true)
-  public List<SeatResponse> getActiveSeats(UUID roomId) {
-    findRoom(roomId);
+        Set<String> existingSeatNumbers = new HashSet<>();
 
-    List<Seat> seats = seatRepository
-        .findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(
-            roomId);
+        seatRepository.findAllByRoom_IdOrderBySeatNumberAsc(roomId).stream()
+                .map(Seat::getSeatNumber)
+                .map(seatNumber -> seatNumber.toLowerCase(Locale.ROOT))
+                .forEach(existingSeatNumbers::add);
 
-    return seatMapper.toResponses(seats);
-  }
+        List<Seat> seats = new ArrayList<>();
 
-  @Override
-  @Transactional
-  public SeatResponse update(
-      UUID seatId,
-      UpdateSeatRequest request) {
+        for (int number = request.startNumber(); number <= request.endNumber(); number++) {
 
-    Seat seat = findSeat(seatId);
-    String normalizedSeatNumber = normalize(request.seatNumber());
+            String seatNumber = normalizedRowLabel + number;
 
-    UUID roomId = seat.getRoom().getId();
+            if (existingSeatNumbers.contains(seatNumber.toLowerCase(Locale.ROOT))) {
 
-    if (seatRepository
-        .existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(
-            roomId,
-            normalizedSeatNumber,
-            seatId)) {
-      throw new ConflictException(InventoryErrorCode.SEAT_NUMBER_ALREADY_EXISTS);
+                throw new ConflictException(InventoryErrorCode.SEAT_NUMBER_ALREADY_EXISTS);
+            }
+
+            seats.add(new Seat(room, seatNumber, normalizedRowLabel, request.seatType()));
+        }
+
+        List<Seat> savedSeats = seatRepository.saveAll(seats);
+
+        return seatMapper.toResponses(savedSeats);
     }
 
-    seat.setSeatNumber(normalizedSeatNumber);
-    seat.setRowLabel(normalize(request.rowLabel()));
-    seat.setSeatType(request.seatType());
-
-    if (request.active()) {
-      seat.activate();
-    } else {
-      seat.deactivate();
+    @Override
+    @Transactional(readOnly = true)
+    public SeatResponse getById(UUID seatId) {
+        return seatMapper.toResponse(findSeat(seatId));
     }
 
-    return seatMapper.toResponse(seat);
-  }
+    @Override
+    @Transactional(readOnly = true)
+    public List<SeatResponse> getActiveSeats(UUID roomId) {
+        findRoom(roomId);
 
-  private Room findRoom(UUID roomId) {
-    return roomRepository.findById(roomId)
-        .orElseThrow(() -> new NotFoundException(InventoryErrorCode.ROOM_NOT_FOUND));
-  }
+        List<Seat> seats = seatRepository.findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(roomId);
 
-  private Seat findSeat(UUID seatId) {
-    return seatRepository.findById(seatId)
-        .orElseThrow(() -> new NotFoundException(InventoryErrorCode.SEAT_NOT_FOUND));
-  }
+        return seatMapper.toResponses(seats);
+    }
 
-  private String normalize(String value) {
-    return value.trim();
-  }
+    @Override
+    @Transactional
+    public SeatResponse update(UUID seatId, UpdateSeatRequest request) {
+
+        Seat seat = findSeat(seatId);
+        String normalizedSeatNumber = normalize(request.seatNumber());
+
+        UUID roomId = seat.getRoom().getId();
+
+        if (seatRepository.existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(
+                roomId, normalizedSeatNumber, seatId)) {
+            throw new ConflictException(InventoryErrorCode.SEAT_NUMBER_ALREADY_EXISTS);
+        }
+
+        seat.setSeatNumber(normalizedSeatNumber);
+        seat.setRowLabel(normalize(request.rowLabel()));
+        seat.setSeatType(request.seatType());
+
+        if (request.active()) {
+            seat.activate();
+        } else {
+            seat.deactivate();
+        }
+
+        return seatMapper.toResponse(seat);
+    }
+
+    private Room findRoom(UUID roomId) {
+        return roomRepository
+                .findById(roomId)
+                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.ROOM_NOT_FOUND));
+    }
+
+    private Seat findSeat(UUID seatId) {
+        return seatRepository
+                .findById(seatId)
+                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.SEAT_NOT_FOUND));
+    }
+
+    private String normalize(String value) {
+        return value.trim();
+    }
 }

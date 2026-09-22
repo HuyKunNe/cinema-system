@@ -43,37 +43,40 @@ implemented.
 
 # Current Status
 
-| Scope                                                           | Status    |
-| --------------------------------------------------------------- | --------- |
-| R1-R24                                                          | Completed |
-| R25.1–R25.10 — User Service security and OAuth2 foundations     | Completed |
-| R25.11.1–R25.11.7 — Refresh security and revocation             | Completed |
-| R25.11.8 — Sensitive-change revocation triggers                 | Completed |
-| R25.11.9 — Durable security-event recording                     | Completed |
-| R25.11.10 — Concurrent refresh and reuse verification           | Completed |
-| R25.11.11 — Cleanup, verification and documentation closure     | Completed |
-| R25.12 — Profile and account lifecycle APIs                     | Completed |
-| R25.13 — Gateway and Resource Server integration                | Completed |
-| R25.14 — Security and protocol verification                     | Completed |
-| R25.15 — Stabilization and closure                              | Completed |
-| R26 — Booking Service                                           | Completed |
-| R27.1–R27.7 — Payment core and terminal result publication      | Completed |
-| R27.8 — Booking payment-result consumers                        | Completed |
-| R27.9 — Inventory confirmation and compensation consumers       | Completed |
-| R27.10 — Refund, reconciliation, permissions and audit controls | Completed |
-| R27.11 — Kafka retry, DLT, and publication verification         | Completed |
-| R27.12 — Saga integration, race, and concurrency verification   | Completed |
-| R27.13 — Remaining Payment stabilization and closure            | Completed |
-| R27 — Payment Service                                           | Completed |
-| R28 — Notification Service                                      | Next      |
+| Scope                                                           | Status      |
+| --------------------------------------------------------------- | ----------- |
+| R1-R24                                                          | Completed   |
+| R25.1–R25.10 — User Service security and OAuth2 foundations     | Completed   |
+| R25.11.1–R25.11.7 — Refresh security and revocation             | Completed   |
+| R25.11.8 — Sensitive-change revocation triggers                 | Completed   |
+| R25.11.9 — Durable security-event recording                     | Completed   |
+| R25.11.10 — Concurrent refresh and reuse verification           | Completed   |
+| R25.11.11 — Cleanup, verification and documentation closure     | Completed   |
+| R25.12 — Profile and account lifecycle APIs                     | Completed   |
+| R25.13 — Gateway and Resource Server integration                | Completed   |
+| R25.14 — Security and protocol verification                     | Completed   |
+| R25.15 — Stabilization and closure                              | Completed   |
+| R26 — Booking Service                                           | Completed   |
+| R27.1–R27.7 — Payment core and terminal result publication      | Completed   |
+| R27.8 — Booking payment-result consumers                        | Completed   |
+| R27.9 — Inventory confirmation and compensation consumers       | Completed   |
+| R27.10 — Refund, reconciliation, permissions and audit controls | Completed   |
+| R27.11 — Kafka retry, DLT, and publication verification         | Completed   |
+| R27.12 — Saga integration, race, and concurrency verification   | Completed   |
+| R27.13 — Remaining Payment stabilization and closure            | Completed   |
+| R27 — Payment Service                                           | Completed   |
+| Post-R27 Inventory lifecycle-release lock hardening             | In progress |
+| R28 — Notification Service                                      | Deferred    |
 
 Latest completed service round:
 
 > **R27 — Payment Service**
 
-Current checkpoint:
+Current maintenance checkpoint:
 
-> **R28 — Notification Service**
+> **Inventory lifecycle-release lock hardening**
+
+R28 Notification Service is intentionally deferred. It is not the active implementation checkpoint.
 
 R27.10.8 financial administration HTTP/security boundary is complete:
 
@@ -404,11 +407,20 @@ service modules remain non-deployable until their roadmap rounds are complete.
 
 ---
 
-# Implemented Booking and Inventory Flow
+# Implemented Booking, Payment and Inventory Flow
 
-The Booking-to-Inventory reservation flow and Booking-side payment request
-preparation are implemented and verified through R26. Payment processing and
-notification delivery remain R27 and R28 scope.
+The Booking, Payment and Inventory Saga is implemented through R27.
+
+Booking cancellation and expiration are consumed by Inventory Service through `booking-cancelled` and `booking-expired`. Lifecycle release uses a two-phase database-locking strategy:
+
+1. Resolve the stable IDs of ShowSeats associated with the Booking.
+2. Sort those IDs deterministically.
+3. Acquire `PESSIMISTIC_WRITE` locks by `showtimeId` and ShowSeat IDs.
+4. Re-check `isHeldBy(bookingId)` after the locks are acquired.
+5. Release only seats that are still held by the same Booking.
+6. Commit the processed-event marker and Inventory changes atomically.
+
+R28 Notification Service is deferred.
 
 ```mermaid
 sequenceDiagram
@@ -585,15 +597,20 @@ resolve durable architectural decisions.
 - R25.13–R25.15 Gateway integration, security verification and User Service closure
 - R26.1–R26.13 Booking Service implementation, concurrency verification and closure
 
-## Next
+## Current maintenance
+
+- Inventory lifecycle-release lock hardening
+- Unit and MySQL concurrency verification
+- Documentation synchronization
+
+## Deferred
 
 - R28 Notification Service
 
-## Planned
+## Planned production work
 
-- R28 Notification Service
 - Complete container and production deployment
-- CI/CD, metrics, alerting, performance, and resilience verification
+- CI/CD, metrics, alerting, performance and resilience verification
 
 ---
 

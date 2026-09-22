@@ -1,6 +1,6 @@
 # Modules
 
-Version R27.4
+Version: R27 completed; post-R27 Inventory hardening in progress; R28 deferred
 
 This document describes the modules registered by the root Maven reactor, their
 responsibilities, and the dependency boundaries that every implementation must
@@ -120,6 +120,10 @@ Provides consistent JSON behavior:
 - Shared Jackson configuration
 - JSON constants
 - JSON utility operations
+- Java Time module registration
+- ISO-8601 string serialization
+- Timestamp-array serialization disabled
+- UTC values represented with `Z` when the offset is `+00:00`
 
 Domain-specific serializers belong to the owning service unless they are an
 accepted platform-wide contract.
@@ -361,6 +365,11 @@ Owns movies, genres, movie lifecycle, and movie-query APIs.
 - `showtime:manage` enforcement for showtime lifecycle operations
 - `inventory:write` enforcement for ShowSeat hold, book and release
 - Independent servlet JWT and service-token validation
+- Idempotent `booking-cancelled` and `booking-expired` consumption
+- Stable-ID lookup before lifecycle-release row locking
+- Deterministically ordered `PESSIMISTIC_WRITE` acquisition
+- Hold-ownership re-check after locking
+- Conditional, idempotent `HELD -> AVAILABLE` release
 
 Owns cinemas, rooms, seats, showtimes, show-seat inventory, seat state
 transitions, and seat concurrency control. No other service may directly
@@ -387,41 +396,32 @@ delivery. It must not import Inventory Service code or access
 
 ## payment-service
 
-Implemented through R27.6. It owns:
+Implemented and completed in R27. It owns:
 
-- Payment aggregates and payment-attempt lifecycle
-- Payment transactions and provider-operation evidence
-- Immutable provider webhook event markers
-- Payment-local `processed_events`
-- Payment-local Transactional Outbox records
+- Payment aggregates and provider-operation lifecycle
+- Payment transactions and webhook event markers
 - Canonical `payment-requested` consumption
-- Provider selection, claiming, leases, and provider idempotency
-- Provider-specific webhook verification and acknowledgements
-- Transactional provider-result application
-- Payment-owned refund and reconciliation state
+- Provider-neutral charge and refund execution
+- Stable provider idempotency
+- Authenticated provider webhook processing
+- `payment-succeeded` and `payment-failed` publication
+- Refund and reconciliation administration
+- Financial audit persistence
+- Payment-local processed events and Transactional Outbox records
+- Kafka retry, DLT and Outbox publication reliability
 
-Implemented runtime behavior includes Payment request consumption, READY CHARGE
-creation, provider-operation claiming and application of verified provider
-callbacks.
-
-The provider worker remains unscheduled. Terminal `payment-succeeded` and
-`payment-failed` Outbox publication is R27.7 scope. Production MoMo/VNPay
-credentials, network clients, and signature adapters are not implemented.
-
-Payment Service must not import Booking or Inventory implementation classes,
-access their databases, store prohibited payment credentials, or trust an
-unverified provider callback.
+The deterministic `MOCK` provider is the implemented verification adapter.
+Production MoMo/VNPay adapters remain outside the completed R27 scope.
 
 ## notification-service
 
-R28 planned module. Its POM is registered, but runtime implementation is not
-present yet. When implemented, it owns notification delivery, templates,
-channel policies, and delivery state.
+R28 is deferred. Its Maven module may remain registered, but it must not be described as an implemented or active runtime service.
+
+When R28 is resumed, Notification Service will own delivery attempts, templates, channel policy and notification state.
 
 ## user-service
 
-Owns identity and user-account data. Under ADR-013 it also hosts Spring
-Authorization Server and owns:
+Owns identity and user-account data. Under ADR-013 it also hosts Spring Authorization Server and owns:
 
 - User registration and profile management
 - Authentication and privileged MFA policy

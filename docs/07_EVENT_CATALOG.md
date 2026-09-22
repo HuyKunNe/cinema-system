@@ -1157,17 +1157,17 @@ Reports that a booking was cancelled.
 }
 ```
 
-Cancellation does not itself authorize Inventory Service to reverse booked
-seats.
+Inventory Service consumes this event idempotently.
 
-Inventory behavior depends on the approved cancellation and refund policy.
+For ShowSeats associated with the Booking, Inventory Service:
 
-For a booking whose ShowSeats are still `HELD`, Inventory Service may release
-them after validating hold ownership.
+1. resolves stable ShowSeat IDs;
+2. sorts the IDs;
+3. acquires `PESSIMISTIC_WRITE` locks by `showtimeId` and IDs;
+4. re-checks `isHeldBy(bookingId)`;
+5. releases only seats still `HELD` by that Booking.
 
-R26 implements production of this event. Inventory and Notification consumers
-remain separate integration work. Booking Service must not additionally publish
-`seat-release-requested` for the same cancellation.
+Already released, `BOOKED`, differently owned or otherwise changed seats are ignored. Booking Service must not additionally publish `seat-release-requested` for the same cancellation.
 
 ---
 
@@ -1196,15 +1196,16 @@ Reports that a booking expired before successful completion.
 }
 ```
 
-Inventory Service must conditionally release only ShowSeats still `HELD` by the
-same booking.
+Inventory Service consumes this event idempotently using the same stable-ID, ordered-lock and post-lock ownership re-check used for cancellation.
 
-A delayed expiration event must not release ShowSeats that are already `BOOKED`
-or held by another booking.
+A delayed expiration event must not release:
 
-R26 implements production of this event. Inventory and Notification consumers
-remain separate integration work. Booking Service must not additionally publish
-`seat-release-requested` for the same expiration.
+- a `BOOKED` ShowSeat;
+- a seat held by another Booking;
+- a newer hold;
+- a seat already released by another valid transaction.
+
+Booking Service must not additionally publish `seat-release-requested` for the same expiration.
 
 ---
 

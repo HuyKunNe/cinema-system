@@ -75,16 +75,14 @@ public interface ShowSeatRepository extends JpaRepository<ShowSeat, UUID> {
             @Param("showtimeId") UUID showtimeId,
             @Param("showSeatIds") Collection<UUID> showSeatIds);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query(
             """
-            select showSeat
+            select showSeat.id
             from ShowSeat showSeat
             where showSeat.showtime.id = :showtimeId
-              and showSeat.status = com.cinema.inventory.enums.ShowSeatStatus.HELD
               and showSeat.heldByBookingId = :bookingId
             order by showSeat.id asc
             """)
-    List<ShowSeat> findAllHeldByBookingForUpdate(
+    List<UUID> findIdsByShowtimeIdAndBookingId(
             @Param("showtimeId") UUID showtimeId, @Param("bookingId") UUID bookingId);
 }

@@ -1,41 +1,38 @@
 # Deployment Guide
 
-Version: R27.6
+Version: R27 completed; Inventory lifecycle hardening in progress; R28 deferred
 
 ---
 
 # Purpose
 
-This document describes the deployment and local startup model currently
-supported by the Cinema Booking System repository.
+This document describes the deployment and local startup model currently supported by the Cinema Booking System repository.
 
 Current baseline:
 
-- R1–R26 and R27.1–R27.6 are completed.
-- Payment Service consumes `payment-requested`, manages provider operations, and
-  accepts callbacks through the provider-verification boundary.
-- The provider worker is not scheduled.
+- R1–R27 are completed.
+- Payment Service is implemented with the deterministic `MOCK` provider.
 - Production MoMo/VNPay adapters are not implemented.
-- Terminal payment-result Outbox publication remains R27.7.
+- Inventory lifecycle-release locking is undergoing post-R27 hardening.
+- R28 Notification Service is deferred.
 
-A placeholder Maven module or Config Server file does not make a service
-deployable. Only completed roadmap checkpoints define operational capability.
+A placeholder Maven module or Config Server file does not make a service deployable. Only completed roadmap checkpoints define operational capability.
 
 ---
 
 # Current Deployment Status
 
-| Component            | Round  | Status                                                                                  |
-| -------------------- | ------ | --------------------------------------------------------------------------------------- |
-| Config Server        | R20    | Implemented                                                                             |
-| Discovery Server     | R21    | Implemented                                                                             |
-| API Gateway          | R25.13 | Reactive Resource Server security and explicit routes implemented                       |
-| Movie Service        | R23    | Implemented with independent Resource Server security                                   |
-| Inventory Service    | R24    | Implemented with hardened independent Resource Server security                          |
-| User Service         | R25.13 | Identity platform and integration through R25.13 implemented                            |
-| Booking Service      | R26    | Implemented with independent Resource Server and Saga integration                       |
-| Payment Service      | R27.6  | Provider operation and verified webhook processing implemented; terminal Outbox pending |
-| Notification Service | R28    | Not implemented                                                                         |
+| Component            | Round  | Status                                                    |
+| -------------------- | ------ | --------------------------------------------------------- |
+| Config Server        | R20    | Implemented                                               |
+| Discovery Server     | R21    | Implemented                                               |
+| API Gateway          | R25.13 | Implemented with reactive Resource Server security        |
+| Movie Service        | R23    | Implemented                                               |
+| Inventory Service    | R24    | Implemented; lifecycle-release lock hardening in progress |
+| User Service         | R25    | Implemented                                               |
+| Booking Service      | R26    | Implemented                                               |
+| Payment Service      | R27    | Implemented                                               |
+| Notification Service | R28    | Deferred                                                  |
 
 The Gateway validates bearer access tokens as a reactive OAuth2 Resource Server.
 It validates signature, issuer, timestamps and the required `cinema-api` audience
@@ -328,9 +325,37 @@ mvn -pl services/inventory-service -am clean test
 mvn -pl services/booking-service -am clean test
 ```
 
-A focused module success does not replace root `mvn clean verify`. Generated
-MapStruct implementations and test discovery must work from a clean root
-reactor build.
+A focused module success does not replace root `mvn clean verify`. Generated MapStruct implementations and test discovery must work from a clean root reactor build.
+
+Focused lifecycle consumer unit tests:
+
+```bash
+mvn -pl services/inventory-service -am \
+  -Dtest=BookingCancelledConsumerServiceImplTest,BookingExpiredConsumerServiceImplTest \
+  -Dsurefire.failIfNoSpecifiedTests=false \
+  test
+```
+
+MySQL lifecycle concurrency verification:
+
+```bash
+mvn -pl services/inventory-service -am \
+  -Dtest=BookingLifecycleReleaseConsumerMySqlIntegrationTest \
+  -Dsurefire.failIfNoSpecifiedTests=false \
+  test
+```
+
+Complete Inventory verification:
+
+```bash
+mvn -pl services/inventory-service -am test
+```
+
+Final repository gate:
+
+```bash
+mvn clean verify
+```
 
 ---
 

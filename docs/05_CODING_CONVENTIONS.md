@@ -308,6 +308,21 @@ Rules:
 - Convert serialization failures to the accepted shared exception contract.
 - Do not log full sensitive payloads.
 
+Date and time rules:
+
+- Use `OffsetDateTime` for API and event timestamps that require an offset.
+- Generate audit timestamps in UTC.
+- Serialize timestamps as ISO-8601 strings.
+- Do not enable timestamp-array serialization.
+- Preserve supported fractional-second precision.
+- Treat a trailing `Z` as the canonical UTC representation.
+
+Example:
+
+```json
+"createdAt": "2026-09-22T06:34:30.916751Z"
+```
+
 Test utilities may own a deliberately isolated mapper only when they reproduce
 the required platform configuration.
 
@@ -413,6 +428,16 @@ Inventory rules:
 - Acquire multiple locks in deterministic order.
 - Always release locks safely.
 - Verify competing operations with concurrency integration tests.
+
+Lifecycle-release rules:
+
+- Do not acquire multi-row locks using only mutable predicates such as `status = HELD` and `heldByBookingId = bookingId`.
+- Resolve stable ShowSeat IDs first.
+- Sort the IDs before acquiring locks.
+- Lock by `showtimeId` and the stable ID set.
+- Re-check `isHeldBy(bookingId)` after lock acquisition.
+- Release only the rows that still satisfy the domain invariant.
+- Treat an empty releasable set as a successful idempotent outcome.
 
 Do not represent a technical Redis lock as a business seat status.
 
@@ -546,6 +571,16 @@ Rules:
 - Verify `401`, `403`, and successful access for protected endpoints.
 - Use MySQL Testcontainers when testing MySQL-specific constraints or locking.
 - Clean up thread pools and synchronization resources in concurrency tests.
+
+A lifecycle-release refactor must verify:
+
+- normal multi-seat release;
+- duplicate event handling;
+- no matching held seats;
+- a seat released after ID lookup but before lock acquisition;
+- a mixed set where only some seats remain held by the Booking;
+- concurrent confirmation versus cancellation/expiration;
+- rollback of processed-event registration when the transaction loses a race.
 
 Final verification:
 

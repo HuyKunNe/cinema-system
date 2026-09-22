@@ -51,6 +51,7 @@ class BookingExpiredConsumerServiceImplTest {
 
     @BeforeEach
     void setUp() {
+
         consumerService =
                 new BookingExpiredConsumerServiceImpl(
                         messageValidator,
@@ -65,6 +66,9 @@ class BookingExpiredConsumerServiceImplTest {
 
         UUID bookingId = UuidGenerator.next();
         UUID showtimeId = UuidGenerator.next();
+
+        UUID firstShowSeatId = UuidGenerator.next();
+        UUID secondShowSeatId = UuidGenerator.next();
 
         OutboxEventMessage message = message(bookingId);
 
@@ -81,8 +85,16 @@ class BookingExpiredConsumerServiceImplTest {
                         message.eventVersion()))
                 .thenReturn(true);
 
-        when(showSeatRepository.findAllHeldByBookingForUpdate(showtimeId, bookingId))
+        when(showSeatRepository.findIdsByShowtimeIdAndBookingId(showtimeId, bookingId))
+                .thenReturn(List.of(firstShowSeatId, secondShowSeatId));
+
+        when(showSeatRepository.findAllByShowtimeIdAndIdsForUpdate(
+                        showtimeId, List.of(firstShowSeatId, secondShowSeatId)))
                 .thenReturn(List.of(firstShowSeat, secondShowSeat));
+
+        when(firstShowSeat.isHeldBy(bookingId)).thenReturn(true);
+
+        when(secondShowSeat.isHeldBy(bookingId)).thenReturn(true);
 
         BookingExpiredConsumerService.Result result =
                 consumerService.handle(PARTITION_KEY, message);
@@ -102,7 +114,15 @@ class BookingExpiredConsumerServiceImplTest {
                         message.eventType(),
                         message.eventVersion());
 
-        verify(showSeatRepository).findAllHeldByBookingForUpdate(showtimeId, bookingId);
+        verify(showSeatRepository).findIdsByShowtimeIdAndBookingId(showtimeId, bookingId);
+
+        verify(showSeatRepository)
+                .findAllByShowtimeIdAndIdsForUpdate(
+                        showtimeId, List.of(firstShowSeatId, secondShowSeatId));
+
+        verify(firstShowSeat).isHeldBy(bookingId);
+
+        verify(secondShowSeat).isHeldBy(bookingId);
 
         verify(firstShowSeat).release(bookingId);
 
@@ -173,7 +193,7 @@ class BookingExpiredConsumerServiceImplTest {
                         message.eventVersion()))
                 .thenReturn(true);
 
-        when(showSeatRepository.findAllHeldByBookingForUpdate(showtimeId, bookingId))
+        when(showSeatRepository.findIdsByShowtimeIdAndBookingId(showtimeId, bookingId))
                 .thenReturn(List.of());
 
         BookingExpiredConsumerService.Result result =
@@ -181,11 +201,63 @@ class BookingExpiredConsumerServiceImplTest {
 
         assertThat(result.status()).isEqualTo(BookingExpiredConsumerService.Status.RELEASED);
 
-        verify(showSeatRepository).findAllHeldByBookingForUpdate(showtimeId, bookingId);
+        verify(showSeatRepository).findIdsByShowtimeIdAndBookingId(showtimeId, bookingId);
+
+        verify(showSeatRepository, never())
+                .findAllByShowtimeIdAndIdsForUpdate(showtimeId, List.of());
+
+        verify(showSeatRepository, never()).saveAll(List.of());
+
+        verifyNoInteractions(firstShowSeat, secondShowSeat);
+    }
+
+    @Test
+    void seatAlreadyReleasedAfterIdLookupShouldBeIgnored() {
+
+        UUID bookingId = UuidGenerator.next();
+        UUID showtimeId = UuidGenerator.next();
+        UUID showSeatId = UuidGenerator.next();
+
+        OutboxEventMessage message = message(bookingId);
+
+        BookingExpiredPayload payload =
+                new BookingExpiredPayload(
+                        bookingId, UuidGenerator.next(), showtimeId, message.occurredAt());
+
+        when(payloadReader.read(message)).thenReturn(payload);
+
+        when(processedEventRegistrationService.register(
+                        message.eventId(),
+                        InventoryEventContract.BOOKING_EXPIRED_CONSUMER,
+                        message.eventType(),
+                        message.eventVersion()))
+                .thenReturn(true);
+
+        when(showSeatRepository.findIdsByShowtimeIdAndBookingId(showtimeId, bookingId))
+                .thenReturn(List.of(showSeatId));
+
+        when(showSeatRepository.findAllByShowtimeIdAndIdsForUpdate(showtimeId, List.of(showSeatId)))
+                .thenReturn(List.of(firstShowSeat));
+
+        when(firstShowSeat.isHeldBy(bookingId)).thenReturn(false);
+
+        BookingExpiredConsumerService.Result result =
+                consumerService.handle(PARTITION_KEY, message);
+
+        assertThat(result.status()).isEqualTo(BookingExpiredConsumerService.Status.RELEASED);
+
+        verify(showSeatRepository).findIdsByShowtimeIdAndBookingId(showtimeId, bookingId);
+
+        verify(showSeatRepository)
+                .findAllByShowtimeIdAndIdsForUpdate(showtimeId, List.of(showSeatId));
+
+        verify(firstShowSeat).isHeldBy(bookingId);
+
+        verify(firstShowSeat, never()).release(bookingId);
 
         verify(showSeatRepository).saveAll(List.of());
 
-        verifyNoInteractions(firstShowSeat, secondShowSeat);
+        verifyNoInteractions(secondShowSeat);
     }
 
     private OutboxEventMessage message(UUID bookingId) {

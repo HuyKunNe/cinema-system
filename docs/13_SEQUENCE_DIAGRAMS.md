@@ -306,19 +306,25 @@ sequenceDiagram
 
     alt Booking cancelled
         Booking->>Kafka: booking-cancelled
-        Kafka->>Inventory: Consume idempotently
+        Kafka->>Inventory: Consume event
     else Booking expired
         Booking->>Kafka: booking-expired
-        Kafka->>Inventory: Consume idempotently
+        Kafka->>Inventory: Consume event
     end
 
     Inventory->>DB: Register processed event
-    Inventory->>DB: Lock matching HELD ShowSeats
-    Inventory->>DB: HELD to AVAILABLE and clear hold metadata
+    Inventory->>DB: Find candidate ShowSeat IDs
+    Inventory->>Inventory: Sort IDs deterministically
+    Inventory->>DB: Lock rows by showtimeId and IDs
+    DB-->>Inventory: Current locked ShowSeats
+    Inventory->>Inventory: Re-check isHeldBy(bookingId)
+    Inventory->>DB: Release only matching HELD seats
     DB-->>Inventory: Commit atomically
 ```
 
-Duplicate lifecycle events are no-ops after processed-event registration detects the existing event. Distinct cancellation and expiration events converge on the same released Inventory state. BOOKED ShowSeats are not selected by the release query.
+Duplicate lifecycle events are successful no-ops after processed-event registration detects the existing event.
+
+A ShowSeat that changed after candidate-ID lookup is evaluated again after the row lock is acquired. `BOOKED`, differently owned and already released seats are never released by the stale lifecycle event.
 
 # Current Transactional Outbox Flow
 

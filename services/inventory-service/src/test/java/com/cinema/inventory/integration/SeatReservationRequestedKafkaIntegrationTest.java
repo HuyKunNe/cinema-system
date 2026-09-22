@@ -2,29 +2,17 @@ package com.cinema.inventory.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.cinema.common.core.id.UuidGenerator;
-import com.cinema.common.outbox.entity.OutboxEventEntity;
-import com.cinema.common.outbox.model.OutboxEventMessage;
-import com.cinema.common.outbox.repository.OutboxRepository;
-import com.cinema.common.test.annotation.IntegrationTest;
-import com.cinema.inventory.entity.Cinema;
-import com.cinema.inventory.entity.Room;
-import com.cinema.inventory.entity.Seat;
-import com.cinema.inventory.entity.ShowSeat;
-import com.cinema.inventory.entity.Showtime;
-import com.cinema.inventory.enums.RoomType;
-import com.cinema.inventory.enums.SeatType;
-import com.cinema.inventory.enums.ShowSeatStatus;
-import com.cinema.inventory.event.InventoryEventContract;
-import com.cinema.inventory.event.payload.RequestedSeatPayload;
-import com.cinema.inventory.event.payload.SeatReservationRequestedPayload;
-import com.cinema.inventory.repository.CinemaRepository;
-import com.cinema.inventory.repository.ProcessedEventRepository;
-import com.cinema.inventory.repository.RoomRepository;
-import com.cinema.inventory.repository.SeatRepository;
-import com.cinema.inventory.repository.ShowSeatRepository;
-import com.cinema.inventory.repository.ShowtimeRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -47,23 +35,34 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.kafka.KafkaContainer;
 
-import java.math.BigDecimal;
-import java.time.Clock;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.function.BooleanSupplier;
+import com.cinema.common.core.id.UuidGenerator;
+import com.cinema.common.outbox.entity.OutboxEventEntity;
+import com.cinema.common.outbox.model.OutboxEventMessage;
+import com.cinema.common.outbox.repository.OutboxRepository;
+import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
+import com.cinema.inventory.entity.Cinema;
+import com.cinema.inventory.entity.Room;
+import com.cinema.inventory.entity.Seat;
+import com.cinema.inventory.entity.ShowSeat;
+import com.cinema.inventory.entity.Showtime;
+import com.cinema.inventory.enums.RoomType;
+import com.cinema.inventory.enums.SeatType;
+import com.cinema.inventory.enums.ShowSeatStatus;
+import com.cinema.inventory.event.InventoryEventContract;
+import com.cinema.inventory.event.payload.RequestedSeatPayload;
+import com.cinema.inventory.event.payload.SeatReservationRequestedPayload;
+import com.cinema.inventory.repository.CinemaRepository;
+import com.cinema.inventory.repository.ProcessedEventRepository;
+import com.cinema.inventory.repository.RoomRepository;
+import com.cinema.inventory.repository.SeatRepository;
+import com.cinema.inventory.repository.ShowSeatRepository;
+import com.cinema.inventory.repository.ShowtimeRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-@IntegrationTest
 @Testcontainers(disabledWithoutDocker = true)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Import(SeatReservationRequestedKafkaIntegrationTest.FixedClockConfiguration.class)
-class SeatReservationRequestedKafkaIntegrationTest {
+class SeatReservationRequestedKafkaIntegrationTest extends AbstractMySqlIntegrationTest {
 
     private static final String TOPIC = InventoryEventContract.SEAT_RESERVATION_REQUESTED;
 

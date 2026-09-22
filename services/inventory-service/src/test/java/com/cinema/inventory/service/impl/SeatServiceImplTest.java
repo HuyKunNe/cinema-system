@@ -3,25 +3,16 @@ package com.cinema.inventory.service.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
+import com.cinema.inventory.dto.request.CreateSeatRangeRequest;
 import com.cinema.inventory.dto.request.CreateSeatRequest;
 import com.cinema.inventory.dto.request.UpdateSeatRequest;
 import com.cinema.inventory.dto.response.SeatResponse;
@@ -34,126 +25,94 @@ import com.cinema.inventory.mapper.SeatMapper;
 import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.repository.SeatRepository;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 @ExtendWith(MockitoExtension.class)
 class SeatServiceImplTest {
 
-    private static final UUID ROOM_ID = UUID.fromString(
-            "019102b2-7c00-7000-8000-000000000001");
+    private static final UUID ROOM_ID = UUID.fromString("019102b2-7c00-7000-8000-000000000001");
 
-    private static final UUID SEAT_ID = UUID.fromString(
-            "019102b2-7c00-7000-8000-000000000002");
+    private static final UUID SEAT_ID = UUID.fromString("019102b2-7c00-7000-8000-000000000002");
 
-    @Mock
-    private SeatRepository seatRepository;
+    @Mock private SeatRepository seatRepository;
 
-    @Mock
-    private RoomRepository roomRepository;
+    @Mock private RoomRepository roomRepository;
 
-    @Mock
-    private SeatMapper seatMapper;
+    @Mock private SeatMapper seatMapper;
 
     private SeatServiceImpl seatService;
 
     @BeforeEach
     void setUp() {
-        seatService = new SeatServiceImpl(
-                seatRepository,
-                roomRepository,
-                seatMapper);
+        seatService = new SeatServiceImpl(seatRepository, roomRepository, seatMapper);
     }
 
     @Test
     void createShouldNormalizeSaveAndReturnResponse() {
         Room room = activeRoom();
 
-        CreateSeatRequest request = new CreateSeatRequest(
-                "  A01  ",
-                "  A  ",
-                SeatType.STANDARD);
+        CreateSeatRequest request = new CreateSeatRequest("  A01  ", "  A  ", SeatType.STANDARD);
 
-        SeatResponse expectedResponse = response(
-                "A01",
-                "A",
-                SeatType.STANDARD,
-                true);
+        SeatResponse expectedResponse = response("A01", "A", SeatType.STANDARD, true);
 
-        when(roomRepository.findById(ROOM_ID))
-                .thenReturn(Optional.of(room));
+        when(roomRepository.findById(ROOM_ID)).thenReturn(Optional.of(room));
 
-        when(seatRepository
-                .existsByRoom_IdAndSeatNumberIgnoreCase(
-                        ROOM_ID,
-                        "A01"))
+        when(seatRepository.existsByRoom_IdAndSeatNumberIgnoreCase(ROOM_ID, "A01"))
                 .thenReturn(false);
 
         when(seatRepository.save(any(Seat.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        when(seatMapper.toResponse(any(Seat.class)))
-                .thenReturn(expectedResponse);
+        when(seatMapper.toResponse(any(Seat.class))).thenReturn(expectedResponse);
 
-        SeatResponse result = seatService.create(
-                ROOM_ID,
-                request);
+        SeatResponse result = seatService.create(ROOM_ID, request);
 
         ArgumentCaptor<Seat> seatCaptor = ArgumentCaptor.forClass(Seat.class);
 
-        verify(seatRepository)
-                .save(seatCaptor.capture());
+        verify(seatRepository).save(seatCaptor.capture());
 
         Seat savedSeat = seatCaptor.getValue();
 
-        assertThat(savedSeat.getRoom())
-                .isSameAs(room);
+        assertThat(savedSeat.getRoom()).isSameAs(room);
 
-        assertThat(savedSeat.getSeatNumber())
-                .isEqualTo("A01");
+        assertThat(savedSeat.getSeatNumber()).isEqualTo("A01");
 
-        assertThat(savedSeat.getRowLabel())
-                .isEqualTo("A");
+        assertThat(savedSeat.getRowLabel()).isEqualTo("A");
 
-        assertThat(savedSeat.getSeatType())
-                .isEqualTo(SeatType.STANDARD);
+        assertThat(savedSeat.getSeatType()).isEqualTo(SeatType.STANDARD);
 
-        assertThat(savedSeat.isActive())
-                .isTrue();
+        assertThat(savedSeat.isActive()).isTrue();
 
-        verify(roomRepository)
-                .findById(ROOM_ID);
+        verify(roomRepository).findById(ROOM_ID);
 
-        verify(seatRepository)
-                .existsByRoom_IdAndSeatNumberIgnoreCase(
-                        ROOM_ID,
-                        "A01");
+        verify(seatRepository).existsByRoom_IdAndSeatNumberIgnoreCase(ROOM_ID, "A01");
 
-        verify(seatMapper)
-                .toResponse(savedSeat);
+        verify(seatMapper).toResponse(savedSeat);
 
-        assertThat(result)
-                .isSameAs(expectedResponse);
+        assertThat(result).isSameAs(expectedResponse);
     }
 
     @Test
     void createShouldThrowWhenRoomDoesNotExist() {
-        CreateSeatRequest request = new CreateSeatRequest(
-                "A01",
-                "A",
-                SeatType.STANDARD);
+        CreateSeatRequest request = new CreateSeatRequest("A01", "A", SeatType.STANDARD);
 
-        when(roomRepository.findById(ROOM_ID))
-                .thenReturn(Optional.empty());
+        when(roomRepository.findById(ROOM_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> seatService.create(
-                ROOM_ID,
-                request))
+        assertThatThrownBy(() -> seatService.create(ROOM_ID, request))
                 .isInstanceOf(NotFoundException.class);
 
-        verify(roomRepository)
-                .findById(ROOM_ID);
+        verify(roomRepository).findById(ROOM_ID);
 
-        verifyNoInteractions(
-                seatRepository,
-                seatMapper);
+        verifyNoInteractions(seatRepository, seatMapper);
     }
 
     @Test
@@ -161,29 +120,18 @@ class SeatServiceImplTest {
         Room room = activeRoom();
         room.deactivate();
 
-        CreateSeatRequest request = new CreateSeatRequest(
-                "A01",
-                "A",
-                SeatType.STANDARD);
+        CreateSeatRequest request = new CreateSeatRequest("A01", "A", SeatType.STANDARD);
 
-        when(roomRepository.findById(ROOM_ID))
-                .thenReturn(Optional.of(room));
+        when(roomRepository.findById(ROOM_ID)).thenReturn(Optional.of(room));
 
-        assertThatThrownBy(() -> seatService.create(
-                ROOM_ID,
-                request))
+        assertThatThrownBy(() -> seatService.create(ROOM_ID, request))
                 .isInstanceOf(ConflictException.class);
 
-        verify(roomRepository)
-                .findById(ROOM_ID);
+        verify(roomRepository).findById(ROOM_ID);
 
-        verify(seatRepository, never())
-                .existsByRoom_IdAndSeatNumberIgnoreCase(
-                        any(),
-                        any());
+        verify(seatRepository, never()).existsByRoom_IdAndSeatNumberIgnoreCase(any(), any());
 
-        verify(seatRepository, never())
-                .save(any(Seat.class));
+        verify(seatRepository, never()).save(any(Seat.class));
 
         verifyNoInteractions(seatMapper);
     }
@@ -192,35 +140,21 @@ class SeatServiceImplTest {
     void createShouldThrowWhenSeatNumberAlreadyExists() {
         Room room = activeRoom();
 
-        CreateSeatRequest request = new CreateSeatRequest(
-                "  A01  ",
-                "  A  ",
-                SeatType.STANDARD);
+        CreateSeatRequest request = new CreateSeatRequest("  A01  ", "  A  ", SeatType.STANDARD);
 
-        when(roomRepository.findById(ROOM_ID))
-                .thenReturn(Optional.of(room));
+        when(roomRepository.findById(ROOM_ID)).thenReturn(Optional.of(room));
 
-        when(seatRepository
-                .existsByRoom_IdAndSeatNumberIgnoreCase(
-                        ROOM_ID,
-                        "A01"))
+        when(seatRepository.existsByRoom_IdAndSeatNumberIgnoreCase(ROOM_ID, "A01"))
                 .thenReturn(true);
 
-        assertThatThrownBy(() -> seatService.create(
-                ROOM_ID,
-                request))
+        assertThatThrownBy(() -> seatService.create(ROOM_ID, request))
                 .isInstanceOf(ConflictException.class);
 
-        verify(roomRepository)
-                .findById(ROOM_ID);
+        verify(roomRepository).findById(ROOM_ID);
 
-        verify(seatRepository)
-                .existsByRoom_IdAndSeatNumberIgnoreCase(
-                        ROOM_ID,
-                        "A01");
+        verify(seatRepository).existsByRoom_IdAndSeatNumberIgnoreCase(ROOM_ID, "A01");
 
-        verify(seatRepository, never())
-                .save(any(Seat.class));
+        verify(seatRepository, never()).save(any(Seat.class));
 
         verifyNoInteractions(seatMapper);
     }
@@ -229,40 +163,34 @@ class SeatServiceImplTest {
     void getByIdShouldReturnMappedSeat() {
         Seat seat = seat();
 
-        SeatResponse expectedResponse = response(
-                seat.getSeatNumber(),
-                seat.getRowLabel(),
-                seat.getSeatType(),
-                seat.isActive());
+        SeatResponse expectedResponse =
+                response(
+                        seat.getSeatNumber(),
+                        seat.getRowLabel(),
+                        seat.getSeatType(),
+                        seat.isActive());
 
-        when(seatRepository.findById(SEAT_ID))
-                .thenReturn(Optional.of(seat));
+        when(seatRepository.findById(SEAT_ID)).thenReturn(Optional.of(seat));
 
-        when(seatMapper.toResponse(seat))
-                .thenReturn(expectedResponse);
+        when(seatMapper.toResponse(seat)).thenReturn(expectedResponse);
 
         SeatResponse result = seatService.getById(SEAT_ID);
 
-        assertThat(result)
-                .isSameAs(expectedResponse);
+        assertThat(result).isSameAs(expectedResponse);
 
-        verify(seatRepository)
-                .findById(SEAT_ID);
+        verify(seatRepository).findById(SEAT_ID);
 
-        verify(seatMapper)
-                .toResponse(seat);
+        verify(seatMapper).toResponse(seat);
     }
 
     @Test
     void getByIdShouldThrowWhenSeatDoesNotExist() {
-        when(seatRepository.findById(SEAT_ID))
-                .thenReturn(Optional.empty());
+        when(seatRepository.findById(SEAT_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> seatService.getById(SEAT_ID))
                 .isInstanceOf(NotFoundException.class);
 
-        verify(seatRepository)
-                .findById(SEAT_ID);
+        verify(seatRepository).findById(SEAT_ID);
 
         verifyNoInteractions(seatMapper);
     }
@@ -271,61 +199,41 @@ class SeatServiceImplTest {
     void getActiveSeatsShouldReturnMappedSeats() {
         Room room = activeRoom();
 
-        Seat seat = new Seat(
-                room,
-                "A01",
-                "A",
-                SeatType.STANDARD);
+        Seat seat = new Seat(room, "A01", "A", SeatType.STANDARD);
 
         List<Seat> seats = List.of(seat);
 
-        List<SeatResponse> expectedResponses = List.of(response(
-                "A01",
-                "A",
-                SeatType.STANDARD,
-                true));
+        List<SeatResponse> expectedResponses =
+                List.of(response("A01", "A", SeatType.STANDARD, true));
 
-        when(roomRepository.findById(ROOM_ID))
-                .thenReturn(Optional.of(room));
+        when(roomRepository.findById(ROOM_ID)).thenReturn(Optional.of(room));
 
-        when(seatRepository
-                .findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(
-                        ROOM_ID))
+        when(seatRepository.findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(ROOM_ID))
                 .thenReturn(seats);
 
-        when(seatMapper.toResponses(seats))
-                .thenReturn(expectedResponses);
+        when(seatMapper.toResponses(seats)).thenReturn(expectedResponses);
 
         List<SeatResponse> result = seatService.getActiveSeats(ROOM_ID);
 
-        assertThat(result)
-                .isSameAs(expectedResponses);
+        assertThat(result).isSameAs(expectedResponses);
 
-        verify(roomRepository)
-                .findById(ROOM_ID);
+        verify(roomRepository).findById(ROOM_ID);
 
-        verify(seatRepository)
-                .findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(
-                        ROOM_ID);
+        verify(seatRepository).findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(ROOM_ID);
 
-        verify(seatMapper)
-                .toResponses(seats);
+        verify(seatMapper).toResponses(seats);
     }
 
     @Test
     void getActiveSeatsShouldThrowWhenRoomDoesNotExist() {
-        when(roomRepository.findById(ROOM_ID))
-                .thenReturn(Optional.empty());
+        when(roomRepository.findById(ROOM_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> seatService.getActiveSeats(ROOM_ID))
                 .isInstanceOf(NotFoundException.class);
 
-        verify(roomRepository)
-                .findById(ROOM_ID);
+        verify(roomRepository).findById(ROOM_ID);
 
-        verify(seatRepository, never())
-                .findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(
-                        any());
+        verify(seatRepository, never()).findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(any());
 
         verifyNoInteractions(seatMapper);
     }
@@ -334,174 +242,100 @@ class SeatServiceImplTest {
     void updateShouldNormalizeUpdateAndDeactivateSeat() {
         Room room = mock(Room.class);
 
-        when(room.getId())
-                .thenReturn(ROOM_ID);
+        when(room.getId()).thenReturn(ROOM_ID);
 
-        Seat seat = new Seat(
-                room,
-                "A01",
-                "A",
-                SeatType.STANDARD);
+        Seat seat = new Seat(room, "A01", "A", SeatType.STANDARD);
 
-        UpdateSeatRequest request = new UpdateSeatRequest(
-                "  B02  ",
-                "  B  ",
-                SeatType.VIP,
-                false);
+        UpdateSeatRequest request = new UpdateSeatRequest("  B02  ", "  B  ", SeatType.VIP, false);
 
-        SeatResponse expectedResponse = response(
-                "B02",
-                "B",
-                SeatType.VIP,
-                false);
+        SeatResponse expectedResponse = response("B02", "B", SeatType.VIP, false);
 
-        when(seatRepository.findById(SEAT_ID))
-                .thenReturn(Optional.of(seat));
+        when(seatRepository.findById(SEAT_ID)).thenReturn(Optional.of(seat));
 
-        when(seatRepository
-                .existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(
-                        ROOM_ID,
-                        "B02",
-                        SEAT_ID))
+        when(seatRepository.existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(ROOM_ID, "B02", SEAT_ID))
                 .thenReturn(false);
 
-        when(seatMapper.toResponse(seat))
-                .thenReturn(expectedResponse);
+        when(seatMapper.toResponse(seat)).thenReturn(expectedResponse);
 
-        SeatResponse result = seatService.update(
-                SEAT_ID,
-                request);
+        SeatResponse result = seatService.update(SEAT_ID, request);
 
-        assertThat(seat.getSeatNumber())
-                .isEqualTo("B02");
+        assertThat(seat.getSeatNumber()).isEqualTo("B02");
 
-        assertThat(seat.getRowLabel())
-                .isEqualTo("B");
+        assertThat(seat.getRowLabel()).isEqualTo("B");
 
-        assertThat(seat.getSeatType())
-                .isEqualTo(SeatType.VIP);
+        assertThat(seat.getSeatType()).isEqualTo(SeatType.VIP);
 
-        assertThat(seat.isActive())
-                .isFalse();
+        assertThat(seat.isActive()).isFalse();
 
-        assertThat(result)
-                .isSameAs(expectedResponse);
+        assertThat(result).isSameAs(expectedResponse);
+
+        verify(seatRepository).findById(SEAT_ID);
 
         verify(seatRepository)
-                .findById(SEAT_ID);
+                .existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(ROOM_ID, "B02", SEAT_ID);
 
-        verify(seatRepository)
-                .existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(
-                        ROOM_ID,
-                        "B02",
-                        SEAT_ID);
+        verify(seatRepository, never()).save(any(Seat.class));
 
-        verify(seatRepository, never())
-                .save(any(Seat.class));
-
-        verify(seatMapper)
-                .toResponse(seat);
+        verify(seatMapper).toResponse(seat);
     }
 
     @Test
     void updateShouldActivateSeatWhenRequested() {
         Room room = mock(Room.class);
 
-        when(room.getId())
-                .thenReturn(ROOM_ID);
+        when(room.getId()).thenReturn(ROOM_ID);
 
-        Seat seat = new Seat(
-                room,
-                "A01",
-                "A",
-                SeatType.STANDARD);
+        Seat seat = new Seat(room, "A01", "A", SeatType.STANDARD);
 
         seat.deactivate();
 
-        UpdateSeatRequest request = new UpdateSeatRequest(
-                "  A01  ",
-                "  A  ",
-                SeatType.ACCESSIBLE,
-                true);
+        UpdateSeatRequest request =
+                new UpdateSeatRequest("  A01  ", "  A  ", SeatType.ACCESSIBLE, true);
 
-        SeatResponse expectedResponse = response(
-                "A01",
-                "A",
-                SeatType.ACCESSIBLE,
-                true);
+        SeatResponse expectedResponse = response("A01", "A", SeatType.ACCESSIBLE, true);
 
-        when(seatRepository.findById(SEAT_ID))
-                .thenReturn(Optional.of(seat));
+        when(seatRepository.findById(SEAT_ID)).thenReturn(Optional.of(seat));
 
-        when(seatRepository
-                .existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(
-                        ROOM_ID,
-                        "A01",
-                        SEAT_ID))
+        when(seatRepository.existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(ROOM_ID, "A01", SEAT_ID))
                 .thenReturn(false);
 
-        when(seatMapper.toResponse(seat))
-                .thenReturn(expectedResponse);
+        when(seatMapper.toResponse(seat)).thenReturn(expectedResponse);
 
-        SeatResponse result = seatService.update(
-                SEAT_ID,
-                request);
+        SeatResponse result = seatService.update(SEAT_ID, request);
 
-        assertThat(seat.getSeatNumber())
-                .isEqualTo("A01");
+        assertThat(seat.getSeatNumber()).isEqualTo("A01");
 
-        assertThat(seat.getRowLabel())
-                .isEqualTo("A");
+        assertThat(seat.getRowLabel()).isEqualTo("A");
 
-        assertThat(seat.getSeatType())
-                .isEqualTo(SeatType.ACCESSIBLE);
+        assertThat(seat.getSeatType()).isEqualTo(SeatType.ACCESSIBLE);
 
-        assertThat(seat.isActive())
-                .isTrue();
+        assertThat(seat.isActive()).isTrue();
 
-        assertThat(result)
-                .isSameAs(expectedResponse);
+        assertThat(result).isSameAs(expectedResponse);
+
+        verify(seatRepository).findById(SEAT_ID);
 
         verify(seatRepository)
-                .findById(SEAT_ID);
+                .existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(ROOM_ID, "A01", SEAT_ID);
 
-        verify(seatRepository)
-                .existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(
-                        ROOM_ID,
-                        "A01",
-                        SEAT_ID);
+        verify(seatRepository, never()).save(any(Seat.class));
 
-        verify(seatRepository, never())
-                .save(any(Seat.class));
-
-        verify(seatMapper)
-                .toResponse(seat);
+        verify(seatMapper).toResponse(seat);
     }
 
     @Test
     void updateShouldThrowWhenSeatDoesNotExist() {
-        UpdateSeatRequest request = new UpdateSeatRequest(
-                "A01",
-                "A",
-                SeatType.STANDARD,
-                true);
+        UpdateSeatRequest request = new UpdateSeatRequest("A01", "A", SeatType.STANDARD, true);
 
-        when(seatRepository.findById(SEAT_ID))
-                .thenReturn(Optional.empty());
+        when(seatRepository.findById(SEAT_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> seatService.update(
-                SEAT_ID,
-                request))
+        assertThatThrownBy(() -> seatService.update(SEAT_ID, request))
                 .isInstanceOf(NotFoundException.class);
 
-        verify(seatRepository)
-                .findById(SEAT_ID);
+        verify(seatRepository).findById(SEAT_ID);
 
         verify(seatRepository, never())
-                .existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(
-                        any(),
-                        any(),
-                        any());
+                .existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(any(), any(), any());
 
         verifyNoInteractions(seatMapper);
     }
@@ -510,98 +344,99 @@ class SeatServiceImplTest {
     void updateShouldThrowWhenAnotherSeatHasSameNumber() {
         Room room = mock(Room.class);
 
-        when(room.getId())
-                .thenReturn(ROOM_ID);
+        when(room.getId()).thenReturn(ROOM_ID);
 
-        Seat seat = new Seat(
-                room,
-                "A01",
-                "A",
-                SeatType.STANDARD);
+        Seat seat = new Seat(room, "A01", "A", SeatType.STANDARD);
 
-        UpdateSeatRequest request = new UpdateSeatRequest(
-                "  B02  ",
-                "  B  ",
-                SeatType.VIP,
-                true);
+        UpdateSeatRequest request = new UpdateSeatRequest("  B02  ", "  B  ", SeatType.VIP, true);
 
-        when(seatRepository.findById(SEAT_ID))
-                .thenReturn(Optional.of(seat));
+        when(seatRepository.findById(SEAT_ID)).thenReturn(Optional.of(seat));
 
-        when(seatRepository
-                .existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(
-                        ROOM_ID,
-                        "B02",
-                        SEAT_ID))
+        when(seatRepository.existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(ROOM_ID, "B02", SEAT_ID))
                 .thenReturn(true);
 
-        assertThatThrownBy(() -> seatService.update(
-                SEAT_ID,
-                request))
+        assertThatThrownBy(() -> seatService.update(SEAT_ID, request))
                 .isInstanceOf(ConflictException.class);
 
-        assertThat(seat.getSeatNumber())
-                .isEqualTo("A01");
+        assertThat(seat.getSeatNumber()).isEqualTo("A01");
 
-        assertThat(seat.getRowLabel())
-                .isEqualTo("A");
+        assertThat(seat.getRowLabel()).isEqualTo("A");
 
-        assertThat(seat.getSeatType())
-                .isEqualTo(SeatType.STANDARD);
+        assertThat(seat.getSeatType()).isEqualTo(SeatType.STANDARD);
 
-        assertThat(seat.isActive())
-                .isTrue();
+        assertThat(seat.isActive()).isTrue();
+
+        verify(seatRepository).findById(SEAT_ID);
 
         verify(seatRepository)
-                .findById(SEAT_ID);
+                .existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(ROOM_ID, "B02", SEAT_ID);
 
-        verify(seatRepository)
-                .existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(
-                        ROOM_ID,
-                        "B02",
-                        SEAT_ID);
+        verify(seatRepository, never()).save(any(Seat.class));
 
-        verify(seatRepository, never())
-                .save(any(Seat.class));
+        verify(seatMapper, never()).toResponse(any(Seat.class));
+    }
 
-        verify(seatMapper, never())
-                .toResponse(any(Seat.class));
+    @Test
+    void createRangeShouldCreateAllSeats() {
+        Room room = activeRoom();
+
+        CreateSeatRangeRequest request =
+                new CreateSeatRangeRequest(" A ", 1, 10, SeatType.STANDARD);
+
+        when(roomRepository.findById(ROOM_ID)).thenReturn(Optional.of(room));
+
+        when(seatRepository.findAllByRoom_IdOrderBySeatNumberAsc(ROOM_ID)).thenReturn(List.of());
+
+        when(seatRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        when(seatMapper.toResponses(anyList()))
+                .thenAnswer(
+                        invocation -> {
+                            List<Seat> seats = invocation.getArgument(0);
+
+                            return seats.stream()
+                                    .map(
+                                            seat ->
+                                                    response(
+                                                            seat.getSeatNumber(),
+                                                            seat.getRowLabel(),
+                                                            seat.getSeatType(),
+                                                            seat.isActive()))
+                                    .toList();
+                        });
+
+        List<SeatResponse> result = seatService.createRange(ROOM_ID, request);
+
+        assertThat(result).hasSize(10);
+
+        assertThat(result)
+                .extracting(SeatResponse::seatNumber)
+                .containsExactly("A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10");
+
+        assertThat(result)
+                .allMatch(
+                        seat ->
+                                seat.rowLabel().equals("A")
+                                        && seat.seatType() == SeatType.STANDARD
+                                        && seat.active());
+
+        verify(seatRepository).saveAll(anyList());
     }
 
     private Room activeRoom() {
-        Cinema cinema = new Cinema(
-                "CGV Vincom",
-                "72 Le Thanh Ton",
-                "Ho Chi Minh");
+        Cinema cinema = new Cinema("CGV Vincom", "72 Le Thanh Ton", "Ho Chi Minh");
 
-        return new Room(
-                cinema,
-                "Room 01",
-                RoomType.STANDARD);
+        return new Room(cinema, "Room 01", RoomType.STANDARD);
     }
 
     private Seat seat() {
-        return new Seat(
-                activeRoom(),
-                "A01",
-                "A",
-                SeatType.STANDARD);
+        return new Seat(activeRoom(), "A01", "A", SeatType.STANDARD);
     }
 
     private SeatResponse response(
-            String seatNumber,
-            String rowLabel,
-            SeatType seatType,
-            boolean active) {
+            String seatNumber, String rowLabel, SeatType seatType, boolean active) {
 
         return new SeatResponse(
-                SEAT_ID,
-                ROOM_ID,
-                seatNumber,
-                rowLabel,
-                seatType,
-                active,
-                null,
-                null);
+                SEAT_ID, ROOM_ID, seatNumber, rowLabel, seatType, active, null, null);
     }
 }

@@ -872,7 +872,7 @@ No payment request is created for a rejected seat reservation.
 
 ---
 
-# Target R27 Payment Flow
+# Implemented R27 Payment Flow
 
 ```mermaid
 sequenceDiagram
@@ -922,7 +922,7 @@ terminal outcome is known.
 
 ---
 
-# Target R27 Booking Confirmation
+# Implemented R27 Booking Confirmation
 
 When Booking Service consumes `payment-succeeded`:
 
@@ -949,7 +949,7 @@ The exact topic and contract must match the event catalog.
 
 ---
 
-# Target R27 Payment Failure Compensation
+# Implemented R27 Payment Failure Compensation
 
 When Booking Service consumes `payment-failed`:
 
@@ -971,35 +971,24 @@ Only seats reserved for the corresponding booking may be released.
 
 # Explicit Seat Release Command
 
-The explicit `seat-release-requested` command is reserved for R27 payment
-failure compensation:
+Inventory Service applies an explicit release command transactionally:
 
-```mermaid
-sequenceDiagram
-    participant Booking as Booking Service
-    participant Kafka
-    participant Inventory as Inventory Service
+1. Validate the canonical envelope and payload.
+2. Register the processed event.
+3. Resolve the target ShowSeat IDs.
+4. Sort IDs deterministically.
+5. Acquire `PESSIMISTIC_WRITE` locks by `showtimeId` and IDs.
+6. Re-check that every releasable seat is still `HELD` by the same Booking.
+7. Release only matching seats.
+8. Create the canonical `seat-released` Outbox event where required.
+9. Commit all changes atomically.
 
-    Booking->>Kafka: seat-release-requested
-    Kafka->>Inventory: Consume release request
-    Inventory->>Inventory: Check idempotency
-    Inventory->>Inventory: Acquire seat locks
-    Inventory->>Inventory: Verify booking reservation ownership
-    Inventory->>Inventory: HELD to AVAILABLE
-    Inventory->>Inventory: Save outbox event
-    Inventory->>Kafka: seat-released
-```
+A delayed release must never release a `BOOKED` seat, another Booking's hold, or
+a newer hold.
 
-Inventory Service must verify that the seats are currently held for the
-same booking before releasing them.
+Booking cancellation and expiration publish `booking-cancelled` and `booking-expired`; they do not additionally publish `seat-release-requested`.
 
-A delayed release event must never release seats owned by a newer
-reservation.
-
-R26 booking cancellation and expiration do not additionally emit this command.
-They publish `booking-cancelled` and `booking-expired`, respectively. Future
-Inventory consumers of those lifecycle events must apply the same ownership
-check and conditionally release only matching `HELD` seats.
+Inventory Service implements both lifecycle consumers. Each consumer resolves stable ShowSeat IDs, acquires ordered row locks, re-checks hold ownership after locking, and conditionally releases only matching `HELD` seats.
 
 ---
 
@@ -1007,8 +996,7 @@ check and conditionally release only matching `HELD` seats.
 
 Booking expiration is managed by Booking Service.
 
-A booking may expire when payment is not completed before the configured
-deadline.
+A booking may expire when payment is not completed before the configured deadline.
 
 Booking Service performs:
 
@@ -1017,11 +1005,13 @@ Booking Service performs:
 3. Insert one `BOOKING_EXPIRED` outbox event.
 4. Commit the Booking database transaction.
 
-Booking Service does not also insert `SEAT_RELEASE_REQUESTED`. The future
-Inventory `booking-expired` consumer restores only applicable held inventory.
+Booking Service does not also insert `SEAT_RELEASE_REQUESTED`. The future Inventory `booking-expired` consumer restores only applicable held inventory.
 
-Expiration processing must be idempotent and safe when multiple scheduler
-instances run concurrently.
+Expiration processing must be idempotent and safe when multiple scheduler instances run concurrently.
+
+Lifecycle release locking must not rely on one `SELECT ... FOR UPDATE` query whose selection predicate contains mutable columns such as `status` and `held_by_booking_id`.
+
+The stable-ID flow reduces inconsistent lock acquisition across concurrent confirmation, compensation, cancellation and expiration transactions.
 
 ---
 

@@ -1,6 +1,6 @@
 # Cinema Booking System
 
-Version: 0.9 (R27 Payment Service Completed; R28 Notification Service Next)
+Version: 0.10 (R27 Completed; Inventory Lifecycle-Release Hardening In Progress; R28 Deferred)
 
 ---
 
@@ -198,107 +198,26 @@ cross-service database access. Inventory remains the sole owner of show_seats.
 
 ## Recently Completed
 
-- 🚧 R25 — User Service
-
-Completed R25 checkpoints:
+Completed service rounds:
 
 ```text
-R25.1 — common-security hardening — DONE
-R25.2 — authentication architecture and roadmap — DONE
-R25.3 — User Service bootstrap — DONE
-R25.4 — user domain and database schema — DONE
-R25.5 — roles and permissions — DONE
-R25.6 — password authentication foundation — DONE
-R25.7 — account lifecycle and email verification — DONE
-R25.8 — Spring Authorization Server foundation — DONE
-R25.9 — OAuth2 clients and grant types — DONE
-R25.10 — JWT claims and JWK signing — DONE
-R25.11.1–R25.11.11 — refresh security, auditing, concurrency and closure — DONE
-R25.12 — profile and account lifecycle APIs — DONE
-R25.13 — Gateway and Resource Server integration — DONE
-R25.14 — security and protocol verification — DONE
-R25.15 — stabilization and closure — DONE
-R25 — User Service — DONE
+R23 — Movie Service        — DONE
+R24 — Inventory Service    — DONE
+R25 — User Service         — DONE
+R26 — Booking Service      — DONE
+R27 — Payment Service      — DONE
 ```
 
-R25 is complete.
-
-Completed implementation round:
-
-- R26 Booking Service — DONE
-
-Current implementation round:
-
-- R27 Payment Service — IN PROGRESS
-
-Latest completed checkpoint:
-
-- R27.6 — Authenticated webhook and provider-result processing — DONE
-
-Next checkpoint:
-
-- R27.7 — `payment-succeeded` and `payment-failed` Outbox publication — NEXT
-
-R25.14 verifies JWT trust and temporal validation, UUID v7 subjects, roles and
-permissions, Authorization Code with PKCE, controlled Client Credentials,
-refresh-token rotation and reuse handling, locked and disabled account token
-rejection, and MySQL Testcontainers execution.
-Accepted authentication decision:
-
-- User Service integrates Spring Authorization Server.
-- User Service is the single authoritative OAuth2 and OpenID Connect issuer.
-- `common-security` validates tokens but does not issue them.
-- Access tokens use RS256, UUID v7 subjects and the `cinema-api` audience.
-- Authorization Code with PKCE, Refresh Token and Client Credentials are approved.
-- Resource Owner Password Credentials is prohibited.
-- Refresh tokens are opaque, rotated and revocable.
-- Rotated refresh-token reuse invalidates the affected authorization family.
-- Explicit token revocation is available through `/oauth2/revoke`.
-- OIDC RP-Initiated Logout is available through `/connect/logout` and validates the
-  ID-token hint, registered redirect URI and hashed session `sid`.
-- Successful OIDC logout invalidates the applicable session and authorization tokens
-  and revokes refresh-token history.
-- Production privileged access requires MFA or an approved external control.
-- Account lock and disable operations revoke applicable authorization sessions.
-- Password change and password reset revoke applicable authorization sessions.
-- OAuth2 client deactivation and client-secret rotation revoke applicable client
-  authorizations.
-- Authorized administrators can explicitly revoke user or client authorizations.
-- Sensitive-change revocation records durable audit events with resolved actors,
-  safe targets, explicit reason codes and the number of authorizations invalidated.
-- Audit persistence participates in the same transaction as the sensitive change
-  and authorization revocation.
-- General security activity is persisted in the append-oriented
-  `security_audit_events` table.
-- Implemented durable event triggers cover form-authentication success and failure,
-  refresh-token reuse detection, user-role changes, role-permission changes, OAuth2
-  client registration, client deactivation and client-secret rotation.
-- Security-audit actors resolve as `SYSTEM`, `USER` or `CLIENT`; request correlation
-  uses the MDC correlation identifier and then the trace identifier.
-- Audit records use safe target references, bounded reason codes and approved metadata.
-  They never contain raw passwords, password hashes, refresh tokens, token hashes,
-  client secrets, authentication credentials or unrestricted request bodies.
-- Audit persistence failure rolls back audited role, permission, OAuth2 client and
-  refresh-token mutations.
-- General security audit records remain internal User Service persistence and are not
-  Kafka business events.
-- Concurrent refresh requests for the same active token produce at most one committed
-  successor.
-- Refresh-token history state is checked again after acquiring its pessimistic lock.
-- A request that loses the rotation race returns OAuth2 `invalid_grant`; internal
-  `ConflictException` details are not exposed through the token endpoint.
-- No concurrent outcome may leave more than one active successor.
-- Concurrent reuse of a rotated token changes the predecessor to `REUSED`, revokes the
-  active successor, invalidates the authorization family and writes exactly one durable
-  reuse audit event.
-- Raw predecessor and successor token values remain absent from history, audit records
-  and error responses.
-
-Architecture decision:
+Current post-R27 maintenance:
 
 ```text
-docs/decisions/ADR-013-spring-authorization-server.md
+Inventory lifecycle-release lock hardening — IN PROGRESS
+R28 Notification Service                  — DEFERRED
 ```
+
+The maintenance change removes lifecycle-release locking based directly on the mutable predicate `(status = HELD, heldByBookingId = bookingId)`.
+
+The replacement flow resolves stable ShowSeat IDs first, sorts them, locks those rows deterministically, and re-checks ownership after lock acquisition.
 
 ## In Progress
 
@@ -388,9 +307,27 @@ Latest completed service round:
 
 > **R27 — Payment Service**
 
-Current checkpoint:
+Current maintenance checkpoint:
 
-> **R28 — Notification Service**
+> **Inventory lifecycle-release lock hardening**
+
+Implementation contract:
+
+```text
+find stable ShowSeat IDs
+        ↓
+sort IDs deterministically
+        ↓
+lock rows by showtimeId and IDs
+        ↓
+re-check isHeldBy(bookingId)
+        ↓
+release only matching HELD seats
+        ↓
+commit with processed-event registration
+```
+
+R28 Notification Service is deferred and must not be described as the active implementation round.
 
 ADR-013 selects User Service with Spring Authorization Server as the authoritative
 issuer. The issuer, audience, RS256/JWK ownership, approved grant types, access-token

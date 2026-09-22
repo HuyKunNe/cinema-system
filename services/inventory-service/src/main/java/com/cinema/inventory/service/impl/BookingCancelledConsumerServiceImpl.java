@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class BookingCancelledConsumerServiceImpl implements BookingCancelledConsumerService {
@@ -64,13 +65,26 @@ public class BookingCancelledConsumerServiceImpl implements BookingCancelledCons
             return Result.alreadyProcessed();
         }
 
-        List<ShowSeat> showSeats =
-                showSeatRepository.findAllHeldByBookingForUpdate(
+        List<UUID> showSeatIds =
+                showSeatRepository.findIdsByShowtimeIdAndBookingId(
                         payload.showtimeId(), payload.bookingId());
 
-        showSeats.forEach(showSeat -> showSeat.release(payload.bookingId()));
+        if (showSeatIds.isEmpty()) {
+            return Result.released();
+        }
 
-        showSeatRepository.saveAll(showSeats);
+        List<ShowSeat> lockedShowSeats =
+                showSeatRepository.findAllByShowtimeIdAndIdsForUpdate(
+                        payload.showtimeId(), showSeatIds.stream().sorted().toList());
+
+        List<ShowSeat> releasableShowSeats =
+                lockedShowSeats.stream()
+                        .filter(showSeat -> showSeat.isHeldBy(payload.bookingId()))
+                        .toList();
+
+        releasableShowSeats.forEach(showSeat -> showSeat.release(payload.bookingId()));
+
+        showSeatRepository.saveAll(releasableShowSeats);
 
         return Result.released();
     }

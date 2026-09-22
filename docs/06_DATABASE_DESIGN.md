@@ -1027,6 +1027,31 @@ CREATE INDEX idx_show_seats_booking
 
 Indexes must be verified against actual repository queries.
 
+Lifecycle release uses two repository operations:
+
+```text
+1. Query ShowSeat IDs by showtimeId and bookingId.
+2. Sort IDs and lock rows by showtimeId and ID using PESSIMISTIC_WRITE.
+```
+
+After locking, the service re-checks:
+
+```text
+status = HELD
+held_by_booking_id = bookingId
+```
+
+The first query identifies candidates only. It does not authorize release.
+
+Recommended supporting indexes must cover lifecycle candidate lookup without changing service ownership:
+
+```text
+(showtime_id, held_by_booking_id)
+(showtime_id, status, held_by_booking_id)
+```
+
+The actual index choice must be verified against MySQL execution plans and existing migration indexes before adding a migration.
+
 ---
 
 # Booking Service Database
@@ -2176,8 +2201,7 @@ WHERE id = ?
   AND held_by_booking_id = ?;
 ```
 
-A zero-row update must not be treated automatically as a successful state
-change.
+A zero-row update must not be treated automatically as a successful state change.
 
 The service must distinguish between:
 
@@ -2186,6 +2210,10 @@ The service must distinguish between:
 - Seat already booked
 - Missing seat
 - Stale event
+
+A ShowSeat selected before lock acquisition may have changed by the time the transaction owns its row lock. Therefore every lifecycle release re-checks the current entity state after locking.
+
+A stale candidate ID must produce a no-op, not an invalid release.
 
 ---
 

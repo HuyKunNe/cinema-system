@@ -804,9 +804,9 @@ R26 tests must cover:
 | R26.12 Integration and concurrency verification | DONE |
 | R26.13 Stabilization and closure                | DONE |
 
-Payment processing remains R27.
+Payment processing is implemented through R27.
 
-Notification processing remains R28.
+Notification processing remains deferred R28 scope.
 
 ---
 
@@ -851,15 +851,19 @@ git diff --check
 mvn clean verify
 ```
 
-Booking Service coordinates with Inventory and Payment through canonical Kafka
-events. It does not share databases, repositories, JPA entities or in-process
-Spring contexts with those services.
+Booking Service coordinates with Inventory and Payment through canonical Kafka events. It does not share databases, repositories, JPA entities or in-process Spring contexts with those services.
 
-Payment provider execution, payment-attempt persistence, provider idempotency,
-payment-result production and refund processing remain R27 Payment Service
-responsibilities.
+Payment provider execution, terminal result publication, Booking result consumption and Inventory compensation are implemented through R27.
 
-Notification delivery remains R28 Notification Service responsibility.
+Notification delivery remains deferred R28 responsibility.
 
-The next implementation round is:
-R27 — Payment Service
+The latest completed service round is:
+
+> **R27 — Payment Service**
+
+The current maintenance checkpoint is:
+
+> **Inventory lifecycle-release lock hardening**
+
+Payment provider execution, payment-attempt persistence, provider idempotency, terminal payment-result publication, refund and reconciliation are implemented by Payment Service through the completed R27 round.
+

@@ -244,8 +244,9 @@ Architecture patterns:
 Kafka delivery alone does not guarantee exactly-once business processing.
 State-changing consumers must implement idempotency.
 
-Payment processing and its result events remain R27 scope. Notification delivery
-remains R28 scope.
+Payment processing, terminal payment events, Booking result consumption and Inventory compensation are implemented through R27.
+
+R28 Notification Service is deferred.
 
 ---
 
@@ -298,6 +299,19 @@ Requirements:
 - Stable event serialization
 - No token, credential, or signing-key serialization into logs
 - Backward-compatible event changes according to the event-version policy
+
+Java time values use `JavaTimeModule` with `SerializationFeature.WRITE_DATES_AS_TIMESTAMPS` disabled.
+
+Canonical API and event representation:
+
+```json
+{
+  "createdAt": "2026-09-22T06:34:30.916751Z"
+}
+```
+
+`Z` means UTC. The fractional component preserves microsecond precision.
+Services must not convert persisted or serialized timestamps to a presentation timezone. Clients convert UTC timestamps for display.
 
 ---
 
@@ -363,11 +377,11 @@ Testing policy:
 
 - Unit tests verify isolated business and conversion rules.
 - Slice tests verify controller and security boundaries.
-- Integration tests verify database migrations, constraints, repositories,
-  concurrency, messaging, and application wiring.
+- Integration tests verify database migrations, constraints, repositories, concurrency, messaging, and application wiring.
 - Root `mvn clean verify` is mandatory before a roadmap checkpoint is closed.
-- An `ApplicationContext failure threshold` message is normally secondary;
-  investigate the first context-loading exception in the reports.
+- An `ApplicationContext failure threshold` message is normally secondary; investigate the first context-loading exception in the reports.
+
+Inventory lifecycle concurrency verification uses MySQL-backed integration tests. In-memory databases are not accepted as proof of MySQL lock behavior.
 
 ---
 

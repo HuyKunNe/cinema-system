@@ -605,6 +605,21 @@ business state transition
 resulting Outbox insertion
 ```
 
+Idempotency registration does not remove the need to validate current domain state after acquiring database locks.
+
+For Inventory lifecycle release, the same transaction contains:
+
+```text
+processed-event registration
+stable candidate-ID lookup
+ordered PESSIMISTIC_WRITE row acquisition
+post-lock hold-ownership re-check
+conditional HELD -> AVAILABLE transitions
+resulting Outbox insertion when applicable
+```
+
+If the transaction rolls back because it loses a concurrency race, its newly inserted processed-event marker must roll back as well.
+
 A duplicate-key race is duplicate delivery, not an uncontrolled internal error.
 Consumers also validate current aggregate state and supported event version.
 

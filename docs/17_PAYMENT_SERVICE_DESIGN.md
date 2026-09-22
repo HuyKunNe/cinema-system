@@ -1147,27 +1147,26 @@ R27.8 is complete when:
 
 ## 23. Implementation Order
 
-| Checkpoint | Scope                                                     | Status  |
-| ---------- | --------------------------------------------------------- | ------- |
-| R27.1      | Payment architecture and contract closure                 | DONE    |
-| R27.2      | Payment Service bootstrap and Resource Server security    | DONE    |
-| R27.3      | Payment aggregate and Flyway schema                       | DONE    |
-| R27.4      | `payment-requested` validation and idempotent consumption | DONE    |
-| R27.5      | Provider port, operation worker, and provider idempotency | DONE    |
-| R27.6      | Authenticated webhook and provider-result processing      | DONE    |
-| R27.8      | Booking payment-result consumers                          | DONE    |
-| R27.9      | Inventory confirmation and compensation consumers         | NEXT    |
-| R27.9      | Inventory confirmation and compensation consumers         | PLANNED |
-| R27.10     | Refund, reconciliation, permissions, and audit controls   | PLANNED |
-| R27.11     | Kafka retry, DLT, and publication verification            | PLANNED |
-| R27.12     | Saga integration, race, and concurrency verification      | PLANNED |
-| R27.13     | Stabilization, documentation, and closure                 | PLANNED |
+| Checkpoint | Scope                                                     | Status |
+| ---------- | --------------------------------------------------------- | ------ |
+| R27.1      | Payment architecture and contract closure                 | DONE   |
+| R27.2      | Payment Service bootstrap and Resource Server security    | DONE   |
+| R27.3      | Payment aggregate and Flyway schema                       | DONE   |
+| R27.4      | `payment-requested` validation and idempotent consumption | DONE   |
+| R27.5      | Provider port, operation worker and provider idempotency  | DONE   |
+| R27.6      | Authenticated webhook and provider-result processing      | DONE   |
+| R27.7      | Terminal payment-result Outbox publication                | DONE   |
+| R27.8      | Booking payment-result consumers                          | DONE   |
+| R27.9      | Inventory confirmation and compensation consumers         | DONE   |
+| R27.10     | Refund, reconciliation, permissions and audit controls    | DONE   |
+| R27.11     | Kafka retry, DLT and publication verification             | DONE   |
+| R27.12     | Saga integration, race and concurrency verification       | DONE   |
+| R27.13     | Stabilization, documentation and closure                  | DONE   |
+| R27        | Payment Service                                           | DONE   |
 
-No checkpoint may introduce real provider credentials, direct cross-service
-database access, non-idempotent charges, or direct Kafka publication after a
-domain commit.
+R27 Payment Service is complete.
 
----
+Production-specific provider adapters remain deferred and are not required for the completed deterministic `MOCK` provider baseline.
 
 ## 24. R27.1 Exit Criteria
 

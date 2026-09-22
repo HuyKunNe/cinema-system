@@ -859,6 +859,22 @@ R24.5             — DONE
 R24               — DONE
 ```
 
+### Post-R27 Inventory lifecycle-release hardening
+
+Status: **IN PROGRESS**
+
+Scope:
+
+- replace mutable-predicate lifecycle locking with stable ShowSeat ID lookup;
+- sort ShowSeat IDs before lock acquisition;
+- acquire ordered `PESSIMISTIC_WRITE` locks by `showtimeId` and IDs;
+- re-check `isHeldBy(bookingId)` after locking;
+- preserve idempotent cancellation and expiration release;
+- verify confirmation-versus-release concurrency on MySQL;
+- synchronize architecture, event, database and sequence documentation.
+
+This is maintenance of the completed Inventory implementation. It does not reopen R24 or start R28.
+
 #### Completed ShowSeat behavior
 
 The following booking transitions are implemented:
@@ -2147,31 +2163,26 @@ Do not:
 
 # Current Snapshot
 
-| Phase                   | Rounds         | Status       |
-| ----------------------- | -------------- | ------------ |
-| Foundation Layer        | R1–R10         | ✅ Completed |
-| Common Infrastructure   | R11–R19        | ✅ Completed |
-| Infrastructure Services | R20–R22        | ✅ Completed |
-| Movie Service           | R23            | ✅ Completed |
-| Inventory Service       | R24            | ✅ Completed |
-| User Service            | R25            | ✅ Completed |
-| Booking Service         | R26            | ✅ Completed |
-| Payment Service         | R27            | ✅ Completed |
-| Notification Service    | R28            | ⏳ Planned   |
-| Production Readiness    | To be assigned | ⏳ Planned   |
+| Phase                         | Rounds         | Status         |
+| ----------------------------- | -------------- | -------------- |
+| Foundation Layer              | R1–R10         | ✅ Completed   |
+| Common Infrastructure         | R11–R19        | ✅ Completed   |
+| Infrastructure Services       | R20–R22        | ✅ Completed   |
+| Movie Service                 | R23            | ✅ Completed   |
+| Inventory Service             | R24            | ✅ Completed   |
+| User Service                  | R25            | ✅ Completed   |
+| Booking Service               | R26            | ✅ Completed   |
+| Payment Service               | R27            | ✅ Completed   |
+| Inventory lifecycle hardening | Post-R27       | 🚧 In progress |
+| Notification Service          | R28            | ⏸ Deferred     |
+| Production Readiness          | To be assigned | ⏳ Planned     |
 
-The latest completed service round is:
+Latest completed service round:
 
 > **R27 — Payment Service**
 
-The next implementation round is:
+Current maintenance checkpoint:
 
-> **R28 — Notification Service**
+> **Inventory lifecycle-release lock hardening**
 
-The active implementation checkpoint is:
-
-> **R28 — Notification Service**
-
-ADR-013 selects User Service with Spring Authorization Server as the
-authoritative issuer. R25 User Service and R26 Booking Service are complete.
-R27 Payment Service is next.
+R28 Notification Service is deferred and is not the active implementation round.

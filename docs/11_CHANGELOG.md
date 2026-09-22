@@ -45,6 +45,40 @@ Current status:
 
 # Unreleased
 
+## 2026-09-22
+
+### Inventory Lifecycle-Release Lock Hardening
+
+#### Changed
+
+- Replaced lifecycle release locking based directly on mutable ShowSeat state with a stable-ID two-phase lookup.
+- Added deterministic sorting before acquiring multi-row locks.
+- Added ordered `PESSIMISTIC_WRITE` lookup by `showtimeId` and ShowSeat IDs.
+- Added post-lock `isHeldBy(bookingId)` re-checking.
+- Preserved idempotent cancellation and expiration behavior when seats were already released by another transaction.
+- Synchronized UTC and ISO-8601 timestamp documentation.
+
+#### Tests updated
+
+- `BookingCancelledConsumerServiceImplTest`
+- `BookingExpiredConsumerServiceImplTest`
+- `ShowSeatRepositoryTest`
+- `BookingLifecycleReleaseConsumerMySqlIntegrationTest`
+
+#### Verification status
+
+- Focused unit and repository verification: pending final local execution.
+- MySQL lifecycle concurrency verification: pending final local execution.
+- Full Inventory verification: pending.
+- Root `mvn clean verify`: pending.
+
+Do not mark this maintenance checkpoint complete until all verification gates pass.
+
+#### Roadmap status
+
+- R27 Payment Service remains completed.
+- R28 Notification Service remains deferred.
+
 ## 2026-09-18
 
 ### R27.13 Payment Stabilization and Closure
