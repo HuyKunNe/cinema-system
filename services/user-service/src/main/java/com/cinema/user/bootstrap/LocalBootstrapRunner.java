@@ -24,6 +24,7 @@ import org.springframework.security.oauth2.server.authorization.OAuth2Authorizat
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,7 +48,19 @@ public class LocalBootstrapRunner implements ApplicationRunner {
     private static final Set<String> CINEMA_WEB_POST_LOGOUT_REDIRECT_URIS =
             Set.of("http://localhost:5173/");
 
-    private static final Set<String> CINEMA_WEB_SCOPES = Set.of("openid", "profile", "email");
+    private static final Set<String> CINEMA_WEB_SCOPES =
+            Set.of(
+                    "openid",
+                    "profile",
+                    "email",
+                    "booking:create",
+                    "booking:read",
+                    "booking:cancel",
+                    "movie:manage",
+                    "showtime:manage",
+                    "inventory:manage",
+                    "payment:read",
+                    "user:manage");
 
     private static final Set<String> REDIRECT_URIS =
             Set.of(
@@ -195,7 +208,7 @@ public class LocalBootstrapRunner implements ApplicationRunner {
             return existing;
         }
 
-        RegisteredClient client =
+        RegisteredClient publicClient =
                 registeredClientFactory.createPublicClient(
                         new PublicClientRegistration(
                                 CINEMA_WEB_CLIENT_ID,
@@ -203,6 +216,15 @@ public class LocalBootstrapRunner implements ApplicationRunner {
                                 CINEMA_WEB_REDIRECT_URIS,
                                 CINEMA_WEB_POST_LOGOUT_REDIRECT_URIS,
                                 CINEMA_WEB_SCOPES));
+
+        RegisteredClient client =
+                RegisteredClient.from(publicClient)
+                        .clientSettings(
+                                ClientSettings.builder()
+                                        .requireProofKey(true)
+                                        .requireAuthorizationConsent(false)
+                                        .build())
+                        .build();
 
         registeredClientRepository.save(client);
 
@@ -222,7 +244,7 @@ public class LocalBootstrapRunner implements ApplicationRunner {
                                 .equals(CINEMA_WEB_POST_LOGOUT_REDIRECT_URIS)
                         && client.getScopes().equals(CINEMA_WEB_SCOPES)
                         && client.getClientSettings().isRequireProofKey()
-                        && client.getClientSettings().isRequireAuthorizationConsent();
+                        && !client.getClientSettings().isRequireAuthorizationConsent();
 
         if (!valid) {
             throw new IllegalStateException(
