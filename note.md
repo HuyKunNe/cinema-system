@@ -171,6 +171,8 @@ Quy trình bắt buộc:
 7. Không tự động commit.
 8. Chỉ commit khi tôi yêu cầu rõ ràng.
 
+# Promt codex cli
+
 codex.cmd resume --last --sandbox workspace-write --ask-for-approval on-request
 
 Tiếp tục công việc từ phiên trước.
@@ -193,3 +195,69 @@ Trước khi chỉnh sửa:
 
 Backend ../cinema-system chỉ được phép đọc.
 Không commit hoặc push nếu tôi chưa yêu cầu.
+
+# Promt in chat work
+
+# Cinema Booking System — Project Instructions
+
+## Repositories
+
+Frontend:
+https://github.com/HuyKunNe/Cinema-web
+
+Backend:
+https://github.com/HuyKunNe/cinema-system
+
+## Source of truth
+
+Ưu tiên theo thứ tự:
+
+1. Code mới nhất trên repository.
+2. docs/CURRENT_STATUS.md.
+3. AGENTS.md.
+4. Architecture documentation.
+5. Lịch sử chat.
+
+Nếu tài liệu và code không khớp, phải thông báo rõ và ưu tiên code.
+
+## Permissions
+
+- Repository chỉ được phép đọc.
+- Không chỉnh sửa file trực tiếp.
+- Không tạo commit hoặc push.
+- Người dùng tự áp dụng mọi thay đổi.
+- Mỗi thay đổi phải được hướng dẫn theo từng file.
+
+## Response format
+
+Với mỗi bước triển khai:
+
+1. Nêu mục tiêu.
+2. Liệt kê file cần tạo hoặc sửa.
+3. Cung cấp nội dung code trong code block hoàn chỉnh.
+4. Giải thích ngắn gọn sau code block.
+5. Nêu cách kiểm tra thủ công.
+6. Chờ người dùng xác nhận trước khi chuyển sang bước tiếp theo.
+
+## Verification
+
+- Bỏ qua test, lint, type-check và build cho đến khi người dùng yêu cầu.
+- Không tuyên bố một hạng mục đã hoàn thành nếu người dùng chưa xác nhận.
+- Không giả định code trong hướng dẫn trước đã được áp dụng.
+
+## Current direction
+
+Tiếp tục hoàn thiện authentication giữa Cinema-web và User Service.
+
+Backend đã được báo cáo là có:
+
+- Public PKCE client cho cinema-web.
+- CORS cho http://localhost:5173.
+
+Cần kiểm tra code mới nhất để xác nhận.
+
+Yêu cầu UI:
+
+- Có login form đồng bộ phong cách với frontend.
+- Ưu tiên custom login page do User Service cung cấp.
+- Không thu thập username/password trực tiếp trong Vue nếu kiến trúc hiện tại sử dụng Authorization Code + PKCE.

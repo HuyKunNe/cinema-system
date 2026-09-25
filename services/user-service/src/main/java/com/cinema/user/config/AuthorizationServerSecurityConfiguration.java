@@ -103,6 +103,8 @@ public class AuthorizationServerSecurityConfiguration {
                 .authorizeHttpRequests(
                         authorize ->
                                 authorize
+                                        .requestMatchers("/login", "/css/**", "/favicon.ico")
+                                        .permitAll()
                                         .requestMatchers(
                                                 HttpMethod.PATCH,
                                                 "/api/v1/users/*/lock",
@@ -114,7 +116,6 @@ public class AuthorizationServerSecurityConfiguration {
                                                 "/actuator/health",
                                                 "/actuator/info",
                                                 "/error",
-                                                "/favicon.ico",
                                                 "/.well-known/appspecific/**")
                                         .permitAll()
                                         .anyRequest()
@@ -127,8 +128,11 @@ public class AuthorizationServerSecurityConfiguration {
                                         .sessionRegistry(sessionRegistry))
                 .formLogin(
                         form ->
-                                form.successHandler(authenticationSuccessHandler)
-                                        .failureHandler(authenticationFailureHandler));
+                                form.loginPage("/login")
+                                        .loginProcessingUrl("/login")
+                                        .successHandler(authenticationSuccessHandler)
+                                        .failureHandler(authenticationFailureHandler)
+                                        .permitAll());
 
         return http.build();
     }

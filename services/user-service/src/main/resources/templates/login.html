@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="vi" xmlns:th="https://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Đăng nhập | Cinema</title>
+
+    <link
+      rel="stylesheet"
+      href="/css/cinema-login.css"
+      th:href="@{/css/cinema-login.css}"
+    />
+  </head>
+
+  <body>
+    <a class="skip-link" href="#main-content"> Chuyển đến nội dung chính </a>
+
+    <header class="site-header">
+      <div class="site-header__content">
+        <span class="brand" aria-label="Cinema"> CINEMA </span>
+      </div>
+    </header>
+
+    <main id="main-content" class="login-page" tabindex="-1">
+      <section
+        class="login-card"
+        aria-labelledby="login-title"
+        aria-describedby="login-description"
+      >
+        <p class="login-card__eyebrow">Tài khoản Cinema</p>
+
+        <h1 id="login-title" class="login-card__title">Đăng nhập</h1>
+
+        <p id="login-description" class="login-card__description">
+          Đăng nhập để quản lý vé và tiếp tục đặt chỗ.
+        </p>
+
+        <div th:if="${param.error}" class="alert alert--error" role="alert">
+          Tên đăng nhập hoặc mật khẩu không đúng.
+        </div>
+
+        <div th:if="${param.logout}" class="alert alert--success" role="status">
+          Bạn đã đăng xuất thành công.
+        </div>
+
+        <form
+          class="login-form"
+          th:action="@{/login}"
+          method="post"
+          autocomplete="on"
+        >
+          <div class="form-field">
+            <label for="username"> Tên đăng nhập hoặc email </label>
+
+            <input
+              id="username"
+              name="username"
+              type="text"
+              autocomplete="username"
+              autocapitalize="none"
+              spellcheck="false"
+              required
+              autofocus
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="password"> Mật khẩu </label>
+
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+          </div>
+
+          <button class="submit-button" type="submit">Đăng nhập</button>
+        </form>
+
+        <p class="security-note">
+          Thông tin đăng nhập được xử lý trực tiếp bởi hệ thống định danh
+          Cinema.
+        </p>
+      </section>
+    </main>
+
+    <footer class="site-footer">Điện ảnh kết nối cảm xúc</footer>
+  </body>
+</html>
