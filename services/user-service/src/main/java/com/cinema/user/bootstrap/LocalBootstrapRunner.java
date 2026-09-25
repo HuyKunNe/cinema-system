@@ -18,6 +18,8 @@ import com.cinema.user.service.UserCredentialService;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsent;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
@@ -37,6 +39,15 @@ public class LocalBootstrapRunner implements ApplicationRunner {
     private static final String ADMIN_EMAIL = "admin@cinema.local";
     private static final String ADMIN_PASSWORD = "Admin@123456";
     private static final String CLIENT_ID = "cinema-swagger";
+    private static final String CINEMA_WEB_CLIENT_ID = "cinema-web";
+
+    private static final Set<String> CINEMA_WEB_REDIRECT_URIS =
+            Set.of("http://localhost:5173/auth/callback");
+
+    private static final Set<String> CINEMA_WEB_POST_LOGOUT_REDIRECT_URIS =
+            Set.of("http://localhost:5173/");
+
+    private static final Set<String> CINEMA_WEB_SCOPES = Set.of("openid", "profile", "email");
 
     private static final Set<String> REDIRECT_URIS =
             Set.of(
@@ -97,6 +108,7 @@ public class LocalBootstrapRunner implements ApplicationRunner {
 
         User admin = bootstrapAdmin();
         RegisteredClient swaggerClient = bootstrapSwaggerClient();
+        bootstrapCinemaWebClient();
         bootstrapConsent(admin, swaggerClient);
 
         System.out.println("========================================");
@@ -105,6 +117,8 @@ public class LocalBootstrapRunner implements ApplicationRunner {
         System.out.println("password = " + ADMIN_PASSWORD);
         System.out.println("clientId = " + CLIENT_ID);
         System.out.println("redirectUris = " + REDIRECT_URIS);
+        System.out.println("cinemaWebClientId = " + CINEMA_WEB_CLIENT_ID);
+        System.out.println("cinemaWebRedirectUris = " + CINEMA_WEB_REDIRECT_URIS);
         System.out.println("========================================");
     }
 
@@ -170,6 +184,52 @@ public class LocalBootstrapRunner implements ApplicationRunner {
         registeredClientRepository.save(client);
 
         return client;
+    }
+
+    private RegisteredClient bootstrapCinemaWebClient() {
+
+        RegisteredClient existing = registeredClientRepository.findByClientId(CINEMA_WEB_CLIENT_ID);
+
+        if (existing != null) {
+            validateExistingCinemaWebClient(existing);
+            return existing;
+        }
+
+        RegisteredClient client =
+                registeredClientFactory.createPublicClient(
+                        new PublicClientRegistration(
+                                CINEMA_WEB_CLIENT_ID,
+                                "Cinema Web",
+                                CINEMA_WEB_REDIRECT_URIS,
+                                CINEMA_WEB_POST_LOGOUT_REDIRECT_URIS,
+                                CINEMA_WEB_SCOPES));
+
+        registeredClientRepository.save(client);
+
+        return client;
+    }
+
+    private void validateExistingCinemaWebClient(RegisteredClient client) {
+
+        boolean valid =
+                client.getClientSecret() == null
+                        && client.getClientAuthenticationMethods()
+                                .equals(Set.of(ClientAuthenticationMethod.NONE))
+                        && client.getAuthorizationGrantTypes()
+                                .equals(Set.of(AuthorizationGrantType.AUTHORIZATION_CODE))
+                        && client.getRedirectUris().equals(CINEMA_WEB_REDIRECT_URIS)
+                        && client.getPostLogoutRedirectUris()
+                                .equals(CINEMA_WEB_POST_LOGOUT_REDIRECT_URIS)
+                        && client.getScopes().equals(CINEMA_WEB_SCOPES)
+                        && client.getClientSettings().isRequireProofKey()
+                        && client.getClientSettings().isRequireAuthorizationConsent();
+
+        if (!valid) {
+            throw new IllegalStateException(
+                    "Existing cinema-web client does not match the required public PKCE "
+                            + "configuration. Recreate only the cinema-web client before "
+                            + "starting with CINEMA_LOCAL_BOOTSTRAP_ENABLED=true.");
+        }
     }
 
     private void validateExistingSwaggerClient(RegisteredClient client) {
