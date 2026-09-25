@@ -29,6 +29,10 @@ public class AuthorizationServerSecurityConfiguration {
     private static final Set<String> APPROVED_GRANT_TYPES =
             Set.of("authorization_code", "refresh_token", "client_credentials");
 
+    private static final String[] SWAGGER_ENDPOINTS = {
+        "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**"
+    };
+
     @Bean
     @Order(1)
     SecurityFilterChain authorizationServerSecurityFilterChain(
@@ -104,6 +108,8 @@ public class AuthorizationServerSecurityConfiguration {
                         authorize ->
                                 authorize
                                         .requestMatchers("/login", "/css/**", "/favicon.ico")
+                                        .permitAll()
+                                        .requestMatchers(SWAGGER_ENDPOINTS)
                                         .permitAll()
                                         .requestMatchers(
                                                 HttpMethod.PATCH,
