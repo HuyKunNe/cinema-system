@@ -47,6 +47,7 @@ spring:
               "[/**]":
                 allowed-origin-patterns:
                   - ${CORS_ALLOWED_ORIGIN_PATTERN:http://localhost:*}
+                  - "https://cinematic-2awjfcb0p-huykunnes-projects.vercel.app"
                 allowed-methods:
                   - GET
                   - POST
