@@ -1,829 +1,377 @@
-# Đề xuất cập nhật Backend phục vụ Customer Home Page
+# Đề xuất cập nhật Backend cho Customer Home, Movie Catalog và QuickBooking
 
-Ngày rà soát: 2026-10-01
-Trạng thái: PROPOSED — chưa xác nhận triển khai
+> **Trạng thái:** PROPOSED — chưa triển khai
+> **Phạm vi:** API và dữ liệu Backend cần xem xét để hỗ trợ Customer Home, Movie Catalog và QuickBooking của `cinematic-web`.
+> **Quyền repo:** Backend và frontend chỉ đọc trong quá trình lập đề xuất này. Không có file, API, migration hay cấu hình nào được thay đổi.
+> **Nguồn giao diện:** Các bản HTML/CSS tại `cinematic-web/docs/design/reference/html-convert`; dự án hiện không dùng Figma làm nguồn thiết kế.
+> **Ranh giới tính năng:** Không mở lại R28 Notification đang được hoãn.
 
-Backend: HuyKunNe/cinema-system
+## 1. Mục tiêu
 
-Frontend: HuyKunNe/cinematic-web
+Tài liệu ghi lại:
 
-## 1. Mục đích và phạm vi
+- Những API và dữ liệu hiện có có thể dùng cho giao diện khách hàng.
+- Những giới hạn hiện tại có ảnh hưởng đến Home, Movies và QuickBooking.
+- Các thay đổi Backend nên cân nhắc, kèm thứ tự ưu tiên và hợp đồng API ở mức đề xuất.
+- Các quyết định nghiệp vụ cần thống nhất trước khi triển khai.
 
-Tổng hợp các thiếu hụt dữ liệu và nghiệp vụ backend được phát hiện khi
-phát triển F3.1 — Customer Home Page.
+Đây không phải danh sách endpoint đã tồn tại. Các route, query parameter, field, quy tắc lọc và commit message mang nhãn **đề xuất** cần được xác nhận trước khi implement.
 
-Các khu vực liên quan:
+## 2. Baseline đã đối chiếu
 
-- HeroBanner.
-- QuickBooking.
-- NowShowing và MovieCard.
-- UpcomingMovies.
-- Promotion.
-- Membership: ghi nhận thiếu hụt dữ liệu, chưa mở rộng phạm vi triển khai.
+Các nhận định dưới đây dựa trên source code tại:
 
-Nguồn giao diện chính thức:
+| Repo                     | Commit được đối chiếu                      | Ghi chú                                                                                            |
+| ------------------------ | ------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `HuyKunNe/cinema-system` | `8b285bd32f842dbcabe57638ba5330c8ea20fcb6` | Có tài liệu đề xuất Customer Home; chưa có nghĩa là các đề xuất trong tài liệu đã được triển khai. |
+| `HuyKunNe/cinematic-web` | `02f627c4de1b3d30dc2425d7d2ce5cc5e1a6b52f` | FE đang dùng API hiện có và xử lý một số lọc ở phía client.                                        |
 
-- docs/design/reference/html-convert/cinematic-home-desktop.html
-- docs/design/reference/html-convert/cinematic-home-desktop.css
-- docs/design/reference/html-convert/cinematic-home-mobile.html
-- docs/design/reference/html-convert/cinematic-home-mobile.css
+Nếu nhánh `main` thay đổi sau các commit trên, hãy kiểm tra lại controller, DTO, generated client và query composable trước khi dùng đề xuất này.
 
-Đây là tài liệu đề xuất, không phải đặc tả API đã triển khai.
-Endpoint, field và enum được đề xuất phải được review trước khi FE sử dụng.
+### 2.1 Movie Service
 
-R28 Notification Service tiếp tục được hoãn.
-Không làm lại luồng đăng nhập OAuth2/OIDC hiện có.
+- `GET /api/v1/movies` hiện trả danh sách `List<MovieResponse>`; chưa có phân trang hoặc query filter tại controller.
+- `MovieResponse` hiện có thông tin phim như tên, mô tả, thời lượng, ngày phát hành, poster, trailer, trạng thái và thể loại.
+- Trạng thái phim hiện có `UPCOMING`, `NOW_SHOWING`, `ENDED` và `INACTIVE`.
+- `GET /api/v1/genres` đã tồn tại.
+- FE hiện lọc trạng thái, thể loại và sắp xếp ở phía client. Movie catalog có cơ chế tải thêm ở FE.
+- Movie Service không sở hữu dữ liệu rạp, phòng chiếu hoặc suất chiếu. Không thêm lọc rạp vào `MovieController`.
 
-### Yêu cầu FE hiện tại
+### 2.2 Cinema và Showtime
 
-- HeroBanner tự chuyển sau 5 giây, animation trái/phải 700ms.
-- NowShowing là carousel chuyển thủ công, không autoplay.
-- Promotion được yêu cầu chuyển thành carousel thủ công, không autoplay.
-- Tiêu đề dài phải giữ bố cục ổn định.
-- Hero có nút “Xem trailer”; MovieCard có nút Play trên poster.
-- Nhãn phân loại độ tuổi phải lấy từ dữ liệu thật.
+- Cinema API hiện hỗ trợ lấy danh sách rạp đang hoạt động và lọc theo thành phố.
+- Showtime API hiện có các truy vấn theo khoảng thời gian, theo phòng và theo phim.
+- `ShowtimeResponse` cung cấp các định danh phim, phòng và rạp cùng thời gian bắt đầu/kết thúc và trạng thái.
+- Response hiện không cung cấp số ghế trống. `OPEN_FOR_BOOKING` có nghĩa là suất chiếu đang mở đặt vé, không đảm bảo còn ghế.
+- FE QuickBooking hiện lấy suất theo phim rồi lọc theo rạp đã chọn, trạng thái và thời gian ở phía client.
+- FE lấy chương trình theo rạp thông qua danh sách phòng và nhiều truy vấn suất chiếu theo phòng. Cách này có thể phát sinh nhiều request khi một rạp có nhiều phòng.
 
-Các yêu cầu animation, timer, swipe, controls và chiều cao nội dung thuộc FE.
-Không cần endpoint riêng để thực hiện carousel.
+### 2.3 Customer Home
 
-Tại commit FE đã đọc:
+- Hero hiện có cơ chế tự chuyển slide ở FE. Không cần thêm API timer hoặc animation cho chức năng tự chuyển slide.
+- NowShowing hiện là carousel thao tác cuộn thủ công. Yêu cầu tự động chạy carousel NowShowing là phần cần triển khai ở FE; Backend chỉ cần cung cấp dữ liệu phim phù hợp.
+- Promotion hiện dùng dữ liệu preview phía FE và carousel cuộn thủ công. Chưa có promotion API hoặc hợp đồng khuyến mãi thật.
+- Membership benefits hiện là nội dung minh họa ở FE, chưa được lấy từ Membership API.
 
-- Hero đã có autoplay và animation trái/phải.
-- NowShowing đã có carousel thủ công.
-- Promotion vẫn là danh sách tĩnh; hướng dẫn carousel chưa được xác nhận
-  trong source remote.
-- Promotion và Membership vẫn là nội dung minh họa có nhãn rõ ràng.
-- Chưa có dữ liệu phân loại độ tuổi trong HomeMovie.
+### 2.4 Reservation và hold ghế
 
-Tài liệu này thay thế các mô tả cũ về NowShowing autoplay và việc đưa
-Membership carousel vào cùng phạm vi.
+- Luồng xử lý reservation hiện kiểm tra suất chiếu tồn tại và trạng thái `OPEN_FOR_BOOKING`.
+- Hold ghế hiện kiểm tra thời hạn hold và trạng thái ghế.
+- Các kiểm tra hiện tại chưa chứng minh nhất quán rằng suất chiếu vẫn ở tương lai hoặc rạp/phòng vẫn hoạt động tại thời điểm tạo hold.
+- Việc thay đổi quy tắc này cần được áp dụng nhất quán cho mọi điểm có thể tạo hold và phải giữ nguyên cơ chế idempotency, release và compensation hiện có.
 
-## 2. Hiện trạng backend đã xác nhận
+## 3. Phạm vi và ngoài phạm vi
 
-| Khu vực                  | Source hiện tại                                                                      | Giới hạn                                                              |
-| ------------------------ | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
-| Movie catalog            | GET /api/v1/movies trả List<MovieResponse>                                           | Controller chưa có query filter hoặc pagination                       |
-| Movie metadata           | Có title, description, durationMinutes, releaseDate, genres, status                  | Chưa có phân loại độ tuổi hoặc tagline riêng                          |
-| Media                    | Có posterUrl và trailerUrl nullable                                                  | Chưa có backdropUrl; media URL trong request mới có validation độ dài |
-| Catalog ordering         | MovieServiceImpl.findAll() gọi repository.findAll()                                  | Chưa có sort rõ ràng                                                  |
-| Cinema catalog           | GET /api/v1/cinemas, city tùy chọn                                                   | Trả rạp active, sort theo name                                        |
-| Showtimes theo phim      | GET /api/v1/showtimes/by-movie/{movieId}                                             | Trả tất cả trạng thái theo phim, sort startsAt tăng dần               |
-| Showtimes theo thời gian | GET /api/v1/showtimes?from=…&to=…                                                    | Chưa có cinemaId/movieId filter; repository dùng StartsAtBetween      |
-| ShowtimeResponse         | Có movieId, roomId, roomName, cinemaId, cinemaName, startsAt, endsAt, status         | Chưa có timezone ID hoặc availability summary                         |
-| Reservation consumer     | Kiểm tra showtime tồn tại và OPEN_FOR_BOOKING, thời hạn request/hold, trạng thái ghế | Chưa có guard startsAt > now hoặc room/cinema active tại bước này     |
-| Direct hold              | ShowSeatServiceImpl.hold() kiểm tra expiration và AVAILABLE                          | Chưa có guard điều kiện showtime tại entry point này                  |
-| Promotion/Membership     | Chưa tìm thấy contract phục vụ nội dung Home trong source đã rà soát                 | FE đang dùng dữ liệu minh họa                                         |
-| Security                 | GET movie/inventory catalog public ở Gateway và service                              | Không cần đổi login để đọc Home                                       |
-| CORS                     | Gateway config có localhost pattern và origin Vercel đã yêu cầu                      | Cấu hình source chưa chứng minh môi trường runtime đã nạp đúng        |
+### Trong phạm vi
 
-Các trạng thái Showtime hiện có:
+- Tối ưu truy vấn suất chiếu cho QuickBooking.
+- Xác định chính sách hợp lệ khi tạo reservation/hold.
+- Bổ sung metadata phim khi có nguồn dữ liệu chính thức.
+- Cân nhắc phân trang và lọc Movie catalog khi quy mô dữ liệu cần đến.
+- Xác định timezone dùng chung cho ngày và giờ chiếu.
+- Kiểm tra CORS ở runtime cho các origin FE được phép.
 
-- SCHEDULED
-- OPEN_FOR_BOOKING
-- CLOSED
-- CANCELLED
-- COMPLETED
+### Ngoài phạm vi
 
-OPEN_FOR_BOOKING không đồng nghĩa với còn ghế.
-Kết quả read API không bảo đảm một reservation sau đó sẽ thành công.
+- Không triển khai thay đổi trong tài liệu này.
+- Không thiết kế lại animation, carousel hoặc lưu trạng thái địa điểm ở Backend.
+- Không tạo promotion, giá vé, membership benefit hoặc quyền lợi giả khi chưa có nghiệp vụ và nguồn dữ liệu.
+- Không mở lại R28 Notification.
+- Không thay đổi response hiện tại theo cách làm hỏng client đang dùng.
+- Không thêm Movie Service truy vấn trực tiếp database của Inventory Service.
 
-README BE ghi R28 Deferred và maintenance Inventory lock hardening
-In progress. Một số tài liệu khác vẫn còn dòng Current target R28.
-Không dùng các dòng cũ đó để tự mở lại R28 hoặc đánh dấu maintenance DONE.
+## 4. Danh sách đề xuất và ưu tiên
 
-## 3. Danh sách đề xuất và ưu tiên
+| ID         | Ưu tiên                       | Service             | Nội dung                                                                                      | Trạng thái                |
+| ---------- | ----------------------------- | ------------------- | --------------------------------------------------------------------------------------------- | ------------------------- |
+| BE-HOME-01 | Cao                           | Inventory           | Thêm truy vấn suất chiếu mở bán cho QuickBooking, lọc theo rạp và khoảng thời gian ở Backend. | Đề xuất                   |
+| BE-HOME-02 | Cao, cần quyết định nghiệp vụ | Inventory           | Chuẩn hóa điều kiện tạo reservation/hold với suất chiếu, phòng và rạp.                        | Cần thống nhất chính sách |
+| BE-HOME-03 | Trung bình                    | Movie               | Thêm `backdropUrl` nullable nếu có nhu cầu ảnh ngang chính thức cho Hero.                     | Tùy chọn                  |
+| BE-HOME-04 | Khi catalog tăng              | Movie               | Thêm API catalog phân trang và lọc, giữ nguyên `GET /movies`.                                 | Chưa cấp thiết            |
+| BE-HOME-05 | Tùy chọn                      | Inventory           | Xây dựng thông tin availability nếu UI thực sự cần số ghế hoặc trạng thái còn chỗ.            | Chưa có nguồn dữ liệu     |
+| BE-HOME-06 | Trung bình                    | Movie               | Thêm phân loại độ tuổi khi có dữ liệu được xác nhận.                                          | Cần nguồn dữ liệu         |
+| BE-HOME-07 | Thấp                          | Movie               | Chuẩn hóa và xác thực `trailerUrl` hiện có.                                                   | Nên rà soát               |
+| BE-HOME-08 | Tùy chọn                      | Movie/CMS           | Hỗ trợ thứ tự hoặc nội dung biên tập cho Hero nếu cần quản trị từ hệ thống.                   | Chưa cần cho autoplay     |
+| BE-HOME-09 | Ngoài đợt hiện tại            | Promotion           | Thiết kế API khuyến mãi khi có nghiệp vụ giá, điều kiện và thời hạn.                          | Chưa có contract          |
+| BE-HOME-10 | Ngoài đợt hiện tại            | Membership          | Tích hợp quyền lợi thành viên khi có Membership API và chính sách thật.                       | Chưa có contract          |
+| BE-HOME-11 | Cao                           | FE/Backend contract | Thống nhất timezone cho truy vấn và hiển thị lịch chiếu.                                      | Cần thống nhất            |
+| BE-HOME-12 | Cao khi deploy                | Gateway/config      | Xác nhận preflight CORS từ đúng domain FE đang chạy.                                          | Cần kiểm tra runtime      |
 
-Giữ nguyên ID BE-HOME-01 đến BE-HOME-05 từ tài liệu trước.
+## 5. BE-HOME-01 — Truy vấn suất chiếu mở bán cho QuickBooking
 
-| ID         | Ưu tiên                             | Đề xuất                                          | Phạm vi            |
-| ---------- | ----------------------------------- | ------------------------------------------------ | ------------------ |
-| BE-HOME-01 | P1                                  | Read API lịch mở bán theo rạp/phim/thời gian     | Inventory          |
-| BE-HOME-02 | P1, cần chốt nghiệp vụ              | Điều kiện nhận reservation/hold mới thống nhất   | Inventory          |
-| BE-HOME-03 | P1                                  | backdropUrl nullable                             | Movie              |
-| BE-HOME-04 | P2                                  | Catalog filter và thứ tự ổn định                 | Movie              |
-| BE-HOME-05 | P2, tùy chọn                        | Availability summary                             | Inventory          |
-| BE-HOME-06 | P1                                  | Phân loại độ tuổi thật                           | Movie              |
-| BE-HOME-07 | P1                                  | Chuẩn hóa, validation và bổ sung dữ liệu trailer | Movie              |
-| BE-HOME-08 | P2, tùy chọn                        | Tagline và metadata biên tập Hero                | Movie/Home content |
-| BE-HOME-09 | P2, cần chốt domain                 | Nội dung Promotion được quản lý                  | Domain chưa chốt   |
-| BE-HOME-10 | Backlog                             | Nội dung Membership và chương trình thành viên   | Domain chưa chốt   |
-| BE-HOME-11 | P1: chốt quy ước; field tùy nhu cầu | Timezone và ngày chiếu                           | Inventory/FE       |
-| BE-HOME-12 | Kiểm tra vận hành                   | CORS và cấu hình môi trường FE                   | Gateway/config     |
+### Vấn đề hiện tại
 
-Để giải quyết trực tiếp giao diện hiện tại, ưu tiên:
-BE-HOME-06, BE-HOME-07, BE-HOME-03.
+QuickBooking cần danh sách suất chiếu phù hợp với rạp, phim và ngày đã chọn. FE hiện phải truy vấn theo phim rồi lọc thêm theo rạp, trạng thái và thời gian. Khi dữ liệu tăng, lọc phía client khiến response lớn hơn cần thiết và làm logic lọc bị phân tán.
 
-QuickBooking cần BE-HOME-01 và quyết định nghiệp vụ BE-HOME-02.
-Các đề xuất còn lại không phải điều kiện bắt buộc để làm carousel.
+### Hợp đồng API đề xuất
 
-## 4. BE-HOME-06 — Phân loại độ tuổi
+Thêm endpoint mới trong Inventory Service, không đổi semantics của các endpoint showtime hiện có:
 
-### Hiện trạng
+`GET /api/v1/showtimes/bookable`
 
-Movie entity, CreateMovieRequest, UpdateMovieRequest và MovieResponse
-chưa có trường phân loại độ tuổi.
+Query parameters đề xuất:
 
-HTML tham chiếu có nhãn 13+, 16+ và P.
-Không được lấy nhãn của phim mẫu để gán cho phim thật.
+| Tham số    | Bắt buộc | Ý nghĩa                                        |
+| ---------- | -------: | ---------------------------------------------- |
+| `cinemaId` |       Có | Rạp đã chọn trong QuickBooking.                |
+| `from`     |       Có | Mốc đầu khoảng thời gian, ISO-8601 có offset.  |
+| `to`       |       Có | Mốc cuối khoảng thời gian, ISO-8601 có offset. |
+| `movieId`  |    Không | Chỉ lấy suất của phim đã chọn.                 |
 
-### Contract đề xuất — chưa triển khai
+Response đề xuất là danh sách `ShowtimeResponse` theo convention hiện tại của Inventory. Không có kết quả trả `[]`.
 
-Thêm ageRating nullable vào Movie và các request/response tương ứng.
+### Quy tắc lọc đề xuất
 
-Đề xuất dùng enum code ổn định, FE tự map thành nhãn hiển thị.
-Bộ mã ứng viên cần được chốt theo dữ liệu phân loại thực tế của dự án:
+- Chỉ trả suất có trạng thái `OPEN_FOR_BOOKING`.
+- Chỉ trả suất có `startsAt` trong khoảng nửa mở `[from, to)`.
+- Chỉ trả suất có `startsAt` sau thời điểm hiện tại của server.
+- Chỉ trả suất thuộc rạp/phòng đang hoạt động tại thời điểm truy vấn.
+- Nếu có `movieId`, lọc theo phim đó.
+- Sắp xếp `startsAt ASC`, sau đó `id ASC` để kết quả ổn định.
+- `from` và `to` phải hợp lệ, có offset và `from < to`.
+- Giới hạn độ dài khoảng truy vấn bằng cấu hình hoặc chính sách đã thống nhất; không tự đặt một giới hạn nghiệp vụ trong lúc implement.
+- Không trả số ghế trống nếu service chưa tính được availability đáng tin cậy.
 
-- P
-- T13
-- T16
-- T18
+### Cách FE dự kiến sử dụng
 
-Ví dụ mapping giao diện được đề xuất:
+QuickBooking giữ thứ tự tương tác theo thiết kế: **Rạp → Phim → Ngày → Suất**. FE gọi endpoint theo ngày/rạp đã chọn, truyền `movieId` khi người dùng đã chọn phim. FE vẫn cần có trạng thái loading, empty và error; không coi danh sách rỗng là lỗi API.
 
-| Code | Nhãn FE           |
-| ---- | ----------------- |
-| P    | P                 |
-| T13  | 13+               |
-| T16  | 16+               |
-| T18  | 18+               |
-| null | Chưa có thông tin |
+Endpoint này là **đề xuất**, chưa tồn tại chỉ vì được ghi trong tài liệu.
 
-Đây chưa phải enum backend hiện có hoặc danh mục phân loại đã được phê duyệt.
-Chỉ bổ sung mã khác khi có yêu cầu và nguồn dữ liệu xác nhận.
+## 6. BE-HOME-02 — Chính sách tạo reservation và hold
 
-### Quy tắc
+Trước khi sửa logic cần thống nhất các quy tắc sau:
 
-- Phim cũ giữ null; không tự backfill tất cả thành P hoặc T13.
-- Phân loại do người quản trị nhập từ nguồn xác nhận.
-- Không suy luận phân loại từ title, genre hoặc description.
-- Phân loại hiển thị chưa tự động trở thành cơ chế xác minh tuổi khi đặt vé.
-- Nếu cần hạn chế booking theo tuổi, phải chốt nghiệp vụ và contract riêng.
-- Chốt omission/null semantics của UpdateMovieRequest trước khi mở rộng PUT.
+1. Có chặn tạo hold khi `startsAt <= now` không?
+2. Nếu rạp hoặc phòng bị ngừng hoạt động sau khi suất đã mở bán, có chặn reservation mới không?
+3. Nếu suất chuyển khỏi `OPEN_FOR_BOOKING` trong lúc checkout, trạng thái nào là nguồn quyết định cuối cùng?
+4. Quy tắc áp dụng như thế nào cho retry, replay message, release và compensation?
 
-### File liên quan
+### Hướng xử lý đề xuất
 
-Các path sau tương đối với
-services/movie-service/src/main/java/com/cinema/movie/:
+- Đặt điều kiện hợp lệ tại các điểm Backend thực sự tạo reservation/hold, không chỉ dựa vào việc FE đã ẩn nút đặt vé.
+- Dùng `Clock` hoặc abstraction thời gian hiện có để kiểm tra thời điểm.
+- Giữ nguyên locking, idempotency, release và compensation.
+- Không biến endpoint đọc danh sách suất chiếu thành cơ chế bảo đảm ghế còn trống.
+- Không mở rộng quyền truy cập public cho endpoint hold hiện có nếu endpoint đó đang yêu cầu quyền `inventory:write`.
+- Xác nhận chính sách xử lý rạp/phòng bị deactivate trước khi thêm kiểm tra này; không tự suy diễn từ quy tắc lúc mở bán suất.
 
-- entity/Movie.java
-- entity/ — enum mới sau khi chốt tên và bộ mã
-- dto/request/CreateMovieRequest.java
-- dto/request/UpdateMovieRequest.java
-- dto/response/MovieResponse.java
-- mapper/MovieMapper.java
-- service/impl/MovieServiceImpl.java
+Đây là thay đổi có ảnh hưởng đến nghiệp vụ và cần review cùng phần Inventory lock hardening đang được thực hiện.
 
-Thêm migration mới tại:
+## 7. BE-HOME-06 — Phân loại độ tuổi của phim
 
-services/movie-service/src/main/resources/db/migration/
-
-### Tiêu chí review
-
-- Phim cũ có ageRating null vẫn đọc được.
-- Create/update/read giữ đúng code.
-- Giá trị ngoài enum được xử lý theo cơ chế lỗi hiện có.
-- FE hiển thị nhãn đúng và có fallback khi null.
-- Không sửa generated FE DTO bằng tay.
-
-## 5. BE-HOME-07 — Trailer và validation media URL
-
-### Hiện trạng
-
-trailerUrl đã có trong entity, create/update request và MovieResponse.
-Không cần tạo thêm endpoint chỉ để mở trailer.
-
-Request hiện giới hạn tối đa 500 ký tự.
-Chưa có validation protocol được thể hiện trong các DTO đã đọc.
-
-FE hiện chỉ sử dụng trailer URL HTTP(S) hợp lệ.
-Khi không có URL, nút trailer có thể hiển thị disabled theo hướng dẫn FE.
+Movie hiện chưa có field phân loại độ tuổi trong model/response. FE hiện xử lý trường hợp thiếu dữ liệu bằng cách hiển thị trạng thái chưa có thông tin.
 
 ### Đề xuất
 
-- Trim khoảng trắng của trailerUrl.
-- Chuẩn hóa blank thành null.
-- Chốt URL tuyệt đối HTTP(S) cho trailer.
-- Từ chối URL không hợp lệ hoặc protocol ngoài contract.
-- Giữ nullable để phim chưa có trailer vẫn hợp lệ.
-- Bổ sung trailer thật qua API quản trị hiện có.
-- Không dùng một trailer mẫu chung cho mọi phim.
-- Không yêu cầu backend tải URL để kiểm tra nội dung khi lưu.
+- Chỉ thêm field `ageRating` khi có dữ liệu chính thức và quy ước enum được xác nhận.
+- Các mã `P`, `K`, `T13`, `T16`, `T18` là danh sách ứng viên để trao đổi với nghiệp vụ; chưa phải enum đã được Backend xác nhận.
+- Field cần nullable để tương thích dữ liệu phim cũ.
+- Không tự điền rating cho dữ liệu cũ bằng suy đoán.
+- Thống nhất nhãn hiển thị tiếng Việt và mapping giữa mã API với FE.
+- Badge hiển thị không tự động thay thế chính sách kiểm tra tuổi hoặc quy trình xác minh độ tuổi khi đặt vé.
 
-Tách chính sách trailer URL khỏi image URL nếu poster/backdrop cần hỗ trợ
-relative path của storage/CDN.
+Migration, DTO, validation, mapper và OpenAPI cần được cập nhật đồng bộ nếu đề xuất được chấp thuận.
 
-Nếu sau này cần phát trailer trong modal:
+## 8. BE-HOME-07 — Chuẩn hóa `trailerUrl`
 
-- Chốt provider và cách chuyển URL xem thành URL embed.
-- Không mặc định mọi URL HTTP(S) đều nhúng được.
-- Không thêm trailerEmbedUrl trong round này nếu chưa có nhu cầu xác nhận.
-
-### File liên quan
-
-Dưới services/movie-service/src/main/java/com/cinema/movie/:
-
-- dto/request/CreateMovieRequest.java
-- dto/request/UpdateMovieRequest.java
-- service/impl/MovieServiceImpl.java
-- mapper/MovieMapper.java
-- error/MovieErrorCode.java — chỉ mở rộng nếu cần mã lỗi phù hợp
-- Vị trí validator/helper theo convention thực tế khi triển khai
-
-Đọc MovieMapperConfig trước khi quyết định chuẩn hóa ở mapper hoặc service.
-Không để create và update có hai chính sách URL khác nhau.
-
-### Tiêu chí review
-
-- Null/blank được xử lý nhất quán.
-- URL có khoảng trắng ngoài được chuẩn hóa.
-- URL sai hoặc protocol không được phép bị từ chối.
-- URL quá dài vẫn bị validation.
-- URL đúng format nhưng không tải được vẫn có fallback FE.
-- Không thay đổi luồng đăng nhập để xem trailer công khai.
-
-## 6. BE-HOME-03 — Artwork ngang cho Hero
-
-### Contract đề xuất — chưa triển khai
-
-Thêm backdropUrl nullable vào:
-
-- Movie entity.
-- CreateMovieRequest.
-- UpdateMovieRequest.
-- MovieResponse.
-
-Schema ứng viên:
-
-movies.backdrop_url VARCHAR(500) NULL
-
-posterUrl giữ ý nghĩa hiện tại.
-backdropUrl phục vụ ảnh nền ngang, tránh crop poster dọc làm Hero.
-
-### Quy tắc
-
-- Dùng migration mới, không sửa migration đã áp dụng.
-- Giới hạn độ dài và chuẩn hóa blank.
-- Chốt URL/path được phép theo storage thực tế.
-- Không thêm upload endpoint nếu chỉ cần lưu metadata.
-- Không gán ảnh generic thành artwork thật của phim.
-- Chốt semantics PUT: omission hoặc null không được gây mất artwork ngoài ý muốn.
-
-Movie Service tại commit đã đọc có V1 và V2.
-Chọn version migration tiếp theo tại thời điểm triển khai;
-không cố định V3 nếu một round trước đã sử dụng version đó.
-
-### File liên quan
-
-Dưới services/movie-service/src/main/java/com/cinema/movie/:
-
-- entity/Movie.java
-- dto/request/CreateMovieRequest.java
-- dto/request/UpdateMovieRequest.java
-- dto/response/MovieResponse.java
-- mapper/MovieMapper.java
-- service/impl/MovieServiceImpl.java
-
-Migration:
-
-services/movie-service/src/main/resources/db/migration/
-
-### FE sau khi có contract
-
-- Regenerate client từ OpenAPI đúng backend version.
-- Map backdropUrl vào HomeMovie.
-- Cô lập fallback: backdrop → poster → placeholder dự án → gradient.
-- Fallback cần xử lý cả thiếu URL và lỗi tải ảnh.
-- Giữ nội dung, artwork và indicator của slide đồng bộ.
-
-## 7. BE-HOME-01 — Read API lịch mở bán cho QuickBooking
-
-### Vấn đề
-
-FE đang lấy tất cả phim NOW_SHOWING và lịch theo từng phim,
-sau đó lọc theo rạp/trạng thái/thời gian.
-
-Khi đã chọn rạp, danh sách phim chưa được xác định trực tiếp từ lịch
-mở bán của chính rạp đó.
-
-### Contract đề xuất — chưa tồn tại
-
-GET /api/v1/showtimes/bookable
-
-| Query    | Kiểu                     | Yêu cầu  |
-| -------- | ------------------------ | -------- |
-| cinemaId | UUID                     | Bắt buộc |
-| movieId  | UUID                     | Tùy chọn |
-| from     | OffsetDateTime có offset | Bắt buộc |
-| to       | OffsetDateTime có offset | Bắt buộc |
-
-Response đề xuất: List<ShowtimeResponse> trực tiếp.
-Không có kết quả: HTTP 200 với [].
-
-Giữ response convention của controller hiện có.
-Không đổi các endpoint cũ sang wrapper hoặc pagination một cách âm thầm.
-
-### Điều kiện lọc đề xuất
-
-- Khớp cinemaId.
-- Khớp movieId nếu được cung cấp.
-- OPEN_FOR_BOOKING.
-- Room và Cinema active.
-- startsAt > serverNow.
-- startsAt thuộc [from, to).
-- Sort startsAt ASC, id ASC.
-
-Điều kiện startsAt > now cần thống nhất với BE-HOME-02.
-Nếu nghiệp vụ có cutoff trước giờ chiếu, chốt cutoff trước khi triển khai.
-
-Endpoint thời gian hiện tại dùng StartsAtBetween.
-Không sửa semantics endpoint cũ sang [from, to) trong cùng round.
-
-### Validation và giới hạn
-
-- from/to bắt buộc và to > from.
-- Sai UUID hoặc thời gian trả lỗi theo cơ chế chung.
-- Cinema không tồn tại dùng lỗi CINEMA_NOT_FOUND hiện có.
-- Chốt behavior rạp inactive: empty list hay lỗi nghiệp vụ.
-- Khoảng tra cứu tối đa phải cấu hình và tài liệu hóa.
-- 30 ngày chỉ là giá trị ứng viên, chưa phải giới hạn hiện có.
-- Không silently truncate danh sách.
-
-Nếu cần pagination, chốt contract trước.
-FE phải lấy đủ dữ liệu cần thiết trước khi suy ra phim/ngày.
-
-### Ownership và cách FE dùng
-
-Inventory trả lịch và movieId; Movie Service sở hữu metadata phim.
-Không join database của Movie Service.
-
-FE có thể:
-
-1. Load catalog phim và rạp active.
-2. Chọn rạp, lấy lịch bookable trong khoảng hiển thị.
-3. Lấy tập movieId từ lịch.
-4. Ghép catalog để hiển thị tên/artwork.
-5. Lọc tiếp theo phim, ngày và suất.
-6. Refetch/revalidate khi tiếp tục.
-
-Không cần tạo Home Service hoặc BFF chỉ cho bước này.
-
-Cần chốt có cho phép đặt trước phim UPCOMING hay không.
-Nếu có, QuickBooking không chỉ nhận mảng NOW_SHOWING.
-NowShowing vẫn chỉ hiển thị NOW_SHOWING.
-
-Inventory không sở hữu MovieStatus.
-Read API Inventory riêng không xác nhận phim active bằng cách đọc database Movie.
-Nếu cần enforcement trạng thái Movie ở BE, thiết kế integration riêng.
-
-### File liên quan
-
-Dưới services/inventory-service/src/main/java/com/cinema/inventory/:
-
-- controller/ShowtimeController.java
-- service/ShowtimeService.java
-- service/impl/ShowtimeServiceImpl.java
-- repository/ShowtimeRepository.java
-- dto/response/ShowtimeResponse.java
-- config/InventorySecurityConfig.java
-
-Gateway:
-
-infrastructure/gateway-service/src/main/java/com/cinema/gateway/config/
-GatewaySecurityConfiguration.java
-
-GET endpoint mới dưới /api/v1/showtimes/\*\* đã nằm trong public patterns
-hiện tại; kiểm tra lại trước khi quyết định sửa security.
-
-Các index đã có:
-
-- idx_rooms_cinema_active
-- idx_showtimes_movie_start
-- idx_showtimes_room_status_start
-
-Dùng EXPLAIN với dữ liệu thực tế trước khi thêm index mới.
-
-## 8. BE-HOME-02 — Điều kiện nhận reservation/hold mới
-
-### Quyết định nghiệp vụ cần chốt
-
-Nếu chỉ nhận đặt mới trước giờ chiếu và tại rạp/phòng hoạt động,
-BE phải kiểm tra tại bước tạo hold, không dựa vào FE/read API.
-
-Điều kiện đề xuất:
-
-- Showtime tồn tại.
-- OPEN_FOR_BOOKING.
-- Chưa đến cutoff đã chốt.
-- Room và Cinema active.
-- Request/hold chưa hết hạn.
-- Ghế hợp lệ và có thể giữ theo quy tắc hiện tại.
-
-### Entry point cần rà soát
-
-Dưới services/inventory-service/src/main/java/com/cinema/inventory/:
-
-- service/impl/SeatReservationRequestedConsumerServiceImpl.java
-- service/impl/ShowSeatServiceImpl.java
-- entity/Showtime.java
-- event/SeatReservationRejectionReason.java
-
-Consumer hiện có ProcessedEvent registration và Clock.
-Direct hold cũng sử dụng Clock.
-
-### Yêu cầu bảo toàn
-
-- Tái sử dụng Clock; lấy thời điểm nhất quán trong mỗi operation.
-- Giữ idempotency và Transactional Outbox.
-- Event duplicate không tạo kết quả terminal trái với lần xử lý trước.
-- Không tự hủy hold/booking đã có khi thời gian trôi qua hoặc rạp bị deactivate.
-- Phân biệt tạo hold mới với retry/replay hợp lệ của hold đã có.
-- Giữ lock ordering và các guard trạng thái ghế hiện tại.
-- Review cả reservation consumer và direct hold.
-
-Nếu thêm rejection reason, kiểm tra contract phía Booking consumer.
-Không đổi event enum một phía.
-
-Chỉ thêm if chưa bảo đảm ngăn race với admin đóng suất/deactivate.
-Nếu cần bảo đảm đó, review transaction/locking của các operation liên quan
-và xác định thứ tự áp dụng quy tắc khi chúng chạy đồng thời.
-
-## 9. BE-HOME-11 — Timezone và ngày chiếu
-
-### Hiện trạng
-
-ShowtimeResponse trả OffsetDateTime.
-Chưa có timezone ID của rạp trong CinemaResponse/ShowtimeResponse đã đọc.
-
-FE đang suy ra ngày theo timezone trình duyệt.
-Người dùng ở timezone khác có thể thấy suất thuộc ngày khác với ngày của rạp.
+`trailerUrl` đã tồn tại trong Movie model/response; đây là việc rà soát field hiện có, không phải đề xuất thêm endpoint.
 
 ### Đề xuất
 
-Chốt một trong hai chính sách:
+- Chuẩn hóa khoảng trắng đầu/cuối.
+- Chuyển giá trị rỗng thành `null`.
+- Chỉ nhận URL tuyệt đối với scheme được cho phép, tối thiểu là `https`; chỉ cho phép `http` nếu môi trường hoặc chính sách nội bộ cần.
+- Xác nhận giới hạn chiều dài với giới hạn DTO hiện tại trước khi thay đổi.
+- FE tiếp tục xử lý URL không hợp lệ an toàn và không nhúng nội dung từ nguồn tùy ý.
+- Chốt danh sách host được phép nếu hệ thống có chính sách giới hạn nền tảng video.
 
-1. Toàn hệ thống dùng timezone kinh doanh cấu hình chung.
-2. Mỗi rạp có timezone IANA riêng nếu hỗ trợ nhiều timezone.
+Không đổi response hiện tại hoặc thêm trailer endpoint nếu chưa có yêu cầu phát sinh.
 
-Asia/Ho_Chi_Minh là giá trị ứng viên cho hệ thống chỉ vận hành tại Việt Nam.
-Không coi đây là field hoặc cấu hình BE đã có.
+## 9. BE-HOME-03 — Ảnh ngang `backdropUrl`
 
-Nếu cần hỗ trợ theo rạp, đề xuất timeZone trong Cinema và response liên quan.
-Chỉ thêm sau khi chốt phạm vi vận hành.
+Movie hiện có `posterUrl`, nhưng chưa có field ảnh ngang riêng. Nếu Hero cần ảnh ngang chính thức, không nên dùng poster dọc như một backdrop mà không có fallback UI.
 
-### Quy tắc
+### Đề xuất
 
-- Giữ timestamp có offset/instant trong API.
-- Không thay bằng chuỗi giờ địa phương không có timezone.
-- FE nhóm ngày/hiển thị giờ theo timezone rạp hoặc timezone kinh doanh.
-- Query from/to gửi offset rõ ràng.
-- Server dùng Clock để kiểm tra cutoff.
-- Không yêu cầu FE dùng đồng hồ máy khách làm thẩm quyền nghiệp vụ.
+- Bổ sung field nullable `backdropUrl` vào entity/DTO nếu có nguồn ảnh ngang được quản lý.
+- Migration thêm cột nullable; không buộc cập nhật toàn bộ dữ liệu cũ.
+- Chốt quy ước storage/CDN và kích thước ảnh với nơi quản lý media.
+- FE dùng `backdropUrl` khi hợp lệ, fallback về ảnh local/project hoặc poster đã có.
+- Không thêm upload API hoặc lưu file trong Movie Service nếu kiến trúc media hiện tại không hỗ trợ.
 
-## 10. BE-HOME-04 — Catalog filter và thứ tự ổn định
+## 10. BE-HOME-04 — Movie catalog phân trang và lọc
 
-### Hiện trạng
+`GET /api/v1/movies` hiện trả danh sách và FE đang lọc một phần ở client. Chức năng này chưa phải blocker khi dữ liệu còn nhỏ, nhưng nên có hướng mở rộng trước khi catalog tăng đáng kể.
 
-MovieController.findAll() chưa có query filter.
-MovieServiceImpl gọi repository.findAll() không có sort rõ ràng.
+### Nguyên tắc tương thích
 
-### Đề xuất P2
+- Giữ nguyên `GET /api/v1/movies` và kiểu response hiện tại để không phá client cũ.
+- Nếu cần phân trang, thêm route mới, ví dụ `GET /api/v1/movies/catalog`.
+- Dùng `PageResponse<MovieResponse>`/`PageInfo` theo shared response model hiện có.
+- Chốt rõ API trả `PageResponse` trực tiếp hay nằm trong response envelope theo convention của service trước khi generate client.
+- Thống nhất page index, default size và max size với convention dùng chung; cấu hình giới hạn thay vì hardcode số rải rác.
 
-- Thứ tự mặc định ổn định, có id làm tie-breaker.
-- Chốt cách xử lý releaseDate null.
-- Có thể bổ sung status filter nếu catalog tăng lớn.
-- Chỉ bổ sung pagination khi cần và có contract tương thích rõ ràng.
+### Bộ lọc đề xuất
 
-Sort releaseDate DESC, null cuối, id ASC là phương án ứng viên.
-Thứ tự này không đồng nghĩa “phim nổi bật”.
+- `status`: lọc theo `MovieStatus` hiện có.
+- `genre`: lọc theo định danh ổn định của genre sau khi xác nhận shape thực tế của `GenreResponse`.
+- Có thể thêm từ khóa tìm kiếm khi Movie UI có ô tìm kiếm và nghiệp vụ thống nhất cách tìm.
+- Không thêm `cinemaId` vào `MovieController`. Lọc phim theo suất chiếu hoặc địa điểm thuộc trách nhiệm truy vấn của Inventory hoặc một API tổng hợp được thiết kế rõ ràng.
+- Nếu FE chưa cần lọc/phân trang server-side, tiếp tục dùng endpoint cũ cho đến khi có lý do đo được để chuyển.
 
-Nếu chỉ cần thứ tự cho Home nhỏ, FE có thể sort trước.
-Không bắt buộc sửa BE để hoàn thành carousel.
+### Sắp xếp đề xuất
 
-Không suy ra rating, độ phổ biến hoặc featured từ thứ tự repository.
+Nếu cần thứ tự mặc định ổn định, có thể dùng ngày phát hành giảm dần, giá trị ngày rỗng ở cuối và `id ASC` làm tie-breaker. Cần xác nhận đây là thứ tự mong muốn của sản phẩm trước khi đưa vào contract.
 
-## 11. BE-HOME-08 — Tagline và biên tập Hero
+## 11. BE-HOME-11 — Timezone cho lịch chiếu
 
-### Hiện trạng
+Showtime dùng dữ liệu thời gian có offset. Cinema response hiện chưa cung cấp timezone riêng cho từng rạp. Dữ liệu dự án hiện phục vụ rạp tại Việt Nam.
 
-Movie có description nhưng chưa có tagline riêng hoặc featured ordering.
-FE đang dùng tagline chung.
+### Đề xuất
 
-### Đề xuất tùy chọn
+- Thống nhất `Asia/Ho_Chi_Minh` làm timezone nghiệp vụ cho ngày/giờ chiếu trong FE.
+- FE gửi `from`/`to` dưới dạng ISO-8601 có offset rõ ràng.
+- FE nhóm suất theo ngày ở timezone nghiệp vụ, không dựa ngầm vào timezone máy người dùng.
+- API mới sử dụng khoảng nửa mở `[from, to)` để tránh tính trùng thời điểm ở hai khoảng ngày liền kề.
+- Không thêm timezone riêng trên từng Cinema nếu chưa có nhu cầu vận hành rạp ở nhiều múi giờ.
+- Không âm thầm đổi semantics của endpoint khoảng thời gian hiện tại; endpoint mới có thể áp dụng quy ước mới sau khi contract được duyệt.
 
-Nếu cần nội dung theo từng phim:
+## 12. BE-HOME-08 — Nội dung biên tập cho Hero
 
-- tagline nullable.
-- Giới hạn độ dài được chốt theo nhu cầu nội dung.
-- Null dùng copy chung hoặc ẩn theo quyết định FE.
-- Không tự rút description thành một thông điệp marketing chưa được duyệt.
+Tự chuyển slide 5 giây, điều khiển carousel, dừng khi người dùng tương tác và hỗ trợ reduced motion là hành vi UI/FE. Backend không cần API timer.
 
-Nếu cần quản trị phim xuất hiện trên Hero:
+Chỉ xem xét API hoặc field biên tập nếu đội vận hành cần tự chọn phim, thứ tự, tiêu đề hoặc tagline cho Hero. Khi đó cần xác định ai quản lý nội dung và có màn hình quản trị hay không. Không thêm field `featured` hoặc thứ tự hiển thị nếu chưa có workflow để cập nhật chúng.
 
-- Chốt featured và thứ tự hiển thị.
-- Chốt thời gian bắt đầu/kết thúc nếu có campaign.
-- Dùng tie-breaker ổn định.
-- Không cho FE tự coi mọi NOW_SHOWING là danh sách được biên tập.
+## 13. BE-HOME-09 — Promotion
 
-Chọn ownership trước:
+FE hiện đang hiển thị dữ liệu preview cục bộ, không phải khuyến mãi có thể giao dịch.
 
-- Metadata riêng của phim có thể thuộc Movie Service.
-- Campaign/Home content cần thiết kế ownership riêng nếu vượt khỏi metadata phim.
+Trước khi tạo Promotion API cần có contract cho:
 
-Không bắt buộc tạo hero endpoint mới.
-Không thêm timer hoặc animation config vào BE chỉ để phục vụ carousel hiện tại.
+- Thời hạn áp dụng và trạng thái chiến dịch.
+- Đối tượng hoặc suất/phim/rạp được áp dụng.
+- Giá trị giảm, giới hạn và điều kiện sử dụng.
+- Cách xác thực khuyến mãi khi checkout.
+- Quyền quản lý và kiểm toán dữ liệu.
 
-## 12. BE-HOME-09 — Nội dung Promotion
+Không để FE hiển thị mức giảm như giá thật nếu Backend chưa xác nhận tính hợp lệ tại thời điểm đặt vé.
 
-### Hiện trạng
+## 14. BE-HOME-10 — Membership
 
-Promotion FE sử dụng promotionPreviews trong presentation/marketing.ts.
-Các giá và combo từ thiết kế có nhãn “Nội dung minh họa · chưa áp dụng”.
+Membership benefits ở Home hiện chỉ mang tính minh họa. Chưa có contract API trong phạm vi đang đối chiếu để thay thế nội dung đó.
 
-Chưa có contract backend đã xác nhận cho promotion của Home.
-Carousel thủ công không yêu cầu backend mới.
+Chỉ tích hợp khi có Membership API, quy tắc quyền lợi, điều kiện áp dụng và nguồn dữ liệu chính thức. Không thêm dữ liệu thành viên giả vào Movie, Cinema hoặc Showtime response.
 
-### Hai phạm vi cần phân biệt
+## 15. BE-HOME-05 — Availability của ghế
 
-#### A. Nội dung quảng bá
+`OPEN_FOR_BOOKING` chỉ mô tả trạng thái mở bán, không phải số ghế còn trống.
 
-Nếu cần quản trị nội dung Home, chốt model có thể bao gồm:
+Nếu sản phẩm cần hiển thị “còn chỗ”, “sắp hết” hoặc số ghế:
 
-- ID.
-- Tiêu đề, nhãn và mô tả.
-- Artwork/alt text nếu dùng ảnh.
-- Thứ tự.
-- Trạng thái xuất bản.
-- Thời gian hiệu lực.
-- Destination đã được kiểm soát nếu có CTA.
+- Xác định nguồn sự thật và thời điểm tính availability.
+- Tính theo batch cho nhiều showtime nếu cần; tránh gọi một API riêng cho từng suất.
+- Không cache lâu khiến thông tin giữ chỗ sai lệch.
+- Coi thông tin trên Home là gợi ý; bước giữ ghế/checkout vẫn phải kiểm tra lại trong Inventory.
+- Không bổ sung field availability vào Movie Service vì dữ liệu ghế thuộc Inventory.
 
-Đây là danh sách field đề xuất, không phải response hiện có.
-Chưa chốt endpoint, DTO hoặc service owner.
+Hiện chưa có đủ contract để đề xuất một field response cụ thể.
 
-Public read chỉ trả nội dung được xuất bản và đang hiệu lực.
-Mutation phải có quyền quản trị được thiết kế và cấp thực tế.
+## 16. BE-HOME-12 — CORS và triển khai
 
-#### B. Ưu đãi áp dụng vào giao dịch
-
-“Đồng giá 45K”, giảm giá hoặc combo có hiệu lực cần nghiệp vụ riêng:
-
-- Điều kiện áp dụng theo ngày/rạp/phim/suất/loại ghế.
-- Timezone áp dụng.
-- Mức giá/discount có kiểu dữ liệu tiền và currency rõ ràng.
-- Chính sách cộng dồn, giới hạn và hết hạn.
-- Giá cuối cùng được BE tính và lưu theo ownership đã chốt.
-- Quy tắc hoàn tiền và snapshot của booking.
-- Combo cần catalog/order nếu hệ thống bán bắp nước thật.
-
-Không để FE đổi giá dựa trên text của banner.
-Nội dung quảng bá không tự trở thành pricing rule.
-
-Không mặc định đưa domain này vào Movie Service hoặc R28.
-Chốt ownership với Booking/Payment và domain giá trước khi triển khai.
-
-## 13. BE-HOME-10 — Membership
-
-### Hiện trạng
-
-Membership FE là nội dung minh họa.
-Chưa có contract đã xác nhận cho tier, point balance, earn/redeem hoặc benefits.
-
-Không sao chép tên/mã thành viên mẫu trong HTML thành dữ liệu người dùng thật.
-
-### Đề xuất backlog
-
-Nếu chỉ cần giới thiệu chương trình:
-
-- Quản lý nội dung quyền lợi đã được duyệt.
-- Có thứ tự, trạng thái xuất bản và destination nếu có.
-
-Nếu cần chương trình thành viên thật:
-
-- Chốt ownership.
-- Membership profile/tier có contract riêng.
-- Point ledger, earn/redeem, reversal có nghiệp vụ riêng.
-- Chốt tích điểm ở thời điểm thanh toán/booking nào.
-- Chốt hoàn điểm khi hủy/refund.
-- Bảo đảm idempotency khi xử lý event.
-- Dữ liệu cá nhân lấy từ endpoint authenticated theo identity hiện có.
-
-Không tính điểm từ FE.
-Không tự thêm domain thành viên vào User Service chỉ vì đã có user profile.
-Không triển khai notification/R28 như điều kiện để làm nội dung Membership.
-
-Phần này không nằm trong round carousel Promotion hiện tại.
-
-## 14. BE-HOME-05 — Availability summary
-
-Đề xuất tùy chọn nếu UX cần hiển thị số ghế còn khả dụng.
-
-Inventory sở hữu dữ liệu show_seats.
-
-Cần chốt:
-
-- AVAILABLE có nghĩa gì.
-- HELD hết hạn nhưng chưa release có được tính hay không.
-- UNAVAILABLE/BOOKED bị loại như thế nào.
-- Summary được tính tại thời điểm nào.
-- Chính sách freshness/cache nếu có.
-
-Không đưa held_by_booking_id hoặc dữ liệu người dùng vào public summary.
-Không thực hiện một request đếm ghế cho từng suất.
-
-Ưu tiên aggregate theo batch và đo chi phí query.
-Summary không bảo đảm giữ được ghế khi người dùng tiếp tục.
-
-Chưa thay ShowtimeResponse cho đến khi semantics được chốt.
-
-## 15. BE-HOME-12 — CORS và môi trường
-
-Source gateway config đã có:
-
-- Localhost pattern mặc định http://localhost:\*.
-- https://cinematic-2awjfcb0p-huykunnes-projects.vercel.app
-
-File:
-
-infrastructure/config-service/src/main/resources/config-repo/
-gateway-service.yml
-
-Không ghi nhận “chưa hỗ trợ origin Vercel” như một thiếu hụt source hiện tại.
-
-Cần kiểm tra vận hành:
-
-- Gateway đã nạp đúng config/profile.
-- Origin thực tế khớp allowlist.
-- Preflight và GET có header CORS đúng.
-- Deployment URL mới hoặc domain chính thức được cấu hình khi cần.
-- FE production trỏ tới Gateway có thể truy cập từ môi trường người dùng.
-
-Không mở toàn bộ origin chỉ để xử lý một deployment.
-Không thay auth/security rules vì lỗi CORS.
-CORS ở Gateway không tự cấu hình CORS cho trang authorization User Service.
-
-Chưa gọi runtime API trong lần rà soát này;
-không tuyên bố lỗi CORS đã được khắc phục end-to-end.
-
-## 16. Quy tắc triển khai chung
-
-### Database và compatibility
-
-- Migration mới cho schema thay đổi.
-- Không sửa V1/V2 đã áp dụng.
-- Phim cũ có field mới null vẫn đọc được.
-- Chốt semantics PUT cho omission/null trước khi deploy.
-- Không âm thầm đổi List response thành page/wrapper.
-- Không join database giữa các service.
-- Không thay event contract một phía.
-
-### Security
-
-- Giữ public read catalog hiện tại.
-- Movie mutation giữ movie:manage.
-- Showtime mutation giữ showtime:manage.
-- Direct hold giữ authorization hiện có.
-- API mới ngoài catalog patterns cần review Gateway và service.
-- Không invent permission chưa được cấp.
-- Không làm lại login OIDC.
-
-### FE integration
-
-Sau khi BE contract được triển khai và review:
-
-1. Cập nhật OpenAPI snapshot đúng môi trường/backend commit.
-2. Regenerate Orval.
-3. Cập nhật feature mapper và HomeMovie.
-4. Component sử dụng query/service/composable hiện có.
-5. Không gọi Axios trực tiếp từ component.
-6. Không sửa generated DTO bằng tay.
-7. Giữ fallback artwork/metadata được cô lập.
-8. Chỉ bỏ nhãn minh họa khi có dữ liệu và nghiệp vụ thật.
-
-### Documentation
-
-Cập nhật các tài liệu thực tế bị ảnh hưởng sau mỗi round:
-
-- docs/cinema_backend_home_proposals.md
-- docs/10_ROADMAP.md
-- docs/11_CHANGELOG.md
-- docs/06_DATABASE_DESIGN.md nếu đổi schema
-- docs/08_SECURITY.md nếu đổi security
-- API/architecture/event docs khi contract hoặc ownership thay đổi
-
-Không đánh dấu DONE chỉ vì đã có proposal hoặc code block.
-
-## 17. Các round triển khai đề xuất
-
-| Round | Phạm vi                                                 | Commit message ứng viên                                        |
-| ----- | ------------------------------------------------------- | -------------------------------------------------------------- |
-| BE-H1 | Age rating                                              | feat(movie): add optional movie age classification             |
-| BE-H2 | Trailer normalization/validation và dữ liệu thật        | fix(movie): normalize and validate trailer URLs                |
-| BE-H3 | Backdrop artwork                                        | feat(movie): add optional backdrop artwork                     |
-| BE-H4 | Chốt cutoff/timezone/active policy, triển khai read API | feat(inventory): expose bookable showtimes by cinema and movie |
-| BE-H5 | Áp dụng policy tại các entry point reservation/hold     | fix(inventory): enforce eligibility for new seat holds         |
-| BE-H6 | Catalog filter/order nếu cần                            | feat(movie): add stable catalog filtering and ordering         |
-
-Age rating và backdrop có thể dùng migration riêng theo thứ tự triển khai.
-Không cố định version migration trong proposal.
-
-BE-HOME-05, 08, 09, 10 giữ backlog cho đến khi xác nhận nhu cầu/domain.
-BE-HOME-12 là kiểm tra cấu hình runtime; chỉ sửa nếu phát hiện sai lệch.
-
-Mỗi round chỉ thực hiện phạm vi đã chọn.
-Review kết quả trước khi chuyển round tiếp theo.
+Cấu hình source hiện có pattern cho localhost và một origin Vercel cụ thể:
+
+`https://cinematic-2awjfcb0p-huykunnes-projects.vercel.app`
+
+Cấu hình trong source không chứng minh ứng dụng đã deploy nhận đúng origin hoặc OPTIONS preflight.
+
+### Kiểm tra khi triển khai
+
+- Xác nhận origin thực tế của FE production trùng với origin được cấu hình.
+- Kiểm tra preflight `OPTIONS` tới API qua Gateway và các service cần thiết.
+- Xác nhận `Access-Control-Allow-Origin`, methods và headers cần thiết trong response.
+- Nếu dùng credentials, không dùng wildcard origin.
+- Đưa domain thay đổi theo deployment vào cấu hình môi trường phù hợp thay vì thêm nhiều domain preview không kiểm soát.
+- Không coi lỗi CORS là lỗi MovieController nếu preflight bị chặn ở Gateway hoặc cấu hình deployment.
+
+## 17. Quy tắc kiến trúc khi triển khai
+
+- Inventory sở hữu cinema, room, showtime, seat và hold.
+- Movie Service sở hữu movie metadata và genre.
+- Không truy cập trực tiếp database của service khác.
+- Giữ nguyên các endpoint/response hiện tại; ưu tiên endpoint mới có tính additive.
+- Cập nhật OpenAPI và generated FE client từ contract đã được duyệt.
+- Không sửa DTO sinh tự động bằng tay.
+- Giữ response public phù hợp với public read hiện có; không yêu cầu đăng nhập chỉ để xem Home nếu sản phẩm chưa đổi yêu cầu.
+- Không lưu trạng thái chọn city/cinema của người dùng trong Backend chỉ để phục vụ điều hướng FE. Trạng thái này hiện do FE quản lý.
+- Lưu ý Pinia store hiện giữ lựa chọn trong phiên SPA; persistence sau khi reload là việc của FE nếu sản phẩm cần.
+- Không đưa thông tin secret, credential hoặc password mẫu vào source, config hay tài liệu commit.
 
 ## 18. Kiểm tra thủ công đề xuất
 
-### Movie
+Các mục dưới đây là checklist **đề xuất để chạy sau khi implement**. Chưa có kiểm tra runtime, migration, test hoặc build nào được thực hiện trong lúc soạn tài liệu.
 
-- Đọc phim cũ khi field mới null.
-- Tạo/sửa/đọc age rating.
-- Trailer hợp lệ, blank, sai protocol và quá dài.
-- Poster/backdrop khác nhau được trả đúng vai trò.
-- Update không xóa field mới ngoài semantics đã chốt.
-- Public GET hoạt động; mutation giữ authorization.
+### Movie catalog
 
-### QuickBooking
+- Gọi `GET /api/v1/movies`; xác nhận client cũ vẫn nhận đúng kiểu danh sách.
+- Nếu thêm catalog route, kiểm tra trang đầu, trang cuối, kết quả rỗng, status filter và genre filter.
+- Kiểm tra thứ tự ổn định giữa các lần gọi khi nhiều phim có cùng ngày phát hành hoặc ngày bị thiếu.
+- Kiểm tra FE vẫn xử lý được phim thiếu trailer, poster, backdrop hoặc age rating.
 
-- Rạp khác nhau trả lịch khác nhau.
-- Chỉ trả trạng thái hợp lệ theo policy.
-- Kiểm tra from, to và cutoff.
-- Kiểm tra rạp/phòng inactive.
-- Phim UPCOMING theo quyết định đặt trước.
-- Cùng giờ ở nhiều phòng có thứ tự ổn định.
-- Ngày chiếu nhất quán khi timezone trình duyệt khác timezone rạp.
+### Cinema và Showtime
 
-### Reservation
+- Truy vấn suất cho một rạp và một khoảng thời gian hợp lệ.
+- Kiểm tra `from` bao gồm và `to` không bao gồm theo quy ước của endpoint mới.
+- Kiểm tra suất quá khứ, suất ngoài rạp đã chọn, suất chưa mở bán và phòng/rạp không hoạt động.
+- Kiểm tra ngày/giờ trên FE khi timezone trình duyệt khác `Asia/Ho_Chi_Minh`.
+- Kiểm tra QuickBooking theo thứ tự **Rạp → Phim → Ngày → Suất**, cùng các trạng thái loading, empty và error.
 
-- Suất không đủ điều kiện không tạo hold mới.
-- Direct hold và event consumer dùng cùng policy.
-- Duplicate/replay không tạo kết quả trái ngược.
-- Không làm hỏng release/confirmation/compensation hiện có.
-- Không tuyên bố đã bảo đảm concurrency chỉ từ kiểm tra Swagger tuần tự.
+### Reservation và hold
 
-### Home
+Chỉ thực hiện sau khi chính sách BE-HOME-02 được duyệt:
 
-- Hero/MovieCard dùng cùng phân loại.
-- Trailer đúng phim, thiếu URL có trạng thái phù hợp.
-- Backdrop lỗi kích hoạt fallback.
-- Hero autoplay; NowShowing/Promotion không autoplay.
-- Tiêu đề dài không làm bố cục nhảy.
-- Promotion/Membership giữ nhãn minh họa khi chưa có contract thật.
+- Thử reservation với suất `OPEN_FOR_BOOKING` trong tương lai.
+- Thử suất đã bắt đầu hoặc đã kết thúc.
+- Thử suất chuyển trạng thái trong lúc người dùng checkout.
+- Thử trạng thái phòng/rạp thay đổi sau khi suất mở bán, theo chính sách đã duyệt.
+- Kiểm tra hold hết hạn, ghế không còn `AVAILABLE`, retry/replay và compensation.
+- Xác nhận các route ghi dữ liệu vẫn được bảo vệ đúng quyền.
 
-Không chạy automated tests, lint, type-check hoặc build trong round tài liệu này.
-Các kiểm tra trên là checklist đề xuất, chưa được xác nhận đã thực hiện.
+### Customer Home và metadata
 
-## 19. Nguồn đối chiếu
+- Kiểm tra Hero carousel tự chuyển ở FE, có thể dừng/tiếp tục phù hợp với accessibility và reduced motion.
+- Kiểm tra yêu cầu autoplay của NowShowing được thực hiện ở FE mà không phụ thuộc API timer.
+- Xác nhận Promotion và Membership vẫn được phân biệt rõ với dữ liệu khuyến mãi/quyền lợi thật.
+- Kiểm tra CORS preflight từ đúng origin FE production qua Gateway.
 
-Các path BE tương đối với repository cinema-system tại commit ghi ở đầu tài liệu:
+## 19. Lộ trình và commit message gợi ý
 
-### Movie
+Chỉ commit sau khi thay đổi tương ứng đã được implement, review và xác nhận. Các commit message sau là gợi ý, không có thay đổi nào đã được thực hiện bởi tài liệu này.
 
-- services/movie-service/src/main/java/com/cinema/movie/controller/MovieController.java
-- services/movie-service/src/main/java/com/cinema/movie/entity/Movie.java
-- services/movie-service/src/main/java/com/cinema/movie/dto/request/CreateMovieRequest.java
-- services/movie-service/src/main/java/com/cinema/movie/dto/request/UpdateMovieRequest.java
-- services/movie-service/src/main/java/com/cinema/movie/dto/response/MovieResponse.java
-- services/movie-service/src/main/java/com/cinema/movie/mapper/MovieMapper.java
-- services/movie-service/src/main/java/com/cinema/movie/service/impl/MovieServiceImpl.java
-- services/movie-service/src/main/java/com/cinema/movie/config/MovieSecurityConfig.java
-- services/movie-service/src/main/resources/db/migration/
+| Thứ tự | Phạm vi                                               | Commit message gợi ý                                             |
+| ------ | ----------------------------------------------------- | ---------------------------------------------------------------- |
+| 1      | Thêm truy vấn suất mở bán cho QuickBooking            | `feat(inventory): add bookable showtime query for customer flow` |
+| 2      | Chuẩn hóa điều kiện tạo hold sau khi duyệt nghiệp vụ  | `fix(inventory): align customer hold eligibility checks`         |
+| 3      | Thêm age rating khi có nguồn dữ liệu xác nhận         | `feat(movie): add movie age rating metadata`                     |
+| 4      | Chuẩn hóa validation trailer hiện có                  | `fix(movie): validate trailer URLs consistently`                 |
+| 5      | Thêm backdrop nullable khi có nguồn ảnh chính thức    | `feat(movie): add movie backdrop metadata`                       |
+| 6      | Thêm catalog phân trang khi cần và giữ API cũ         | `feat(movie): add paginated customer catalog`                    |
+| 7      | Chỉ thêm API Promotion/Membership theo contract riêng | Commit theo domain và API đã được duyệt                          |
 
-### Inventory
+## 20. Tài liệu và source tham chiếu
 
-- services/inventory-service/src/main/java/com/cinema/inventory/controller/ShowtimeController.java
-- services/inventory-service/src/main/java/com/cinema/inventory/service/impl/ShowtimeServiceImpl.java
-- services/inventory-service/src/main/java/com/cinema/inventory/repository/ShowtimeRepository.java
-- services/inventory-service/src/main/java/com/cinema/inventory/dto/response/ShowtimeResponse.java
-- services/inventory-service/src/main/java/com/cinema/inventory/enums/ShowtimeStatus.java
-- services/inventory-service/src/main/java/com/cinema/inventory/service/impl/CinemaServiceImpl.java
-- services/inventory-service/src/main/java/com/cinema/inventory/service/impl/SeatReservationRequestedConsumerServiceImpl.java
-- services/inventory-service/src/main/java/com/cinema/inventory/service/impl/ShowSeatServiceImpl.java
-- services/inventory-service/src/main/java/com/cinema/inventory/event/SeatReservationRejectionReason.java
-- services/inventory-service/src/main/java/com/cinema/inventory/config/InventorySecurityConfig.java
-- services/inventory-service/src/main/resources/db/migration/
+### Backend
 
-### Gateway và tài liệu
-
-- infrastructure/gateway-service/src/main/java/com/cinema/gateway/config/GatewaySecurityConfiguration.java
-- infrastructure/config-service/src/main/resources/config-repo/gateway-service.yml
-- README.md
-- docs/01_AI_CONTEXT.md
-- docs/02_ARCHITECTURE.md
-- docs/08_SECURITY.md
-- docs/10_ROADMAP.md
+- Repo: `https://github.com/HuyKunNe/cinema-system`
+- Tài liệu hiện tại: `docs/cinema_backend_home_proposals.md`
+- Các khu vực cần đối chiếu khi implement: Movie controller/service/entity/DTO/repository, Cinema controller/service, Showtime controller/service/repository, reservation consumer/service, shared response model, Gateway CORS và OpenAPI.
 
 ### Frontend
 
-- src/features/home/components/HeroBanner.vue
-- src/features/home/components/MovieCard.vue
-- src/features/home/components/NowShowingSection.vue
-- src/features/home/components/PromotionSection.vue
-- src/features/home/components/MembershipSection.vue
-- src/features/home/presentation/marketing.ts
-- src/features/home/models/home-movie.ts
-- src/features/home/mappers/home-movie.mapper.ts
-- docs/design/reference/html-convert/
+- Repo: `https://github.com/HuyKunNe/cinematic-web`
+- Thiết kế tham chiếu: `docs/design/reference/html-convert`
+- Các khu vực cần đối chiếu khi implement: Home sections, Movies page, QuickBooking, location store, API client/generated models và các query composable.
 
-Các cập nhật chưa có trong commit remote không được coi là đã triển khai.
-Không gọi API runtime, chạy test/build, áp dụng migration hoặc ghi vào repository
-trong lần tổng hợp này.
+### Ghi chú trạng thái
+
+Đây là tài liệu đề xuất dựa trên hai baseline commit nêu ở đầu file. Trước khi triển khai, hãy kiểm tra lại `main` của cả hai repo và cập nhật phần baseline nếu commit đã thay đổi.
