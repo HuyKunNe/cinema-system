@@ -82,3 +82,8 @@ logging:
   level:
     com.netflix.discovery: INFO
     org.hibernate.SQL: DEBUG
+cinema:
+  movie:
+    catalog:
+      default-size: ${MOVIE_CATALOG_DEFAULT_SIZE:8}
+      max-size: ${MOVIE_CATALOG_MAX_SIZE:100}

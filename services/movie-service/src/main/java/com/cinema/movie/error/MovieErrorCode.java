@@ -22,8 +22,13 @@ public enum MovieErrorCode implements ErrorCode {
     TRAILER_URL_TOO_LONG(
             "TRAILER_URL_TOO_LONG",
             "Trailer URL must not exceed 500 characters",
+            ErrorCategory.VALIDATION),
+
+    INVALID_CATALOG_PAGINATION(
+            "INVALID_CATALOG_PAGINATION",
+            "Catalog page or size is outside the supported range",
             ErrorCategory.VALIDATION);
-            
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

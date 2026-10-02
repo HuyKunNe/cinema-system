@@ -12,13 +12,22 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.cinema.common.response.model.PageResponse;
 import com.cinema.movie.dto.request.CreateMovieRequest;
 import com.cinema.movie.dto.request.UpdateMovieRequest;
 import com.cinema.movie.dto.response.MovieResponse;
+import com.cinema.movie.entity.MovieStatus;
 import com.cinema.movie.service.MovieService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 
 @RestController
@@ -32,19 +41,50 @@ public class MovieController {
     }
 
     @PostMapping
-    public ResponseEntity<MovieResponse> create(
-            @Valid @RequestBody CreateMovieRequest request) {
+    public ResponseEntity<MovieResponse> create(@Valid @RequestBody CreateMovieRequest request) {
         MovieResponse response = movieService.create(request);
 
-        return ResponseEntity
-                .created(URI.create("/api/v1/movies/" + response.id()))
-                .body(response);
+        return ResponseEntity.created(URI.create("/api/v1/movies/" + response.id())).body(response);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<MovieResponse> findById(
-            @PathVariable("id") UUID id) {
+    public ResponseEntity<MovieResponse> findById(@PathVariable("id") UUID id) {
         return ResponseEntity.ok(movieService.findById(id));
+    }
+
+    @Operation(operationId = "getMovieCatalog", summary = "Get a paginated movie catalog")
+    @SecurityRequirements
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "A movie page, including empty pages"),
+        @ApiResponse(
+                responseCode = "400",
+                description = "Invalid filter or pagination parameters",
+                content =
+                        @Content(
+                                schema =
+                                        @Schema(
+                                                implementation =
+                                                        com.cinema.common.response.model.ApiResponse
+                                                                .class))),
+        @ApiResponse(
+                responseCode = "404",
+                description = "A selected movie no longer exists",
+                content =
+                        @Content(
+                                schema =
+                                        @Schema(
+                                                implementation =
+                                                        com.cinema.common.response.model.ApiResponse
+                                                                .class)))
+    })
+    @GetMapping("/catalog")
+    public ResponseEntity<PageResponse<MovieResponse>> findCatalog(
+            @RequestParam(value = "status", required = false) MovieStatus status,
+            @RequestParam(value = "genre", required = false) UUID genreId,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", required = false) Integer size) {
+
+        return ResponseEntity.ok(movieService.findCatalog(status, genreId, page, size));
     }
 
     @GetMapping
@@ -54,15 +94,12 @@ public class MovieController {
 
     @PutMapping("/{id}")
     public ResponseEntity<MovieResponse> update(
-            @PathVariable("id") UUID id,
-            @Valid @RequestBody UpdateMovieRequest request) {
-        return ResponseEntity.ok(
-                movieService.update(id, request));
+            @PathVariable("id") UUID id, @Valid @RequestBody UpdateMovieRequest request) {
+        return ResponseEntity.ok(movieService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(
-            @PathVariable("id") UUID id) {
+    public ResponseEntity<Void> delete(@PathVariable("id") UUID id) {
         movieService.delete(id);
 
         return ResponseEntity.noContent().build();
