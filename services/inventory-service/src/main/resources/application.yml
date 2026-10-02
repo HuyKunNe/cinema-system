@@ -83,6 +83,8 @@ cinema:
       jwk-set-uri: ${CINEMA_AUTH_JWK_SET_URI}
       audience: ${CINEMA_AUTH_AUDIENCE:cinema-api}
   inventory:
+    bookable:
+      maximum-range: ${INVENTORY_BOOKABLE_MAXIMUM_RANGE:}
     kafka:
       enabled: ${INVENTORY_KAFKA_ENABLED:true}
       consumer-group: ${INVENTORY_KAFKA_CONSUMER_GROUP:inventory-seat-reservation}

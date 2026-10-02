@@ -1,17 +1,9 @@
 package com.cinema.inventory.service.impl;
 
-import java.time.OffsetDateTime;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.inventory.config.BookableShowtimeProperties;
 import com.cinema.inventory.dto.request.CreateShowtimeRequest;
 import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
 import com.cinema.inventory.dto.response.ShowtimeResponse;
@@ -25,53 +17,62 @@ import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ShowSeatGenerationService;
 import com.cinema.inventory.service.ShowtimeService;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Clock;
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
 @Service
 public class ShowtimeServiceImpl implements ShowtimeService {
 
-    private static final Set<ShowtimeStatus> NON_BLOCKING_STATUSES = EnumSet.of(ShowtimeStatus.CANCELLED);
+    private static final Set<ShowtimeStatus> NON_BLOCKING_STATUSES =
+            EnumSet.of(ShowtimeStatus.CANCELLED);
 
     private final ShowtimeRepository showtimeRepository;
     private final RoomRepository roomRepository;
     private final ShowtimeMapper showtimeMapper;
     private final ShowSeatGenerationService showSeatGenerationService;
+    private final Clock clock;
+    private final BookableShowtimeProperties bookableShowtimeProperties;
 
     public ShowtimeServiceImpl(
             ShowtimeRepository showtimeRepository,
             RoomRepository roomRepository,
             ShowtimeMapper showtimeMapper,
-            ShowSeatGenerationService showSeatGenerationService) {
+            ShowSeatGenerationService showSeatGenerationService,
+            Clock clock,
+            BookableShowtimeProperties bookableShowtimeProperties) {
 
         this.showtimeRepository = showtimeRepository;
         this.roomRepository = roomRepository;
         this.showtimeMapper = showtimeMapper;
         this.showSeatGenerationService = showSeatGenerationService;
+        this.clock = clock;
+        this.bookableShowtimeProperties = bookableShowtimeProperties;
     }
 
     @Override
     @Transactional
-    public ShowtimeResponse create(
-            CreateShowtimeRequest request) {
+    public ShowtimeResponse create(CreateShowtimeRequest request) {
 
         Room room = findRoom(request.roomId());
 
         validateRoomAvailable(room);
 
-        validateNoOverlap(
-                room.getId(),
-                request.startsAt(),
-                request.endsAt());
+        validateNoOverlap(room.getId(), request.startsAt(), request.endsAt());
 
-        Showtime showtime = new Showtime(
-                request.movieId(),
-                room,
-                request.startsAt(),
-                request.endsAt());
+        Showtime showtime =
+                new Showtime(request.movieId(), room, request.startsAt(), request.endsAt());
 
         Showtime savedShowtime = showtimeRepository.save(showtime);
 
-        showSeatGenerationService.generate(
-                savedShowtime,
-                request.basePrice());
+        showSeatGenerationService.generate(savedShowtime, request.basePrice());
 
         return showtimeMapper.toResponse(savedShowtime);
     }
@@ -79,8 +80,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     @Override
     @Transactional(readOnly = true)
     public ShowtimeResponse getById(UUID showtimeId) {
-        return showtimeMapper.toResponse(
-                findShowtime(showtimeId));
+        return showtimeMapper.toResponse(findShowtime(showtimeId));
     }
 
     @Override
@@ -88,8 +88,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     public List<ShowtimeResponse> getByRoomId(UUID roomId) {
         findRoom(roomId);
 
-        List<Showtime> showtimes = showtimeRepository
-                .findAllByRoom_IdOrderByStartsAtAsc(roomId);
+        List<Showtime> showtimes = showtimeRepository.findAllByRoom_IdOrderByStartsAtAsc(roomId);
 
         return showtimeMapper.toResponses(showtimes);
     }
@@ -97,45 +96,58 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     @Override
     @Transactional(readOnly = true)
     public List<ShowtimeResponse> getByMovieId(UUID movieId) {
-        List<Showtime> showtimes = showtimeRepository
-                .findAllByMovieIdOrderByStartsAtAsc(movieId);
+        List<Showtime> showtimes = showtimeRepository.findAllByMovieIdOrderByStartsAtAsc(movieId);
 
         return showtimeMapper.toResponses(showtimes);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<ShowtimeResponse> getByTimeRange(
-            OffsetDateTime from,
-            OffsetDateTime to) {
+    public List<ShowtimeResponse> getByTimeRange(OffsetDateTime from, OffsetDateTime to) {
 
         validateTimeRange(from, to);
 
-        List<Showtime> showtimes = showtimeRepository
-                .findAllByStartsAtBetweenOrderByStartsAtAsc(
-                        from,
-                        to);
+        List<Showtime> showtimes =
+                showtimeRepository.findAllByStartsAtBetweenOrderByStartsAtAsc(from, to);
+
+        return showtimeMapper.toResponses(showtimes);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ShowtimeResponse> getBookableShowtimes(
+            UUID cinemaId, UUID movieId, OffsetDateTime from, OffsetDateTime to) {
+
+        validateTimeRange(from, to);
+
+        Duration maximumRange = bookableShowtimeProperties.getMaximumRange();
+
+        Duration requestedRange = Duration.between(from.toInstant(), to.toInstant());
+
+        if (maximumRange != null && requestedRange.compareTo(maximumRange) > 0) {
+
+            throw new ValidationException(InventoryErrorCode.SHOWTIME_QUERY_RANGE_TOO_LARGE);
+        }
+
+        OffsetDateTime now = OffsetDateTime.now(clock);
+
+        List<Showtime> showtimes =
+                showtimeRepository.findBookableShowtimes(
+                        cinemaId, movieId, from, to, now, ShowtimeStatus.OPEN_FOR_BOOKING);
 
         return showtimeMapper.toResponses(showtimes);
     }
 
     @Override
     @Transactional
-    public ShowtimeResponse update(
-            UUID showtimeId,
-            UpdateShowtimeRequest request) {
+    public ShowtimeResponse update(UUID showtimeId, UpdateShowtimeRequest request) {
 
         Showtime showtime = findShowtime(showtimeId);
 
         validateNoOverlapExcludingId(
-                showtime.getRoom().getId(),
-                showtimeId,
-                request.startsAt(),
-                request.endsAt());
+                showtime.getRoom().getId(), showtimeId, request.startsAt(), request.endsAt());
 
-        showtime.changeSchedule(
-                request.startsAt(),
-                request.endsAt());
+        showtime.changeSchedule(request.startsAt(), request.endsAt());
 
         return showtimeMapper.toResponse(showtime);
     }
@@ -179,12 +191,14 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     }
 
     private Room findRoom(UUID roomId) {
-        return roomRepository.findById(roomId)
+        return roomRepository
+                .findById(roomId)
                 .orElseThrow(() -> new NotFoundException(InventoryErrorCode.ROOM_NOT_FOUND));
     }
 
     private Showtime findShowtime(UUID showtimeId) {
-        return showtimeRepository.findById(showtimeId)
+        return showtimeRepository
+                .findById(showtimeId)
                 .orElseThrow(() -> new NotFoundException(InventoryErrorCode.SHOWTIME_NOT_FOUND));
     }
 
@@ -198,18 +212,13 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         }
     }
 
-    private void validateNoOverlap(
-            UUID roomId,
-            OffsetDateTime startsAt,
-            OffsetDateTime endsAt) {
+    private void validateNoOverlap(UUID roomId, OffsetDateTime startsAt, OffsetDateTime endsAt) {
 
         validateTimeRange(startsAt, endsAt);
 
-        boolean overlapping = showtimeRepository.existsOverlappingShowtime(
-                roomId,
-                startsAt,
-                endsAt,
-                NON_BLOCKING_STATUSES);
+        boolean overlapping =
+                showtimeRepository.existsOverlappingShowtime(
+                        roomId, startsAt, endsAt, NON_BLOCKING_STATUSES);
 
         if (overlapping) {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_OVERLAP);
@@ -217,29 +226,20 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     }
 
     private void validateNoOverlapExcludingId(
-            UUID roomId,
-            UUID showtimeId,
-            OffsetDateTime startsAt,
-            OffsetDateTime endsAt) {
+            UUID roomId, UUID showtimeId, OffsetDateTime startsAt, OffsetDateTime endsAt) {
 
         validateTimeRange(startsAt, endsAt);
 
-        boolean overlapping = showtimeRepository
-                .existsOverlappingShowtimeExcludingId(
-                        roomId,
-                        showtimeId,
-                        startsAt,
-                        endsAt,
-                        NON_BLOCKING_STATUSES);
+        boolean overlapping =
+                showtimeRepository.existsOverlappingShowtimeExcludingId(
+                        roomId, showtimeId, startsAt, endsAt, NON_BLOCKING_STATUSES);
 
         if (overlapping) {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_OVERLAP);
         }
     }
 
-    private void validateTimeRange(
-            OffsetDateTime startsAt,
-            OffsetDateTime endsAt) {
+    private void validateTimeRange(OffsetDateTime startsAt, OffsetDateTime endsAt) {
 
         if (startsAt == null || endsAt == null) {
             throw new ValidationException(InventoryErrorCode.SHOWTIME_PERIOD_REQUIRED);

@@ -339,6 +339,12 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_SEAT_RELEASE_MISMATCH",
                     "Seat release request does not match held inventory");
 
+    public static final InventoryErrorCode SHOWTIME_QUERY_RANGE_TOO_LARGE =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_SHOWTIME_QUERY_RANGE_TOO_LARGE",
+                    "Showtime query range exceeds the configured maximum");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

@@ -21,8 +21,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
@@ -133,6 +135,22 @@ public class GlobalExceptionHandler {
             InternalServerException exception) {
 
         return buildBusinessError(exception, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler({
+        MissingServletRequestParameterException.class,
+        MethodArgumentTypeMismatchException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleInvalidRequestParameter(Exception exception) {
+
+        ErrorBody error =
+                new ErrorBody(
+                        "INVALID_REQUEST_PARAMETER",
+                        "Required request parameter is missing or has an invalid format",
+                        ErrorCategory.VALIDATION.name(),
+                        null);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ResponseFactory.error(error));
     }
 
     private HttpStatus resolveHttpStatus(ErrorCategory category) {
