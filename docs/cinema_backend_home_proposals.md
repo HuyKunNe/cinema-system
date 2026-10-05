@@ -38,7 +38,10 @@ Khi main thay đổi, kiểm tra lại source trước khi cập nhật trạng 
 - GET /api/v1/genres đã tồn tại.
 - MovieStatus gồm UPCOMING, NOW_SHOWING, ENDED và INACTIVE.
 - MovieResponse có posterUrl và trailerUrl.
-- Movie entity và MovieResponse chưa có backdropUrl hoặc ageRating.
+- Movie entity và MovieResponse đã có backdropUrl và ageRating nullable.
+- PUT /api/v1/movies/{id}/metadata cập nhật cả hai metadata, yêu cầu movie:manage.
+- Request metadata yêu cầu cả hai key; null dùng để xóa giá trị.
+- API sửa phim cũ bảo toàn metadata.
 - Movie Service không sở hữu dữ liệu suất chiếu, phòng hoặc ghế.
 
 ### 2.2 Inventory
@@ -203,20 +206,20 @@ SeatReservationRequestedConsumerServiceImpl và ShowtimeRepository.
 
 ## 7. BE-HOME-06 — Age rating
 
-**Trạng thái: chưa implement; cần dữ liệu và quyết định nghiệp vụ.**
+**Trạng thái: IMPLEMENTED trong source.**
 
-Movie entity và response chưa có ageRating.
+- AgeRating gồm P, K, T13, T16, T18.
+- Entity và response cho phép null khi chưa có dữ liệu.
+- API metadata yêu cầu movie:manage.
+- FE hiển thị P, K, 13+, 16+, 18+; null hiển thị trạng thái thiếu dữ liệu.
+- Chưa áp dụng kiểm tra tuổi vào reservation/hold.
 
-Trước khi triển khai cần xác nhận:
+Script scripts/cinestar_movie_age_ratings.sql bổ sung rating
+cho dữ liệu Cinestar đã seed, theo snapshot ngày 2026-10-05.
 
-- Nguồn phân loại chính thức.
-- Enum và ý nghĩa từng mã.
-- Quy tắc hiển thị và chính sách kiểm tra tuổi.
-- Cách xử lý phim cũ chưa có dữ liệu.
-
-Không tự suy đoán rating từ tên phim, poster hoặc mô tả.
-Nếu được duyệt, field cần nullable và cập nhật migration,
-DTO, mapper, OpenAPI, generated client đồng bộ.
+Script chỉ cập nhật rating đang null, giữ giá trị đã quản trị.
+Không suy đoán rating từ tên phim.
+Việc script đã được chạy trên một database cần được xác nhận riêng.
 
 ## 8. BE-HOME-07 — trailerUrl
 
@@ -242,17 +245,14 @@ SQL seed không đi qua validation này; dữ liệu cũ không được tự ba
 
 ## 9. BE-HOME-03 — backdropUrl
 
-**Trạng thái: chưa implement; chờ nguồn ảnh ngang.**
+**Trạng thái: IMPLEMENTED trong source; chờ bổ sung ảnh ngang xác minh được.**
 
-Trước khi thêm field cần xác nhận nguồn media, storage/CDN,
-quy trình quản lý và fallback FE.
-
-Nếu được duyệt:
-
-- Thêm cột và field nullable.
-- Giữ tương thích dữ liệu phim cũ.
-- Cập nhật entity, DTO, mapper, OpenAPI và client.
-- Không tự tạo ảnh ngang hoặc thêm upload API ngoài kiến trúc hiện có.
+- Migration V3 thêm backdrop_url nullable.
+- Backend trả metadata gốc, không thay backdropUrl bằng posterUrl.
+- API metadata cập nhật URL qua quyền movie:manage.
+- Hero ưu tiên backdropUrl, sau đó posterUrl, rồi fallback hiện có.
+- Movie cards tiếp tục dùng posterUrl.
+- Chưa thêm upload API hoặc tự tạo dữ liệu ảnh ngang.
 
 ## 10. BE-HOME-04 — Movie catalog
 
