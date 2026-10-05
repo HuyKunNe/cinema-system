@@ -140,23 +140,49 @@ Endpoint này là **đề xuất**, chưa tồn tại chỉ vì được ghi tro
 
 ## 6. BE-HOME-02 — Chính sách tạo reservation và hold
 
-Trước khi sửa logic cần thống nhất các quy tắc sau:
+> **Trạng thái:** APPROVED — chính sách đã được duyệt.
+> Chỉ ghi IMPLEMENTED sau khi các thay đổi tương ứng đã được áp dụng.
 
-1. Có chặn tạo hold khi `startsAt <= now` không?
-2. Nếu rạp hoặc phòng bị ngừng hoạt động sau khi suất đã mở bán, có chặn reservation mới không?
-3. Nếu suất chuyển khỏi `OPEN_FOR_BOOKING` trong lúc checkout, trạng thái nào là nguồn quyết định cuối cùng?
-4. Quy tắc áp dụng như thế nào cho retry, replay message, release và compensation?
+### Điều kiện tạo hold
 
-### Hướng xử lý đề xuất
+REST hold và reservation consumer cùng yêu cầu:
 
-- Đặt điều kiện hợp lệ tại các điểm Backend thực sự tạo reservation/hold, không chỉ dựa vào việc FE đã ẩn nút đặt vé.
-- Dùng `Clock` hoặc abstraction thời gian hiện có để kiểm tra thời điểm.
-- Giữ nguyên locking, idempotency, release và compensation.
-- Không biến endpoint đọc danh sách suất chiếu thành cơ chế bảo đảm ghế còn trống.
-- Không mở rộng quyền truy cập public cho endpoint hold hiện có nếu endpoint đó đang yêu cầu quyền `inventory:write`.
-- Xác nhận chính sách xử lý rạp/phòng bị deactivate trước khi thêm kiểm tra này; không tự suy diễn từ quy tắc lúc mở bán suất.
+- Showtime tồn tại và có trạng thái OPEN_FOR_BOOKING.
+- startsAt phải sau thời điểm kiểm tra của server.
+- Room và Cinema của suất chiếu phải đang active.
+- Thời hạn hold phải còn ở tương lai.
+- Ghế phải đáp ứng điều kiện giữ ghế của từng luồng hiện có.
 
-Đây là thay đổi có ảnh hưởng đến nghiệp vụ và cần review cùng phần Inventory lock hardening đang được thực hiện.
+Dùng Clock hiện có. Reservation consumer lấy lại thời gian sau khi
+khóa ghế để kiểm tra expiration và điều kiện suất chiếu.
+
+### Retry và replay
+
+- Retry reservation bằng event mới phải kiểm tra lại điều kiện suất,
+  phòng và rạp.
+- Hold cùng booking chỉ được tái sử dụng khi còn hạn và holdExpiresAt
+  trùng với payload.
+- Replay event đã xử lý trả alreadyProcessed trước khi kiểm tra eligibility.
+- REST hold giữ hành vi hiện tại: chỉ nhận ghế AVAILABLE.
+
+### Confirm và giải phóng ghế
+
+- Giữ logic confirm hiện tại trong round này.
+- Không thêm eligibility gate vào release, expiration hoặc compensation.
+- Không chặn giải phóng ghế vì suất quá giờ hoặc phòng/rạp inactive.
+
+### Contract và quyền truy cập
+
+- Giữ nguyên route, request và success response.
+- REST trả HTTP 409 với INVENTORY_SHOWTIME_NOT_BOOKABLE khi suất
+  không đủ điều kiện.
+- Consumer dùng reason INVALID_REQUEST hiện có và tạo rejection outbox.
+- Giữ nguyên processed-event registration, transaction và khóa ghế.
+- REST hold tiếp tục yêu cầu inventory:write.
+
+Kiểm tra eligibility dùng dữ liệu nhìn thấy trong transaction.
+Việc đồng bộ tuyệt đối với thay đổi trạng thái suất/phòng/rạp đồng thời
+cần được xử lý trong phạm vi Inventory lock hardening.
 
 ## 7. BE-HOME-06 — Phân loại độ tuổi của phim
 

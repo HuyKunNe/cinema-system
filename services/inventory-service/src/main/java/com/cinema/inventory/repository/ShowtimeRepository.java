@@ -82,4 +82,24 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, UUID> {
             @Param("to") OffsetDateTime to,
             @Param("now") OffsetDateTime now,
             @Param("status") ShowtimeStatus status);
+
+    @Query(
+            """
+            select case
+                when count(showtime) > 0 then true
+                else false
+            end
+            from Showtime showtime
+            join showtime.room room
+            join room.cinema cinema
+            where showtime.id = :showtimeId
+              and showtime.status = :status
+              and showtime.startsAt > :now
+              and room.active = true
+              and cinema.active = true
+            """)
+    boolean existsHoldEligibleShowtime(
+            @Param("showtimeId") UUID showtimeId,
+            @Param("now") OffsetDateTime now,
+            @Param("status") ShowtimeStatus status);
 }

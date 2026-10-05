@@ -345,6 +345,13 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_SHOWTIME_QUERY_RANGE_TOO_LARGE",
                     "Showtime query range exceeds the configured maximum");
 
+    public static final InventoryErrorCode SHOWTIME_NOT_BOOKABLE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_NOT_BOOKABLE",
+                    "Showtime must be open for booking, start in the future, "
+                            + "and belong to an active room and cinema");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

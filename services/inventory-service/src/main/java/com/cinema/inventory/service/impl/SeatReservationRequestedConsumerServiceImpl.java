@@ -5,7 +5,6 @@ import com.cinema.common.outbox.model.OutboxEventMessage;
 import com.cinema.common.outbox.service.OutboxService;
 import com.cinema.common.validation.UuidVersions;
 import com.cinema.inventory.entity.ShowSeat;
-import com.cinema.inventory.entity.Showtime;
 import com.cinema.inventory.enums.ShowSeatStatus;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.event.InventoryEventContract;
@@ -110,9 +109,9 @@ public class SeatReservationRequestedConsumerServiceImpl
             return Result.alreadyProcessed();
         }
 
-        OffsetDateTime now = OffsetDateTime.now(clock);
+        OffsetDateTime receivedAt = OffsetDateTime.now(clock);
 
-        ReservationRequestAssessment validation = validateAndNormalize(payload, now);
+        ReservationRequestAssessment validation = validateAndNormalize(payload, receivedAt);
 
         if (!validation.valid()) {
             return reject(
@@ -120,16 +119,33 @@ public class SeatReservationRequestedConsumerServiceImpl
                     validation.reason(),
                     validation.message(),
                     validation.affectedSeats(),
-                    now,
+                    receivedAt,
                     message);
         }
 
         List<String> seatNumbers = validation.normalizedSeatNumbers();
 
-        Showtime showtime = showtimeRepository.findById(payload.showtimeId()).orElse(null);
+        List<ShowSeat> showSeats =
+                showSeatRepository.findAllByShowtimeIdAndSeatNumbersForUpdate(
+                        payload.showtimeId(), seatNumbers);
 
-        if (showtime == null || showtime.getStatus() != ShowtimeStatus.OPEN_FOR_BOOKING) {
+        OffsetDateTime now = OffsetDateTime.now(clock);
 
+        if (!payload.holdExpiresAt().isAfter(now)) {
+            return reject(
+                    payload,
+                    SeatReservationRejectionReason.RESERVATION_EXPIRED,
+                    RESERVATION_EXPIRED_MESSAGE,
+                    seatNumbers,
+                    now,
+                    message);
+        }
+
+        boolean eligible =
+                showtimeRepository.existsHoldEligibleShowtime(
+                        payload.showtimeId(), now, ShowtimeStatus.OPEN_FOR_BOOKING);
+
+        if (!eligible) {
             return reject(
                     payload,
                     SeatReservationRejectionReason.INVALID_REQUEST,
@@ -138,10 +154,6 @@ public class SeatReservationRequestedConsumerServiceImpl
                     now,
                     message);
         }
-
-        List<ShowSeat> showSeats =
-                showSeatRepository.findAllByShowtimeIdAndSeatNumbersForUpdate(
-                        payload.showtimeId(), seatNumbers);
 
         List<String> foundSeatNumbers =
                 showSeats.stream()

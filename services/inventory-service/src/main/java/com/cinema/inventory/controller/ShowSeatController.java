@@ -1,8 +1,14 @@
 package com.cinema.inventory.controller;
 
-import java.net.URI;
-import java.util.List;
-import java.util.UUID;
+import com.cinema.inventory.dto.request.GenerateShowSeatsRequest;
+import com.cinema.inventory.dto.request.HoldShowSeatRequest;
+import com.cinema.inventory.dto.request.ShowSeatBookingRequest;
+import com.cinema.inventory.dto.response.ShowSeatResponse;
+import com.cinema.inventory.service.ShowSeatService;
+
+import io.swagger.v3.oas.annotations.Operation;
+
+import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,13 +20,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.cinema.inventory.dto.request.GenerateShowSeatsRequest;
-import com.cinema.inventory.dto.request.HoldShowSeatRequest;
-import com.cinema.inventory.dto.request.ShowSeatBookingRequest;
-import com.cinema.inventory.dto.response.ShowSeatResponse;
-import com.cinema.inventory.service.ShowSeatService;
-
-import jakarta.validation.Valid;
+import java.net.URI;
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/show-seats")
@@ -28,8 +30,7 @@ public class ShowSeatController {
 
     private final ShowSeatService showSeatService;
 
-    public ShowSeatController(
-            ShowSeatService showSeatService) {
+    public ShowSeatController(ShowSeatService showSeatService) {
         this.showSeatService = showSeatService;
     }
 
@@ -40,19 +41,14 @@ public class ShowSeatController {
 
         List<ShowSeatResponse> response = showSeatService.generate(showtimeId, request);
 
-        return ResponseEntity
-                .created(URI.create(
-                        "/api/v1/show-seats?showtimeId="
-                                + showtimeId))
+        return ResponseEntity.created(URI.create("/api/v1/show-seats?showtimeId=" + showtimeId))
                 .body(response);
     }
 
     @GetMapping("/{showSeatId}")
-    public ResponseEntity<ShowSeatResponse> getById(
-            @PathVariable("showSeatId") UUID showSeatId) {
+    public ResponseEntity<ShowSeatResponse> getById(@PathVariable("showSeatId") UUID showSeatId) {
 
-        return ResponseEntity.ok(
-                showSeatService.getById(showSeatId));
+        return ResponseEntity.ok(showSeatService.getById(showSeatId));
     }
 
     @GetMapping
@@ -61,24 +57,33 @@ public class ShowSeatController {
             @RequestParam(name = "availableOnly", defaultValue = "false") boolean availableOnly) {
 
         if (availableOnly) {
-            return ResponseEntity.ok(
-                    showSeatService
-                            .getAvailableByShowtimeId(showtimeId));
+            return ResponseEntity.ok(showSeatService.getAvailableByShowtimeId(showtimeId));
         }
 
-        return ResponseEntity.ok(
-                showSeatService.getByShowtimeId(showtimeId));
+        return ResponseEntity.ok(showSeatService.getByShowtimeId(showtimeId));
     }
 
+    @Operation(
+            summary = "Hold an available show seat",
+            description =
+                    """
+                    Requires inventory:write.
+
+                    The seat must be AVAILABLE and expiresAt must be in the future.
+                    The showtime must be OPEN_FOR_BOOKING and start in the future.
+                    Its room and cinema must both be active.
+
+                    Returns HTTP 409 with INVENTORY_SHOWTIME_NOT_BOOKABLE
+                    when showtime eligibility is not satisfied.
+
+                    This endpoint does not reuse an existing HELD seat.
+                    """)
     @PutMapping("/{showSeatId}/hold")
     public ResponseEntity<ShowSeatResponse> hold(
             @PathVariable("showSeatId") UUID showSeatId,
             @Valid @RequestBody HoldShowSeatRequest request) {
 
-        return ResponseEntity.ok(
-                showSeatService.hold(
-                        showSeatId,
-                        request));
+        return ResponseEntity.ok(showSeatService.hold(showSeatId, request));
     }
 
     @PutMapping("/{showSeatId}/book")
@@ -86,10 +91,7 @@ public class ShowSeatController {
             @PathVariable("showSeatId") UUID showSeatId,
             @Valid @RequestBody ShowSeatBookingRequest request) {
 
-        return ResponseEntity.ok(
-                showSeatService.book(
-                        showSeatId,
-                        request));
+        return ResponseEntity.ok(showSeatService.book(showSeatId, request));
     }
 
     @PutMapping("/{showSeatId}/release")
@@ -97,25 +99,20 @@ public class ShowSeatController {
             @PathVariable("showSeatId") UUID showSeatId,
             @Valid @RequestBody ShowSeatBookingRequest request) {
 
-        return ResponseEntity.ok(
-                showSeatService.release(
-                        showSeatId,
-                        request));
+        return ResponseEntity.ok(showSeatService.release(showSeatId, request));
     }
 
     @PutMapping("/{showSeatId}/unavailable")
     public ResponseEntity<ShowSeatResponse> makeUnavailable(
             @PathVariable("showSeatId") UUID showSeatId) {
 
-        return ResponseEntity.ok(
-                showSeatService.makeUnavailable(showSeatId));
+        return ResponseEntity.ok(showSeatService.makeUnavailable(showSeatId));
     }
 
     @PutMapping("/{showSeatId}/available")
     public ResponseEntity<ShowSeatResponse> makeAvailable(
             @PathVariable("showSeatId") UUID showSeatId) {
 
-        return ResponseEntity.ok(
-                showSeatService.makeAvailable(showSeatId));
+        return ResponseEntity.ok(showSeatService.makeAvailable(showSeatId));
     }
 }

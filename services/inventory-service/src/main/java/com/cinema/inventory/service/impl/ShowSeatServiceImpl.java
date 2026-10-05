@@ -52,29 +52,25 @@ public class ShowSeatServiceImpl implements ShowSeatService {
 
     @Override
     @Transactional
-    public List<ShowSeatResponse> generate(
-            UUID showtimeId,
-            GenerateShowSeatsRequest request) {
+    public List<ShowSeatResponse> generate(UUID showtimeId, GenerateShowSeatsRequest request) {
 
         Showtime showtime = findShowtime(showtimeId);
 
         validateShowtimeEditable(showtime);
         validateShowSeatsNotGenerated(showtimeId);
 
-        List<Seat> activeSeats = seatRepository
-                .findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(
+        List<Seat> activeSeats =
+                seatRepository.findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(
                         showtime.getRoom().getId());
 
         if (activeSeats.isEmpty()) {
             throw new ConflictException(InventoryErrorCode.NO_ACTIVE_SEATS);
         }
 
-        List<ShowSeat> showSeats = activeSeats.stream()
-                .map(seat -> new ShowSeat(
-                        showtime,
-                        seat,
-                        request.defaultPrice()))
-                .toList();
+        List<ShowSeat> showSeats =
+                activeSeats.stream()
+                        .map(seat -> new ShowSeat(showtime, seat, request.defaultPrice()))
+                        .toList();
 
         List<ShowSeat> savedShowSeats = showSeatRepository.saveAll(showSeats);
 
@@ -93,8 +89,8 @@ public class ShowSeatServiceImpl implements ShowSeatService {
 
         findShowtime(showtimeId);
 
-        List<ShowSeat> showSeats = showSeatRepository
-                .findAllByShowtime_IdOrderBySeatNumberAsc(showtimeId);
+        List<ShowSeat> showSeats =
+                showSeatRepository.findAllByShowtime_IdOrderBySeatNumberAsc(showtimeId);
 
         return showSeatMapper.toResponses(showSeats);
     }
@@ -105,21 +101,22 @@ public class ShowSeatServiceImpl implements ShowSeatService {
 
         findShowtime(showtimeId);
 
-        List<ShowSeat> showSeats = showSeatRepository
-                .findAllByShowtime_IdAndStatusOrderBySeatNumberAsc(
-                        showtimeId,
-                        ShowSeatStatus.AVAILABLE);
+        List<ShowSeat> showSeats =
+                showSeatRepository.findAllByShowtime_IdAndStatusOrderBySeatNumberAsc(
+                        showtimeId, ShowSeatStatus.AVAILABLE);
 
         return showSeatMapper.toResponses(showSeats);
     }
 
     private Showtime findShowtime(UUID showtimeId) {
-        return showtimeRepository.findById(showtimeId)
+        return showtimeRepository
+                .findById(showtimeId)
                 .orElseThrow(() -> new NotFoundException(InventoryErrorCode.SHOWTIME_NOT_FOUND));
     }
 
     private ShowSeat findShowSeat(UUID showSeatId) {
-        return showSeatRepository.findById(showSeatId)
+        return showSeatRepository
+                .findById(showSeatId)
                 .orElseThrow(() -> new NotFoundException(InventoryErrorCode.SHOW_SEAT_NOT_FOUND));
     }
 
@@ -149,14 +146,18 @@ public class ShowSeatServiceImpl implements ShowSeatService {
         }
 
         if (showSeat.getStatus() != ShowSeatStatus.AVAILABLE) {
-
             throw new ConflictException(InventoryErrorCode.SHOW_SEAT_NOT_AVAILABLE);
         }
 
-        showSeat.hold(
-                request.bookingId(),
-                request.expiresAt(),
-                now);
+        boolean eligible =
+                showtimeRepository.existsHoldEligibleShowtime(
+                        showSeat.getShowtime().getId(), now, ShowtimeStatus.OPEN_FOR_BOOKING);
+
+        if (!eligible) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_BOOKABLE);
+        }
+
+        showSeat.hold(request.bookingId(), request.expiresAt(), now);
 
         return showSeatMapper.toResponse(showSeat);
     }
@@ -198,9 +199,7 @@ public class ShowSeatServiceImpl implements ShowSeatService {
                 .orElseThrow(() -> new NotFoundException(InventoryErrorCode.SHOW_SEAT_NOT_FOUND));
     }
 
-    private void validateHeldBy(
-            ShowSeat showSeat,
-            UUID bookingId) {
+    private void validateHeldBy(ShowSeat showSeat, UUID bookingId) {
 
         if (showSeat.getStatus() != ShowSeatStatus.HELD) {
 
@@ -215,17 +214,20 @@ public class ShowSeatServiceImpl implements ShowSeatService {
     @Transactional
     @Override
     public ShowSeatResponse makeUnavailable(UUID showSeatId) {
-        ShowSeat showSeat = showSeatRepository.findByIdForUpdate(showSeatId)
-                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.SHOW_SEAT_NOT_FOUND));
+        ShowSeat showSeat =
+                showSeatRepository
+                        .findByIdForUpdate(showSeatId)
+                        .orElseThrow(
+                                () ->
+                                        new NotFoundException(
+                                                InventoryErrorCode.SHOW_SEAT_NOT_FOUND));
 
         if (showSeat.getStatus() == ShowSeatStatus.BOOKED) {
-            throw new ConflictException(
-                    InventoryErrorCode.BOOKED_SHOW_SEAT_CANNOT_BE_CHANGED);
+            throw new ConflictException(InventoryErrorCode.BOOKED_SHOW_SEAT_CANNOT_BE_CHANGED);
         }
 
         if (showSeat.getStatus() == ShowSeatStatus.UNAVAILABLE) {
-            throw new ConflictException(
-                    InventoryErrorCode.SHOW_SEAT_ALREADY_UNAVAILABLE);
+            throw new ConflictException(InventoryErrorCode.SHOW_SEAT_ALREADY_UNAVAILABLE);
         }
 
         showSeat.makeUnavailable();
@@ -236,17 +238,20 @@ public class ShowSeatServiceImpl implements ShowSeatService {
     @Transactional
     @Override
     public ShowSeatResponse makeAvailable(UUID showSeatId) {
-        ShowSeat showSeat = showSeatRepository.findByIdForUpdate(showSeatId)
-                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.SHOW_SEAT_NOT_FOUND));
+        ShowSeat showSeat =
+                showSeatRepository
+                        .findByIdForUpdate(showSeatId)
+                        .orElseThrow(
+                                () ->
+                                        new NotFoundException(
+                                                InventoryErrorCode.SHOW_SEAT_NOT_FOUND));
 
         if (showSeat.getStatus() == ShowSeatStatus.BOOKED) {
-            throw new ConflictException(
-                    InventoryErrorCode.BOOKED_SHOW_SEAT_CANNOT_BE_CHANGED);
+            throw new ConflictException(InventoryErrorCode.BOOKED_SHOW_SEAT_CANNOT_BE_CHANGED);
         }
 
         if (showSeat.getStatus() != ShowSeatStatus.UNAVAILABLE) {
-            throw new ConflictException(
-                    InventoryErrorCode.SHOW_SEAT_CANNOT_BECOME_AVAILABLE);
+            throw new ConflictException(InventoryErrorCode.SHOW_SEAT_CANNOT_BECOME_AVAILABLE);
         }
 
         showSeat.makeAvailable();
