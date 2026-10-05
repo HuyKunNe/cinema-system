@@ -1,22 +1,16 @@
 package com.cinema.user.config;
 
+import java.util.List;
+
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.List;
-
 @Configuration(proxyBeanMethods = false)
+@EnableConfigurationProperties(UserCorsProperties.class)
 public class UserCorsConfiguration {
-
-    private static final List<String> ALLOWED_ORIGINS =
-            List.of(
-                    "http://localhost:5173",
-                    "http://localhost:8081",
-                    "http://localhost:8083",
-                    "http://localhost:8084",
-                    "http://localhost:8085");
 
     private static final List<String> ALLOWED_METHODS =
             List.of(
@@ -33,11 +27,12 @@ public class UserCorsConfiguration {
                     "X-Requested-With");
 
     @Bean
-    UrlBasedCorsConfigurationSource corsConfigurationSource() {
+    UrlBasedCorsConfigurationSource corsConfigurationSource(
+            UserCorsProperties properties) {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(ALLOWED_ORIGINS);
+        configuration.setAllowedOrigins(properties.allowedOrigins());
         configuration.setAllowedMethods(ALLOWED_METHODS);
         configuration.setAllowedHeaders(ALLOWED_HEADERS);
         configuration.setAllowCredentials(true);

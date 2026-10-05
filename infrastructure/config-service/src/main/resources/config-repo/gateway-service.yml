@@ -21,6 +21,8 @@ spring:
               uri: lb://user-service
               predicates:
                 - Path=/api/v1/users/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
 
             - id: inventory-service
               uri: lb://inventory-service
@@ -43,12 +45,13 @@ spring:
                 - Path=/api/v1/notifications/**
 
           globalcors:
+            add-to-simple-url-handler-mapping: true
             cors-configurations:
               "[/**]":
                 allowed-origin-patterns:
-                  - ${CORS_ALLOWED_ORIGIN_PATTERN:http://localhost:*}
-                  - "https://cinematic-2awjfcb0p-huykunnes-projects.vercel.app"
-                  - "https://cinematic-web-beta.vercel.app/"
+                  - "${CORS_ALLOWED_ORIGIN_PATTERN:http://localhost:*}"
+                  - "${CORS_FE_ORIGIN:https://cinematic-web-beta.vercel.app}"
+                  - "${CORS_FE_PREVIEW_ORIGIN:https://cinematic-2awjfcb0p-huykunnes-projects.vercel.app}"
                 allowed-methods:
                   - GET
                   - POST
@@ -69,7 +72,6 @@ spring:
                   - X-Correlation-Id
                 allow-credentials: true
                 max-age: 3600
-
           httpclient:
             connect-timeout: ${GATEWAY_CONNECT_TIMEOUT_MS:5000}
             response-timeout: ${GATEWAY_RESPONSE_TIMEOUT:10s}
