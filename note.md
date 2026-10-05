@@ -153,6 +153,8 @@ Bạn là technical pair-programming assistant cho dự án Cinema System. Hãy 
 
 "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -h localhost -P 3306 -u root -p --default-character-set=utf8mb4 < "E:\java\cinema-system\scripts\cinestar_seed.sql"
 
+"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -h localhost -P 3306 -u root -p --default-character-set=utf8mb4 < "E:\java\cinema-system\scripts\cinestar_quoc_thanh_room_4_5.sql"
+
 "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -h localhost -P 3306 -u root -p --default-character-set=utf8mb4 < "E:\java\cinema-system\scripts\cinestar_quoc_thanh_room06_booking.sql"
 
 ## Repository

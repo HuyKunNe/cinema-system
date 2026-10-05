@@ -14,6 +14,7 @@ import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.outbox.model.OutboxEventMessage;
+import com.cinema.common.validation.UuidVersions;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -100,8 +101,7 @@ public class SeatReservationRejectedConsumerServiceImpl
         }
 
         requireUuidV7(payload.bookingId());
-
-        requireUuidV7(payload.showtimeId());
+        requireInventoryResourceUuid(payload.showtimeId());
 
         if (!payload.bookingId().equals(message.aggregateId())) {
 
@@ -142,6 +142,13 @@ public class SeatReservationRejectedConsumerServiceImpl
 
                 throw new ValidationException(BookingErrorCode.EVENT_PAYLOAD_INVALID);
             }
+        }
+    }
+
+    private void requireInventoryResourceUuid(UUID value) {
+
+        if (!UuidVersions.isV5OrV7(value)) {
+            throw new ValidationException(BookingErrorCode.EVENT_PAYLOAD_INVALID);
         }
     }
 

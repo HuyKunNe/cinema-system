@@ -2,6 +2,7 @@ package com.cinema.inventory.event.validation;
 
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.outbox.model.OutboxEventMessage;
+import com.cinema.common.validation.UuidVersions;
 import com.cinema.inventory.event.InventoryEventContract;
 import com.cinema.inventory.event.payload.SeatReleaseRequestedPayload;
 import com.cinema.inventory.exception.InventoryErrorCode;
@@ -38,9 +39,7 @@ public class DefaultSeatReleaseRequestedPayloadValidator
             String partitionKey, OutboxEventMessage message, SeatReleaseRequestedPayload payload) {
 
         requireUuidV7(payload.bookingId());
-
-        requireUuidV7(payload.showtimeId());
-
+        requireInventoryResourceUuid(payload.showtimeId());
         if (!payload.bookingId().equals(message.aggregateId())) {
             throw invalidPayload();
         }
@@ -61,7 +60,7 @@ public class DefaultSeatReleaseRequestedPayloadValidator
 
         for (UUID seatId : payload.seatIds()) {
 
-            requireUuidV7(seatId);
+            requireInventoryResourceUuid(seatId);
 
             if (!uniqueSeatIds.add(seatId)) {
                 throw invalidPayload();
@@ -81,6 +80,13 @@ public class DefaultSeatReleaseRequestedPayloadValidator
 
         if (occurredAt == null || requestedAt == null || !requestedAt.isEqual(occurredAt)) {
 
+            throw invalidPayload();
+        }
+    }
+
+    private static void requireInventoryResourceUuid(UUID value) {
+
+        if (!UuidVersions.isV5OrV7(value)) {
             throw invalidPayload();
         }
     }

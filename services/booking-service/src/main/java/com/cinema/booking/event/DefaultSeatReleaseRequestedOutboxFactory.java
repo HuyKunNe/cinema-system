@@ -1,11 +1,5 @@
 package com.cinema.booking.event;
 
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.UUID;
-
-import org.springframework.stereotype.Component;
-
 import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
 import com.cinema.booking.enums.BookingStatus;
@@ -18,8 +12,15 @@ import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.common.outbox.enums.AggregateType;
 import com.cinema.common.outbox.model.OutboxEventMessage;
+import com.cinema.common.validation.UuidVersions;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.springframework.stereotype.Component;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
 
 @Component
 public class DefaultSeatReleaseRequestedOutboxFactory implements SeatReleaseRequestedOutboxFactory {
@@ -97,7 +98,7 @@ public class DefaultSeatReleaseRequestedOutboxFactory implements SeatReleaseRequ
                                 seat ->
                                         seat == null
                                                 || !seat.hasCompletedSnapshot()
-                                                || seat.getInventorySeatId().version() != 7
+                                                || !UuidVersions.isV5OrV7(seat.getInventorySeatId())
                                                 || !booking.getId().equals(seat.getBookingId())
                                                 || !booking.getShowtimeId()
                                                         .equals(seat.getShowtimeId()));

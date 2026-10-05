@@ -3,6 +3,7 @@ package com.cinema.inventory.service.impl;
 import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.common.outbox.model.OutboxEventMessage;
 import com.cinema.common.outbox.service.OutboxService;
+import com.cinema.common.validation.UuidVersions;
 import com.cinema.inventory.entity.ShowSeat;
 import com.cinema.inventory.entity.Showtime;
 import com.cinema.inventory.enums.ShowSeatStatus;
@@ -218,7 +219,7 @@ public class SeatReservationRequestedConsumerServiceImpl
 
         if (payload.bookingId().version() != 7
                 || payload.userId().version() != 7
-                || payload.showtimeId().version() != 7) {
+                || !UuidVersions.isV5OrV7(payload.showtimeId())) {
 
             throw new com.cinema.common.exception.exception.ValidationException(
                     com.cinema.inventory.exception.InventoryErrorCode.EVENT_PAYLOAD_INVALID);

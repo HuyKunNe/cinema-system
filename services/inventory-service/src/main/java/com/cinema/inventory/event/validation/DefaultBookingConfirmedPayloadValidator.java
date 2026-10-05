@@ -2,6 +2,7 @@ package com.cinema.inventory.event.validation;
 
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.outbox.model.OutboxEventMessage;
+import com.cinema.common.validation.UuidVersions;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.event.InventoryEventContract;
 import com.cinema.inventory.event.payload.BookingConfirmedPayload;
@@ -54,11 +55,8 @@ public class DefaultBookingConfirmedPayloadValidator implements BookingConfirmed
             String partitionKey, OutboxEventMessage message, BookingConfirmedPayload payload) {
 
         requireUuidV7(payload.bookingId());
-
         requireUuidV7(payload.userId());
-
-        requireUuidV7(payload.showtimeId());
-
+        requireInventoryResourceUuid(payload.showtimeId());
         requireUuidV7(payload.paymentId());
 
         if (!payload.bookingId().equals(message.aggregateId())) {
@@ -178,6 +176,13 @@ public class DefaultBookingConfirmedPayloadValidator implements BookingConfirmed
 
         if (occurredAt == null || confirmedAt == null || !confirmedAt.isEqual(occurredAt)) {
 
+            throw invalidPayload();
+        }
+    }
+
+    private static void requireInventoryResourceUuid(UUID value) {
+
+        if (!UuidVersions.isV5OrV7(value)) {
             throw invalidPayload();
         }
     }

@@ -19,6 +19,7 @@ import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.common.outbox.model.OutboxEventMessage;
 import com.cinema.common.outbox.service.OutboxService;
+import com.cinema.common.validation.UuidVersions;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -153,7 +154,7 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
         }
 
         requireUuidV7(payload.bookingId());
-        requireUuidV7(payload.showtimeId());
+        requireInventoryResourceUuid(payload.showtimeId());
 
         if (!payload.holdExpiresAt().isAfter(payload.heldAt())) {
 
@@ -215,7 +216,7 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
             throw new ValidationException(BookingErrorCode.EVENT_PAYLOAD_INVALID);
         }
 
-        requireUuidV7(seat.inventorySeatId());
+        requireInventoryResourceUuid(seat.inventorySeatId());
     }
 
     private void validateRequestedSeats(
@@ -277,6 +278,13 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
     private void requireUuidV7(UUID value) {
 
         if (value.version() != 7) {
+            throw new ValidationException(BookingErrorCode.EVENT_PAYLOAD_INVALID);
+        }
+    }
+
+    private void requireInventoryResourceUuid(UUID value) {
+
+        if (!UuidVersions.isV5OrV7(value)) {
             throw new ValidationException(BookingErrorCode.EVENT_PAYLOAD_INVALID);
         }
     }

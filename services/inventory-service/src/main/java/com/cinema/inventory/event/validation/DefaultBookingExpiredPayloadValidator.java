@@ -2,6 +2,7 @@ package com.cinema.inventory.event.validation;
 
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.outbox.model.OutboxEventMessage;
+import com.cinema.common.validation.UuidVersions;
 import com.cinema.inventory.event.payload.BookingExpiredPayload;
 import com.cinema.inventory.exception.InventoryErrorCode;
 
@@ -30,10 +31,8 @@ public class DefaultBookingExpiredPayloadValidator implements BookingExpiredPayl
             String partitionKey, OutboxEventMessage message, BookingExpiredPayload payload) {
 
         requireUuidV7(payload.bookingId());
-
         requireUuidV7(payload.userId());
-
-        requireUuidV7(payload.showtimeId());
+        requireInventoryResourceUuid(payload.showtimeId());
 
         if (!payload.bookingId().equals(message.aggregateId())) {
             throw invalidPayload();
@@ -49,6 +48,13 @@ public class DefaultBookingExpiredPayloadValidator implements BookingExpiredPayl
 
         if (occurredAt == null || expiredAt == null || !expiredAt.isEqual(occurredAt)) {
 
+            throw invalidPayload();
+        }
+    }
+
+    private static void requireInventoryResourceUuid(UUID value) {
+
+        if (!UuidVersions.isV5OrV7(value)) {
             throw invalidPayload();
         }
     }
