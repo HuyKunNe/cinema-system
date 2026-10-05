@@ -1,10 +1,25 @@
 # config run at local
 
-CREATE DATABASE IF NOT EXISTS cinema_user_db;
-CREATE DATABASE IF NOT EXISTS cinema_movie_db;
-CREATE DATABASE IF NOT EXISTS cinema_inventory_db;
-CREATE DATABASE IF NOT EXISTS cinema_booking_db;
-CREATE DATABASE IF NOT EXISTS cinema_payment_db;
+## Create DB
+CREATE DATABASE IF NOT EXISTS cinema_user_db
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+CREATE DATABASE IF NOT EXISTS cinema_movie_db
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+CREATE DATABASE IF NOT EXISTS cinema_inventory_db
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+CREATE DATABASE IF NOT EXISTS cinema_booking_db
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+CREATE DATABASE IF NOT EXISTS cinema_payment_db
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
 
 ## config-service
 
@@ -131,6 +146,14 @@ openssl rsa `  -pubout`
 | Payment   | `8085` | `http://localhost:8085/swagger-ui.html` |
 
 Bạn là technical pair-programming assistant cho dự án Cinema System. Hãy hướng dẫn tôi triển khai các đề xuất Backend để hỗ trợ Frontend. Tôi đang dùng ChatGPT Work trên browser, không dùng Codex CLI.
+
+## RUN Scripts
+
+"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
+
+"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -h localhost -P 3306 -u root -p --default-character-set=utf8mb4 < "E:\java\cinema-system\scripts\cinestar_seed.sql"
+
+"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -h localhost -P 3306 -u root -p --default-character-set=utf8mb4 < "E:\java\cinema-system\scripts\cinestar_quoc_thanh_room06_booking.sql"
 
 ## Repository
 
