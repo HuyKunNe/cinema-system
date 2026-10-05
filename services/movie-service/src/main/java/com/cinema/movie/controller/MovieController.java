@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.cinema.common.response.model.PageResponse;
 import com.cinema.movie.dto.request.CreateMovieRequest;
+import com.cinema.movie.dto.request.UpdateMovieMetadataRequest;
 import com.cinema.movie.dto.request.UpdateMovieRequest;
 import com.cinema.movie.dto.response.MovieResponse;
 import com.cinema.movie.entity.MovieStatus;
@@ -96,6 +97,53 @@ public class MovieController {
     public ResponseEntity<MovieResponse> update(
             @PathVariable("id") UUID id, @Valid @RequestBody UpdateMovieRequest request) {
         return ResponseEntity.ok(movieService.update(id, request));
+    }
+
+    @Operation(
+            operationId = "updateMovieMetadata",
+            summary = "Replace movie metadata",
+            description =
+                    "Requires movie:manage. Both properties must be present. "
+                            + "Null clears a value. Artwork fallback is handled by the frontend.")
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "200",
+                description = "Updated movie",
+                content = @Content(schema = @Schema(implementation = MovieResponse.class))),
+        @ApiResponse(
+                responseCode = "400",
+                description = "Invalid request body or metadata",
+                content =
+                        @Content(
+                                schema =
+                                        @Schema(
+                                                implementation =
+                                                        com.cinema.common.response.model.ApiResponse
+                                                                .class))),
+        @ApiResponse(
+                responseCode = "401",
+                description = "Authentication required",
+                content = @Content),
+        @ApiResponse(
+                responseCode = "403",
+                description = "Required authority is missing",
+                content = @Content),
+        @ApiResponse(
+                responseCode = "404",
+                description = "Movie not found",
+                content =
+                        @Content(
+                                schema =
+                                        @Schema(
+                                                implementation =
+                                                        com.cinema.common.response.model.ApiResponse
+                                                                .class)))
+    })
+    @PutMapping("/{id}/metadata")
+    public ResponseEntity<MovieResponse> updateMetadata(
+            @PathVariable("id") UUID id, @Valid @RequestBody UpdateMovieMetadataRequest request) {
+
+        return ResponseEntity.ok(movieService.updateMetadata(id, request));
     }
 
     @DeleteMapping("/{id}")

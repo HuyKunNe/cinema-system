@@ -1,9 +1,5 @@
 package com.cinema.movie.entity;
 
-import java.time.LocalDate;
-import java.util.HashSet;
-import java.util.Set;
-
 import com.cinema.common.jpa.entity.BaseEntity;
 
 import jakarta.persistence.Column;
@@ -15,6 +11,10 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
+
+import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "movies")
@@ -38,16 +38,25 @@ public class Movie extends BaseEntity {
     @Column(name = "trailer_url", length = 500)
     private String trailerUrl;
 
+    @Column(name = "backdrop_url", length = 500)
+    private String backdropUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "age_rating", length = 10)
+    private AgeRating ageRating;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private MovieStatus status;
 
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "movie_genres", joinColumns = @JoinColumn(name = "movie_id", nullable = false), inverseJoinColumns = @JoinColumn(name = "genre_id", nullable = false))
+    @JoinTable(
+            name = "movie_genres",
+            joinColumns = @JoinColumn(name = "movie_id", nullable = false),
+            inverseJoinColumns = @JoinColumn(name = "genre_id", nullable = false))
     private Set<Genre> genres = new HashSet<>();
 
-    public Movie() {
-    }
+    public Movie() {}
 
     public String getTitle() {
         return title;
@@ -95,6 +104,22 @@ public class Movie extends BaseEntity {
 
     public void setTrailerUrl(String trailerUrl) {
         this.trailerUrl = trailerUrl;
+    }
+
+    public String getBackdropUrl() {
+        return backdropUrl;
+    }
+
+    public void setBackdropUrl(String backdropUrl) {
+        this.backdropUrl = backdropUrl;
+    }
+
+    public AgeRating getAgeRating() {
+        return ageRating;
+    }
+
+    public void setAgeRating(AgeRating ageRating) {
+        this.ageRating = ageRating;
     }
 
     public MovieStatus getStatus() {

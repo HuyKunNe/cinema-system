@@ -1,20 +1,5 @@
 package com.cinema.movie.service.impl;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.cinema.common.api.mapper.PageResponseMapper;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
@@ -22,6 +7,7 @@ import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.response.model.PageResponse;
 import com.cinema.movie.config.MovieCatalogProperties;
 import com.cinema.movie.dto.request.CreateMovieRequest;
+import com.cinema.movie.dto.request.UpdateMovieMetadataRequest;
 import com.cinema.movie.dto.request.UpdateMovieRequest;
 import com.cinema.movie.dto.response.MovieResponse;
 import com.cinema.movie.entity.Genre;
@@ -33,6 +19,21 @@ import com.cinema.movie.repository.GenreRepository;
 import com.cinema.movie.repository.MovieRepository;
 import com.cinema.movie.service.MovieService;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 @Service
 @Transactional(readOnly = true)
 public class MovieServiceImpl implements MovieService {
@@ -42,6 +43,7 @@ public class MovieServiceImpl implements MovieService {
     private final MovieMapper movieMapper;
     private final MovieCatalogProperties movieCatalogProperties;
     private static final int MAX_TRAILER_URL_LENGTH = 500;
+    private static final int MAX_BACKDROP_URL_LENGTH = 500;
 
     public MovieServiceImpl(
             MovieRepository movieRepository,
@@ -152,10 +154,62 @@ public class MovieServiceImpl implements MovieService {
 
     @Override
     @Transactional
+    public MovieResponse updateMetadata(UUID id, UpdateMovieMetadataRequest request) {
+        Movie movie = findMovie(id);
+
+        String normalizedBackdropUrl = normalizeBackdropUrl(request.backdropUrl());
+
+        movie.setBackdropUrl(normalizedBackdropUrl);
+        movie.setAgeRating(request.ageRating());
+
+        return movieMapper.toResponse(movieRepository.saveAndFlush(movie));
+    }
+
+    @Override
+    @Transactional
     public void delete(UUID id) {
         Movie movie = findMovie(id);
 
         movieRepository.delete(movie);
+    }
+
+    private String normalizeBackdropUrl(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        if (value.length() > MAX_BACKDROP_URL_LENGTH) {
+            throw new ValidationException(MovieErrorCode.BACKDROP_URL_TOO_LONG);
+        }
+
+        String normalized = value.trim();
+
+        if (normalized.isBlank()) {
+            return null;
+        }
+
+        URI uri;
+
+        try {
+            uri = new URI(normalized);
+        } catch (URISyntaxException exception) {
+            throw new ValidationException(MovieErrorCode.INVALID_BACKDROP_URL);
+        }
+
+        boolean supportedScheme =
+                "https".equalsIgnoreCase(uri.getScheme())
+                        || "http".equalsIgnoreCase(uri.getScheme());
+
+        if (!uri.isAbsolute()
+                || !supportedScheme
+                || uri.getHost() == null
+                || uri.getHost().isBlank()
+                || uri.getPort() > 65535) {
+
+            throw new ValidationException(MovieErrorCode.INVALID_BACKDROP_URL);
+        }
+
+        return normalized;
     }
 
     private String normalizeTrailerUrl(String value) {

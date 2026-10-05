@@ -24,6 +24,16 @@ public enum MovieErrorCode implements ErrorCode {
             "Trailer URL must not exceed 500 characters",
             ErrorCategory.VALIDATION),
 
+    INVALID_BACKDROP_URL(
+            "INVALID_BACKDROP_URL",
+            "Backdrop URL must be an absolute HTTP or HTTPS URL with a valid host",
+            ErrorCategory.VALIDATION),
+
+    BACKDROP_URL_TOO_LONG(
+            "BACKDROP_URL_TOO_LONG",
+            "Backdrop URL must not exceed 500 characters",
+            ErrorCategory.VALIDATION),
+
     INVALID_CATALOG_PAGINATION(
             "INVALID_CATALOG_PAGINATION",
             "Catalog page or size is outside the supported range",

@@ -2,6 +2,7 @@ package com.cinema.movie.service;
 
 import com.cinema.common.response.model.PageResponse;
 import com.cinema.movie.dto.request.CreateMovieRequest;
+import com.cinema.movie.dto.request.UpdateMovieMetadataRequest;
 import com.cinema.movie.dto.request.UpdateMovieRequest;
 import com.cinema.movie.dto.response.MovieResponse;
 import com.cinema.movie.entity.MovieStatus;
@@ -21,6 +22,8 @@ public interface MovieService {
             MovieStatus status, UUID genreId, int page, Integer size);
 
     MovieResponse update(UUID id, UpdateMovieRequest request);
+
+    MovieResponse updateMetadata(UUID id, UpdateMovieMetadataRequest request);
 
     void delete(UUID id);
 }
