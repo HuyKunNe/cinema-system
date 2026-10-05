@@ -1,34 +1,25 @@
 package com.cinema.user.config;
 
-import java.util.List;
-
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.List;
+
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(UserCorsProperties.class)
 public class UserCorsConfiguration {
 
     private static final List<String> ALLOWED_METHODS =
-            List.of(
-                    "GET",
-                    "POST",
-                    "OPTIONS");
+            List.of("GET", "POST", "PUT", "PATCH", "OPTIONS");
 
     private static final List<String> ALLOWED_HEADERS =
-            List.of(
-                    "Authorization",
-                    "Content-Type",
-                    "Accept",
-                    "Origin",
-                    "X-Requested-With");
+            List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With");
 
     @Bean
-    UrlBasedCorsConfigurationSource corsConfigurationSource(
-            UserCorsProperties properties) {
+    UrlBasedCorsConfigurationSource corsConfigurationSource(UserCorsProperties properties) {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
@@ -38,8 +29,7 @@ public class UserCorsConfiguration {
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 
         source.registerCorsConfiguration("/**", configuration);
 
