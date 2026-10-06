@@ -42,6 +42,9 @@ public class RoomLayout extends BaseEntity {
     @Column(name = "published_at")
     private OffsetDateTime publishedAt;
 
+    @Column(name = "content_revision", nullable = false)
+    private long contentRevision = 0L;
+
     protected RoomLayout() {}
 
     public RoomLayout(
@@ -86,5 +89,10 @@ public class RoomLayout extends BaseEntity {
         if (status != RoomLayoutStatus.DRAFT) {
             throw new ConflictException(InventoryErrorCode.ROOM_LAYOUT_NOT_DRAFT);
         }
+    }
+
+    public void markContentChanged() {
+        requireDraft();
+        contentRevision = Math.addExact(contentRevision, 1L);
     }
 }

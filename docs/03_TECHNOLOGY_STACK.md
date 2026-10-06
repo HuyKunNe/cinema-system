@@ -200,7 +200,7 @@ Access-token contract:
 | Signature               | RS256                                       |
 | RSA key size            | At least 3072 bits                          |
 | Required audience       | `cinema-api`                                |
-| Lifetime                | 15 minutes                                  |
+| Lifetime                | 30 minutes                                  |
 | Validation              | Signature, issuer, timestamps, and audience |
 | Public key distribution | User Service JWK Set                        |
 

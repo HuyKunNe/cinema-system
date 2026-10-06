@@ -867,7 +867,7 @@ Logout and explicit token revocation were completed on 2026-08-13.
   Credentials grants.
 - Prohibited Resource Owner Password Credentials.
 - Approved RS256 access tokens, an RSA key of at least 3072 bits, the
-  `cinema-api` audience, and a 15-minute access-token lifetime.
+  `cinema-api` audience, and a 30-minute access-token lifetime.
 - Approved opaque, rotated, revocable refresh tokens with a maximum lifetime of
   30 days.
 - Confirmed that `common-security` contains Resource Server mechanics only and

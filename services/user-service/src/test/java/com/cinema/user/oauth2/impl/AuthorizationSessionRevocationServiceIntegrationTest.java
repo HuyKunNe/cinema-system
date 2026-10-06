@@ -171,7 +171,7 @@ class AuthorizationSessionRevocationServiceIntegrationTest extends AbstractMySql
                         OAuth2AccessToken.TokenType.BEARER,
                         "access-token-" + suffix,
                         issuedAt,
-                        issuedAt.plus(Duration.ofMinutes(15)),
+                        issuedAt.plus(Duration.ofMinutes(30)),
                         Set.of(SCOPE));
 
         OAuth2RefreshToken refreshToken =

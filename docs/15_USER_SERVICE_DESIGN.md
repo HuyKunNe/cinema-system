@@ -38,7 +38,7 @@ responsibilities into `common-security`, Gateway, or another business service.
 | Access token                   | RS256 signed JWT                                         |
 | RSA key size                   | At least 3072 bits                                       |
 | API audience                   | `cinema-api` initially                                   |
-| Access-token lifetime          | 15 minutes initially                                     |
+| Access-token lifetime          | 30 minutes initially                                     |
 | Refresh-token maximum lifetime | 30 days initially                                        |
 | Subject                        | UUID v7 user or approved service-principal identifier    |
 | Resource Server validation     | Issuer, signature, audience, lifetime and claims         |

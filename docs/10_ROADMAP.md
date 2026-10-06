@@ -983,7 +983,7 @@ Accepted decisions:
 - Client Credentials is used for approved service identities.
 - Resource Owner Password Credentials is prohibited.
 - Access tokens are short-lived signed JWTs.
-- Initial access-token lifetime is 15 minutes.
+- Initial access-token lifetime is 30 minutes.
 - Initial API audience is `cinema-api`.
 - Access-token subjects use UUID v7.
 - User Service owns RSA signing keys.

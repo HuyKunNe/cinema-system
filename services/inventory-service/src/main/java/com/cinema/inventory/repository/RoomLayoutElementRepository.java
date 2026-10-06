@@ -1,13 +1,26 @@
 package com.cinema.inventory.repository;
 
-import com.cinema.inventory.entity.RoomLayoutElement;
-
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
 import java.util.UUID;
 
-public interface RoomLayoutElementRepository extends JpaRepository<RoomLayoutElement, UUID> {
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
-    List<RoomLayoutElement> findAllByLayout_IdOrderByIdAsc(UUID layoutId);
+import com.cinema.inventory.entity.RoomLayoutElement;
+
+public interface RoomLayoutElementRepository
+        extends JpaRepository<RoomLayoutElement, UUID> {
+
+    List<RoomLayoutElement> findAllByLayout_IdOrderByIdAsc(
+            UUID layoutId);
+
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            delete from RoomLayoutElement layoutElement
+            where layoutElement.layout.id = :layoutId
+            """)
+    void deleteAllForLayout(
+            @Param("layoutId") UUID layoutId);
 }

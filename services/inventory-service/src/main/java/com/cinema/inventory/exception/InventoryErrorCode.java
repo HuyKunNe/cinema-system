@@ -388,6 +388,18 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_ROOM_LAYOUT_VERSION_EXHAUSTED",
                     "Room layout version limit has been reached");
 
+    public static final InventoryErrorCode ROOM_LAYOUT_VERSION_CONFLICT =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_ROOM_LAYOUT_VERSION_CONFLICT",
+                    "Room layout has changed; reload before saving");
+
+    public static final InventoryErrorCode ROOM_LAYOUT_DUPLICATE_SEAT =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_ROOM_LAYOUT_DUPLICATE_SEAT",
+                    "A seat can appear only once in a room layout");
+                    
     private final String code;
     private final String message;
     private final ErrorCategory category;

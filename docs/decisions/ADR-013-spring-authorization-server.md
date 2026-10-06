@@ -167,7 +167,7 @@ Access tokens will be signed JWTs.
 The initial access-token lifetime is:
 
 ```text
-15 minutes
+30 minutes
 ```
 
 The exact lifetime remains environment configuration but must stay short-lived.

@@ -294,7 +294,7 @@ ADR-013 accepts the following decisions:
 - Authorization Code with PKCE, Refresh Token and Client Credentials are approved.
 - Resource Owner Password Credentials is prohibited.
 - JWT access tokens use RS256, UUID v7 subjects and the `cinema-api` audience.
-- Initial access-token lifetime is 15 minutes.
+- Initial access-token lifetime is 30 minutes.
 - Refresh tokens are opaque, rotate after use and have an initial maximum lifetime of 30 days.
 - Refresh-token history stores SHA-256 hashes and tracks `ACTIVE`, `ROTATED`,
   `REUSED` and `REVOKED`.

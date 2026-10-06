@@ -160,7 +160,7 @@ class RefreshTokenSecurityAuditRollbackIntegrationTest extends AbstractMySqlInte
                         OAuth2AccessToken.TokenType.BEARER,
                         "rollback-initial-access-token",
                         issuedAt,
-                        issuedAt.plus(Duration.ofMinutes(15)),
+                        issuedAt.plus(Duration.ofMinutes(30)),
                         Set.of(SCOPE));
 
         OAuth2RefreshToken refreshToken =
@@ -186,7 +186,7 @@ class RefreshTokenSecurityAuditRollbackIntegrationTest extends AbstractMySqlInte
                         OAuth2AccessToken.TokenType.BEARER,
                         "rollback-rotated-access-token",
                         issuedAt,
-                        issuedAt.plus(Duration.ofMinutes(15)),
+                        issuedAt.plus(Duration.ofMinutes(30)),
                         Set.of(SCOPE));
 
         OAuth2RefreshToken refreshToken =
