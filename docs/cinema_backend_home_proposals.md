@@ -739,3 +739,487 @@ Frontend:
 - orval.config.ts
 - package.json
 - docs/design/reference/html-convert
+
+## 21. Booking — baseline và luồng giao diện
+
+Trạng thái của các đề xuất trong mục 22–25: PROPOSED.
+Chưa được implement và chưa được xác minh runtime.
+
+Ngày đối chiếu: 2026-10-06.
+
+Baseline:
+
+- Backend: 330ddac2138951376094aa4eb94732cf549f920c
+- Frontend: d32dfd70bbd0ffaab5e5953d0409aff865cc0b6e
+
+### 21.1 Luồng FE mục tiêu
+
+- Header desktop/mobile mở /booking.
+- /booking là điểm bắt đầu chọn rạp, phim, ngày và suất.
+- Điểm bắt đầu sử dụng city/cinema đã chọn trong location.
+- Movie Detail giữ nút dẫn xuống section lịch chiếu.
+- Đề xuất nhãn nút: "Chọn suất chiếu".
+- Chọn suất mở /booking/{showtimeId}.
+- QuickBooking tiếp tục tới cùng trang này.
+- Trang chọn ghế lấy cinemaId và roomId từ ShowtimeResponse.
+- Không dùng location hiện tại để thay đổi phòng của suất đã chọn.
+- Đổi rạp/phim/suất phải xóa lựa chọn ghế và giỏ dịch vụ cũ.
+- Giữ luồng đăng nhập trực tiếp hiện có cho route/action cần xác thực.
+
+### 21.2 Contract hiện có
+
+Inventory:
+
+- GET /api/v1/showtimes/{showtimeId}
+- GET /api/v1/seats?roomId={roomId}
+- GET /api/v1/show-seats?showtimeId={showtimeId}&availableOnly=false
+
+Seat là ghế vật lý của phòng.
+ShowSeat là giá và trạng thái ghế của một suất.
+
+SeatResponse có rowLabel.
+ShowSeatResponse không có rowLabel; liên kết với Seat bằng seatId.
+
+GET /seats chỉ trả ghế vật lý đang active.
+GET /show-seats phải lấy tất cả trạng thái để giữ vị trí ghế ổn định.
+
+Booking:
+
+- POST /api/v1/bookings yêu cầu xác thực.
+- Request hiện có: clientRequestId, showtimeId, seatNumbers.
+- Response HTTP 202, bọc trong ApiResponse<BookingResponse>.
+- Booking mới có thể ở PENDING, chưa đồng nghĩa giữ ghế thành công.
+- GET /api/v1/bookings/{bookingId} đọc booking của người dùng hiện tại.
+
+Không gọi trực tiếp endpoint hold/book/release của ShowSeat
+từ giao diện khách hàng: các thao tác này yêu cầu inventory:write.
+Luồng giữ ghế của khách hàng đi qua Booking Service.
+
+## 22. BE-BOOKING-01 — Layout phòng chiếu
+
+Trạng thái: PROPOSED.
+Owner đề xuất: Inventory Service.
+
+### 22.1 Vấn đề hiện tại
+
+Seat có seatNumber, rowLabel, seatType và active.
+Room chưa có kích thước sơ đồ, vị trí màn hình hoặc layout version.
+
+Không thể suy ra vị trí ghế từ tên ghế:
+
+- A01 không nhất thiết nằm ở cột đầu tiên.
+- Số ghế có thể bỏ qua khoảng trống hoặc lối đi.
+- Hai ghế cùng rowLabel không chứng minh chúng liền kề.
+- Số hàng không chứng minh vị trí màn hình.
+
+scripts/cinestar_quoc_thanh_room06_booking.sql có source_column
+trong bảng staging, nhưng dữ liệu này chưa được lưu vào model/API ghế.
+
+Ví dụ trong seed:
+
+- A01 có source_column = 5.
+- N01 và N02 là COUPLE, có source_column lần lượt 1 và 2.
+
+Không nhập trực tiếp source_column thành tọa độ rồi mặc định
+mọi COUPLE có width bằng hai ô: cách này có thể gây chồng lấn.
+
+Seed là dữ liệu phát triển từ một lần quan sát, không phải bằng chứng
+về trạng thái ghế hoặc sơ đồ đang vận hành tại rạp.
+
+### 22.2 Mô hình đề xuất
+
+Layout thuộc từng Room, không dùng một sơ đồ chung cho cả Cinema.
+
+RoomLayout:
+
+- id
+- roomId
+- version
+- status: DRAFT hoặc PUBLISHED — enum mới được đề xuất
+- canvasWidth
+- canvasHeight
+- publishedAt
+
+RoomLayoutSeat:
+
+- layoutId
+- seatId
+- seatNumberSnapshot
+- rowLabelSnapshot
+- seatTypeSnapshot
+- x
+- y
+- width
+- height
+- rotationDegrees
+
+RoomLayoutElement:
+
+- layoutId
+- kind: SCREEN, AISLE hoặc EXIT — enum mới được đề xuất
+- label
+- x
+- y
+- width
+- height
+- rotationDegrees
+
+Tọa độ dùng hệ đơn vị logic của layout, không phải pixel màn hình FE.
+Gốc tọa độ nằm ở góc trên trái của canvas.
+
+Khoảng trống không có ghế được giữ nguyên.
+Chỉ đánh dấu AISLE/EXIT khi đã có dữ liệu xác nhận.
+
+Nguồn import phải xác nhận vị trí màn hình, khoảng cách,
+kích thước ghế đôi và lối đi của đúng phòng.
+
+### 22.3 Version và validation
+
+- PUBLISHED layout là bất biến.
+- Thay đổi sơ đồ tạo version mới.
+- Đề xuất Showtime lưu roomLayoutId khi tạo/generate ghế.
+- Không áp dụng layout mới ngược vào suất đã tạo.
+- Các tên và loại ghế dùng để đặt vé phải nhất quán với
+  layout đã gắn vào suất.
+- Một seatId xuất hiện tối đa một lần trong một layout.
+- Seat phải thuộc đúng roomId.
+- Kích thước phải dương, tọa độ phải nằm trong canvas.
+- Kiểm tra ghế chồng lấn, kể cả khi có rotation.
+- Không tự suy ra vị trí từ thứ tự phần tử API hoặc seatNumber.
+- Không tự loại một vị trí khỏi layout đã publish khi Seat bị inactive;
+  BE phải định nghĩa trạng thái sử dụng vị trí đó cho từng suất.
+
+Quản lý layout sử dụng cơ chế phân quyền Inventory hiện có.
+Read layout cho khách hàng không cấp quyền chỉnh sửa.
+
+### 22.4 Ghế COUPLE
+
+SeatType hiện có:
+
+- STANDARD: capacity 1
+- VIP: capacity 1
+- COUPLE: capacity 2
+- ACCESSIBLE: capacity 1
+
+COUPLE là một đơn vị đặt vé có sức chứa hai người:
+
+- Một seatId.
+- Một seatNumber.
+- Một thao tác chọn/bỏ chọn.
+- Một lần giữ hoặc bán toàn bộ đơn vị.
+- Một giá từ ShowSeatResponse.price.
+
+Không tách COUPLE thành hai ghế độc lập.
+Không nhân ShowSeatResponse.price thêm hai lần.
+Không lấy capacity để suy ra width của ghế trong sơ đồ.
+
+Giới hạn maxSeatsPerBooking hiện đếm đơn vị ghế trong request,
+không phải tổng số người. Nếu cần giới hạn số người, phải bổ sung
+quy tắc riêng và công bố cho FE.
+
+## 23. BE-BOOKING-02 — Read model cho section chọn ghế
+
+Trạng thái: PROPOSED.
+Owner đề xuất: Inventory Service.
+
+Endpoint đề xuất mới:
+GET /api/v1/showtimes/{showtimeId}/seat-map
+
+Endpoint này chưa tồn tại ở baseline.
+
+### 23.1 Nội dung response đề xuất
+
+- showtimeId
+- cinemaId
+- roomId
+- layoutId
+- layoutVersion
+- serverTime
+- canvasWidth
+- canvasHeight
+- elements: màn hình, lối đi và lối ra đã xác nhận
+- seats: toàn bộ vị trí ghế của layout gắn với suất
+
+Mỗi phần tử seats cung cấp:
+
+- seatId
+- showSeatId, nếu có
+- seatNumber
+- rowLabel
+- seatType
+- capacity
+- x, y, width, height, rotationDegrees
+- price
+- currency
+- status
+- selectable
+
+Giá và trạng thái lấy từ ShowSeat của suất.
+Hình học lấy từ layout đã publish.
+Không lấy giá từ cấu hình mặc định ở FE.
+
+Không đưa heldByBookingId của khách hàng khác vào projection công khai.
+Trạng thái giữ ghế của chính khách hàng được đối chiếu qua booking
+thuộc tài khoản đó.
+
+### 23.2 Quy tắc ghép dữ liệu
+
+- Ghép bằng seatId.
+- Không ghép theo index hoặc phân tích chuỗi seatNumber.
+- BE xác minh ghế, layout và suất cùng roomId.
+- Giữ vị trí của AVAILABLE, HELD, BOOKED và UNAVAILABLE.
+- Vị trí không có ShowSeat không được coi là AVAILABLE.
+- Thiếu giá không được đổi thành giá 0.
+- Thiếu layout hoặc dữ liệu không nhất quán phải trả lỗi rõ ràng.
+- Không trả sơ đồ tự sinh từ tên ghế để che giấu dữ liệu thiếu.
+- selectable phải xét trạng thái ghế và điều kiện mở bán của suất.
+
+API đọc không giữ ghế và không bảo đảm khách hàng sẽ giữ ghế thành công.
+Booking Service và Inventory reservation consumer vẫn kiểm tra
+điều kiện, khóa ghế và xử lý tranh chấp tại thời điểm đặt.
+
+### 23.3 Hành vi section FE
+
+- Hiển thị phim, rạp, phòng, ngày và giờ từ dữ liệu của suất.
+- Chú giải phân biệt loại ghế, trạng thái và ghế đang chọn.
+- Selected là trạng thái client; không đồng nghĩa HELD.
+- HELD, BOOKED và UNAVAILABLE không cho chọn.
+- Không tự đổi HELD thành AVAILABLE khi đồng hồ FE hết hạn.
+- Tiền vé tạm tính bằng tổng price của các đơn vị ghế đã chọn.
+- Số người được tính riêng bằng tổng capacity.
+- Chưa tạo booking thì không hiển thị countdown giữ ghế.
+- Countdown sau khi tạo booking sử dụng expiresAt từ BE.
+
+Desktop:
+
+- Sơ đồ ghế và phần tóm tắt nằm cạnh nhau nếu đủ chiều rộng.
+
+Mobile/tablet:
+
+- Giữ nguyên hình học của phòng.
+- Sơ đồ cuộn ngang trong vùng riêng khi cần.
+- Không dùng auto-fit để chuyển ghế sang hàng khác.
+- Không làm toàn trang tràn ngang.
+- Phần tổng tiền và thao tác tiếp tục không đè lên bottom navigation.
+- Xoay thiết bị không thay đổi ghế đã chọn hoặc tọa độ ghế.
+
+Giao diện được suy luận từ cinematic-movie-detail và
+cinematic-cinema-detail vì chưa có reference riêng cho booking.
+
+Trong thời gian chưa có layout:
+
+- Có thể dùng danh sách ghế theo rowLabel làm fallback được ghi nhãn rõ.
+- Không gọi danh sách đó là sơ đồ vị trí thực tế.
+- Không thêm màn hình/lối đi giả.
+- Ghế không ghép được dữ liệu phải không cho chọn.
+
+## 24. BE-BOOKING-03 — Bắp nước, combo và dịch vụ theo rạp
+
+Trạng thái: PROPOSED.
+Owner MVP đề xuất: module Concession trong Inventory Service.
+
+Đây là đề xuất tổ chức nghiệp vụ, chưa có module này ở baseline.
+Chưa cần tách một microservice mới cho MVP.
+
+### 24.1 Mô hình đề xuất
+
+ConcessionProduct:
+
+- Tên và mô tả sản phẩm.
+- Artwork nullable.
+- Trạng thái hoạt động.
+
+ConcessionVariant:
+
+- SKU/biến thể, kích cỡ hoặc hương vị.
+- Quan hệ với sản phẩm.
+
+CinemaConcessionOffer:
+
+- Offer bán tại một cinema.
+- Sản phẩm/biến thể hoặc định nghĩa combo.
+- Giá, currency, phiên bản giá.
+- Thời gian bán, trạng thái bán.
+- Giới hạn số lượng và khả năng cung ứng.
+
+ComboSlot:
+
+- Nhóm lựa chọn trong combo.
+- Các variant hợp lệ.
+- Số lượng bắt buộc và giới hạn lựa chọn.
+
+Không giả định mọi rạp có cùng menu, giá hoặc tồn kho.
+Combo phải xác định được các thành phần sau khi khách chọn biến thể.
+Không coi combo là ghế hoặc promotion.
+
+### 24.2 API đề xuất mới
+
+GET /api/v1/concessions?cinemaId={cinemaId}
+
+Catalog cho khách hàng:
+
+- Chỉ trả offer được phép bán tại rạp.
+- Có giá, currency, giới hạn số lượng và trạng thái mua được.
+- Trả cấu hình lựa chọn cho combo.
+- Artwork thiếu thì FE dùng placeholder cô lập.
+- Không thêm sản phẩm hoặc giá tĩnh ở FE.
+
+POST /api/v1/concessions/quotes
+
+Yêu cầu xác thực.
+Request đề xuất gồm:
+
+- showtimeId
+- seatNumbers
+- Các offerId, quantity và lựa chọn variant của combo.
+
+Response đề xuất:
+
+- quoteId
+- expiresAt
+- Các dòng vé và dịch vụ đã định giá
+- seatSubtotal
+- concessionSubtotal
+- totalAmount
+- currency
+
+Tên endpoint và schema trên là PROPOSED, chưa phải contract hiện có.
+
+Quote là báo giá, không giữ ghế hoặc giữ hàng.
+BE xác minh rạp bán dịch vụ phải là rạp của showtime.
+
+Không nhận giá hoặc totalAmount do FE tự gửi làm giá trị có thẩm quyền.
+Thay đổi giá so với quote phải yêu cầu khách xác nhận lại,
+không tự thanh toán một tổng tiền khác.
+
+Quản trị catalog/giá/tồn kho cần phân quyền được khai báo rõ.
+Không tự cấp inventory:write cho khách hàng.
+
+## 25. BE-BOOKING-04 — Tích hợp dịch vụ vào booking và payment
+
+Trạng thái: PROPOSED.
+Owner: Booking Service, phối hợp Inventory và Payment.
+
+### 25.1 Điểm phải thay đổi trong luồng hiện tại
+
+SeatReservedConsumerServiceImpl hiện:
+
+1. Hoàn thiện snapshot ghế.
+2. Kiểm tra tổng giá ghế trong sự kiện.
+3. Chuyển booking sang RESERVED.
+4. Phát PaymentRequested ngay sau đó.
+
+Vì vậy, không thêm combo sau RESERVED rồi chỉ cộng tổng tiền ở FE.
+
+### 25.2 Luồng MVP đề xuất
+
+FE:
+
+1. Chọn ghế.
+2. Chọn dịch vụ tùy chọn.
+3. Xem báo giá và tổng tiền.
+4. Gửi yêu cầu tạo booking sau khi khách xác nhận.
+
+Đề xuất mở rộng CreateBookingRequest với:
+
+- quoteId
+- concessions: offerId, quantity và lựa chọn variant.
+
+Các trường mới phải được thiết kế tương thích caller đặt vé thuần.
+Giỏ concessions rỗng vẫn hỗ trợ đặt vé không mua dịch vụ.
+
+Không gửi userId, giá hoặc tổng tiền do FE tự tính.
+
+BE:
+
+1. Kiểm tra người dùng, quote, payload và khả năng mở bán.
+2. Tạo booking PENDING với giỏ dịch vụ đã xác nhận.
+3. Giữ ghế và giữ các thành phần hàng hóa cần thiết.
+4. Chỉ hoàn tất RESERVED khi tất cả phần bắt buộc thành công.
+5. Lưu snapshot các dòng vé và dịch vụ.
+6. Tính totalAmount có thẩm quyền.
+7. Phát PaymentRequested đúng một lần.
+
+Điều kiện hoàn tất phải được kiểm tra chung và có khóa/idempotency.
+Không để consumer ghế phát payment trước khi biết kết quả giữ hàng.
+
+### 25.3 Snapshot và tiền
+
+BookingConcession lưu:
+
+- Offer và phiên bản đã mua.
+- Tên sản phẩm/combo tại thời điểm mua.
+- Lựa chọn biến thể và thành phần.
+- Quantity.
+- Unit price và line total.
+- Currency.
+
+BookingResponse đề xuất bổ sung:
+
+- concessionLines
+- seatSubtotal
+- concessionSubtotal
+
+totalAmount là tổng cuối cùng do BE tính.
+Không đọc lại giá catalog hiện tại để thay đổi booking đã chốt.
+
+Vẫn kiểm tra SeatReserved.totalAmount bằng tổng snapshot ghế.
+Không so tổng riêng của sự kiện ghế với tổng tiền gồm combo.
+
+Nếu giá ghế tại lúc reservation không còn khớp quote,
+phải xử lý từ chối và bù trừ trước khi phát payment.
+
+PaymentRequested dùng tổng tiền cuối cùng đã lưu trong Booking.
+Không mở rộng payment bằng cách nhận tổng tiền tùy ý từ FE.
+
+### 25.4 Idempotency và bù trừ
+
+Fingerprint của clientRequestId phải bao gồm:
+
+- showtimeId
+- Seat numbers đã chuẩn hóa.
+- Quote và giỏ dịch vụ đã chuẩn hóa.
+- Offer, quantity và lựa chọn variant.
+
+Retry cùng request dùng lại clientRequestId.
+Thay đổi lựa chọn tạo request mới.
+Cùng request ID nhưng payload khác phải bị từ chối.
+
+Nếu giữ ghế hoặc giữ hàng thất bại:
+
+- Không thanh toán một phần.
+- Giải phóng tài nguyên đã giữ.
+- Booking trả lý do thất bại có thể hiển thị.
+
+Cancellation, expiry và payment failure phải bù trừ cả ghế lẫn hàng.
+Sự kiện replay không trừ hàng, giải phóng hàng hoặc tạo payment hai lần.
+
+Không đọc trực tiếp database của service khác.
+Không mở lại R28 Notification.
+
+## 26. Tiêu chí nghiệm thu thủ công cho phần bổ sung
+
+Layout:
+
+- Đối chiếu đúng phòng, hướng màn hình, hàng ghế và lối đi.
+- Kiểm tra hàng bắt đầu lệch cột, có khoảng trống và có ghế đôi.
+- Ghế đôi là một đơn vị chọn; giá không bị nhân thêm.
+- Layout mới không làm dịch chuyển ghế của suất đã có.
+- Mobile/tablet xoay ngang giữ đúng hình học.
+
+Seat map:
+
+- Ghế bận vẫn giữ vị trí.
+- Không hiển thị ghế thiếu ShowSeat/giá thành ghế mua được.
+- Hai khách chọn cùng ghế không được cùng giữ thành công.
+- Chọn trên FE chưa hiển thị thành ghế đã được giữ.
+
+Concession và checkout:
+
+- Menu/giá đúng rạp của suất.
+- Không mua offer của rạp khác.
+- Giỏ rỗng đặt được vé thuần.
+- Hết hàng hoặc giá đổi không tự thanh toán tổng tiền mới.
+- Retry không tạo booking/payment hoặc trừ hàng hai lần.
+- Lỗi một nhánh reservation giải phóng nhánh đã thành công.
+- Tổng payment khớp snapshot vé và dịch vụ.
