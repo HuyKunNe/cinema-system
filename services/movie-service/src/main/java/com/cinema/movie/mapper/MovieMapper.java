@@ -19,6 +19,10 @@ public interface MovieMapper {
     @Mapping(target = "genres", ignore = true)
     @Mapping(target = "backdropUrl", ignore = true)
     @Mapping(target = "ageRating", ignore = true)
+    @Mapping(target = "heroEnabled", ignore = true)
+    @Mapping(target = "heroPriority", ignore = true)
+    @Mapping(target = "heroStartsAt", ignore = true)
+    @Mapping(target = "heroEndsAt", ignore = true)
     Movie toEntity(CreateMovieRequest request);
 
     MovieResponse toResponse(Movie movie);
@@ -30,5 +34,9 @@ public interface MovieMapper {
     @Mapping(target = "genres", ignore = true)
     @Mapping(target = "backdropUrl", ignore = true)
     @Mapping(target = "ageRating", ignore = true)
+    @Mapping(target = "heroEnabled", ignore = true)
+    @Mapping(target = "heroPriority", ignore = true)
+    @Mapping(target = "heroStartsAt", ignore = true)
+    @Mapping(target = "heroEndsAt", ignore = true)
     void updateEntity(UpdateMovieRequest request, @MappingTarget Movie movie);
 }

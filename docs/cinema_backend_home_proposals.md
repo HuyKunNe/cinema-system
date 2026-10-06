@@ -532,6 +532,52 @@ Không đưa số liệu giả vào Hero để mô phỏng ranking.
 - PATCH không có quyền bị từ chối theo security convention.
 - Client cũ của `/movies` và `/movies/catalog` tiếp tục hoạt động.
 
+### 12.11 Chi tiết contract triển khai Hero
+
+Chỉ chuyển trạng thái sang IMPLEMENTED sau khi áp dụng source.
+
+Public:
+
+- GET /api/v1/movies/hero.
+- operationId: getHeroMovies.
+- Response: List<MovieResponse> trực tiếp.
+- limit mặc định 4, tối đa 10; cấu hình có thể giảm các giới hạn.
+- movieIds tùy chọn, dạng repeated query parameter.
+- Tối đa 100 ID; giới hạn hiệu lực theo cinema.movie.hero.max-movie-ids.
+- Thiếu movieIds: không lọc ứng viên.
+- Có bộ lọc rỗng: trả [].
+- UUID không tồn tại trong bộ lọc không gây 404.
+- Lọc ứng viên trước limit.
+- Chỉ trả NOW_SHOWING, heroEnabled và còn trong thời hạn.
+- Thứ tự heroPriority ASC, id ASC.
+- Không có phim phù hợp trả [].
+
+Quản trị:
+
+- PATCH /api/v1/movies/{movieId}/hero.
+- operationId: updateMovieHero.
+- Yêu cầu movie:manage.
+- Không gửi field: giữ giá trị hiện tại.
+- heroEnabled và heroPriority không nhận null.
+- heroStartsAt/heroEndsAt nhận null để xóa giới hạn.
+- Body không có field Hero hợp lệ trả 400.
+- Kiểm tra khoảng thời gian trên cấu hình sau khi merge.
+- Response: MovieHeroConfigurationResponse trực tiếp.
+
+Dữ liệu:
+
+- Migration V4 mặc định tắt Hero cho mọi phim.
+- Không seed danh sách phim nổi bật.
+- Thời gian chuẩn hóa UTC, độ chính xác microsecond.
+- Không thay request CRUD hoặc public MovieResponse hiện tại.
+
+FE:
+
+- Chỉ nối query Hero sau khi xác nhận spec runtime và generated client.
+- FE mặc định yêu cầu 4 phim.
+- Có rạp: truyền ID ứng viên từ chương trình rạp.
+- Chương trình rạp rỗng hoặc lỗi không được chuyển thành Hero toàn hệ thống.
+
 ## 13. BE-HOME-09 — Promotion
 
 **Trạng thái: chờ contract khuyến mãi thật.**

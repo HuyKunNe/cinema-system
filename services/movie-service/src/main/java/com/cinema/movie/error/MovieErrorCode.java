@@ -34,6 +34,16 @@ public enum MovieErrorCode implements ErrorCode {
             "Backdrop URL must not exceed 500 characters",
             ErrorCategory.VALIDATION),
 
+    INVALID_HERO_QUERY(
+            "INVALID_HERO_QUERY",
+            "Hero limit or movie ID filter is outside the supported range",
+            ErrorCategory.VALIDATION),
+
+    INVALID_HERO_CONFIGURATION(
+            "INVALID_HERO_CONFIGURATION",
+            "Hero configuration requires valid fields, nonnegative priority and a valid period",
+            ErrorCategory.VALIDATION),
+
     INVALID_CATALOG_PAGINATION(
             "INVALID_CATALOG_PAGINATION",
             "Catalog page or size is outside the supported range",

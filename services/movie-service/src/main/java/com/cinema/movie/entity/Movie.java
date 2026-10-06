@@ -1,5 +1,10 @@
 package com.cinema.movie.entity;
 
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.HashSet;
+import java.util.Set;
+
 import com.cinema.common.jpa.entity.BaseEntity;
 
 import jakarta.persistence.Column;
@@ -11,10 +16,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
-
-import java.time.LocalDate;
-import java.util.HashSet;
-import java.util.Set;
 
 @Entity
 @Table(name = "movies")
@@ -44,6 +45,18 @@ public class Movie extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "age_rating", length = 10)
     private AgeRating ageRating;
+
+    @Column(name = "hero_enabled", nullable = false)
+    private boolean heroEnabled;
+
+    @Column(name = "hero_priority", nullable = false)
+    private int heroPriority;
+
+    @Column(name = "hero_starts_at")
+    private OffsetDateTime heroStartsAt;
+
+    @Column(name = "hero_ends_at")
+    private OffsetDateTime heroEndsAt;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
@@ -124,6 +137,38 @@ public class Movie extends BaseEntity {
 
     public MovieStatus getStatus() {
         return status;
+    }
+
+    public boolean isHeroEnabled() {
+        return heroEnabled;
+    }
+
+    public void setHeroEnabled(boolean heroEnabled) {
+        this.heroEnabled = heroEnabled;
+    }
+
+    public int getHeroPriority() {
+        return heroPriority;
+    }
+
+    public void setHeroPriority(int heroPriority) {
+        this.heroPriority = heroPriority;
+    }
+
+    public OffsetDateTime getHeroStartsAt() {
+        return heroStartsAt;
+    }
+
+    public void setHeroStartsAt(OffsetDateTime heroStartsAt) {
+        this.heroStartsAt = heroStartsAt;
+    }
+
+    public OffsetDateTime getHeroEndsAt() {
+        return heroEndsAt;
+    }
+
+    public void setHeroEndsAt(OffsetDateTime heroEndsAt) {
+        this.heroEndsAt = heroEndsAt;
     }
 
     public void setStatus(MovieStatus status) {

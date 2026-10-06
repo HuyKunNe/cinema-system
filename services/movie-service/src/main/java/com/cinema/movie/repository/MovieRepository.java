@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -77,4 +78,36 @@ public interface MovieRepository extends JpaRepository<Movie, UUID> {
             where movie.id in :movieIds
             """)
     List<Movie> findAllWithGenresByIdIn(@Param("movieIds") Collection<UUID> movieIds);
+
+    @Query(
+            """
+            select movie.id
+            from Movie movie
+            where movie.status = :status
+              and movie.heroEnabled = true
+              and (movie.heroStartsAt is null or movie.heroStartsAt <= :now)
+              and (movie.heroEndsAt is null or movie.heroEndsAt > :now)
+            order by movie.heroPriority asc, movie.id asc
+            """)
+    List<UUID> findHeroMovieIds(
+            @Param("status") MovieStatus status,
+            @Param("now") OffsetDateTime now,
+            Pageable pageable);
+
+    @Query(
+            """
+            select movie.id
+            from Movie movie
+            where movie.status = :status
+              and movie.heroEnabled = true
+              and (movie.heroStartsAt is null or movie.heroStartsAt <= :now)
+              and (movie.heroEndsAt is null or movie.heroEndsAt > :now)
+              and movie.id in :movieIds
+            order by movie.heroPriority asc, movie.id asc
+            """)
+    List<UUID> findHeroMovieIdsByMovieIds(
+            @Param("status") MovieStatus status,
+            @Param("now") OffsetDateTime now,
+            @Param("movieIds") Collection<UUID> movieIds,
+            Pageable pageable);
 }
