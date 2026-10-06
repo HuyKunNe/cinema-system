@@ -352,6 +352,42 @@ public final class InventoryErrorCode implements ErrorCode {
                     "Showtime must be open for booking, start in the future, "
                             + "and belong to an active room and cinema");
 
+    public static final InventoryErrorCode ROOM_LAYOUT_DATA_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_ROOM_LAYOUT_DATA_INVALID",
+                    "Room layout data is invalid");
+
+    public static final InventoryErrorCode ROOM_LAYOUT_GEOMETRY_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_ROOM_LAYOUT_GEOMETRY_INVALID",
+                    "Room layout geometry is invalid");
+
+    public static final InventoryErrorCode ROOM_LAYOUT_SEAT_ROOM_MISMATCH =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_ROOM_LAYOUT_SEAT_ROOM_MISMATCH",
+                    "Seat must belong to the room of the layout");
+
+    public static final InventoryErrorCode ROOM_LAYOUT_NOT_DRAFT =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_ROOM_LAYOUT_NOT_DRAFT",
+                    "Only draft room layouts can be modified");
+
+    public static final InventoryErrorCode ROOM_LAYOUT_NOT_FOUND =
+            new InventoryErrorCode(
+                    ErrorCategory.RESOURCE,
+                    "INVENTORY_ROOM_LAYOUT_NOT_FOUND",
+                    "Room layout not found");
+
+    public static final InventoryErrorCode ROOM_LAYOUT_VERSION_EXHAUSTED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_ROOM_LAYOUT_VERSION_EXHAUSTED",
+                    "Room layout version limit has been reached");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

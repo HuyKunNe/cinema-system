@@ -27,7 +27,7 @@ spring:
             - id: inventory-service
               uri: lb://inventory-service
               predicates:
-                - Path=/api/v1/cinemas/**,/api/v1/rooms/**,/api/v1/showtimes/**,/api/v1/seats/**,/api/v1/show-seats/**
+                - Path=/api/v1/cinemas/**,/api/v1/rooms/**,/api/v1/showtimes/**,/api/v1/seats/**,/api/v1/show-seats/**,/api/v1/room-layouts,/api/v1/room-layouts/**
 
             - id: booking-service
               uri: lb://booking-service

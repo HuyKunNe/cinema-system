@@ -1,9 +1,5 @@
 package com.cinema.inventory.config;
 
-import com.cinema.common.security.jwt.CinemaJwtAuthenticationConverter;
-import com.cinema.common.security.web.CinemaAccessDeniedHandler;
-import com.cinema.common.security.web.CinemaAuthenticationEntryPoint;
-
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,6 +8,10 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+
+import com.cinema.common.security.jwt.CinemaJwtAuthenticationConverter;
+import com.cinema.common.security.web.CinemaAccessDeniedHandler;
+import com.cinema.common.security.web.CinemaAuthenticationEntryPoint;
 
 @Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
@@ -37,7 +37,9 @@ public class InventorySecurityConfig {
         "/api/v1/rooms",
         "/api/v1/rooms/**",
         "/api/v1/seats",
-        "/api/v1/seats/**"
+        "/api/v1/seats/**",
+        "/api/v1/room-layouts",
+        "/api/v1/room-layouts/**"
     };
 
     private static final String[] SHOWTIME_MANAGEMENT_ENDPOINTS = {
