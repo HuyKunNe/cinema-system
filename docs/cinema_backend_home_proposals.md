@@ -587,15 +587,28 @@ Các giá trị mặc định trong source:
   https://cinematic-2awjfcb0p-huykunnes-projects.vercel.app.
 
 Gateway cho phép OPTIONS qua security.
-Global CORS đã có add-to-simple-url-handler-mapping,
-danh sách methods/headers và allow-credentials.
+Global CORS đã có add-to-simple-url-handler-mapping, danh sách methods/headers và allow-credentials.
 
-Cần kiểm tra cấu hình hiệu lực, origin FE thực tế,
-preflight và response qua Gateway.
+Cần kiểm tra cấu hình hiệu lực, origin FE thực tế, preflight và response qua Gateway.
 Không kết luận CORS đã hoạt động chỉ từ YAML.
 
-Nếu FE gọi trực tiếp service thay vì Gateway,
-cần kiểm tra CORS của service đó riêng.
+Nếu FE gọi trực tiếp service thay vì Gateway, cần kiểm tra CORS của service đó riêng.
+
+### 16.1 Kết quả kiểm tra runtime
+
+Source đối chiếu:
+
+- Backend: ac1031f38ed28b7b2305bf412ec3afa37a70c4d7.
+- Frontend: 69e952600dcf884ae038e16b474256aff4c3c820.
+
+| Môi trường | Gateway URL   | FE Origin     | OPTIONS GET   | OPTIONS PATCH | GET trong trình duyệt |
+| ---------- | ------------- | ------------- | ------------- | ------------- | --------------------- |
+| Local      | Chưa ghi nhận | Chưa ghi nhận | Chưa kiểm tra | Chưa kiểm tra | Chưa kiểm tra         |
+| Deploy     | Chưa ghi nhận | Chưa ghi nhận | Chưa kiểm tra | Chưa kiểm tra | Chưa kiểm tra         |
+
+Chỉ ghi PASS sau khi kiểm tra status và CORS headers thực tế.
+Kết quả local không thay thế kết quả deployment.
+Preflight thành công không thay thế authorization của API ghi dữ liệu.
 
 ## 17. OpenAPI và generated client
 
@@ -697,7 +710,7 @@ Backend:
 - services/movie-service/src/main/java/com/cinema/movie/service/MovieHeroService.java
 - services/movie-service/src/main/java/com/cinema/movie/config/MovieHeroProperties.java
 - services/movie-service/src/main/java/com/cinema/movie/dto/response/MovieHeroConfigurationResponse.java
-- services/movie-service/src/main/resources/db/migration/V4__add_movie_hero_configuration.sql
+- services/movie-service/src/main/resources/db/migration/V4\_\_add_movie_hero_configuration.sql
 
 Frontend:
 
