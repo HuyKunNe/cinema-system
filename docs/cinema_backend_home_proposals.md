@@ -23,11 +23,14 @@ Phân biệt rõ:
 
 | Repository             | Commit                                   |
 | ---------------------- | ---------------------------------------- |
-| HuyKunNe/cinema-system | 00c759d574e44edc855cff866c9cc1a66af2c72b |
-| HuyKunNe/cinematic-web | 4856878d420efa562a357d673e93eab04d463b32 |
+| HuyKunNe/cinema-system | 4079c22fa1aa1c17d04793778ee5ae2ca299b322 |
+| HuyKunNe/cinematic-web | 50b74c1750088587571b862f696cc8830cfba156 |
 
-Baseline là commit được dùng để kiểm tra source, không phải commit
-chứa lần cập nhật tài liệu này.
+Baseline này áp dụng cho phần Home, Movie Catalog và QuickBooking
+tại mục 1–20. Các mục Booking phía sau có baseline riêng.
+
+IMPLEMENTED nghĩa là đã có trong source tại baseline,
+không đồng nghĩa đã xác minh runtime, test hoặc deployment.
 
 Khi main thay đổi, kiểm tra lại source trước khi cập nhật trạng thái.
 
@@ -43,6 +46,10 @@ Khi main thay đổi, kiểm tra lại source trước khi cập nhật trạng 
 - Request metadata yêu cầu cả hai key; null dùng để xóa giá trị.
 - API sửa phim cũ bảo toàn metadata.
 - Movie Service không sở hữu dữ liệu suất chiếu, phòng hoặc ghế.
+- GET /api/v1/movies/hero đã tồn tại, trả List<MovieResponse> trực tiếp.
+- PATCH /api/v1/movies/{movieId}/hero quản lý cấu hình Hero, yêu cầu movie:manage.
+- Hero là lựa chọn biên tập, không phải thống kê phim bán chạy.
+- MovieResponse không chứa các field cấu hình quản trị Hero.
 
 ### 2.2 Inventory
 
@@ -54,15 +61,21 @@ Khi main thay đổi, kiểm tra lại source trước khi cập nhật trạng 
 
 ### 2.3 Caller Frontend
 
-- home-queries.ts đã có useHomeBookableShowtimes.
+- home-queries.ts có useHomeBookableShowtimes và useHomeHeroMovies.
 - QuickBooking lấy lịch theo phim để xác định ngày có suất.
 - Với ngày đã chọn, QuickBooking gọi API bookable theo rạp/phim/ngày.
 - QuickBooking đọc loại phòng từ Room API rồi ghép theo roomId.
-- cinema-programme.queries.ts vẫn lấy phòng và truy vấn theo từng phòng.
-- movie-queries.ts và Home vẫn gọi findAll cho danh sách phim.
-- Generated client đã có getMovieCatalog; caller Movies chưa chuyển
-  sang paging server-side.
+- cinema-programme.queries.ts lấy phòng active và lịch theo từng phòng.
+- HomePage dùng useHomeHero cho Hero; danh sách Home còn lại tiếp tục dùng useHomeProgramme.
+- Khi có rạp, Hero truyền ID ứng viên từ chương trình rạp.
+- Rạp không có ứng viên: Hero hiển thị rỗng và không gọi toàn hệ thống.
+- Lỗi chương trình rạp: Hero hiển thị lỗi và cho thử lại.
+- Axios đã serialize query array bằng tên parameter lặp.
+- movie-queries.ts vẫn dùng findAll cho Movies.
+- MoviesPage lọc trạng thái/thể loại, sắp xếp và tăng số phim hiển thị tại FE; chưa dùng paging server-side.
+- Generated client có getMovieCatalog, getHeroMovies và updateMovieHero.
 - cinema-time.ts dùng Asia/Ho_Chi_Minh.
+- openapi/ hiện chỉ có README; chưa có snapshot JSON đã review.
 
 ### 2.4 Reservation và hold
 
@@ -87,20 +100,20 @@ Khi main thay đổi, kiểm tra lại source trước khi cập nhật trạng 
 
 ## 4. Trạng thái các đề xuất
 
-| ID         | Nội dung                     | Trạng thái tại baseline                                         |
-| ---------- | ---------------------------- | --------------------------------------------------------------- |
-| BE-HOME-01 | Truy vấn suất mở bán         | IMPLEMENTED; có generated client và caller FE                   |
-| BE-HOME-02 | Eligibility reservation/hold | IMPLEMENTED; chưa xác minh runtime trong lần đối chiếu này      |
-| BE-HOME-03 | backdropUrl nullable         | Chờ nguồn ảnh ngang và quy ước media                            |
-| BE-HOME-04 | Movie catalog paging/filter  | IMPLEMENTED ở BE và generated client; caller FE vẫn dùng API cũ |
-| BE-HOME-05 | Availability tổng hợp        | Chờ contract và xác nhận cách tính                              |
-| BE-HOME-06 | Age rating                   | Chờ dữ liệu và quy ước nghiệp vụ                                |
-| BE-HOME-07 | Validation trailerUrl        | IMPLEMENTED                                                     |
-| BE-HOME-08 | Hero editorial metadata      | Chờ nhu cầu và workflow quản trị                                |
-| BE-HOME-09 | Promotion API                | Chờ contract khuyến mãi thật                                    |
-| BE-HOME-10 | Membership API               | Chờ contract thành viên thật                                    |
-| BE-HOME-11 | Timezone lịch chiếu          | IMPLEMENTED trong FE và quy ước API bookable                    |
-| BE-HOME-12 | CORS deployment              | Có cấu hình source; chờ xác minh runtime                        |
+| ID         | Nội dung                     | Trạng thái tại baseline                                                    |
+| ---------- | ---------------------------- | -------------------------------------------------------------------------- |
+| BE-HOME-01 | Truy vấn suất mở bán         | IMPLEMENTED; có generated client và caller FE                              |
+| BE-HOME-02 | Eligibility reservation/hold | IMPLEMENTED; chưa xác minh đầy đủ runtime                                  |
+| BE-HOME-03 | backdropUrl nullable         | IMPLEMENTED; còn bổ sung ảnh ngang từ nguồn xác nhận                       |
+| BE-HOME-04 | Movie catalog paging/filter  | IMPLEMENTED ở BE và generated client; Movies vẫn dùng findAll              |
+| BE-HOME-05 | Availability tổng hợp        | Chờ contract và cách tính được duyệt                                       |
+| BE-HOME-06 | Age rating                   | IMPLEMENTED; dữ liệu nullable, có script bổ sung rating                    |
+| BE-HOME-07 | Validation trailerUrl        | IMPLEMENTED                                                                |
+| BE-HOME-08 | Hero editorial metadata      | IMPLEMENTED ở BE, generated client và caller FE; cấu hình nội dung qua API |
+| BE-HOME-09 | Promotion API                | Chờ contract khuyến mãi thật                                               |
+| BE-HOME-10 | Membership API               | Chờ contract thành viên thật                                               |
+| BE-HOME-11 | Timezone lịch chiếu          | IMPLEMENTED trong FE và quy ước API bookable                               |
+| BE-HOME-12 | CORS deployment              | Có cấu hình source; chờ xác minh runtime tại môi trường deploy             |
 
 ## 5. BE-HOME-01 — Truy vấn suất chiếu mở bán
 
@@ -321,262 +334,203 @@ Chưa xác minh runtime trên các timezone trình duyệt trong lần đối ch
 
 ### 12.1 Trạng thái và baseline
 
-Trạng thái: PROPOSED — chưa triển khai.
+Trạng thái: IMPLEMENTED trong Backend, generated client và caller FE.
 
-Đã đối chiếu:
+Baseline theo mục 2. Chưa ghi nhận kiểm tra runtime đầy đủ cho
+cấu hình, phạm vi rạp và trạng thái hiển thị.
 
-- Backend: `00c759d574e44edc855cff866c9cc1a66af2c72b`.
-- Frontend: `d1517b639e9859a12e7e4dca3dc3081123c39e43`.
+Source Backend:
 
-Backend hiện có:
+- MovieHeroController.
+- MovieHeroService.
+- MovieRepository.
+- MovieHeroProperties.
+- MovieHeroConfigurationResponse.
+- Migration V4\_\_add_movie_hero_configuration.sql.
 
-- `GET /api/v1/movies`.
-- `GET /api/v1/movies/catalog`.
-- Movie metadata gồm poster, trailer, trạng thái và thể loại.
-- Public GET cho Movie API.
-- Quyền `movie:manage` cho thao tác quản lý phim.
+Source Frontend:
 
-Backend chưa có:
+- home-queries.ts.
+- use-home-hero.ts.
+- HomePage.vue.
+- HeroBanner.vue.
+- Generated movie-hero-controller.ts.
+- axios-instance.ts.
 
-- API trả danh sách phim dành riêng cho Hero.
-- Metadata quản lý việc xuất hiện và thứ tự phim trên Hero.
-- Thống kê popularity theo phim.
-- `backdropUrl` trong MovieResponse tại baseline này.
+### 12.2 Ý nghĩa phim nổi bật
 
-Không coi endpoint hoặc field đề xuất bên dưới là contract đã tồn tại.
+Phim nổi bật là lựa chọn biên tập được quản lý qua API.
 
-### 12.2 Yêu cầu sản phẩm
+Không diễn giải heroPriority thành doanh số, lượt xem,
+số vé bán hoặc ranking tự động.
 
-- Hero hiển thị tối đa 4 phim đang chiếu.
-- Danh sách và thứ tự hiển thị do Backend cung cấp.
-- Không dùng danh sách movie ID cố định trong FE.
-- Không dùng phim mới nhất, dữ liệu mock hoặc nội dung mẫu để thay kết quả Hero.
-- Phim phải phù hợp với rạp đã chọn khi người dùng có location.
-- Khi không có phim phù hợp, trả danh sách rỗng.
-- Animation và cơ chế chuyển slide tiếp tục thuộc FE.
+FE yêu cầu tối đa 4 phim và giữ thứ tự Backend trả về.
+Carousel, animation và autoplay thuộc FE.
 
-Trong phạm vi này, phim nổi bật là lựa chọn biên tập được quản trị
-trong DB qua API. Không diễn giải thứ tự biên tập thành thống kê
-doanh số, lượt xem hoặc số vé bán.
+### 12.3 Metadata đã implement
 
-### 12.3 Metadata đề xuất trong Movie Service
+| Field        | Quy tắc                                         |
+| ------------ | ----------------------------------------------- |
+| heroEnabled  | Cho phép xuất hiện trên Hero                    |
+| heroPriority | Số nguyên không âm; số nhỏ đứng trước           |
+| heroStartsAt | Nullable; thời điểm bắt đầu được bao gồm        |
+| heroEndsAt   | Nullable; thời điểm kết thúc không được bao gồm |
 
-Bổ sung các field quản lý Hero:
+- Khi có cả hai mốc, heroEndsAt phải sau heroStartsAt.
+- Null nghĩa là không giới hạn ở phía tương ứng.
+- API chuẩn hóa thời gian về UTC với độ chính xác microsecond.
+- Metadata quản trị được trả qua MovieHeroConfigurationResponse.
+- Public MovieResponse giữ metadata phim hiện có.
 
-| Field          | Ý nghĩa                                |
-| -------------- | -------------------------------------- |
-| `heroEnabled`  | Cho phép phim xuất hiện trên Hero      |
-| `heroPriority` | Thứ tự ưu tiên; số nhỏ xuất hiện trước |
-| `heroStartsAt` | Thời điểm bắt đầu hiển thị; nullable   |
-| `heroEndsAt`   | Thời điểm kết thúc hiển thị; nullable  |
+### 12.4 Public API hiện có
+
+GET /api/v1/movies/hero
+
+operationId: getHeroMovies.
+Public GET; không có request body.
+
+| Query    | Quy tắc                                      |
+| -------- | -------------------------------------------- |
+| limit    | Không bắt buộc; mặc định cấu hình 4          |
+| movieIds | Bộ lọc UUID tùy chọn; gửi bằng tên query lặp |
+
+- maxLimit mặc định 10; cấu hình có thể giảm giới hạn.
+- maxMovieIds mặc định 100; cấu hình có thể giảm giới hạn.
+- Thiếu movieIds: truy vấn toàn hệ thống.
+- Bộ lọc được áp dụng trước limit.
+- UUID hợp lệ nhưng không khớp dữ liệu không gây 404.
+
+Điều kiện và thứ tự:
+
+1. Movie có trạng thái NOW_SHOWING.
+2. heroEnabled = true.
+3. Đang trong khoảng [heroStartsAt, heroEndsAt).
+4. Thuộc movieIds nếu có bộ lọc.
+5. Sắp xếp heroPriority ASC, id ASC.
+6. Áp dụng limit.
+
+Response 200: List<MovieResponse> trực tiếp.
+Không có kết quả trả [].
+
+Query sai trả 400.
+Phim mất giữa bước chọn ID và tải entity có thể trả 404.
+
+### 12.5 API quản trị hiện có
+
+PATCH /api/v1/movies/{movieId}/hero
+
+operationId: updateMovieHero.
+Yêu cầu movie:manage.
+
+Body có thể cập nhật từng phần:
+
+- heroEnabled.
+- heroPriority.
+- heroStartsAt.
+- heroEndsAt.
 
 Quy tắc:
 
-- Migration đặt `heroEnabled = false` cho dữ liệu hiện có.
-- Không seed danh sách phim nổi bật bằng ID cố định.
-- Phim chỉ được đưa lên Hero sau khi quản trị cập nhật qua API.
-- `heroPriority` là số nguyên không âm.
-- Khi có cả hai thời điểm, `heroEndsAt` phải sau `heroStartsAt`.
-- Thời gian API có offset; so sánh theo instant.
-- Khoảng hiển thị là `[heroStartsAt, heroEndsAt)`.
-- Giá trị null có nghĩa là không giới hạn ở phía tương ứng.
+- Field không gửi: giữ giá trị hiện tại.
+- heroEnabled và heroPriority không nhận null.
+- heroStartsAt và heroEndsAt nhận null để xóa giới hạn.
+- Request không có thay đổi Hero hợp lệ bị từ chối.
+- Backend kiểm tra khoảng thời gian sau khi merge với cấu hình cũ.
 
-### 12.4 Public API đề xuất
+Response 200: MovieHeroConfigurationResponse trực tiếp, gồm
+movieId, heroEnabled, heroPriority, heroStartsAt và heroEndsAt.
 
-Endpoint mới:
+Các lỗi: 400 validation, 404 phim không tồn tại,
+401 chưa xác thực, 403 thiếu quyền.
 
-`GET /api/v1/movies/hero`
+### 12.6 Phạm vi rạp tại FE
 
-Operation ID đề xuất: `getHeroMovies`.
+Movie Service không sở hữu Cinema, Room hoặc Showtime.
+Không truy cập trực tiếp database của Inventory.
 
-Query parameters:
+use-home-hero.ts hiện thực:
 
-| Parameter  | Quy tắc                                             |
-| ---------- | --------------------------------------------------- |
-| `limit`    | Mặc định 4; tối thiểu 1; tối đa 10                  |
-| `movieIds` | Bộ lọc ID phim tùy chọn, lấy từ dữ liệu API hiện có |
+- Chưa chọn rạp: gọi Hero không có movieIds.
+- Có rạp: chờ xác minh location và chương trình rạp.
+- ID ứng viên lấy từ suất OPEN_FOR_BOOKING trong tương lai,
+  thuộc rạp đã chọn.
+- Chương trình rạp đang tải: Hero loading.
+- Chương trình rạp lỗi: Hero error và cho thử lại.
+- Tập ứng viên rỗng: Hero rỗng, không gọi toàn hệ thống.
 
-Default limit và max limit phải nằm trong configuration properties.
+Query key chứa cinemaId, limit và ID ứng viên đã chuẩn hóa.
+FE không cắt tập ứng viên trước khi Backend áp dụng limit.
 
-`movieIds` nhận các UUID thực tế, không phải danh sách cấu hình
-cố định trong FE. Cần xác định giới hạn số ID và validation
-trong OpenAPI trước khi triển khai.
-
-Quy tắc truy vấn:
-
-1. Chỉ lấy Movie có trạng thái `NOW_SHOWING`.
-2. Chỉ lấy Movie có `heroEnabled = true`.
-3. Kiểm tra thời hạn hiển thị theo clock phía Backend.
-4. Áp dụng `movieIds` nếu request có bộ lọc.
-5. Sắp xếp `heroPriority ASC`, sau đó `id ASC`.
-6. Áp dụng `limit` sau khi lọc và sắp xếp.
-7. Không đủ phim thì trả ít hơn limit.
-8. Không có phim phù hợp thì trả danh sách rỗng.
-
-Response đề xuất: danh sách `MovieResponse`, theo đúng thứ tự Hero.
-
-Giữ convention response/envelope hiện có của service.
-Giữ nguyên contract của `/movies` và `/movies/catalog`.
-
-Endpoint GET này public như Movie catalog hiện tại.
-Không yêu cầu đăng nhập chỉ để xem Hero.
-
-### 12.5 Quản trị nội dung qua API
-
-Endpoint ghi đề xuất:
-
-`PATCH /api/v1/movies/{movieId}/hero`
-
-Payload quản lý:
-
-- `heroEnabled`.
-- `heroPriority`.
-- `heroStartsAt`.
-- `heroEndsAt`.
-
-Endpoint này chỉ cập nhật cấu hình Hero, không thay toàn bộ Movie.
-
-Yêu cầu:
-
-- Bảo vệ bằng quyền `movie:manage` tại service.
-- Kiểm tra Gateway cho phương thức PATCH và route mới.
-- Phim không tồn tại trả lỗi theo convention hiện có.
-- Validation priority và khoảng thời gian phải thực hiện ở Backend.
-- Response và OpenAPI phải mô tả cấu hình sau cập nhật.
-- Không mở public write hoặc thay đổi luồng đăng nhập hiện có.
-
-Có thể quản lý qua Swagger/API trước khi FE admin có màn hình tương ứng.
-
-### 12.6 Áp dụng city/rạp đã chọn
-
-Movie Service không sở hữu cinema, room hoặc showtime.
-Không truy cập database của Inventory để lọc rạp.
-
-Luồng FE đề xuất:
-
-- Không có rạp đã chọn: gọi Hero API không có `movieIds`.
-- Có rạp đã chọn:
-  - Lấy danh sách phim hợp lệ từ chương trình của rạp bằng API hiện có.
-  - Truyền các movie ID thực tế vào Hero API.
-  - Backend lọc các ID đó trước khi áp dụng limit.
-- Chương trình rạp đang tải: hiển thị loading.
-- Chương trình rạp tải lỗi: hiển thị lỗi và cho thử lại.
-- Danh sách phim của rạp rỗng: hiển thị Hero rỗng,
-  không bỏ bộ lọc rồi gọi Hero toàn hệ thống.
-
-Query key FE phải chứa cinema ID, tập ID ứng viên và limit.
-Chuẩn hóa thứ tự ID trong query key để cache ổn định.
-
-Danh sách ứng viên chỉ là bộ lọc.
-Backend vẫn kiểm tra trạng thái Movie và cấu hình Hero.
+Bộ lọc ứng viên không thay thế kiểm tra reservation/hold
+tại Backend.
 
 ### 12.7 Ảnh và dữ liệu thiếu
 
-- Dùng `backdropUrl` khi đề xuất tại mục 9 đã được triển khai.
-- Nếu backdrop thiếu, dùng `posterUrl` từ API.
-- Nếu ảnh thiếu hoặc tải lỗi, dùng nền/placeholder trung tính.
-- Không gán ảnh phim mẫu hoặc nội dung phim giả.
-- Trailer thiếu thì xử lý trạng thái chưa có trailer.
-- Không suy đoán age rating.
+- Hero ưu tiên backdropUrl, sau đó posterUrl.
+- Nếu các ảnh đều thiếu hoặc tải thất bại, vẫn hiển thị nội dung
+  phim với nền hiện có.
+- Trailer thiếu được hiển thị theo trạng thái chưa có trailer.
+- Age rating được đọc từ API; không suy đoán.
 
-Không dùng field chưa tồn tại trong generated client.
+backdropUrl null không phải điều kiện loại phim khỏi Hero.
 
-### 12.8 Tích hợp FE sau khi Backend hoàn thành
+### 12.8 Tích hợp FE hiện có
 
-- Cập nhật OpenAPI snapshot và sinh lại Orval client.
-- Tạo query Hero trong feature Home.
-- Mapper chuyển response thành model Hero phù hợp.
-- HeroBanner nhận dữ liệu từ query mới.
-- NowShowing và QuickBooking tiếp tục dùng danh sách riêng.
-- Xóa selector ID tĩnh và fallback chọn phim theo releaseDate.
-- Không gọi Axios trực tiếp trong HeroBanner.
-- Không đổi animation hoặc tạo API timer.
-- Kết quả rỗng và lỗi không được thay bằng dữ liệu tĩnh.
-
-Chưa nối FE vào endpoint đề xuất trước khi Backend implement
-và contract runtime được xác nhận.
+- HomePage truyền heroMovies từ useHomeHero vào HeroBanner.
+- Query gọi generated getHeroMovies và dùng toHomeMovie.
+- NowShowing, Upcoming và QuickBooking dùng dữ liệu riêng.
+- Query Hero refetch mỗi 30 giây khi tab hoạt động.
+- Không có cam kết cập nhật tức thời.
+- Kết quả rỗng/lỗi không được thay bằng danh sách phim tĩnh.
+- Generated client đã có; openapi/ chưa có snapshot JSON đã review.
 
 ### 12.9 Xếp hạng hot tự động — phạm vi riêng
 
-Nếu sản phẩm yêu cầu hot theo số vé bán, cần thiết kế nguồn
-thống kê và tiêu chí xếp hạng riêng.
+Chưa có contract ranking phim theo doanh số/lượt xem được xác nhận.
 
-Booking hiện có `showtimeId`, `confirmedAt` và thông tin ghế;
-BookingConfirmedPayload chưa có `movieId`.
-
-Vì vậy không được giả định đã có thống kê theo phim.
-
-Thiết kế sau cần xác định:
-
-- Cửa sổ thống kê và đơn vị đếm: vé hay booking.
-- Cách liên kết showtime với movie bằng API/event hoặc read model.
-- Xử lý event trùng lặp, cancellation và refund.
-- Độ trễ cập nhật và khả năng đối soát.
-- Ranh giới sở hữu dữ liệu giữa Booking, Inventory và Movie.
+Nếu cần, phải xác định nguồn thống kê, cửa sổ thời gian,
+cách liên kết booking với movie, xử lý replay/cancellation/refund
+và khả năng đối soát.
 
 Không join trực tiếp database giữa các service.
-Không đưa số liệu giả vào Hero để mô phỏng ranking.
+Không dùng số liệu giả để mô phỏng ranking.
 
-### 12.10 Kiểm tra thủ công sau triển khai
+### 12.10 Kiểm tra thủ công
 
-- Chưa cấu hình phim nổi bật: API trả danh sách rỗng.
-- Bật phim qua API quản trị: public Hero API trả phim tương ứng.
-- Đổi priority: thứ tự response thay đổi và ổn định.
-- Phim UPCOMING, ENDED hoặc INACTIVE không xuất hiện.
-- Kiểm tra thời điểm bắt đầu và kết thúc hiển thị.
-- Kiểm tra default limit, giới hạn limit và UUID không hợp lệ.
-- Kiểm tra bộ lọc movieIds được áp dụng trước limit.
-- Đổi rạp trên FE: Hero chỉ hiển thị phim phù hợp với rạp mới.
-- API lỗi hoặc trả rỗng: không xuất hiện dữ liệu mock hoặc ID tĩnh.
-- Public GET hoạt động không cần đăng nhập.
-- PATCH không có quyền bị từ chối theo security convention.
-- Client cũ của `/movies` và `/movies/catalog` tiếp tục hoạt động.
+- Chưa bật phim: API trả [].
+- Bật phim NOW_SHOWING qua PATCH: GET trả phim khi đủ điều kiện.
+- Đổi priority: thứ tự response thay đổi ổn định.
+- UPCOMING, ENDED và INACTIVE không xuất hiện.
+- Kiểm tra mốc bắt đầu được bao gồm và mốc kết thúc bị loại.
+- Query sai, UUID sai và giới hạn vượt cấu hình bị từ chối.
+- Bộ lọc ID được áp dụng trước limit.
+- Rạp rỗng/lỗi không chuyển sang Hero toàn hệ thống.
+- Đổi rạp không hiển thị kết quả của rạp cũ.
+- Public GET và quyền PATCH hoạt động đúng.
+- Client cũ của /movies và /movies/catalog tiếp tục hoạt động.
 
-### 12.11 Chi tiết contract triển khai Hero
+### 12.11 Khởi tạo nội dung và chẩn đoán danh sách rỗng
 
-Chỉ chuyển trạng thái sang IMPLEMENTED sau khi áp dụng source.
+Migration V4 đặt hero_enabled = false.
+Các script Cinestar hiện tại không bật cấu hình Hero.
 
-Public:
+Vì vậy, phim đã seed và có NOW_SHOWING vẫn chưa đủ điều kiện
+xuất hiện trên Hero.
 
-- GET /api/v1/movies/hero.
-- operationId: getHeroMovies.
-- Response: List<MovieResponse> trực tiếp.
-- limit mặc định 4, tối đa 10; cấu hình có thể giảm các giới hạn.
-- movieIds tùy chọn, dạng repeated query parameter.
-- Tối đa 100 ID; giới hạn hiệu lực theo cinema.movie.hero.max-movie-ids.
-- Thiếu movieIds: không lọc ứng viên.
-- Có bộ lọc rỗng: trả [].
-- UUID không tồn tại trong bộ lọc không gây 404.
-- Lọc ứng viên trước limit.
-- Chỉ trả NOW_SHOWING, heroEnabled và còn trong thời hạn.
-- Thứ tự heroPriority ASC, id ASC.
-- Không có phim phù hợp trả [].
+Quản trị chọn phim qua PATCH /api/v1/movies/{movieId}/hero.
+Gửi heroEnabled = true để bật; field còn lại có thể bỏ qua
+nếu muốn giữ cấu hình hiện tại.
 
-Quản trị:
+Khi GET trả []:
 
-- PATCH /api/v1/movies/{movieId}/hero.
-- operationId: updateMovieHero.
-- Yêu cầu movie:manage.
-- Không gửi field: giữ giá trị hiện tại.
-- heroEnabled và heroPriority không nhận null.
-- heroStartsAt/heroEndsAt nhận null để xóa giới hạn.
-- Body không có field Hero hợp lệ trả 400.
-- Kiểm tra khoảng thời gian trên cấu hình sau khi merge.
-- Response: MovieHeroConfigurationResponse trực tiếp.
+1. Kiểm tra phim tồn tại và có NOW_SHOWING.
+2. Kiểm tra hero_enabled.
+3. Kiểm tra hero_starts_at và hero_ends_at.
+4. Kiểm tra phim có thuộc tập movieIds được gửi hay không.
+5. Kiểm tra request đang tới đúng service/database.
 
-Dữ liệu:
-
-- Migration V4 mặc định tắt Hero cho mọi phim.
-- Không seed danh sách phim nổi bật.
-- Thời gian chuẩn hóa UTC, độ chính xác microsecond.
-- Không thay request CRUD hoặc public MovieResponse hiện tại.
-
-FE:
-
-- Chỉ nối query Hero sau khi xác nhận spec runtime và generated client.
-- FE mặc định yêu cầu 4 phim.
-- Có rạp: truyền ID ứng viên từ chương trình rạp.
-- Chương trình rạp rỗng hoặc lỗi không được chuyển thành Hero toàn hệ thống.
+GET Movie thông thường không trả cấu hình quản trị Hero.
+Không thể kết luận heroEnabled từ MovieResponse.
 
 ## 13. BE-HOME-09 — Promotion
 
@@ -702,16 +656,29 @@ Không ghi nhận các bước dưới đây đã pass chỉ vì đã đọc sou
 
 ## 19. Phần còn lại và thứ tự xử lý
 
-1. Đồng bộ tài liệu với implementation và baseline mới.
-2. Xác minh runtime BE-HOME-12 tại môi trường deploy thực tế.
-3. Chỉ triển khai backdrop/age rating khi có nguồn dữ liệu và quy ước.
-4. Chỉ thêm availability tổng hợp khi contract được duyệt.
-5. Editorial, Promotion và Membership theo contract riêng.
-6. Chuyển FE Movies sang catalog server-side khi có nhu cầu;
-   không cần thêm lại endpoint Backend.
+1. Hoàn tất xác minh runtime Hero sau khi cấu hình nội dung:
+   response, thứ tự và phạm vi rạp.
+2. Xác minh BE-HOME-12 tại môi trường deploy thực tế:
+   origin, cấu hình hiệu lực và CORS preflight qua Gateway.
+3. Bổ sung ảnh ngang và rating từ nguồn xác nhận khi cần.
+   Schema và API metadata đã implement.
+4. Availability, Promotion và Membership chỉ triển khai
+   sau khi có contract nghiệp vụ được duyệt.
+5. Chuyển Movies sang catalog server-side khi có nhu cầu.
+   Cần xử lý phạm vi rạp và các lựa chọn sắp xếp hiện tại
+   trước khi thay caller.
+6. Lưu snapshot OpenAPI đã review và metadata nguồn tại openapi/.
 
-Không coi seed database là migration triển khai các metadata chưa có.
-Không mở rộng scope sang R28 Notification.
+Không phân trang danh mục toàn hệ thống rồi chỉ lọc theo rạp
+trên từng trang: cách đó làm thiếu kết quả và sai tổng số phim.
+
+API catalog hiện chưa nhận bộ lọc ID ứng viên hoặc sort parameter.
+Nếu cần mở rộng contract, ưu tiên additive và giữ caller cũ.
+
+Các đề xuất Booking tại mục 21–26 có baseline và trạng thái riêng.
+Không coi chúng đã implement chỉ vì được ghi trong tài liệu.
+
+Không mở lại R28 Notification.
 
 ## 20. Source tham chiếu
 
@@ -726,6 +693,11 @@ Backend:
 - services/movie-service/src/main/java/com/cinema/movie/repository/MovieRepository.java
 - common/common-response/src/main/java/com/cinema/common/response/model/PageResponse.java
 - common/common-response/src/main/java/com/cinema/common/response/model/PageInfo.java
+- services/movie-service/src/main/java/com/cinema/movie/controller/MovieHeroController.java
+- services/movie-service/src/main/java/com/cinema/movie/service/MovieHeroService.java
+- services/movie-service/src/main/java/com/cinema/movie/config/MovieHeroProperties.java
+- services/movie-service/src/main/java/com/cinema/movie/dto/response/MovieHeroConfigurationResponse.java
+- services/movie-service/src/main/resources/db/migration/V4__add_movie_hero_configuration.sql
 
 Frontend:
 
@@ -739,6 +711,15 @@ Frontend:
 - orval.config.ts
 - package.json
 - docs/design/reference/html-convert
+- src/features/home/composables/use-home-hero.ts
+- src/features/home/pages/HomePage.vue
+- src/features/home/components/HeroBanner.vue
+- src/features/home/mappers/home-movie.mapper.ts
+- src/features/home/presentation/artwork.ts
+- src/features/movies/composables/use-movies-programme.ts
+- src/features/movies/pages/MoviesPage.vue
+- src/services/api/generated/movie-service/movie-hero-controller/movie-hero-controller.ts
+- src/services/http/axios-instance.ts
 
 ## 21. Booking — baseline và luồng giao diện
 
