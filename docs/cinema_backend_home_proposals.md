@@ -791,8 +791,12 @@ Luồng giữ ghế của khách hàng đi qua Booking Service.
 
 ## 22. BE-BOOKING-01 — Layout phòng chiếu
 
-Trạng thái: PROPOSED.
-Owner đề xuất: Inventory Service.
+Trạng thái: PARTIALLY_IMPLEMENTED.
+Owner: Inventory Service.
+
+Đã triển khai schema, quản trị nội dung layout và publish.
+Showtime có liên kết roomLayout nullable ở schema/entity.
+Luồng tạo suất chưa gắn layout; sinh ghế và API seat-map chưa tích hợp.
 
 ### 22.1 Vấn đề hiện tại
 
@@ -830,7 +834,7 @@ RoomLayout:
 - roomId
 - layoutVersion: phiên bản sơ đồ của phòng
 - version: optimistic locking, dùng làm expectedVersion khi ghi/publish
-- status: DRAFT hoặc PUBLISHED — enum mới được đề xuất
+- status: DRAFT hoặc PUBLISHED — enum hiện có
 - canvasWidth
 - canvasHeight
 - publishedAt
@@ -851,7 +855,7 @@ RoomLayoutSeat:
 RoomLayoutElement:
 
 - layoutId
-- kind: SCREEN, AISLE hoặc EXIT — enum mới được đề xuất
+- kind: SCREEN, AISLE hoặc EXIT — enum hiện có
 - label
 - x
 - y
@@ -872,7 +876,9 @@ kích thước ghế đôi và lối đi của đúng phòng.
 
 - PUBLISHED layout là bất biến.
 - Thay đổi sơ đồ tạo version mới.
-- Đề xuất Showtime lưu roomLayoutId khi tạo/generate ghế.
+- Showtime có association roomLayout nullable ở schema/entity.
+- Chưa nhận roomLayoutId trong CreateShowtimeRequest.
+- Việc gắn layout trước khi sinh ghế cần được triển khai sau khi chốt chính sách.
 - Không áp dụng layout mới ngược vào suất đã tạo.
 - Các tên và loại ghế dùng để đặt vé phải nhất quán với
   layout đã gắn vào suất.
@@ -938,10 +944,22 @@ Publish giữ nguyên layoutVersion, cập nhật version và publishedAt.
 Layout đã publish không được sửa qua API nội dung.
 Muốn thay đổi phải tạo một DRAFT version mới.
 
-Chưa triển khai liên kết layout với Showtime hoặc API seat-map.
+Đã thêm showtimes.room_layout_id nullable và association Showtime.roomLayout.
+Các suất hiện có giữ room_layout_id = NULL; không tự backfill.
+
+Chưa triển khai luồng gắn layout khi tạo suất hoặc API seat-map.
 Chưa quy định layout phải bao phủ toàn bộ Seat của phòng.
-Chính sách cho suất cũ, ghế inactive và đồng bộ snapshot với
-ShowSeat cần được chốt trước khi tích hợp vào luồng tạo suất.
+
+Chính sách cho suất cũ, ghế inactive và đồng bộ snapshot với ShowSeat
+cần được chốt trước khi tích hợp vào luồng tạo suất.
+
+Hiện có hai luồng sinh ghế với contract giá khác nhau:
+
+- ShowtimeServiceImpl.create gọi ShowSeatGenerationService,
+  tính giá bằng SeatPricingPolicy.
+- ShowSeatServiceImpl.generate dùng defaultPrice cho mọi ghế.
+
+Tích hợp layout phải xử lý cả hai luồng và giữ nguyên contract giá hiện có.
 
 ## 23. BE-BOOKING-02 — Read model cho section chọn ghế
 

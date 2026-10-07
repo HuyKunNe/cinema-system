@@ -1,10 +1,5 @@
 package com.cinema.inventory.entity;
 
-import java.time.OffsetDateTime;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
@@ -21,6 +16,11 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
+import java.time.OffsetDateTime;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+
 @Entity
 @Table(name = "showtimes")
 public class Showtime extends BaseEntity {
@@ -31,6 +31,10 @@ public class Showtime extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "room_id", nullable = false)
     private Room room;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "room_layout_id", nullable = true)
+    private RoomLayout roomLayout;
 
     @Column(name = "starts_at", nullable = false)
     private OffsetDateTime startsAt;
@@ -45,14 +49,9 @@ public class Showtime extends BaseEntity {
     @OneToMany(mappedBy = "showtime", fetch = FetchType.LAZY)
     private Set<ShowSeat> showSeats = new HashSet<>();
 
-    protected Showtime() {
-    }
+    protected Showtime() {}
 
-    public Showtime(
-            UUID movieId,
-            Room room,
-            OffsetDateTime startsAt,
-            OffsetDateTime endsAt) {
+    public Showtime(UUID movieId, Room room, OffsetDateTime startsAt, OffsetDateTime endsAt) {
 
         validateTimeRange(startsAt, endsAt);
 
@@ -75,6 +74,10 @@ public class Showtime extends BaseEntity {
         return room;
     }
 
+    public RoomLayout getRoomLayout() {
+        return roomLayout;
+    }
+
     void assignRoom(Room room) {
         this.room = room;
     }
@@ -95,9 +98,7 @@ public class Showtime extends BaseEntity {
         return Set.copyOf(showSeats);
     }
 
-    public void changeSchedule(
-            OffsetDateTime startsAt,
-            OffsetDateTime endsAt) {
+    public void changeSchedule(OffsetDateTime startsAt, OffsetDateTime endsAt) {
 
         validateTimeRange(startsAt, endsAt);
 
@@ -146,9 +147,7 @@ public class Showtime extends BaseEntity {
         }
     }
 
-    private static void validateTimeRange(
-            OffsetDateTime startsAt,
-            OffsetDateTime endsAt) {
+    private static void validateTimeRange(OffsetDateTime startsAt, OffsetDateTime endsAt) {
 
         if (startsAt == null || endsAt == null) {
             throw new ValidationException(InventoryErrorCode.SHOWTIME_PERIOD_REQUIRED);
