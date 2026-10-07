@@ -7,19 +7,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import java.math.BigDecimal;
-import java.time.Clock;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.Optional;
-import java.util.UUID;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
@@ -39,41 +26,52 @@ import com.cinema.inventory.repository.SeatRepository;
 import com.cinema.inventory.repository.ShowSeatRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ShowSeatService;
+import com.cinema.inventory.service.ShowtimeLayoutService;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.Optional;
+import java.util.UUID;
 
 @ExtendWith(MockitoExtension.class)
 class ShowSeatTransitionServiceImplTest {
 
-    private static final OffsetDateTime NOW = OffsetDateTime.parse(
-            "2099-01-01T03:00:00Z");
+    private static final OffsetDateTime NOW = OffsetDateTime.parse("2099-01-01T03:00:00Z");
 
     private static final BigDecimal PRICE = new BigDecimal("120000.00");
 
-    @Mock
-    private ShowSeatRepository showSeatRepository;
+    @Mock private ShowSeatRepository showSeatRepository;
 
-    @Mock
-    private ShowtimeRepository showtimeRepository;
+    @Mock private ShowtimeRepository showtimeRepository;
 
-    @Mock
-    private SeatRepository seatRepository;
+    @Mock private SeatRepository seatRepository;
 
-    @Mock
-    private ShowSeatMapper showSeatMapper;
+    @Mock private ShowSeatMapper showSeatMapper;
+
+    @Mock private ShowtimeLayoutService showtimeLayoutService;
 
     private ShowSeatService showSeatService;
 
     @BeforeEach
     void setUp() {
-        Clock clock = Clock.fixed(
-                NOW.toInstant(),
-                ZoneOffset.UTC);
+        Clock clock = Clock.fixed(NOW.toInstant(), ZoneOffset.UTC);
 
-        showSeatService = new ShowSeatServiceImpl(
-                showSeatRepository,
-                showtimeRepository,
-                seatRepository,
-                showSeatMapper,
-                clock);
+        showSeatService =
+                new ShowSeatServiceImpl(
+                        showSeatRepository,
+                        showtimeRepository,
+                        seatRepository,
+                        showSeatMapper,
+                        clock,
+                        showtimeLayoutService);
     }
 
     @Test
@@ -85,71 +83,49 @@ class ShowSeatTransitionServiceImplTest {
 
         ShowSeat showSeat = availableShowSeat();
 
-        HoldShowSeatRequest request = new HoldShowSeatRequest(
-                bookingId,
-                expiresAt);
+        HoldShowSeatRequest request = new HoldShowSeatRequest(bookingId, expiresAt);
 
-        ShowSeatResponse mappedResponse = response(
-                ShowSeatStatus.HELD,
-                bookingId,
-                expiresAt);
+        ShowSeatResponse mappedResponse = response(ShowSeatStatus.HELD, bookingId, expiresAt);
 
-        when(showSeatRepository
-                .findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.of(showSeat));
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.of(showSeat));
 
-        when(showSeatMapper.toResponse(showSeat))
-                .thenReturn(mappedResponse);
+        when(showSeatMapper.toResponse(showSeat)).thenReturn(mappedResponse);
 
-        ShowSeatResponse result = showSeatService.hold(
-                showSeatId,
-                request);
+        ShowSeatResponse result = showSeatService.hold(showSeatId, request);
 
-        assertThat(result)
-                .isSameAs(mappedResponse);
+        assertThat(result).isSameAs(mappedResponse);
 
-        assertThat(showSeat.getStatus())
-                .isEqualTo(ShowSeatStatus.HELD);
+        assertThat(showSeat.getStatus()).isEqualTo(ShowSeatStatus.HELD);
 
-        assertThat(showSeat.getHeldByBookingId())
-                .isEqualTo(bookingId);
+        assertThat(showSeat.getHeldByBookingId()).isEqualTo(bookingId);
 
-        assertThat(showSeat.getHoldExpiresAt())
-                .isEqualTo(expiresAt);
+        assertThat(showSeat.getHoldExpiresAt()).isEqualTo(expiresAt);
 
-        verify(showSeatRepository)
-                .findByIdForUpdate(showSeatId);
+        verify(showSeatRepository).findByIdForUpdate(showSeatId);
 
-        verify(showSeatMapper)
-                .toResponse(showSeat);
+        verify(showSeatMapper).toResponse(showSeat);
 
-        verify(showSeatRepository, never())
-                .findById(showSeatId);
+        verify(showSeatRepository, never()).findById(showSeatId);
     }
 
     @Test
     void holdShouldRejectSeatThatIsAlreadyHeld() {
         UUID showSeatId = UUID.randomUUID();
 
-        ShowSeat showSeat = heldShowSeat(
-                UUID.randomUUID(),
-                NOW.plusMinutes(10));
+        ShowSeat showSeat = heldShowSeat(UUID.randomUUID(), NOW.plusMinutes(10));
 
-        when(showSeatRepository
-                .findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.of(showSeat));
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.of(showSeat));
 
-        assertThatThrownBy(() -> showSeatService.hold(
-                showSeatId,
-                new HoldShowSeatRequest(
-                        UUID.randomUUID(),
-                        NOW.plusMinutes(20))))
+        assertThatThrownBy(
+                        () ->
+                                showSeatService.hold(
+                                        showSeatId,
+                                        new HoldShowSeatRequest(
+                                                UUID.randomUUID(), NOW.plusMinutes(20))))
                 .isInstanceOf(ConflictException.class)
-                .hasMessage(
-                        "Show seat is not available");
+                .hasMessage("Show seat is not available");
 
-        assertThat(showSeat.getStatus())
-                .isEqualTo(ShowSeatStatus.HELD);
+        assertThat(showSeat.getStatus()).isEqualTo(ShowSeatStatus.HELD);
 
         verifyNoInteractions(showSeatMapper);
     }
@@ -159,21 +135,18 @@ class ShowSeatTransitionServiceImplTest {
         UUID showSeatId = UUID.randomUUID();
         ShowSeat showSeat = availableShowSeat();
 
-        when(showSeatRepository
-                .findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.of(showSeat));
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.of(showSeat));
 
-        assertThatThrownBy(() -> showSeatService.hold(
-                showSeatId,
-                new HoldShowSeatRequest(
-                        UUID.randomUUID(),
-                        NOW.minusSeconds(1))))
+        assertThatThrownBy(
+                        () ->
+                                showSeatService.hold(
+                                        showSeatId,
+                                        new HoldShowSeatRequest(
+                                                UUID.randomUUID(), NOW.minusSeconds(1))))
                 .isInstanceOf(ValidationException.class)
-                .hasMessage(
-                        "Hold expiration must be in the future");
+                .hasMessage("Hold expiration must be in the future");
 
-        assertThat(showSeat.getStatus())
-                .isEqualTo(ShowSeatStatus.AVAILABLE);
+        assertThat(showSeat.getStatus()).isEqualTo(ShowSeatStatus.AVAILABLE);
 
         verifyNoInteractions(showSeatMapper);
     }
@@ -182,15 +155,14 @@ class ShowSeatTransitionServiceImplTest {
     void holdShouldThrowWhenShowSeatDoesNotExist() {
         UUID showSeatId = UUID.randomUUID();
 
-        when(showSeatRepository
-                .findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.empty());
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> showSeatService.hold(
-                showSeatId,
-                new HoldShowSeatRequest(
-                        UUID.randomUUID(),
-                        NOW.plusMinutes(10))))
+        assertThatThrownBy(
+                        () ->
+                                showSeatService.hold(
+                                        showSeatId,
+                                        new HoldShowSeatRequest(
+                                                UUID.randomUUID(), NOW.plusMinutes(10))))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessage("Show seat not found");
 
@@ -202,46 +174,29 @@ class ShowSeatTransitionServiceImplTest {
         UUID showSeatId = UUID.randomUUID();
         UUID bookingId = UUID.randomUUID();
 
-        ShowSeat showSeat = heldShowSeat(
-                bookingId,
-                NOW.plusMinutes(10));
+        ShowSeat showSeat = heldShowSeat(bookingId, NOW.plusMinutes(10));
 
-        ShowSeatBookingRequest request = new ShowSeatBookingRequest(
-                bookingId);
+        ShowSeatBookingRequest request = new ShowSeatBookingRequest(bookingId);
 
-        ShowSeatResponse mappedResponse = response(
-                ShowSeatStatus.BOOKED,
-                null,
-                null);
+        ShowSeatResponse mappedResponse = response(ShowSeatStatus.BOOKED, null, null);
 
-        when(showSeatRepository
-                .findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.of(showSeat));
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.of(showSeat));
 
-        when(showSeatMapper.toResponse(showSeat))
-                .thenReturn(mappedResponse);
+        when(showSeatMapper.toResponse(showSeat)).thenReturn(mappedResponse);
 
-        ShowSeatResponse result = showSeatService.book(
-                showSeatId,
-                request);
+        ShowSeatResponse result = showSeatService.book(showSeatId, request);
 
-        assertThat(result)
-                .isSameAs(mappedResponse);
+        assertThat(result).isSameAs(mappedResponse);
 
-        assertThat(showSeat.getStatus())
-                .isEqualTo(ShowSeatStatus.BOOKED);
+        assertThat(showSeat.getStatus()).isEqualTo(ShowSeatStatus.BOOKED);
 
-        assertThat(showSeat.getHeldByBookingId())
-                .isNull();
+        assertThat(showSeat.getHeldByBookingId()).isNull();
 
-        assertThat(showSeat.getHoldExpiresAt())
-                .isNull();
+        assertThat(showSeat.getHoldExpiresAt()).isNull();
 
-        verify(showSeatRepository)
-                .findByIdForUpdate(showSeatId);
+        verify(showSeatRepository).findByIdForUpdate(showSeatId);
 
-        verify(showSeatMapper)
-                .toResponse(showSeat);
+        verify(showSeatMapper).toResponse(showSeat);
     }
 
     @Test
@@ -249,19 +204,16 @@ class ShowSeatTransitionServiceImplTest {
         UUID showSeatId = UUID.randomUUID();
         ShowSeat showSeat = availableShowSeat();
 
-        when(showSeatRepository
-                .findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.of(showSeat));
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.of(showSeat));
 
-        assertThatThrownBy(() -> showSeatService.book(
-                showSeatId,
-                new ShowSeatBookingRequest(
-                        UUID.randomUUID())))
+        assertThatThrownBy(
+                        () ->
+                                showSeatService.book(
+                                        showSeatId, new ShowSeatBookingRequest(UUID.randomUUID())))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("Show seat is not held");
 
-        assertThat(showSeat.getStatus())
-                .isEqualTo(ShowSeatStatus.AVAILABLE);
+        assertThat(showSeat.getStatus()).isEqualTo(ShowSeatStatus.AVAILABLE);
 
         verifyNoInteractions(showSeatMapper);
     }
@@ -271,27 +223,20 @@ class ShowSeatTransitionServiceImplTest {
         UUID showSeatId = UUID.randomUUID();
         UUID ownerBookingId = UUID.randomUUID();
 
-        ShowSeat showSeat = heldShowSeat(
-                ownerBookingId,
-                NOW.plusMinutes(10));
+        ShowSeat showSeat = heldShowSeat(ownerBookingId, NOW.plusMinutes(10));
 
-        when(showSeatRepository
-                .findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.of(showSeat));
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.of(showSeat));
 
-        assertThatThrownBy(() -> showSeatService.book(
-                showSeatId,
-                new ShowSeatBookingRequest(
-                        UUID.randomUUID())))
+        assertThatThrownBy(
+                        () ->
+                                showSeatService.book(
+                                        showSeatId, new ShowSeatBookingRequest(UUID.randomUUID())))
                 .isInstanceOf(ConflictException.class)
-                .hasMessage(
-                        "Show seat is held by another booking");
+                .hasMessage("Show seat is held by another booking");
 
-        assertThat(showSeat.getStatus())
-                .isEqualTo(ShowSeatStatus.HELD);
+        assertThat(showSeat.getStatus()).isEqualTo(ShowSeatStatus.HELD);
 
-        assertThat(showSeat.getHeldByBookingId())
-                .isEqualTo(ownerBookingId);
+        assertThat(showSeat.getHeldByBookingId()).isEqualTo(ownerBookingId);
 
         verifyNoInteractions(showSeatMapper);
     }
@@ -303,28 +248,20 @@ class ShowSeatTransitionServiceImplTest {
 
         ShowSeat showSeat = availableShowSeat();
 
-        showSeat.hold(
-                bookingId,
-                NOW.minusMinutes(1),
-                NOW.minusMinutes(10));
+        showSeat.hold(bookingId, NOW.minusMinutes(1), NOW.minusMinutes(10));
 
-        when(showSeatRepository
-                .findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.of(showSeat));
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.of(showSeat));
 
-        assertThatThrownBy(() -> showSeatService.book(
-                showSeatId,
-                new ShowSeatBookingRequest(
-                        bookingId)))
+        assertThatThrownBy(
+                        () ->
+                                showSeatService.book(
+                                        showSeatId, new ShowSeatBookingRequest(bookingId)))
                 .isInstanceOf(ConflictException.class)
-                .hasMessage(
-                        "Show seat hold has expired");
+                .hasMessage("Show seat hold has expired");
 
-        assertThat(showSeat.getStatus())
-                .isEqualTo(ShowSeatStatus.HELD);
+        assertThat(showSeat.getStatus()).isEqualTo(ShowSeatStatus.HELD);
 
-        assertThat(showSeat.getHeldByBookingId())
-                .isEqualTo(bookingId);
+        assertThat(showSeat.getHeldByBookingId()).isEqualTo(bookingId);
 
         verifyNoInteractions(showSeatMapper);
     }
@@ -334,46 +271,29 @@ class ShowSeatTransitionServiceImplTest {
         UUID showSeatId = UUID.randomUUID();
         UUID bookingId = UUID.randomUUID();
 
-        ShowSeat showSeat = heldShowSeat(
-                bookingId,
-                NOW.plusMinutes(10));
+        ShowSeat showSeat = heldShowSeat(bookingId, NOW.plusMinutes(10));
 
-        ShowSeatBookingRequest request = new ShowSeatBookingRequest(
-                bookingId);
+        ShowSeatBookingRequest request = new ShowSeatBookingRequest(bookingId);
 
-        ShowSeatResponse mappedResponse = response(
-                ShowSeatStatus.AVAILABLE,
-                null,
-                null);
+        ShowSeatResponse mappedResponse = response(ShowSeatStatus.AVAILABLE, null, null);
 
-        when(showSeatRepository
-                .findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.of(showSeat));
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.of(showSeat));
 
-        when(showSeatMapper.toResponse(showSeat))
-                .thenReturn(mappedResponse);
+        when(showSeatMapper.toResponse(showSeat)).thenReturn(mappedResponse);
 
-        ShowSeatResponse result = showSeatService.release(
-                showSeatId,
-                request);
+        ShowSeatResponse result = showSeatService.release(showSeatId, request);
 
-        assertThat(result)
-                .isSameAs(mappedResponse);
+        assertThat(result).isSameAs(mappedResponse);
 
-        assertThat(showSeat.getStatus())
-                .isEqualTo(ShowSeatStatus.AVAILABLE);
+        assertThat(showSeat.getStatus()).isEqualTo(ShowSeatStatus.AVAILABLE);
 
-        assertThat(showSeat.getHeldByBookingId())
-                .isNull();
+        assertThat(showSeat.getHeldByBookingId()).isNull();
 
-        assertThat(showSeat.getHoldExpiresAt())
-                .isNull();
+        assertThat(showSeat.getHoldExpiresAt()).isNull();
 
-        verify(showSeatRepository)
-                .findByIdForUpdate(showSeatId);
+        verify(showSeatRepository).findByIdForUpdate(showSeatId);
 
-        verify(showSeatMapper)
-                .toResponse(showSeat);
+        verify(showSeatMapper).toResponse(showSeat);
     }
 
     @Test
@@ -381,19 +301,16 @@ class ShowSeatTransitionServiceImplTest {
         UUID showSeatId = UUID.randomUUID();
         ShowSeat showSeat = availableShowSeat();
 
-        when(showSeatRepository
-                .findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.of(showSeat));
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.of(showSeat));
 
-        assertThatThrownBy(() -> showSeatService.release(
-                showSeatId,
-                new ShowSeatBookingRequest(
-                        UUID.randomUUID())))
+        assertThatThrownBy(
+                        () ->
+                                showSeatService.release(
+                                        showSeatId, new ShowSeatBookingRequest(UUID.randomUUID())))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("Show seat is not held");
 
-        assertThat(showSeat.getStatus())
-                .isEqualTo(ShowSeatStatus.AVAILABLE);
+        assertThat(showSeat.getStatus()).isEqualTo(ShowSeatStatus.AVAILABLE);
 
         verifyNoInteractions(showSeatMapper);
     }
@@ -403,78 +320,49 @@ class ShowSeatTransitionServiceImplTest {
         UUID showSeatId = UUID.randomUUID();
         UUID ownerBookingId = UUID.randomUUID();
 
-        ShowSeat showSeat = heldShowSeat(
-                ownerBookingId,
-                NOW.plusMinutes(10));
+        ShowSeat showSeat = heldShowSeat(ownerBookingId, NOW.plusMinutes(10));
 
-        when(showSeatRepository
-                .findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.of(showSeat));
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.of(showSeat));
 
-        assertThatThrownBy(() -> showSeatService.release(
-                showSeatId,
-                new ShowSeatBookingRequest(
-                        UUID.randomUUID())))
+        assertThatThrownBy(
+                        () ->
+                                showSeatService.release(
+                                        showSeatId, new ShowSeatBookingRequest(UUID.randomUUID())))
                 .isInstanceOf(ConflictException.class)
-                .hasMessage(
-                        "Show seat is held by another booking");
+                .hasMessage("Show seat is held by another booking");
 
-        assertThat(showSeat.getStatus())
-                .isEqualTo(ShowSeatStatus.HELD);
+        assertThat(showSeat.getStatus()).isEqualTo(ShowSeatStatus.HELD);
 
-        assertThat(showSeat.getHeldByBookingId())
-                .isEqualTo(ownerBookingId);
+        assertThat(showSeat.getHeldByBookingId()).isEqualTo(ownerBookingId);
 
         verifyNoInteractions(showSeatMapper);
     }
 
-    private ShowSeat heldShowSeat(
-            UUID bookingId,
-            OffsetDateTime expiresAt) {
+    private ShowSeat heldShowSeat(UUID bookingId, OffsetDateTime expiresAt) {
 
         ShowSeat showSeat = availableShowSeat();
 
-        showSeat.hold(
-                bookingId,
-                expiresAt,
-                NOW.minusMinutes(1));
+        showSeat.hold(bookingId, expiresAt, NOW.minusMinutes(1));
 
         return showSeat;
     }
 
     private ShowSeat availableShowSeat() {
-        Cinema cinema = new Cinema(
-                "CGV Vincom",
-                "72 Le Thanh Ton",
-                "Ho Chi Minh");
+        Cinema cinema = new Cinema("CGV Vincom", "72 Le Thanh Ton", "Ho Chi Minh");
 
-        Room room = new Room(
-                cinema,
-                "Room 01",
-                RoomType.STANDARD);
+        Room room = new Room(cinema, "Room 01", RoomType.STANDARD);
 
-        Seat seat = new Seat(
-                room,
-                "A1",
-                "A",
-                SeatType.STANDARD);
+        Seat seat = new Seat(room, "A1", "A", SeatType.STANDARD);
 
-        Showtime showtime = new Showtime(
-                UUID.randomUUID(),
-                room,
-                NOW.plusDays(1),
-                NOW.plusDays(1).plusHours(2));
+        Showtime showtime =
+                new Showtime(
+                        UUID.randomUUID(), room, NOW.plusDays(1), NOW.plusDays(1).plusHours(2));
 
-        return new ShowSeat(
-                showtime,
-                seat,
-                PRICE);
+        return new ShowSeat(showtime, seat, PRICE);
     }
 
     private ShowSeatResponse response(
-            ShowSeatStatus status,
-            UUID heldByBookingId,
-            OffsetDateTime holdExpiresAt) {
+            ShowSeatStatus status, UUID heldByBookingId, OffsetDateTime holdExpiresAt) {
 
         return new ShowSeatResponse(
                 UUID.randomUUID(),
@@ -495,39 +383,27 @@ class ShowSeatTransitionServiceImplTest {
         UUID showSeatId = UUID.randomUUID();
         ShowSeat showSeat = availableShowSeat();
 
-        ShowSeatResponse mappedResponse = response(
-                ShowSeatStatus.UNAVAILABLE,
-                null,
-                null);
+        ShowSeatResponse mappedResponse = response(ShowSeatStatus.UNAVAILABLE, null, null);
 
-        when(showSeatRepository.findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.of(showSeat));
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.of(showSeat));
 
-        when(showSeatMapper.toResponse(showSeat))
-                .thenReturn(mappedResponse);
+        when(showSeatMapper.toResponse(showSeat)).thenReturn(mappedResponse);
 
         ShowSeatResponse result = showSeatService.makeUnavailable(showSeatId);
 
-        assertThat(result)
-                .isSameAs(mappedResponse);
+        assertThat(result).isSameAs(mappedResponse);
 
-        assertThat(showSeat.getStatus())
-                .isEqualTo(ShowSeatStatus.UNAVAILABLE);
+        assertThat(showSeat.getStatus()).isEqualTo(ShowSeatStatus.UNAVAILABLE);
 
-        assertThat(showSeat.getHeldByBookingId())
-                .isNull();
+        assertThat(showSeat.getHeldByBookingId()).isNull();
 
-        assertThat(showSeat.getHoldExpiresAt())
-                .isNull();
+        assertThat(showSeat.getHoldExpiresAt()).isNull();
 
-        verify(showSeatRepository)
-                .findByIdForUpdate(showSeatId);
+        verify(showSeatRepository).findByIdForUpdate(showSeatId);
 
-        verify(showSeatMapper)
-                .toResponse(showSeat);
+        verify(showSeatMapper).toResponse(showSeat);
 
-        verify(showSeatRepository, never())
-                .findById(showSeatId);
+        verify(showSeatRepository, never()).findById(showSeatId);
     }
 
     @Test
@@ -535,40 +411,27 @@ class ShowSeatTransitionServiceImplTest {
         UUID showSeatId = UUID.randomUUID();
         UUID bookingId = UUID.randomUUID();
 
-        ShowSeat showSeat = heldShowSeat(
-                bookingId,
-                NOW.plusMinutes(10));
+        ShowSeat showSeat = heldShowSeat(bookingId, NOW.plusMinutes(10));
 
-        ShowSeatResponse mappedResponse = response(
-                ShowSeatStatus.UNAVAILABLE,
-                null,
-                null);
+        ShowSeatResponse mappedResponse = response(ShowSeatStatus.UNAVAILABLE, null, null);
 
-        when(showSeatRepository.findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.of(showSeat));
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.of(showSeat));
 
-        when(showSeatMapper.toResponse(showSeat))
-                .thenReturn(mappedResponse);
+        when(showSeatMapper.toResponse(showSeat)).thenReturn(mappedResponse);
 
         ShowSeatResponse result = showSeatService.makeUnavailable(showSeatId);
 
-        assertThat(result)
-                .isSameAs(mappedResponse);
+        assertThat(result).isSameAs(mappedResponse);
 
-        assertThat(showSeat.getStatus())
-                .isEqualTo(ShowSeatStatus.UNAVAILABLE);
+        assertThat(showSeat.getStatus()).isEqualTo(ShowSeatStatus.UNAVAILABLE);
 
-        assertThat(showSeat.getHeldByBookingId())
-                .isNull();
+        assertThat(showSeat.getHeldByBookingId()).isNull();
 
-        assertThat(showSeat.getHoldExpiresAt())
-                .isNull();
+        assertThat(showSeat.getHoldExpiresAt()).isNull();
 
-        verify(showSeatRepository)
-                .findByIdForUpdate(showSeatId);
+        verify(showSeatRepository).findByIdForUpdate(showSeatId);
 
-        verify(showSeatMapper)
-                .toResponse(showSeat);
+        verify(showSeatMapper).toResponse(showSeat);
     }
 
     @Test
@@ -576,18 +439,15 @@ class ShowSeatTransitionServiceImplTest {
         UUID showSeatId = UUID.randomUUID();
         ShowSeat showSeat = unavailableShowSeat();
 
-        when(showSeatRepository.findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.of(showSeat));
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.of(showSeat));
 
         assertThatThrownBy(() -> showSeatService.makeUnavailable(showSeatId))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("Show seat is already unavailable");
 
-        assertThat(showSeat.getStatus())
-                .isEqualTo(ShowSeatStatus.UNAVAILABLE);
+        assertThat(showSeat.getStatus()).isEqualTo(ShowSeatStatus.UNAVAILABLE);
 
-        verify(showSeatRepository)
-                .findByIdForUpdate(showSeatId);
+        verify(showSeatRepository).findByIdForUpdate(showSeatId);
 
         verifyNoInteractions(showSeatMapper);
     }
@@ -597,24 +457,19 @@ class ShowSeatTransitionServiceImplTest {
         UUID showSeatId = UUID.randomUUID();
         UUID bookingId = UUID.randomUUID();
 
-        ShowSeat showSeat = heldShowSeat(
-                bookingId,
-                NOW.plusMinutes(10));
+        ShowSeat showSeat = heldShowSeat(bookingId, NOW.plusMinutes(10));
 
         showSeat.book(bookingId);
 
-        when(showSeatRepository.findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.of(showSeat));
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.of(showSeat));
 
         assertThatThrownBy(() -> showSeatService.makeUnavailable(showSeatId))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("Booked show seat cannot be changed");
 
-        assertThat(showSeat.getStatus())
-                .isEqualTo(ShowSeatStatus.BOOKED);
+        assertThat(showSeat.getStatus()).isEqualTo(ShowSeatStatus.BOOKED);
 
-        verify(showSeatRepository)
-                .findByIdForUpdate(showSeatId);
+        verify(showSeatRepository).findByIdForUpdate(showSeatId);
 
         verifyNoInteractions(showSeatMapper);
     }
@@ -624,39 +479,27 @@ class ShowSeatTransitionServiceImplTest {
         UUID showSeatId = UUID.randomUUID();
         ShowSeat showSeat = unavailableShowSeat();
 
-        ShowSeatResponse mappedResponse = response(
-                ShowSeatStatus.AVAILABLE,
-                null,
-                null);
+        ShowSeatResponse mappedResponse = response(ShowSeatStatus.AVAILABLE, null, null);
 
-        when(showSeatRepository.findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.of(showSeat));
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.of(showSeat));
 
-        when(showSeatMapper.toResponse(showSeat))
-                .thenReturn(mappedResponse);
+        when(showSeatMapper.toResponse(showSeat)).thenReturn(mappedResponse);
 
         ShowSeatResponse result = showSeatService.makeAvailable(showSeatId);
 
-        assertThat(result)
-                .isSameAs(mappedResponse);
+        assertThat(result).isSameAs(mappedResponse);
 
-        assertThat(showSeat.getStatus())
-                .isEqualTo(ShowSeatStatus.AVAILABLE);
+        assertThat(showSeat.getStatus()).isEqualTo(ShowSeatStatus.AVAILABLE);
 
-        assertThat(showSeat.getHeldByBookingId())
-                .isNull();
+        assertThat(showSeat.getHeldByBookingId()).isNull();
 
-        assertThat(showSeat.getHoldExpiresAt())
-                .isNull();
+        assertThat(showSeat.getHoldExpiresAt()).isNull();
 
-        verify(showSeatRepository)
-                .findByIdForUpdate(showSeatId);
+        verify(showSeatRepository).findByIdForUpdate(showSeatId);
 
-        verify(showSeatMapper)
-                .toResponse(showSeat);
+        verify(showSeatMapper).toResponse(showSeat);
 
-        verify(showSeatRepository, never())
-                .findById(showSeatId);
+        verify(showSeatRepository, never()).findById(showSeatId);
     }
 
     @Test
@@ -664,19 +507,15 @@ class ShowSeatTransitionServiceImplTest {
         UUID showSeatId = UUID.randomUUID();
         ShowSeat showSeat = availableShowSeat();
 
-        when(showSeatRepository.findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.of(showSeat));
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.of(showSeat));
 
         assertThatThrownBy(() -> showSeatService.makeAvailable(showSeatId))
                 .isInstanceOf(ConflictException.class)
-                .hasMessage(
-                        "Only an unavailable show seat can become available");
+                .hasMessage("Only an unavailable show seat can become available");
 
-        assertThat(showSeat.getStatus())
-                .isEqualTo(ShowSeatStatus.AVAILABLE);
+        assertThat(showSeat.getStatus()).isEqualTo(ShowSeatStatus.AVAILABLE);
 
-        verify(showSeatRepository)
-                .findByIdForUpdate(showSeatId);
+        verify(showSeatRepository).findByIdForUpdate(showSeatId);
 
         verifyNoInteractions(showSeatMapper);
     }
@@ -686,26 +525,19 @@ class ShowSeatTransitionServiceImplTest {
         UUID showSeatId = UUID.randomUUID();
         UUID bookingId = UUID.randomUUID();
 
-        ShowSeat showSeat = heldShowSeat(
-                bookingId,
-                NOW.plusMinutes(10));
+        ShowSeat showSeat = heldShowSeat(bookingId, NOW.plusMinutes(10));
 
-        when(showSeatRepository.findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.of(showSeat));
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.of(showSeat));
 
         assertThatThrownBy(() -> showSeatService.makeAvailable(showSeatId))
                 .isInstanceOf(ConflictException.class)
-                .hasMessage(
-                        "Only an unavailable show seat can become available");
+                .hasMessage("Only an unavailable show seat can become available");
 
-        assertThat(showSeat.getStatus())
-                .isEqualTo(ShowSeatStatus.HELD);
+        assertThat(showSeat.getStatus()).isEqualTo(ShowSeatStatus.HELD);
 
-        assertThat(showSeat.getHeldByBookingId())
-                .isEqualTo(bookingId);
+        assertThat(showSeat.getHeldByBookingId()).isEqualTo(bookingId);
 
-        verify(showSeatRepository)
-                .findByIdForUpdate(showSeatId);
+        verify(showSeatRepository).findByIdForUpdate(showSeatId);
 
         verifyNoInteractions(showSeatMapper);
     }
@@ -715,24 +547,19 @@ class ShowSeatTransitionServiceImplTest {
         UUID showSeatId = UUID.randomUUID();
         UUID bookingId = UUID.randomUUID();
 
-        ShowSeat showSeat = heldShowSeat(
-                bookingId,
-                NOW.plusMinutes(10));
+        ShowSeat showSeat = heldShowSeat(bookingId, NOW.plusMinutes(10));
 
         showSeat.book(bookingId);
 
-        when(showSeatRepository.findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.of(showSeat));
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.of(showSeat));
 
         assertThatThrownBy(() -> showSeatService.makeAvailable(showSeatId))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("Booked show seat cannot be changed");
 
-        assertThat(showSeat.getStatus())
-                .isEqualTo(ShowSeatStatus.BOOKED);
+        assertThat(showSeat.getStatus()).isEqualTo(ShowSeatStatus.BOOKED);
 
-        verify(showSeatRepository)
-                .findByIdForUpdate(showSeatId);
+        verify(showSeatRepository).findByIdForUpdate(showSeatId);
 
         verifyNoInteractions(showSeatMapper);
     }
@@ -741,15 +568,13 @@ class ShowSeatTransitionServiceImplTest {
     void makeUnavailableShouldThrowWhenShowSeatDoesNotExist() {
         UUID showSeatId = UUID.randomUUID();
 
-        when(showSeatRepository.findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.empty());
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> showSeatService.makeUnavailable(showSeatId))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessage("Show seat not found");
 
-        verify(showSeatRepository)
-                .findByIdForUpdate(showSeatId);
+        verify(showSeatRepository).findByIdForUpdate(showSeatId);
 
         verifyNoInteractions(showSeatMapper);
     }
@@ -758,15 +583,13 @@ class ShowSeatTransitionServiceImplTest {
     void makeAvailableShouldThrowWhenShowSeatDoesNotExist() {
         UUID showSeatId = UUID.randomUUID();
 
-        when(showSeatRepository.findByIdForUpdate(showSeatId))
-                .thenReturn(Optional.empty());
+        when(showSeatRepository.findByIdForUpdate(showSeatId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> showSeatService.makeAvailable(showSeatId))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessage("Show seat not found");
 
-        verify(showSeatRepository)
-                .findByIdForUpdate(showSeatId);
+        verify(showSeatRepository).findByIdForUpdate(showSeatId);
 
         verifyNoInteractions(showSeatMapper);
     }

@@ -1,5 +1,16 @@
 package com.cinema.inventory.service.impl;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
@@ -8,6 +19,7 @@ import com.cinema.inventory.dto.request.CreateShowtimeRequest;
 import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
 import com.cinema.inventory.dto.response.ShowtimeResponse;
 import com.cinema.inventory.entity.Room;
+import com.cinema.inventory.entity.RoomLayout;
 import com.cinema.inventory.entity.Showtime;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
@@ -15,18 +27,8 @@ import com.cinema.inventory.mapper.ShowtimeMapper;
 import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ShowSeatGenerationService;
+import com.cinema.inventory.service.ShowtimeLayoutService;
 import com.cinema.inventory.service.ShowtimeService;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.Clock;
-import java.time.Duration;
-import java.time.OffsetDateTime;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
 
 @Service
 public class ShowtimeServiceImpl implements ShowtimeService {
@@ -40,6 +42,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     private final ShowSeatGenerationService showSeatGenerationService;
     private final Clock clock;
     private final BookableShowtimeProperties bookableShowtimeProperties;
+    private final ShowtimeLayoutService showtimeLayoutService;
 
     public ShowtimeServiceImpl(
             ShowtimeRepository showtimeRepository,
@@ -47,7 +50,8 @@ public class ShowtimeServiceImpl implements ShowtimeService {
             ShowtimeMapper showtimeMapper,
             ShowSeatGenerationService showSeatGenerationService,
             Clock clock,
-            BookableShowtimeProperties bookableShowtimeProperties) {
+            BookableShowtimeProperties bookableShowtimeProperties,
+            ShowtimeLayoutService showtimeLayoutService) {
 
         this.showtimeRepository = showtimeRepository;
         this.roomRepository = roomRepository;
@@ -55,6 +59,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         this.showSeatGenerationService = showSeatGenerationService;
         this.clock = clock;
         this.bookableShowtimeProperties = bookableShowtimeProperties;
+        this.showtimeLayoutService = showtimeLayoutService;
     }
 
     @Override
@@ -64,11 +69,16 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         Room room = findRoom(request.roomId());
 
         validateRoomAvailable(room);
-
         validateNoOverlap(room.getId(), request.startsAt(), request.endsAt());
 
+        RoomLayout layout =
+                request.roomLayoutId() == null
+                        ? null
+                        : showtimeLayoutService.findPublishedLayout(
+                                request.roomLayoutId(), room.getId());
+
         Showtime showtime =
-                new Showtime(request.movieId(), room, request.startsAt(), request.endsAt());
+                new Showtime(request.movieId(), room, request.startsAt(), request.endsAt(), layout);
 
         Showtime savedShowtime = showtimeRepository.save(showtime);
 

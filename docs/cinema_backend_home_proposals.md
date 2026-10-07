@@ -880,14 +880,14 @@ kích thước ghế đôi và lối đi của đúng phòng.
 - Chưa nhận roomLayoutId trong CreateShowtimeRequest.
 - Việc gắn layout trước khi sinh ghế cần được triển khai sau khi chốt chính sách.
 - Không áp dụng layout mới ngược vào suất đã tạo.
-- Các tên và loại ghế dùng để đặt vé phải nhất quán với
-  layout đã gắn vào suất.
+- Các tên và loại ghế dùng để đặt vé phải nhất quán với layout đã gắn vào suất.
 - Một seatId xuất hiện tối đa một lần trong một layout.
 - Seat phải thuộc đúng roomId.
 - Kích thước phải dương, tọa độ phải nằm trong canvas.
 - Kiểm tra ghế chồng lấn, kể cả khi có rotation.
 - Không tự suy ra vị trí từ thứ tự phần tử API hoặc seatNumber.
 - Không tự loại một vị trí khỏi layout đã publish khi Seat bị inactive;
+- Showtime lưu layout được chọn khi tạo suất có roomLayoutId.
   BE phải định nghĩa trạng thái sử dụng vị trí đó cho từng suất.
 
 Quản lý layout sử dụng cơ chế phân quyền Inventory hiện có.
@@ -947,8 +947,31 @@ Muốn thay đổi phải tạo một DRAFT version mới.
 Đã thêm showtimes.room_layout_id nullable và association Showtime.roomLayout.
 Các suất hiện có giữ room_layout_id = NULL; không tự backfill.
 
-Chưa triển khai luồng gắn layout khi tạo suất hoặc API seat-map.
-Chưa quy định layout phải bao phủ toàn bộ Seat của phòng.
+Showtime đã hỗ trợ roomLayoutId tùy chọn khi tạo.
+
+Nếu có roomLayoutId:
+
+- Layout phải thuộc đúng phòng và đã PUBLISHED.
+- Layout được gắn trước khi sinh ShowSeat, trong cùng transaction.
+- Sinh ShowSeat cho toàn bộ vị trí của layout.
+- Ghế active bắt đầu AVAILABLE; ghế inactive bắt đầu UNAVAILABLE.
+- Tên ghế, hàng và loại ghế phải khớp snapshot layout khi sinh.
+- Không sinh ghế ngoài layout.
+- Không thay đổi layout của suất sau khi tạo.
+
+Nếu không truyền roomLayoutId, giữ luồng sinh ghế active hiện có.
+Không tự backfill layout cho suất cũ.
+
+ShowtimeResponse bổ sung roomLayoutId nullable.
+Cấu hình JSON hiện tại có thể bỏ field này khi giá trị null.
+
+Hai luồng sinh ghế giữ contract giá hiện có:
+
+- ShowtimeServiceImpl.create dùng SeatPricingPolicy với basePrice.
+- ShowSeatServiceImpl.generate dùng defaultPrice cho mọi ghế.
+
+Không tự cập nhật ShowSeat đã tạo khi Seat vật lý đổi metadata hoặc active.
+API seat-map chưa triển khai..
 
 Chính sách cho suất cũ, ghế inactive và đồng bộ snapshot với ShowSeat
 cần được chốt trước khi tích hợp vào luồng tạo suất.

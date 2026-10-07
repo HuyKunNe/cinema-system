@@ -418,6 +418,30 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_ROOM_LAYOUT_GEOMETRY_OVERLAP",
                     "Seat geometry overlaps another seat or a layout element");
 
+    public static final InventoryErrorCode SHOWTIME_LAYOUT_ROOM_MISMATCH =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_SHOWTIME_LAYOUT_ROOM_MISMATCH",
+                    "Showtime layout must belong to the selected room");
+
+    public static final InventoryErrorCode ROOM_LAYOUT_NOT_PUBLISHED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_ROOM_LAYOUT_NOT_PUBLISHED",
+                    "Showtime requires a published room layout");
+
+    public static final InventoryErrorCode ROOM_LAYOUT_SEAT_SNAPSHOT_MISMATCH =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_ROOM_LAYOUT_SEAT_SNAPSHOT_MISMATCH",
+                    "Physical seats no longer match the published layout snapshot");
+
+    public static final InventoryErrorCode SHOWTIME_LAYOUT_SEATS_MISMATCH =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_LAYOUT_SEATS_MISMATCH",
+                    "Existing show seats contain seats outside the pinned layout");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

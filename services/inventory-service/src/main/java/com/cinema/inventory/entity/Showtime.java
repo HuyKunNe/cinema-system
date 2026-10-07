@@ -3,6 +3,7 @@ package com.cinema.inventory.entity;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
+import com.cinema.inventory.enums.RoomLayoutStatus;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
 
@@ -60,6 +61,32 @@ public class Showtime extends BaseEntity {
         this.startsAt = startsAt;
         this.endsAt = endsAt;
         this.status = ShowtimeStatus.SCHEDULED;
+    }
+
+    public Showtime(
+            UUID movieId,
+            Room room,
+            OffsetDateTime startsAt,
+            OffsetDateTime endsAt,
+            RoomLayout roomLayout) {
+
+        this(movieId, room, startsAt, endsAt);
+
+        if (roomLayout != null) {
+            if (roomLayout.getId() == null) {
+                throw new ValidationException(InventoryErrorCode.ROOM_LAYOUT_DATA_INVALID);
+            }
+
+            if (room == null || !room.getId().equals(roomLayout.getRoom().getId())) {
+                throw new ValidationException(InventoryErrorCode.SHOWTIME_LAYOUT_ROOM_MISMATCH);
+            }
+
+            if (roomLayout.getStatus() != RoomLayoutStatus.PUBLISHED) {
+                throw new ConflictException(InventoryErrorCode.ROOM_LAYOUT_NOT_PUBLISHED);
+            }
+        }
+
+        this.roomLayout = roomLayout;
     }
 
     public UUID getMovieId() {

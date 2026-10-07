@@ -1,19 +1,9 @@
 package com.cinema.inventory.controller;
 
-import com.cinema.inventory.dto.request.CreateShowtimeRequest;
-import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
-import com.cinema.inventory.dto.response.ShowtimeResponse;
-import com.cinema.inventory.service.ShowtimeService;
-
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
-
-import jakarta.validation.Valid;
+import java.net.URI;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -27,10 +17,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.net.URI;
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.UUID;
+import com.cinema.inventory.dto.request.CreateShowtimeRequest;
+import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
+import com.cinema.inventory.dto.response.ShowtimeResponse;
+import com.cinema.inventory.service.ShowtimeService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/v1/showtimes")
@@ -42,6 +41,22 @@ public class ShowtimeController {
         this.showtimeService = showtimeService;
     }
 
+    @Operation(
+            summary = "Create a showtime and generate its seats",
+            description =
+                    """
+                    Requires showtime:manage.
+
+                    roomLayoutId is optional.
+                    When provided, it must identify a PUBLISHED layout of roomId.
+                    Seats are generated from that layout after validating its snapshots.
+                    Active seats start AVAILABLE; inactive seats start UNAVAILABLE.
+
+                    When omitted, existing active-seat generation is retained.
+                    Seat prices are calculated from basePrice using SeatPricingPolicy.
+
+                    The layout cannot be changed after creation.
+                    """)
     @PostMapping
     public ResponseEntity<ShowtimeResponse> create(
             @Valid @RequestBody CreateShowtimeRequest request) {

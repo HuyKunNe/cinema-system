@@ -23,4 +23,13 @@ public interface RoomLayoutSeatRepository extends JpaRepository<RoomLayoutSeat, 
             where layoutSeat.layout.id = :layoutId
             """)
     void deleteAllForLayout(@Param("layoutId") UUID layoutId);
+
+    @Query(
+            """
+            select position
+            from RoomLayoutSeat position
+            where position.layout.id = :layoutId
+            order by position.seatNumberSnapshot asc
+            """)
+    List<RoomLayoutSeat> findPositionsForGenerationByLayoutId(@Param("layoutId") UUID layoutId);
 }

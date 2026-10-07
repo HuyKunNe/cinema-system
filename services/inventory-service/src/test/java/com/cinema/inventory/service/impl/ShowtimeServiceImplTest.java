@@ -12,20 +12,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import java.math.BigDecimal;
-import java.time.Clock;
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
@@ -41,6 +27,21 @@ import com.cinema.inventory.mapper.ShowtimeMapper;
 import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ShowSeatGenerationService;
+import com.cinema.inventory.service.ShowtimeLayoutService;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @ExtendWith(MockitoExtension.class)
 class ShowtimeServiceImplTest {
@@ -63,7 +64,10 @@ class ShowtimeServiceImplTest {
     @Mock private RoomRepository roomRepository;
 
     @Mock private ShowtimeMapper showtimeMapper;
+
     @Mock private ShowSeatGenerationService showSeatGenerationService;
+
+    @Mock private ShowtimeLayoutService showtimeLayoutService;
 
     private ShowtimeServiceImpl showtimeService;
 
@@ -78,7 +82,8 @@ class ShowtimeServiceImplTest {
                         showtimeMapper,
                         showSeatGenerationService,
                         Clock.fixed(STARTS_AT.minusDays(1).toInstant(), STARTS_AT.getOffset()),
-                        new BookableShowtimeProperties());
+                        new BookableShowtimeProperties(),
+                        showtimeLayoutService);
     }
 
     @Test

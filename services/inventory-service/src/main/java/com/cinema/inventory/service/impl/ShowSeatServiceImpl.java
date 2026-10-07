@@ -26,6 +26,7 @@ import com.cinema.inventory.repository.SeatRepository;
 import com.cinema.inventory.repository.ShowSeatRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ShowSeatService;
+import com.cinema.inventory.service.ShowtimeLayoutService;
 
 @Service
 public class ShowSeatServiceImpl implements ShowSeatService {
@@ -35,19 +36,22 @@ public class ShowSeatServiceImpl implements ShowSeatService {
     private final SeatRepository seatRepository;
     private final ShowSeatMapper showSeatMapper;
     private final Clock clock;
+    private final ShowtimeLayoutService showtimeLayoutService;
 
     public ShowSeatServiceImpl(
             ShowSeatRepository showSeatRepository,
             ShowtimeRepository showtimeRepository,
             SeatRepository seatRepository,
             ShowSeatMapper showSeatMapper,
-            Clock clock) {
+            Clock clock,
+            ShowtimeLayoutService showtimeLayoutService) {
 
         this.showSeatRepository = showSeatRepository;
         this.showtimeRepository = showtimeRepository;
         this.seatRepository = seatRepository;
         this.showSeatMapper = showSeatMapper;
         this.clock = clock;
+        this.showtimeLayoutService = showtimeLayoutService;
     }
 
     @Override
@@ -59,22 +63,26 @@ public class ShowSeatServiceImpl implements ShowSeatService {
         validateShowtimeEditable(showtime);
         validateShowSeatsNotGenerated(showtimeId);
 
-        List<Seat> activeSeats =
-                seatRepository.findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(
-                        showtime.getRoom().getId());
+        List<Seat> seats;
 
-        if (activeSeats.isEmpty()) {
-            throw new ConflictException(InventoryErrorCode.NO_ACTIVE_SEATS);
+        if (showtime.getRoomLayout() == null) {
+            seats =
+                    seatRepository.findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(
+                            showtime.getRoom().getId());
+
+            if (seats.isEmpty()) {
+                throw new ConflictException(InventoryErrorCode.NO_ACTIVE_SEATS);
+            }
+        } else {
+            seats = showtimeLayoutService.getSeatsForGeneration(showtime);
         }
 
         List<ShowSeat> showSeats =
-                activeSeats.stream()
+                seats.stream()
                         .map(seat -> new ShowSeat(showtime, seat, request.defaultPrice()))
                         .toList();
 
-        List<ShowSeat> savedShowSeats = showSeatRepository.saveAll(showSeats);
-
-        return showSeatMapper.toResponses(savedShowSeats);
+        return showSeatMapper.toResponses(showSeatRepository.saveAll(showSeats));
     }
 
     @Override
