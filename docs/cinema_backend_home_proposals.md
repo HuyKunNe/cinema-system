@@ -317,8 +317,10 @@ Không thêm cinemaId vào MovieController.
 
 ### 10.1 Mở rộng catalog bằng ID ứng viên
 
-Trạng thái: PROPOSED; chuyển thành IMPLEMENTED sau khi áp dụng
-và đối chiếu source mới.
+Trạng thái: IMPLEMENTED trong source.
+Đối chiếu tại Backend commit
+c1b680c8d090e38b595a3825f9abfc53084e5246.
+Chưa xác nhận runtime trong lần đối chiếu này.
 
 GET /api/v1/movies/catalog bổ sung query movieIds tùy chọn.
 Các parameter status, genre, page và size giữ nguyên.
@@ -355,7 +357,10 @@ Cần hoàn thiện contract sort và nguồn genre filter trước khi chuyển
 
 ### 10.2 Sort cho Movie catalog
 
-Trạng thái: PROPOSED; cập nhật sau khi triển khai và đối chiếu source.
+Trạng thái: IMPLEMENTED trong source.
+Đối chiếu tại Backend commit
+c1b680c8d090e38b595a3825f9abfc53084e5246.
+Chưa xác nhận runtime trong lần đối chiếu này.
 
 GET /api/v1/movies/catalog bổ sung query sort tùy chọn.
 
@@ -386,6 +391,47 @@ Intl.Collator('vi', { sensitivity: 'base', numeric: true }).
 
 Nguồn genre filter theo phạm vi catalog cần được xử lý trước
 khi bỏ luồng tải toàn bộ phim.
+
+### 10.3 Thể loại theo phạm vi Movie catalog
+
+Trạng thái: IMPLEMENTED trong source; chưa xác nhận runtime.
+
+Endpoint:
+GET /api/v1/movies/catalog/genres
+
+operationId: getMovieCatalogGenres.
+Public GET, không có request body.
+
+Query tùy chọn:
+
+- status: MovieStatus.
+- movieIds: các UUID ứng viên, gửi bằng parameter lặp.
+
+Response 200 là List<GenreResponse> trực tiếp.
+Không có thể loại khớp trả [].
+
+Chỉ trả thể loại được gắn với ít nhất một phim khớp các bộ lọc.
+Mỗi genre ID xuất hiện tối đa một lần.
+Thứ tự: name ASC theo collation database, id ASC.
+
+Không truyền status nghĩa là không lọc trạng thái phim.
+Không truyền movieIds nghĩa là không lọc ID phim.
+Service nhận tập ID rỗng trả [], không mở rộng thành toàn hệ thống.
+
+Dùng chung validation và giới hạn movieIds với Movie catalog.
+ID hợp lệ nhưng không tồn tại không gây 404.
+Query không hợp lệ trả 400.
+
+Endpoint không nhận genre, page, size hoặc sort.
+Dropdown thể loại không được suy ra từ một trang phim.
+Lựa chọn thể loại hiện tại không làm thu hẹp danh sách lựa chọn.
+
+GET /api/v1/genres giữ nguyên contract danh sách thể loại toàn hệ thống.
+
+Movie Service không xác minh suất chiếu hoặc rạp của các ID ứng viên.
+Frontend xác định phạm vi từ chương trình rạp và gửi bộ lọc phù hợp.
+
+Caller Movies chưa tích hợp API mới.
 
 ## 11. BE-HOME-11 — Timezone
 

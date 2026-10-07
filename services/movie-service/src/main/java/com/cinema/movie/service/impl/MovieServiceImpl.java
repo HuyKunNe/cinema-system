@@ -18,6 +18,7 @@ import com.cinema.movie.error.MovieErrorCode;
 import com.cinema.movie.mapper.MovieMapper;
 import com.cinema.movie.repository.GenreRepository;
 import com.cinema.movie.repository.MovieRepository;
+import com.cinema.movie.service.MovieCatalogMovieIdFilter;
 import com.cinema.movie.service.MovieService;
 
 import org.springframework.data.domain.Page;
@@ -173,17 +174,8 @@ public class MovieServiceImpl implements MovieService {
 
     private List<UUID> normalizeCatalogMovieIds(List<UUID> movieIds) {
 
-        if (movieIds == null) {
-            return null;
-        }
-
-        if (movieIds.size() > movieCatalogProperties.getMaxMovieIds()
-                || movieIds.stream().anyMatch(id -> id == null)) {
-
-            throw new ValidationException(MovieErrorCode.INVALID_CATALOG_MOVIE_IDS);
-        }
-
-        return movieIds.stream().distinct().toList();
+        return MovieCatalogMovieIdFilter.normalize(
+                movieIds, movieCatalogProperties.getMaxMovieIds());
     }
 
     @Override

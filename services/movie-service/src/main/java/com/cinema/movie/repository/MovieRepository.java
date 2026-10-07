@@ -1,5 +1,6 @@
 package com.cinema.movie.repository;
 
+import com.cinema.movie.entity.Genre;
 import com.cinema.movie.entity.Movie;
 import com.cinema.movie.entity.MovieStatus;
 
@@ -209,4 +210,26 @@ public interface MovieRepository extends JpaRepository<Movie, UUID> {
         return findCatalogMovieIdsByMovieIdsSorted(
                 status, genreId, movieIds, "RELEASE_DESC", pageable);
     }
+
+    @Query(
+            """
+            select distinct genre
+            from Movie movie
+            join movie.genres genre
+            where (:status is null or movie.status = :status)
+            order by genre.name asc, genre.id asc
+            """)
+    List<Genre> findCatalogGenres(@Param("status") MovieStatus status);
+
+    @Query(
+            """
+            select distinct genre
+            from Movie movie
+            join movie.genres genre
+            where movie.id in :movieIds
+              and (:status is null or movie.status = :status)
+            order by genre.name asc, genre.id asc
+            """)
+    List<Genre> findCatalogGenresByMovieIds(
+            @Param("status") MovieStatus status, @Param("movieIds") Collection<UUID> movieIds);
 }
