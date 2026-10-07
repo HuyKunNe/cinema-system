@@ -876,9 +876,9 @@ kích thước ghế đôi và lối đi của đúng phòng.
 
 - PUBLISHED layout là bất biến.
 - Thay đổi sơ đồ tạo version mới.
-- Showtime có association roomLayout nullable ở schema/entity.
-- Chưa nhận roomLayoutId trong CreateShowtimeRequest.
-- Việc gắn layout trước khi sinh ghế cần được triển khai sau khi chốt chính sách.
+- CreateShowtimeRequest nhận roomLayoutId tùy chọn.
+- Showtime gắn layout PUBLISHED cùng phòng trước khi sinh ShowSeat.
+- Luồng không truyền roomLayoutId tiếp tục được hỗ trợ.
 - Không áp dụng layout mới ngược vào suất đã tạo.
 - Các tên và loại ghế dùng để đặt vé phải nhất quán với layout đã gắn vào suất.
 - Một seatId xuất hiện tối đa một lần trong một layout.
@@ -971,7 +971,9 @@ Hai luồng sinh ghế giữ contract giá hiện có:
 - ShowSeatServiceImpl.generate dùng defaultPrice cho mọi ghế.
 
 Không tự cập nhật ShowSeat đã tạo khi Seat vật lý đổi metadata hoặc active.
-API seat-map chưa triển khai..
+API đọc seat-map được cung cấp tại:
+GET /api/v1/showtimes/{showtimeId}/seat-map.
+Contract chi tiết tại mục 23.
 
 Chính sách cho suất cũ, ghế inactive và đồng bộ snapshot với ShowSeat
 cần được chốt trước khi tích hợp vào luồng tạo suất.
@@ -986,13 +988,17 @@ Tích hợp layout phải xử lý cả hai luồng và giữ nguyên contract g
 
 ## 23. BE-BOOKING-02 — Read model cho section chọn ghế
 
-Trạng thái: PROPOSED.
-Owner đề xuất: Inventory Service.
+Trạng thái Backend: IMPLEMENTED trong source.
+Trạng thái Frontend: chưa tích hợp caller/UI seat-map.
+Owner: Inventory Service.
 
-Endpoint đề xuất mới:
+Endpoint:
 GET /api/v1/showtimes/{showtimeId}/seat-map
 
-Endpoint này chưa tồn tại ở baseline.
+operationId: getShowtimeSeatMap.
+Public GET; không có query hoặc request body.
+Response 200 là ShowtimeSeatMapResponse trực tiếp.
+Response có Cache-Control: no-store.
 
 ### 23.1 Nội dung response đề xuất
 
@@ -1079,6 +1085,45 @@ Trong thời gian chưa có layout:
 - Không gọi danh sách đó là sơ đồ vị trí thực tế.
 - Không thêm màn hình/lối đi giả.
 - Ghế không ghép được dữ liệu phải không cho chọn.
+
+### 23.4 Contract dữ liệu thiếu và eligibility
+
+Hình học, rowLabel và các snapshot ghế lấy từ layout gắn với suất.
+ShowSeat được ghép bằng seatId và phải khớp tên/loại ghế của layout.
+
+Không so lại tên, rowLabel, loại ghế hoặc active hiện tại của Seat
+để ghi đè snapshot của suất đã tạo.
+
+Vị trí thiếu ShowSeat vẫn được trả:
+
+- showSeatId: null.
+- price: null.
+- status: null.
+- selectable: false.
+
+Không thay dữ liệu thiếu bằng giá 0 hoặc trạng thái AVAILABLE.
+
+currency dùng InventoryEventContract.CURRENCY_VND,
+cùng nguồn với sự kiện SeatReserved.
+
+selectable chỉ true khi:
+
+- Có ShowSeat hợp lệ với status AVAILABLE.
+- Showtime OPEN_FOR_BOOKING.
+- startsAt > serverTime.
+- Room và Cinema active.
+
+HELD hết hạn vẫn giữ HELD cho tới khi luồng giải phóng ghế cập nhật DB.
+API đọc không giữ ghế và không trả heldByBookingId.
+
+HTTP 409:
+
+- INVENTORY_SHOWTIME_LAYOUT_REQUIRED: suất chưa có layout.
+- INVENTORY_ROOM_LAYOUT_NOT_PUBLISHED: layout chưa publish.
+- INVENTORY_SEAT_MAP_DATA_INCONSISTENT: dữ liệu không nhất quán.
+
+FE chỉ dùng danh sách ghế theo hàng làm fallback cho lỗi thiếu layout.
+Các lỗi dữ liệu không nhất quán cần được hiển thị và xử lý riêng.
 
 ## 24. BE-BOOKING-03 — Bắp nước, combo và dịch vụ theo rạp
 

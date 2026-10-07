@@ -1,20 +1,20 @@
 package com.cinema.inventory.repository;
 
-import com.cinema.inventory.entity.ShowSeat;
-import com.cinema.inventory.enums.ShowSeatStatus;
-
-import jakarta.persistence.LockModeType;
+import java.time.OffsetDateTime;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.OffsetDateTime;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import com.cinema.inventory.entity.ShowSeat;
+import com.cinema.inventory.enums.ShowSeatStatus;
+
+import jakarta.persistence.LockModeType;
 
 public interface ShowSeatRepository extends JpaRepository<ShowSeat, UUID> {
 
@@ -85,4 +85,15 @@ public interface ShowSeatRepository extends JpaRepository<ShowSeat, UUID> {
             """)
     List<UUID> findIdsByShowtimeIdAndBookingId(
             @Param("showtimeId") UUID showtimeId, @Param("bookingId") UUID bookingId);
+
+    @Query(
+            """
+            select showSeat
+            from ShowSeat showSeat
+            join fetch showSeat.seat seat
+            join fetch seat.room
+            where showSeat.showtime.id = :showtimeId
+            order by showSeat.seatNumber asc
+            """)
+    List<ShowSeat> findAllForSeatMapByShowtimeId(@Param("showtimeId") UUID showtimeId);
 }

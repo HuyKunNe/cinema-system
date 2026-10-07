@@ -32,4 +32,15 @@ public interface RoomLayoutSeatRepository extends JpaRepository<RoomLayoutSeat, 
             order by position.seatNumberSnapshot asc
             """)
     List<RoomLayoutSeat> findPositionsForGenerationByLayoutId(@Param("layoutId") UUID layoutId);
+
+    @Query(
+            """
+            select position
+            from RoomLayoutSeat position
+            join fetch position.seat seat
+            join fetch seat.room
+            where position.layout.id = :layoutId
+            order by position.seatNumberSnapshot asc
+            """)
+    List<RoomLayoutSeat> findAllForSeatMapByLayoutId(@Param("layoutId") UUID layoutId);
 }

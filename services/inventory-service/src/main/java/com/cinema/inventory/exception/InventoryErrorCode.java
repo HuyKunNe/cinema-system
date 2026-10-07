@@ -442,6 +442,18 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_SHOWTIME_LAYOUT_SEATS_MISMATCH",
                     "Existing show seats contain seats outside the pinned layout");
 
+    public static final InventoryErrorCode SHOWTIME_LAYOUT_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_LAYOUT_REQUIRED",
+                    "Showtime has no pinned room layout");
+
+    public static final InventoryErrorCode SEAT_MAP_DATA_INCONSISTENT =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SEAT_MAP_DATA_INCONSISTENT",
+                    "Seat map data is inconsistent with the pinned layout");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

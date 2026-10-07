@@ -1,5 +1,10 @@
 package com.cinema.inventory.entity;
 
+import java.time.OffsetDateTime;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
@@ -17,11 +22,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
-import java.time.OffsetDateTime;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
-
 @Entity
 @Table(name = "showtimes")
 public class Showtime extends BaseEntity {
@@ -34,7 +34,7 @@ public class Showtime extends BaseEntity {
     private Room room;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "room_layout_id", nullable = true)
+    @JoinColumn(name = "room_layout_id", nullable = true, updatable = false)
     private RoomLayout roomLayout;
 
     @Column(name = "starts_at", nullable = false)

@@ -1,16 +1,17 @@
 package com.cinema.inventory.repository;
 
-import com.cinema.inventory.entity.Showtime;
-import com.cinema.inventory.enums.ShowtimeStatus;
+import java.time.OffsetDateTime;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.OffsetDateTime;
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
+import com.cinema.inventory.entity.Showtime;
+import com.cinema.inventory.enums.ShowtimeStatus;
 
 public interface ShowtimeRepository extends JpaRepository<Showtime, UUID> {
 
@@ -102,4 +103,15 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, UUID> {
             @Param("showtimeId") UUID showtimeId,
             @Param("now") OffsetDateTime now,
             @Param("status") ShowtimeStatus status);
+
+    @Query(
+            """
+            select showtime
+            from Showtime showtime
+            join fetch showtime.room room
+            join fetch room.cinema
+            left join fetch showtime.roomLayout
+            where showtime.id = :showtimeId
+            """)
+    Optional<Showtime> findByIdForSeatMap(@Param("showtimeId") UUID showtimeId);
 }
