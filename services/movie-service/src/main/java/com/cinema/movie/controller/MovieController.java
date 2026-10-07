@@ -1,8 +1,22 @@
 package com.cinema.movie.controller;
 
-import java.net.URI;
-import java.util.List;
-import java.util.UUID;
+import com.cinema.common.response.model.PageResponse;
+import com.cinema.movie.dto.request.CreateMovieRequest;
+import com.cinema.movie.dto.request.UpdateMovieMetadataRequest;
+import com.cinema.movie.dto.request.UpdateMovieRequest;
+import com.cinema.movie.dto.response.MovieResponse;
+import com.cinema.movie.entity.MovieStatus;
+import com.cinema.movie.service.MovieService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+
+import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -15,21 +29,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.cinema.common.response.model.PageResponse;
-import com.cinema.movie.dto.request.CreateMovieRequest;
-import com.cinema.movie.dto.request.UpdateMovieMetadataRequest;
-import com.cinema.movie.dto.request.UpdateMovieRequest;
-import com.cinema.movie.dto.response.MovieResponse;
-import com.cinema.movie.entity.MovieStatus;
-import com.cinema.movie.service.MovieService;
-
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
-import jakarta.validation.Valid;
+import java.net.URI;
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/movies")
@@ -83,9 +85,19 @@ public class MovieController {
             @RequestParam(value = "status", required = false) MovieStatus status,
             @RequestParam(value = "genre", required = false) UUID genreId,
             @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", required = false) Integer size) {
+            @RequestParam(value = "size", required = false) Integer size,
+            @Parameter(
+                            description =
+                                    "Optional candidate movie UUIDs. Send repeated movieIds query"
+                                        + " parameters. Filtering is applied before pagination and"
+                                        + " counting. The configured input limit defaults to 100.")
+                    @RequestParam(value = "movieIds", required = false)
+                    List<UUID> movieIds) {
 
-        return ResponseEntity.ok(movieService.findCatalog(status, genreId, page, size));
+        return ResponseEntity.ok(
+                movieIds == null
+                        ? movieService.findCatalog(status, genreId, page, size)
+                        : movieService.findCatalog(status, genreId, page, size, movieIds));
     }
 
     @GetMapping

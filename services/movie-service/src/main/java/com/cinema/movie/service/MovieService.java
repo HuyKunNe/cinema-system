@@ -21,6 +21,9 @@ public interface MovieService {
     PageResponse<MovieResponse> findCatalog(
             MovieStatus status, UUID genreId, int page, Integer size);
 
+    PageResponse<MovieResponse> findCatalog(
+            MovieStatus status, UUID genreId, int page, Integer size, List<UUID> movieIds);
+
     MovieResponse update(UUID id, UpdateMovieRequest request);
 
     MovieResponse updateMetadata(UUID id, UpdateMovieMetadataRequest request);

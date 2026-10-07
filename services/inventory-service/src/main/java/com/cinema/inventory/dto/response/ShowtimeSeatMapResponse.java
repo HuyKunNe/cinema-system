@@ -12,6 +12,20 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
+@Schema(
+        name = "ShowtimeSeatMapResponse",
+        requiredProperties = {
+            "showtimeId",
+            "cinemaId",
+            "roomId",
+            "layoutId",
+            "layoutVersion",
+            "serverTime",
+            "canvasWidth",
+            "canvasHeight",
+            "elements",
+            "seats"
+        })
 public record ShowtimeSeatMapResponse(
         UUID showtimeId,
         UUID cinemaId,
@@ -24,10 +38,30 @@ public record ShowtimeSeatMapResponse(
         List<ShowtimeSeatMapElementResponse> elements,
         List<ShowtimeSeatMapSeatResponse> seats) {
 
+    @Schema(
+            name = "ShowtimeSeatMapSeatResponse",
+            requiredProperties = {
+                "seatId",
+                "showSeatId",
+                "seatNumber",
+                "rowLabel",
+                "seatType",
+                "capacity",
+                "x",
+                "y",
+                "width",
+                "height",
+                "rotationDegrees",
+                "price",
+                "currency",
+                "status",
+                "selectable"
+            })
     @JsonInclude(JsonInclude.Include.ALWAYS)
     public record ShowtimeSeatMapSeatResponse(
             UUID seatId,
-            @Schema(nullable = true) UUID showSeatId,
+            @Schema(nullable = true)
+                    UUID showSeatId,
             String seatNumber,
             String rowLabel,
             SeatType seatType,
@@ -48,10 +82,24 @@ public record ShowtimeSeatMapResponse(
                     ShowSeatStatus status,
             boolean selectable) {}
 
+    @Schema(
+            name = "ShowtimeSeatMapElementResponse",
+            requiredProperties = {
+                "id",
+                "kind",
+                "x",
+                "y",
+                "width",
+                "height",
+                "rotationDegrees"
+            })
     public record ShowtimeSeatMapElementResponse(
             UUID id,
             RoomLayoutElementKind kind,
-            @Schema(nullable = true) String label,
+            @Schema(
+                            requiredMode = Schema.RequiredMode.NOT_REQUIRED,
+                            description = "Omitted when the layout element has no label.")
+                    String label,
             BigDecimal x,
             BigDecimal y,
             BigDecimal width,

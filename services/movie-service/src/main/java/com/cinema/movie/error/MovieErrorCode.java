@@ -47,6 +47,11 @@ public enum MovieErrorCode implements ErrorCode {
     INVALID_CATALOG_PAGINATION(
             "INVALID_CATALOG_PAGINATION",
             "Catalog page or size is outside the supported range",
+            ErrorCategory.VALIDATION),
+
+    INVALID_CATALOG_MOVIE_IDS(
+            "INVALID_CATALOG_MOVIE_IDS",
+            "Catalog movie ID filter contains null IDs or exceeds the supported limit",
             ErrorCategory.VALIDATION);
 
     private final String code;

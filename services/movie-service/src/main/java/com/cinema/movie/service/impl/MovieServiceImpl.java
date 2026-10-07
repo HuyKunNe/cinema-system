@@ -1,5 +1,20 @@
 package com.cinema.movie.service.impl;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.cinema.common.api.mapper.PageResponseMapper;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
@@ -18,21 +33,6 @@ import com.cinema.movie.mapper.MovieMapper;
 import com.cinema.movie.repository.GenreRepository;
 import com.cinema.movie.repository.MovieRepository;
 import com.cinema.movie.service.MovieService;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -92,6 +92,17 @@ public class MovieServiceImpl implements MovieService {
     public PageResponse<MovieResponse> findCatalog(
             MovieStatus status, UUID genreId, int page, Integer size) {
 
+        return findCatalog(status, genreId, page, size, null);
+    }
+
+    @Override
+    public PageResponse<MovieResponse> findCatalog(
+            MovieStatus status,
+            UUID genreId,
+            int page,
+            Integer size,
+            List<UUID> candidateMovieIds) {
+
         int requestedSize = size == null ? movieCatalogProperties.getDefaultSize() : size;
 
         if (page < 0
@@ -102,20 +113,30 @@ public class MovieServiceImpl implements MovieService {
             throw new ValidationException(MovieErrorCode.INVALID_CATALOG_PAGINATION);
         }
 
+        List<UUID> normalizedMovieIds = normalizeCatalogMovieIds(candidateMovieIds);
         Pageable pageable = PageRequest.of(page, requestedSize);
 
-        Page<UUID> movieIds = movieRepository.findCatalogMovieIds(status, genreId, pageable);
+        // An explicit empty candidate set must not become an unrestricted query.
+        if (normalizedMovieIds != null && normalizedMovieIds.isEmpty()) {
+            return PageResponseMapper.map(Page.<MovieResponse>empty(pageable));
+        }
+
+        Page<UUID> selectedMovieIds =
+                normalizedMovieIds == null
+                        ? movieRepository.findCatalogMovieIds(status, genreId, pageable)
+                        : movieRepository.findCatalogMovieIdsByMovieIds(
+                                status, genreId, normalizedMovieIds, pageable);
 
         List<Movie> movies =
-                movieIds.hasContent()
-                        ? movieRepository.findAllWithGenresByIdIn(movieIds.getContent())
+                selectedMovieIds.hasContent()
+                        ? movieRepository.findAllWithGenresByIdIn(selectedMovieIds.getContent())
                         : List.of();
 
         Map<UUID, Movie> moviesById =
                 movies.stream().collect(Collectors.toMap(Movie::getId, movie -> movie));
 
         Page<MovieResponse> responses =
-                movieIds.map(
+                selectedMovieIds.map(
                         movieId -> {
                             Movie movie = moviesById.get(movieId);
 
@@ -127,6 +148,21 @@ public class MovieServiceImpl implements MovieService {
                         });
 
         return PageResponseMapper.map(responses);
+    }
+
+    private List<UUID> normalizeCatalogMovieIds(List<UUID> movieIds) {
+
+        if (movieIds == null) {
+            return null;
+        }
+
+        if (movieIds.size() > movieCatalogProperties.getMaxMovieIds()
+                || movieIds.stream().anyMatch(id -> id == null)) {
+
+            throw new ValidationException(MovieErrorCode.INVALID_CATALOG_MOVIE_IDS);
+        }
+
+        return movieIds.stream().distinct().toList();
     }
 
     @Override

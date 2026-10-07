@@ -88,6 +88,7 @@ cinema:
     catalog:
       default-size: ${MOVIE_CATALOG_DEFAULT_SIZE:8}
       max-size: ${MOVIE_CATALOG_MAX_SIZE:100}
+      max-movie-ids: ${MOVIE_CATALOG_MAX_MOVIE_IDS:100}
     hero:
       default-limit: ${MOVIE_HERO_DEFAULT_LIMIT:4}
       max-limit: ${MOVIE_HERO_MAX_LIMIT:10}

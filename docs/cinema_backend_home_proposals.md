@@ -315,6 +315,44 @@ Việc chuyển caller sang paging server-side là phần FE riêng.
 
 Không thêm cinemaId vào MovieController.
 
+### 10.1 Mở rộng catalog bằng ID ứng viên
+
+Trạng thái: PROPOSED; chuyển thành IMPLEMENTED sau khi áp dụng
+và đối chiếu source mới.
+
+GET /api/v1/movies/catalog bổ sung query movieIds tùy chọn.
+Các parameter status, genre, page và size giữ nguyên.
+
+movieIds được gửi bằng query parameter lặp, mỗi giá trị là UUID.
+
+Bộ lọc ID được áp dụng trước pagination và trong countQuery.
+totalElements và totalPages phản ánh tập phim sau tất cả bộ lọc.
+
+Không truyền movieIds: giữ hành vi catalog hiện có.
+Service nhận tập ID rỗng: trả trang rỗng, không truy vấn toàn hệ thống.
+FE có tập ứng viên rỗng phải bỏ qua request và hiển thị trạng thái rỗng,
+vì serializer có thể bỏ query array rỗng.
+
+ID hợp lệ nhưng không tồn tại không gây 404.
+ID trùng được loại bỏ trước khi truy vấn.
+
+Giới hạn đầu vào mặc định 100, kiểm tra trước khi loại trùng.
+Cấu hình: cinema.movie.catalog.max-movie-ids.
+Environment variable: MOVIE_CATALOG_MAX_MOVIE_IDS.
+Vượt giới hạn hoặc collection chứa null trả
+INVALID_CATALOG_MOVIE_IDS / HTTP 400.
+
+Thứ tự vẫn là releaseDate DESC, ngày null ở cuối, id ASC.
+Thứ tự movieIds đầu vào không quyết định thứ tự response.
+
+Movie Service không xác minh chương trình rạp từ các ID này
+và không truy cập database Inventory.
+Frontend xác định ID ứng viên theo chương trình của rạp đã chọn.
+
+API danh sách cũ GET /api/v1/movies giữ nguyên.
+Caller Movies hiện chưa chuyển sang server-side pagination.
+Cần hoàn thiện contract sort và nguồn genre filter trước khi chuyển caller.
+
 ## 11. BE-HOME-11 — Timezone
 
 **Trạng thái: đã có quy ước và implementation FE.**
@@ -685,7 +723,9 @@ Không ghi nhận các bước dưới đây đã pass chỉ vì đã đọc sou
 Không phân trang danh mục toàn hệ thống rồi chỉ lọc theo rạp
 trên từng trang: cách đó làm thiếu kết quả và sai tổng số phim.
 
-API catalog hiện chưa nhận bộ lọc ID ứng viên hoặc sort parameter.
+API catalog đã nhận bộ lọc movieIds trước pagination.
+Chưa hỗ trợ sort parameter.
+Caller Movies vẫn dùng findAll; việc chuyển caller cần giữ đúng phạm vi rạp, các lựa chọn sort và nguồn danh sách thể loại.
 Nếu cần mở rộng contract, ưu tiên additive và giữ caller cũ.
 
 Các đề xuất Booking tại mục 21–26 có baseline và trạng thái riêng.
@@ -795,8 +835,10 @@ Trạng thái: PARTIALLY_IMPLEMENTED.
 Owner: Inventory Service.
 
 Đã triển khai schema, quản trị nội dung layout và publish.
-Showtime có liên kết roomLayout nullable ở schema/entity.
-Luồng tạo suất chưa gắn layout; sinh ghế và API seat-map chưa tích hợp.
+Showtime lưu layout được chọn khi tạo suất có roomLayoutId.
+Sinh ShowSeat đã tích hợp layout, giữ contract giá của từng luồng hiện có.
+Đã có public API đọc seat-map theo layout được ghim vào Showtime.
+Frontend đã có generated client; booking query hiện chưa sử dụng endpoint này.
 
 ### 22.1 Vấn đề hiện tại
 
@@ -1000,7 +1042,7 @@ Public GET; không có query hoặc request body.
 Response 200 là ShowtimeSeatMapResponse trực tiếp.
 Response có Cache-Control: no-store.
 
-### 23.1 Nội dung response đề xuất
+### 23.1 Nội dung response
 
 - showtimeId
 - cinemaId
@@ -1124,6 +1166,30 @@ HTTP 409:
 
 FE chỉ dùng danh sách ghế theo hàng làm fallback cho lỗi thiếu layout.
 Các lỗi dữ liệu không nhất quán cần được hiển thị và xử lý riêng.
+
+### Contract presence và nullability
+
+Response thành công được trả trực tiếp dưới dạng ShowtimeSeatMapResponse.
+
+Các field cấp root luôn có mặt:
+showtimeId, cinemaId, roomId, layoutId, layoutVersion, serverTime,
+canvasWidth, canvasHeight, elements và seats.
+
+Các field của mỗi seat luôn có mặt.
+Khi thiếu ShowSeat, showSeatId, price và status có giá trị null;
+selectable có giá trị false.
+
+required không đồng nghĩa với non-null.
+Ba field trên là required và nullable.
+
+label của layout element là optional:
+field này được bỏ khỏi JSON khi không có nhãn.
+
+OpenAPI 3.1 biểu diễn ba field nullable bằng anyOf gồm kiểu giá trị
+và kiểu null. OpenAPI 3.0 sử dụng nullable=true.
+
+Frontend phải generate client từ runtime OpenAPI đã review,
+không sửa generated models bằng tay.
 
 ## 24. BE-BOOKING-03 — Bắp nước, combo và dịch vụ theo rạp
 

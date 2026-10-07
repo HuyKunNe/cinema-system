@@ -110,4 +110,49 @@ public interface MovieRepository extends JpaRepository<Movie, UUID> {
             @Param("now") OffsetDateTime now,
             @Param("movieIds") Collection<UUID> movieIds,
             Pageable pageable);
+
+    @Query(
+            value =
+                    """
+                    select movie.id
+                    from Movie movie
+                    where movie.id in :movieIds
+                      and (:status is null or movie.status = :status)
+                      and (
+                        :genreId is null
+                        or exists (
+                            select genre.id
+                            from Movie genreMovie
+                            join genreMovie.genres genre
+                            where genreMovie.id = movie.id
+                              and genre.id = :genreId
+                        )
+                      )
+                    order by
+                        case when movie.releaseDate is null then 1 else 0 end asc,
+                        movie.releaseDate desc,
+                        movie.id asc
+                    """,
+            countQuery =
+                    """
+                    select count(movie)
+                    from Movie movie
+                    where movie.id in :movieIds
+                      and (:status is null or movie.status = :status)
+                      and (
+                        :genreId is null
+                        or exists (
+                            select genre.id
+                            from Movie genreMovie
+                            join genreMovie.genres genre
+                            where genreMovie.id = movie.id
+                              and genre.id = :genreId
+                        )
+                      )
+                    """)
+    Page<UUID> findCatalogMovieIdsByMovieIds(
+            @Param("status") MovieStatus status,
+            @Param("genreId") UUID genreId,
+            @Param("movieIds") Collection<UUID> movieIds,
+            Pageable pageable);
 }
