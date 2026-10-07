@@ -15,10 +15,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.cinema.inventory.dto.request.CreateRoomLayoutRequest;
+import com.cinema.inventory.dto.request.PublishRoomLayoutRequest;
 import com.cinema.inventory.dto.request.ReplaceRoomLayoutContentRequest;
 import com.cinema.inventory.dto.response.RoomLayoutContentResponse;
 import com.cinema.inventory.dto.response.RoomLayoutResponse;
 import com.cinema.inventory.service.RoomLayoutContentService;
+import com.cinema.inventory.service.RoomLayoutPublicationService;
 import com.cinema.inventory.service.RoomLayoutService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -82,13 +84,16 @@ public class RoomLayoutController {
 
     private final RoomLayoutService roomLayoutService;
     private final RoomLayoutContentService roomLayoutContentService;
+    private final RoomLayoutPublicationService roomLayoutPublicationService;
 
     public RoomLayoutController(
             RoomLayoutService roomLayoutService,
-            RoomLayoutContentService roomLayoutContentService) {
+            RoomLayoutContentService roomLayoutContentService,
+            RoomLayoutPublicationService roomLayoutPublicationService) {
 
         this.roomLayoutService = roomLayoutService;
         this.roomLayoutContentService = roomLayoutContentService;
+        this.roomLayoutPublicationService = roomLayoutPublicationService;
     }
 
     @Operation(
@@ -192,5 +197,41 @@ public class RoomLayoutController {
             @Valid @RequestBody ReplaceRoomLayoutContentRequest request) {
 
         return ResponseEntity.ok(roomLayoutContentService.replaceContent(layoutId, request));
+    }
+
+    @Operation(
+            operationId = "publishRoomLayout",
+            summary = "Publish a validated room layout",
+            description =
+                    """
+                    Requires inventory:manage.
+                    expectedVersion must match the current version field.
+                    Requires at least one seat and one SCREEN.
+                    Validates rotated geometry inside the canvas.
+                    Rejects seat-seat and seat-element overlaps.
+                    Publishes this layout version without binding it to showtimes.
+                    """)
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "200",
+                description = "Layout published",
+                content = @Content(schema = @Schema(implementation = RoomLayoutResponse.class))),
+        @ApiResponse(
+                responseCode = "409",
+                description = "Layout is not DRAFT or expectedVersion is stale",
+                content =
+                        @Content(
+                                schema =
+                                        @Schema(
+                                                implementation =
+                                                        com.cinema.common.response.model.ApiResponse
+                                                                .class)))
+    })
+    @PostMapping("/{layoutId}/publish")
+    public ResponseEntity<RoomLayoutResponse> publish(
+            @PathVariable("layoutId") UUID layoutId,
+            @Valid @RequestBody PublishRoomLayoutRequest request) {
+
+        return ResponseEntity.ok(roomLayoutPublicationService.publish(layoutId, request));
     }
 }

@@ -828,7 +828,8 @@ RoomLayout:
 
 - id
 - roomId
-- version
+- layoutVersion: phiên bản sơ đồ của phòng
+- version: optimistic locking, dùng làm expectedVersion khi ghi/publish
 - status: DRAFT hoặc PUBLISHED — enum mới được đề xuất
 - canvasWidth
 - canvasHeight
@@ -910,6 +911,37 @@ Không lấy capacity để suy ra width của ghế trong sơ đồ.
 Giới hạn maxSeatsPerBooking hiện đếm đơn vị ghế trong request,
 không phải tổng số người. Nếu cần giới hạn số người, phải bổ sung
 quy tắc riêng và công bố cho FE.
+
+### 22.5 Phần đã triển khai và contract hình học
+
+Đã có schema, entity/repository và API quản trị:
+
+- POST /api/v1/room-layouts
+- GET /api/v1/room-layouts?roomId={roomId}
+- GET /api/v1/room-layouts/{layoutId}
+- GET /api/v1/room-layouts/{layoutId}/content
+- PUT /api/v1/room-layouts/{layoutId}/content
+- POST /api/v1/room-layouts/{layoutId}/publish
+
+Các API này yêu cầu inventory:manage.
+
+Hình học dùng đơn vị logic. x/y là góc trái trên trước khi xoay.
+Xoay quanh tâm hình chữ nhật; góc dương theo chiều kim đồng hồ trong hệ tọa độ màn hình.
+
+Publish yêu cầu ít nhất một vị trí ghế và một SCREEN.
+Mọi footprint sau khi xoay phải nằm trong canvas.
+Ghế không giao diện tích với ghế khác hoặc element.
+Cạnh chạm nhau được phép, với sai số so sánh 0.000001 đơn vị.
+Các element được phép giao nhau.
+
+Publish giữ nguyên layoutVersion, cập nhật version và publishedAt.
+Layout đã publish không được sửa qua API nội dung.
+Muốn thay đổi phải tạo một DRAFT version mới.
+
+Chưa triển khai liên kết layout với Showtime hoặc API seat-map.
+Chưa quy định layout phải bao phủ toàn bộ Seat của phòng.
+Chính sách cho suất cũ, ghế inactive và đồng bộ snapshot với
+ShowSeat cần được chốt trước khi tích hợp vào luồng tạo suất.
 
 ## 23. BE-BOOKING-02 — Read model cho section chọn ghế
 

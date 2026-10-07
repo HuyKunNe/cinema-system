@@ -399,7 +399,25 @@ public final class InventoryErrorCode implements ErrorCode {
                     ErrorCategory.VALIDATION,
                     "INVENTORY_ROOM_LAYOUT_DUPLICATE_SEAT",
                     "A seat can appear only once in a room layout");
-                    
+
+    public static final InventoryErrorCode ROOM_LAYOUT_INCOMPLETE =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_ROOM_LAYOUT_INCOMPLETE",
+                    "Publishing requires at least one seat and one screen");
+
+    public static final InventoryErrorCode ROOM_LAYOUT_OUTSIDE_CANVAS =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_ROOM_LAYOUT_OUTSIDE_CANVAS",
+                    "Rotated room layout geometry must stay inside the canvas");
+
+    public static final InventoryErrorCode ROOM_LAYOUT_GEOMETRY_OVERLAP =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_ROOM_LAYOUT_GEOMETRY_OVERLAP",
+                    "Seat geometry overlaps another seat or a layout element");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

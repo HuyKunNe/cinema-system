@@ -95,4 +95,15 @@ public class RoomLayout extends BaseEntity {
         requireDraft();
         contentRevision = Math.addExact(contentRevision, 1L);
     }
+
+    public void publish(OffsetDateTime publicationTime) {
+        requireDraft();
+
+        if (publicationTime == null) {
+            throw new ValidationException(InventoryErrorCode.ROOM_LAYOUT_DATA_INVALID);
+        }
+
+        status = RoomLayoutStatus.PUBLISHED;
+        publishedAt = publicationTime;
+    }
 }

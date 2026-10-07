@@ -7,6 +7,16 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(
+        description =
+                """
+                Geometry uses logical layout units.
+                x and y identify the unrotated top-left corner.
+                Rotation is around the rectangle center.
+                Positive rotationDegrees rotate clockwise in screen coordinates.
+                """)
 public record RoomLayoutContentResponse(
         RoomLayoutResponse layout,
         List<RoomLayoutSeatPositionResponse> seats,
