@@ -353,6 +353,40 @@ API danh sách cũ GET /api/v1/movies giữ nguyên.
 Caller Movies hiện chưa chuyển sang server-side pagination.
 Cần hoàn thiện contract sort và nguồn genre filter trước khi chuyển caller.
 
+### 10.2 Sort cho Movie catalog
+
+Trạng thái: PROPOSED; cập nhật sau khi triển khai và đối chiếu source.
+
+GET /api/v1/movies/catalog bổ sung query sort tùy chọn.
+
+Các giá trị:
+
+- RELEASE_DESC: releaseDate giảm dần, ngày null ở cuối, id tăng dần.
+- RELEASE_ASC: releaseDate tăng dần, ngày null ở cuối, id tăng dần.
+- TITLE_ASC: title tăng dần theo collation database, id tăng dần.
+
+Mặc định RELEASE_DESC giữ thứ tự catalog hiện có.
+Thứ tự movieIds đầu vào không quyết định thứ tự response.
+
+Sort được áp dụng trước pagination.
+countQuery giữ nguyên các điều kiện lọc và không phụ thuộc sort.
+
+Giá trị sort không được hỗ trợ trả HTTP 400,
+error code INVALID_REQUEST_PARAMETER.
+
+Không thay đổi response PageResponse<MovieResponse>.
+Không thêm sort vào GET /api/v1/movies.
+
+Frontend chưa chuyển caller Movies sang paging server-side.
+Khi chuyển caller, phải dùng thứ tự Backend trả về,
+không sort lại từng trang.
+
+TITLE_ASC không cam kết tương đương hoàn toàn với
+Intl.Collator('vi', { sensitivity: 'base', numeric: true }).
+
+Nguồn genre filter theo phạm vi catalog cần được xử lý trước
+khi bỏ luồng tải toàn bộ phim.
+
 ## 11. BE-HOME-11 — Timezone
 
 **Trạng thái: đã có quy ước và implementation FE.**
@@ -724,7 +758,10 @@ Không phân trang danh mục toàn hệ thống rồi chỉ lọc theo rạp
 trên từng trang: cách đó làm thiếu kết quả và sai tổng số phim.
 
 API catalog đã nhận bộ lọc movieIds trước pagination.
-Chưa hỗ trợ sort parameter.
+API catalog hỗ trợ RELEASE_DESC, RELEASE_ASC và TITLE_ASC.
+Caller Movies vẫn dùng findAll.
+Bước tiếp theo là xử lý nguồn genre filter và chuyển caller,
+giữ đúng tập ID ứng viên của rạp trước pagination.
 Caller Movies vẫn dùng findAll; việc chuyển caller cần giữ đúng phạm vi rạp, các lựa chọn sort và nguồn danh sách thể loại.
 Nếu cần mở rộng contract, ưu tiên additive và giữ caller cũ.
 

@@ -46,9 +46,28 @@ public interface MovieRepository extends JpaRepository<Movie, UUID> {
                               and genre.id = :genreId
                         )
                       )
-                    order by
-                        case when movie.releaseDate is null then 1 else 0 end asc,
-                        movie.releaseDate desc,
+                                        order by
+                        case
+                            when :catalogSort <> 'TITLE_ASC'
+                                 and movie.releaseDate is null
+                            then 1
+                            else 0
+                        end asc,
+                        case
+                            when :catalogSort = 'RELEASE_DESC'
+                            then movie.releaseDate
+                            else null
+                        end desc,
+                        case
+                            when :catalogSort = 'RELEASE_ASC'
+                            then movie.releaseDate
+                            else null
+                        end asc,
+                        case
+                            when :catalogSort = 'TITLE_ASC'
+                            then movie.title
+                            else null
+                        end asc,
                         movie.id asc
                     """,
             countQuery =
@@ -67,8 +86,16 @@ public interface MovieRepository extends JpaRepository<Movie, UUID> {
                         )
                       )
                     """)
-    Page<UUID> findCatalogMovieIds(
-            @Param("status") MovieStatus status, @Param("genreId") UUID genreId, Pageable pageable);
+    Page<UUID> findCatalogMovieIdsSorted(
+            @Param("status") MovieStatus status,
+            @Param("genreId") UUID genreId,
+            @Param("catalogSort") String catalogSort,
+            Pageable pageable);
+
+    default Page<UUID> findCatalogMovieIds(MovieStatus status, UUID genreId, Pageable pageable) {
+
+        return findCatalogMovieIdsSorted(status, genreId, "RELEASE_DESC", pageable);
+    }
 
     @Query(
             """
@@ -129,8 +156,27 @@ public interface MovieRepository extends JpaRepository<Movie, UUID> {
                         )
                       )
                     order by
-                        case when movie.releaseDate is null then 1 else 0 end asc,
-                        movie.releaseDate desc,
+                        case
+                            when :catalogSort <> 'TITLE_ASC'
+                                 and movie.releaseDate is null
+                            then 1
+                            else 0
+                        end asc,
+                        case
+                            when :catalogSort = 'RELEASE_DESC'
+                            then movie.releaseDate
+                            else null
+                        end desc,
+                        case
+                            when :catalogSort = 'RELEASE_ASC'
+                            then movie.releaseDate
+                            else null
+                        end asc,
+                        case
+                            when :catalogSort = 'TITLE_ASC'
+                            then movie.title
+                            else null
+                        end asc,
                         movie.id asc
                     """,
             countQuery =
@@ -150,9 +196,17 @@ public interface MovieRepository extends JpaRepository<Movie, UUID> {
                         )
                       )
                     """)
-    Page<UUID> findCatalogMovieIdsByMovieIds(
+    Page<UUID> findCatalogMovieIdsByMovieIdsSorted(
             @Param("status") MovieStatus status,
             @Param("genreId") UUID genreId,
             @Param("movieIds") Collection<UUID> movieIds,
+            @Param("catalogSort") String catalogSort,
             Pageable pageable);
+
+    default Page<UUID> findCatalogMovieIdsByMovieIds(
+            MovieStatus status, UUID genreId, Collection<UUID> movieIds, Pageable pageable) {
+
+        return findCatalogMovieIdsByMovieIdsSorted(
+                status, genreId, movieIds, "RELEASE_DESC", pageable);
+    }
 }

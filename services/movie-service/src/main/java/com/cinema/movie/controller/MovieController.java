@@ -2,6 +2,7 @@ package com.cinema.movie.controller;
 
 import com.cinema.common.response.model.PageResponse;
 import com.cinema.movie.dto.request.CreateMovieRequest;
+import com.cinema.movie.dto.request.MovieCatalogSort;
 import com.cinema.movie.dto.request.UpdateMovieMetadataRequest;
 import com.cinema.movie.dto.request.UpdateMovieRequest;
 import com.cinema.movie.dto.response.MovieResponse;
@@ -92,12 +93,17 @@ public class MovieController {
                                         + " parameters. Filtering is applied before pagination and"
                                         + " counting. The configured input limit defaults to 100.")
                     @RequestParam(value = "movieIds", required = false)
-                    List<UUID> movieIds) {
+                    List<UUID> movieIds,
+            @Parameter(
+                            description =
+                                    "Catalog order. Release-date sorts put null dates last. Title"
+                                        + " order uses the database collation. All orders use"
+                                        + " ascending movie ID as the final tie-breaker.")
+                    @RequestParam(value = "sort", defaultValue = "RELEASE_DESC")
+                    MovieCatalogSort sort) {
 
         return ResponseEntity.ok(
-                movieIds == null
-                        ? movieService.findCatalog(status, genreId, page, size)
-                        : movieService.findCatalog(status, genreId, page, size, movieIds));
+                movieService.findCatalog(status, genreId, page, size, movieIds, sort));
     }
 
     @GetMapping

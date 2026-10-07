@@ -1,20 +1,5 @@
 package com.cinema.movie.service.impl;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.cinema.common.api.mapper.PageResponseMapper;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
@@ -22,6 +7,7 @@ import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.response.model.PageResponse;
 import com.cinema.movie.config.MovieCatalogProperties;
 import com.cinema.movie.dto.request.CreateMovieRequest;
+import com.cinema.movie.dto.request.MovieCatalogSort;
 import com.cinema.movie.dto.request.UpdateMovieMetadataRequest;
 import com.cinema.movie.dto.request.UpdateMovieRequest;
 import com.cinema.movie.dto.response.MovieResponse;
@@ -33,6 +19,21 @@ import com.cinema.movie.mapper.MovieMapper;
 import com.cinema.movie.repository.GenreRepository;
 import com.cinema.movie.repository.MovieRepository;
 import com.cinema.movie.service.MovieService;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -92,7 +93,7 @@ public class MovieServiceImpl implements MovieService {
     public PageResponse<MovieResponse> findCatalog(
             MovieStatus status, UUID genreId, int page, Integer size) {
 
-        return findCatalog(status, genreId, page, size, null);
+        return findCatalog(status, genreId, page, size, null, MovieCatalogSort.RELEASE_DESC);
     }
 
     @Override
@@ -102,6 +103,19 @@ public class MovieServiceImpl implements MovieService {
             int page,
             Integer size,
             List<UUID> candidateMovieIds) {
+
+        return findCatalog(
+                status, genreId, page, size, candidateMovieIds, MovieCatalogSort.RELEASE_DESC);
+    }
+
+    @Override
+    public PageResponse<MovieResponse> findCatalog(
+            MovieStatus status,
+            UUID genreId,
+            int page,
+            Integer size,
+            List<UUID> candidateMovieIds,
+            MovieCatalogSort sort) {
 
         int requestedSize = size == null ? movieCatalogProperties.getDefaultSize() : size;
 
@@ -113,6 +127,8 @@ public class MovieServiceImpl implements MovieService {
             throw new ValidationException(MovieErrorCode.INVALID_CATALOG_PAGINATION);
         }
 
+        MovieCatalogSort effectiveSort = sort == null ? MovieCatalogSort.RELEASE_DESC : sort;
+
         List<UUID> normalizedMovieIds = normalizeCatalogMovieIds(candidateMovieIds);
         Pageable pageable = PageRequest.of(page, requestedSize);
 
@@ -123,9 +139,14 @@ public class MovieServiceImpl implements MovieService {
 
         Page<UUID> selectedMovieIds =
                 normalizedMovieIds == null
-                        ? movieRepository.findCatalogMovieIds(status, genreId, pageable)
-                        : movieRepository.findCatalogMovieIdsByMovieIds(
-                                status, genreId, normalizedMovieIds, pageable);
+                        ? movieRepository.findCatalogMovieIdsSorted(
+                                status, genreId, effectiveSort.name(), pageable)
+                        : movieRepository.findCatalogMovieIdsByMovieIdsSorted(
+                                status,
+                                genreId,
+                                normalizedMovieIds,
+                                effectiveSort.name(),
+                                pageable);
 
         List<Movie> movies =
                 selectedMovieIds.hasContent()
