@@ -23,9 +23,7 @@ public class CinemaServiceImpl implements CinemaService {
     private final CinemaRepository cinemaRepository;
     private final CinemaMapper cinemaMapper;
 
-    public CinemaServiceImpl(
-            CinemaRepository cinemaRepository,
-            CinemaMapper cinemaMapper) {
+    public CinemaServiceImpl(CinemaRepository cinemaRepository, CinemaMapper cinemaMapper) {
         this.cinemaRepository = cinemaRepository;
         this.cinemaMapper = cinemaMapper;
     }
@@ -33,10 +31,11 @@ public class CinemaServiceImpl implements CinemaService {
     @Override
     @Transactional
     public CinemaResponse create(CreateCinemaRequest request) {
-        Cinema cinema = new Cinema(
-                normalize(request.name()),
-                normalize(request.address()),
-                normalize(request.city()));
+        Cinema cinema =
+                new Cinema(
+                        normalize(request.name()),
+                        normalize(request.address()),
+                        normalize(request.city()));
 
         Cinema savedCinema = cinemaRepository.save(cinema);
 
@@ -55,12 +54,35 @@ public class CinemaServiceImpl implements CinemaService {
         List<Cinema> cinemas;
 
         if (StringUtils.hasText(city)) {
-            cinemas = cinemaRepository
-                    .findAllByCityIgnoreCaseAndActiveTrueOrderByNameAsc(
+            cinemas =
+                    cinemaRepository.findAllByCityIgnoreCaseAndActiveTrueOrderByNameAsc(
                             city.trim());
         } else {
-            cinemas = cinemaRepository
-                    .findAllByActiveTrueOrderByNameAsc();
+            cinemas = cinemaRepository.findAllByActiveTrueOrderByNameAsc();
+        }
+
+        return cinemaMapper.toResponses(cinemas);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CinemaResponse> getManagedCinemas(String city, Boolean active) {
+        List<Cinema> cinemas;
+
+        if (StringUtils.hasText(city)) {
+            String normalizedCity = city.trim();
+
+            cinemas =
+                    active == null
+                            ? cinemaRepository.findAllByCityIgnoreCaseOrderByNameAscIdAsc(
+                                    normalizedCity)
+                            : cinemaRepository.findAllByCityIgnoreCaseAndActiveOrderByNameAscIdAsc(
+                                    normalizedCity, active);
+        } else {
+            cinemas =
+                    active == null
+                            ? cinemaRepository.findAllByOrderByNameAscIdAsc()
+                            : cinemaRepository.findAllByActiveOrderByNameAscIdAsc(active);
         }
 
         return cinemaMapper.toResponses(cinemas);
@@ -68,15 +90,11 @@ public class CinemaServiceImpl implements CinemaService {
 
     @Override
     @Transactional
-    public CinemaResponse update(
-            UUID cinemaId,
-            UpdateCinemaRequest request) {
+    public CinemaResponse update(UUID cinemaId, UpdateCinemaRequest request) {
         Cinema cinema = findCinema(cinemaId);
 
         cinema.update(
-                normalize(request.name()),
-                normalize(request.address()),
-                normalize(request.city()));
+                normalize(request.name()), normalize(request.address()), normalize(request.city()));
 
         cinema.changeActive(request.active());
 
@@ -84,9 +102,9 @@ public class CinemaServiceImpl implements CinemaService {
     }
 
     private Cinema findCinema(UUID cinemaId) {
-        return cinemaRepository.findById(cinemaId)
-                .orElseThrow(() -> new NotFoundException(
-                        InventoryErrorCode.CINEMA_NOT_FOUND));
+        return cinemaRepository
+                .findById(cinemaId)
+                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.CINEMA_NOT_FOUND));
     }
 
     private String normalize(String value) {

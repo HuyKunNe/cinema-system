@@ -1,5 +1,9 @@
 package com.cinema.inventory.config;
 
+import com.cinema.common.security.jwt.CinemaJwtAuthenticationConverter;
+import com.cinema.common.security.web.CinemaAccessDeniedHandler;
+import com.cinema.common.security.web.CinemaAuthenticationEntryPoint;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,14 +13,14 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
-import com.cinema.common.security.jwt.CinemaJwtAuthenticationConverter;
-import com.cinema.common.security.web.CinemaAccessDeniedHandler;
-import com.cinema.common.security.web.CinemaAuthenticationEntryPoint;
-
 @Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class InventorySecurityConfig {
+
+    private static final String[] INVENTORY_MANAGEMENT_READ_ENDPOINTS = {
+        "/api/v1/cinemas/management", "/api/v1/rooms/management", "/api/v1/seats/management"
+    };
 
     private static final String[] PUBLIC_INVENTORY_ENDPOINTS = {
         "/api/v1/cinemas",
@@ -70,6 +74,9 @@ public class InventorySecurityConfig {
                                         .permitAll()
                                         .requestMatchers("/actuator/health", "/actuator/info")
                                         .permitAll()
+                                        .requestMatchers(
+                                                HttpMethod.GET, INVENTORY_MANAGEMENT_READ_ENDPOINTS)
+                                        .hasAuthority("inventory:manage")
                                         .requestMatchers(HttpMethod.GET, PUBLIC_INVENTORY_ENDPOINTS)
                                         .permitAll()
                                         .requestMatchers(HttpMethod.POST, "/api/v1/show-seats")

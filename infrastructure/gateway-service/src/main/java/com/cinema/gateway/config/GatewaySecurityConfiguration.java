@@ -1,9 +1,5 @@
 package com.cinema.gateway.config;
 
-import com.cinema.common.security.jwt.CinemaJwtAuthenticationConverter;
-import com.cinema.common.security.web.reactive.CinemaServerAccessDeniedHandler;
-import com.cinema.common.security.web.reactive.CinemaServerAuthenticationEntryPoint;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -13,9 +9,17 @@ import org.springframework.security.oauth2.server.resource.authentication.Reacti
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.context.NoOpServerSecurityContextRepository;
 
+import com.cinema.common.security.jwt.CinemaJwtAuthenticationConverter;
+import com.cinema.common.security.web.reactive.CinemaServerAccessDeniedHandler;
+import com.cinema.common.security.web.reactive.CinemaServerAuthenticationEntryPoint;
+
 @Configuration(proxyBeanMethods = false)
 @EnableWebFluxSecurity
 public class GatewaySecurityConfiguration {
+
+    private static final String[] INVENTORY_MANAGEMENT_READ_ENDPOINTS = {
+        "/api/v1/cinemas/management", "/api/v1/rooms/management", "/api/v1/seats/management"
+    };
 
     private static final String[] PUBLIC_CATALOG_ENDPOINTS = {
         "/api/v1/movies",
@@ -57,6 +61,9 @@ public class GatewaySecurityConfiguration {
                                         .permitAll()
                                         .pathMatchers("/actuator/health", "/actuator/info")
                                         .permitAll()
+                                        .pathMatchers(
+                                                HttpMethod.GET, INVENTORY_MANAGEMENT_READ_ENDPOINTS)
+                                        .hasAuthority("inventory:manage")
                                         .pathMatchers(HttpMethod.GET, PUBLIC_CATALOG_ENDPOINTS)
                                         .permitAll()
                                         .pathMatchers("/api/**")

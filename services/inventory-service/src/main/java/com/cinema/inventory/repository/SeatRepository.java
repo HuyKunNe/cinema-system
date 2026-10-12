@@ -1,17 +1,17 @@
 package com.cinema.inventory.repository;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
+import com.cinema.inventory.entity.Seat;
+
+import jakarta.persistence.LockModeType;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import com.cinema.inventory.entity.Seat;
-
-import jakarta.persistence.LockModeType;
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
 
 public interface SeatRepository extends JpaRepository<Seat, UUID> {
 
@@ -34,4 +34,8 @@ public interface SeatRepository extends JpaRepository<Seat, UUID> {
             """)
     List<Seat> findAllForLayoutGeneration(
             @Param("roomId") UUID roomId, @Param("seatIds") Collection<UUID> seatIds);
+
+    List<Seat> findAllByRoom_IdOrderBySeatNumberAscIdAsc(UUID roomId);
+
+    List<Seat> findAllByRoom_IdAndActiveOrderBySeatNumberAscIdAsc(UUID roomId, boolean active);
 }

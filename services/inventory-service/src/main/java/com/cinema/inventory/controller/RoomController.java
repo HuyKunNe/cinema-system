@@ -1,8 +1,14 @@
 package com.cinema.inventory.controller;
 
-import java.net.URI;
-import java.util.List;
-import java.util.UUID;
+import com.cinema.inventory.dto.request.CreateRoomRequest;
+import com.cinema.inventory.dto.request.UpdateRoomRequest;
+import com.cinema.inventory.dto.response.RoomResponse;
+import com.cinema.inventory.service.RoomService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
+import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,57 +20,64 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.cinema.inventory.dto.request.CreateRoomRequest;
-import com.cinema.inventory.dto.request.UpdateRoomRequest;
-import com.cinema.inventory.dto.response.RoomResponse;
-import com.cinema.inventory.service.RoomService;
-
-import jakarta.validation.Valid;
+import java.net.URI;
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/rooms")
 public class RoomController {
 
-  private final RoomService roomService;
+    private final RoomService roomService;
 
-  public RoomController(RoomService roomService) {
-    this.roomService = roomService;
-  }
+    public RoomController(RoomService roomService) {
+        this.roomService = roomService;
+    }
 
-  @PostMapping
-  public ResponseEntity<RoomResponse> create(
-      @RequestParam("cinemaId") UUID cinemaId,
-      @Valid @RequestBody CreateRoomRequest request) {
+    @PostMapping
+    public ResponseEntity<RoomResponse> create(
+            @RequestParam("cinemaId") UUID cinemaId,
+            @Valid @RequestBody CreateRoomRequest request) {
 
-    RoomResponse response = roomService.create(cinemaId, request);
+        RoomResponse response = roomService.create(cinemaId, request);
 
-    return ResponseEntity
-        .created(URI.create("/api/v1/rooms/" + response.id()))
-        .body(response);
-  }
+        return ResponseEntity.created(URI.create("/api/v1/rooms/" + response.id())).body(response);
+    }
 
-  @GetMapping("/{roomId}")
-  public ResponseEntity<RoomResponse> getById(
-      @PathVariable("roomId") UUID roomId) {
+    @GetMapping("/{roomId}")
+    public ResponseEntity<RoomResponse> getById(@PathVariable("roomId") UUID roomId) {
 
-    return ResponseEntity.ok(
-        roomService.getById(roomId));
-  }
+        return ResponseEntity.ok(roomService.getById(roomId));
+    }
 
-  @GetMapping
-  public ResponseEntity<List<RoomResponse>> getActiveRooms(
-      @RequestParam("cinemaId") UUID cinemaId) {
+    @GetMapping
+    public ResponseEntity<List<RoomResponse>> getActiveRooms(
+            @RequestParam("cinemaId") UUID cinemaId) {
 
-    return ResponseEntity.ok(
-        roomService.getActiveRooms(cinemaId));
-  }
+        return ResponseEntity.ok(roomService.getActiveRooms(cinemaId));
+    }
 
-  @PutMapping("/{roomId}")
-  public ResponseEntity<RoomResponse> update(
-      @PathVariable("roomId") UUID roomId,
-      @Valid @RequestBody UpdateRoomRequest request) {
+    @Operation(
+            operationId = "getManagedRooms",
+            summary = "List rooms for inventory management",
+            description = "Omit active to include both active and inactive rooms.",
+            security = {
+                @SecurityRequirement(
+                        name = "oauth2",
+                        scopes = {"inventory:manage"})
+            })
+    @GetMapping("/management")
+    public ResponseEntity<List<RoomResponse>> getManagedRooms(
+            @RequestParam("cinemaId") UUID cinemaId,
+            @RequestParam(name = "active", required = false) Boolean active) {
 
-    return ResponseEntity.ok(
-        roomService.update(roomId, request));
-  }
+        return ResponseEntity.ok(roomService.getManagedRooms(cinemaId, active));
+    }
+
+    @PutMapping("/{roomId}")
+    public ResponseEntity<RoomResponse> update(
+            @PathVariable("roomId") UUID roomId, @Valid @RequestBody UpdateRoomRequest request) {
+
+        return ResponseEntity.ok(roomService.update(roomId, request));
+    }
 }

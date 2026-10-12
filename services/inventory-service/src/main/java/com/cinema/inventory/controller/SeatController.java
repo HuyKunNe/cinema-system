@@ -6,6 +6,9 @@ import com.cinema.inventory.dto.request.UpdateSeatRequest;
 import com.cinema.inventory.dto.response.SeatResponse;
 import com.cinema.inventory.service.SeatService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
@@ -61,6 +64,23 @@ public class SeatController {
     public ResponseEntity<List<SeatResponse>> getActiveSeats(@RequestParam("roomId") UUID roomId) {
 
         return ResponseEntity.ok(seatService.getActiveSeats(roomId));
+    }
+
+    @Operation(
+            operationId = "getManagedSeats",
+            summary = "List seats for inventory management",
+            description = "Omit active to include both active and inactive seats.",
+            security = {
+                @SecurityRequirement(
+                        name = "oauth2",
+                        scopes = {"inventory:manage"})
+            })
+    @GetMapping("/management")
+    public ResponseEntity<List<SeatResponse>> getManagedSeats(
+            @RequestParam("roomId") UUID roomId,
+            @RequestParam(name = "active", required = false) Boolean active) {
+
+        return ResponseEntity.ok(seatService.getManagedSeats(roomId, active));
     }
 
     @PutMapping("/{seatId}")

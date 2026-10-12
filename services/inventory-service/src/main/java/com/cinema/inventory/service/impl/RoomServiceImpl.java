@@ -1,11 +1,5 @@
 package com.cinema.inventory.service.impl;
 
-import java.util.List;
-import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.inventory.dto.request.CreateRoomRequest;
@@ -19,104 +13,118 @@ import com.cinema.inventory.repository.CinemaRepository;
 import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.service.RoomService;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
+
 @Service
 public class RoomServiceImpl implements RoomService {
 
-  private final RoomRepository roomRepository;
-  private final CinemaRepository cinemaRepository;
-  private final RoomMapper roomMapper;
+    private final RoomRepository roomRepository;
+    private final CinemaRepository cinemaRepository;
+    private final RoomMapper roomMapper;
 
-  public RoomServiceImpl(
-      RoomRepository roomRepository,
-      CinemaRepository cinemaRepository,
-      RoomMapper roomMapper) {
-    this.roomRepository = roomRepository;
-    this.cinemaRepository = cinemaRepository;
-    this.roomMapper = roomMapper;
-  }
-
-  @Override
-  @Transactional
-  public RoomResponse create(UUID cinemaId, CreateRoomRequest request) {
-
-    Cinema cinema = findCinema(cinemaId);
-
-    if (!cinema.isActive()) {
-      throw new ConflictException(InventoryErrorCode.CINEMA_INACTIVE);
+    public RoomServiceImpl(
+            RoomRepository roomRepository,
+            CinemaRepository cinemaRepository,
+            RoomMapper roomMapper) {
+        this.roomRepository = roomRepository;
+        this.cinemaRepository = cinemaRepository;
+        this.roomMapper = roomMapper;
     }
 
-    String normalizedName = normalize(request.name());
+    @Override
+    @Transactional
+    public RoomResponse create(UUID cinemaId, CreateRoomRequest request) {
 
-    if (roomRepository.existsByCinema_IdAndNameIgnoreCase(
-        cinemaId,
-        normalizedName)) {
-      throw new ConflictException(InventoryErrorCode.ROOM_NAME_ALREADY_EXISTS);
+        Cinema cinema = findCinema(cinemaId);
+
+        if (!cinema.isActive()) {
+            throw new ConflictException(InventoryErrorCode.CINEMA_INACTIVE);
+        }
+
+        String normalizedName = normalize(request.name());
+
+        if (roomRepository.existsByCinema_IdAndNameIgnoreCase(cinemaId, normalizedName)) {
+            throw new ConflictException(InventoryErrorCode.ROOM_NAME_ALREADY_EXISTS);
+        }
+
+        Room room = new Room(cinema, normalizedName, request.roomType());
+
+        Room savedRoom = roomRepository.save(room);
+
+        return roomMapper.toResponse(savedRoom);
     }
 
-    Room room = new Room(
-        cinema,
-        normalizedName,
-        request.roomType());
-
-    Room savedRoom = roomRepository.save(room);
-
-    return roomMapper.toResponse(savedRoom);
-  }
-
-  @Override
-  @Transactional(readOnly = true)
-  public RoomResponse getById(UUID roomId) {
-    return roomMapper.toResponse(findRoom(roomId));
-  }
-
-  @Override
-  @Transactional(readOnly = true)
-  public List<RoomResponse> getActiveRooms(UUID cinemaId) {
-    findCinema(cinemaId);
-
-    List<Room> rooms = roomRepository
-        .findAllByCinema_IdAndActiveTrueOrderByNameAsc(cinemaId);
-
-    return roomMapper.toResponses(rooms);
-  }
-
-  @Override
-  @Transactional
-  public RoomResponse update(UUID roomId, UpdateRoomRequest request) {
-
-    Room room = findRoom(roomId);
-    String normalizedName = normalize(request.name());
-
-    if (roomRepository.existsByCinema_IdAndNameIgnoreCaseAndIdNot(
-        room.getCinema().getId(),
-        normalizedName,
-        roomId)) {
-      throw new ConflictException(InventoryErrorCode.ROOM_NAME_ALREADY_EXISTS);
+    @Override
+    @Transactional(readOnly = true)
+    public RoomResponse getById(UUID roomId) {
+        return roomMapper.toResponse(findRoom(roomId));
     }
 
-    room.setName(normalizedName);
-    room.setRoomType(request.roomType());
+    @Override
+    @Transactional(readOnly = true)
+    public List<RoomResponse> getActiveRooms(UUID cinemaId) {
+        findCinema(cinemaId);
 
-    if (request.active()) {
-      room.activate();
-    } else {
-      room.deactivate();
+        List<Room> rooms = roomRepository.findAllByCinema_IdAndActiveTrueOrderByNameAsc(cinemaId);
+
+        return roomMapper.toResponses(rooms);
     }
 
-    return roomMapper.toResponse(room);
-  }
+    @Override
+    @Transactional(readOnly = true)
+    public List<RoomResponse> getManagedRooms(UUID cinemaId, Boolean active) {
+        findCinema(cinemaId);
 
-  private Cinema findCinema(UUID cinemaId) {
-    return cinemaRepository.findById(cinemaId)
-        .orElseThrow(() -> new NotFoundException(InventoryErrorCode.CINEMA_NOT_FOUND));
-  }
+        List<Room> rooms =
+                active == null
+                        ? roomRepository.findAllByCinema_IdOrderByNameAscIdAsc(cinemaId)
+                        : roomRepository.findAllByCinema_IdAndActiveOrderByNameAscIdAsc(
+                                cinemaId, active);
 
-  private Room findRoom(UUID roomId) {
-    return roomRepository.findById(roomId)
-        .orElseThrow(() -> new NotFoundException(InventoryErrorCode.ROOM_NOT_FOUND));
-  }
+        return roomMapper.toResponses(rooms);
+    }
 
-  private String normalize(String value) {
-    return value.trim();
-  }
+    @Override
+    @Transactional
+    public RoomResponse update(UUID roomId, UpdateRoomRequest request) {
+
+        Room room = findRoom(roomId);
+        String normalizedName = normalize(request.name());
+
+        if (roomRepository.existsByCinema_IdAndNameIgnoreCaseAndIdNot(
+                room.getCinema().getId(), normalizedName, roomId)) {
+            throw new ConflictException(InventoryErrorCode.ROOM_NAME_ALREADY_EXISTS);
+        }
+
+        room.setName(normalizedName);
+        room.setRoomType(request.roomType());
+
+        if (request.active()) {
+            room.activate();
+        } else {
+            room.deactivate();
+        }
+
+        return roomMapper.toResponse(room);
+    }
+
+    private Cinema findCinema(UUID cinemaId) {
+        return cinemaRepository
+                .findById(cinemaId)
+                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.CINEMA_NOT_FOUND));
+    }
+
+    private Room findRoom(UUID roomId) {
+        return roomRepository
+                .findById(roomId)
+                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.ROOM_NOT_FOUND));
+    }
+
+    private String normalize(String value) {
+        return value.trim();
+    }
 }

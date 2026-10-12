@@ -15,5 +15,7 @@ public interface RoomService {
 
   List<RoomResponse> getActiveRooms(UUID cinemaId);
 
+  List<RoomResponse> getManagedRooms(UUID cinemaId, Boolean active);
+
   RoomResponse update(UUID roomId, UpdateRoomRequest request);
 }

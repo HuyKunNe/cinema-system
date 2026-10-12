@@ -18,5 +18,7 @@ public interface SeatService {
 
     List<SeatResponse> getActiveSeats(UUID roomId);
 
+    List<SeatResponse> getManagedSeats(UUID roomId, Boolean active);
+
     SeatResponse update(UUID seatId, UpdateSeatRequest request);
 }

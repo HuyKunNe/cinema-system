@@ -1,11 +1,11 @@
 package com.cinema.inventory.service;
 
-import java.util.List;
-import java.util.UUID;
-
 import com.cinema.inventory.dto.request.CreateCinemaRequest;
 import com.cinema.inventory.dto.request.UpdateCinemaRequest;
 import com.cinema.inventory.dto.response.CinemaResponse;
+
+import java.util.List;
+import java.util.UUID;
 
 public interface CinemaService {
 
@@ -15,7 +15,7 @@ public interface CinemaService {
 
     List<CinemaResponse> getActiveCinemas(String city);
 
-    CinemaResponse update(
-            UUID cinemaId,
-            UpdateCinemaRequest request);
+    List<CinemaResponse> getManagedCinemas(String city, Boolean active);
+
+    CinemaResponse update(UUID cinemaId, UpdateCinemaRequest request);
 }

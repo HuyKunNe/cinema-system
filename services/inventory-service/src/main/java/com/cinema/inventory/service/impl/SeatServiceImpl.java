@@ -1,15 +1,5 @@
 package com.cinema.inventory.service.impl;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.inventory.dto.request.CreateSeatRangeRequest;
@@ -23,6 +13,16 @@ import com.cinema.inventory.mapper.SeatMapper;
 import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.repository.SeatRepository;
 import com.cinema.inventory.service.SeatService;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.UUID;
 
 @Service
 public class SeatServiceImpl implements SeatService {
@@ -116,6 +116,20 @@ public class SeatServiceImpl implements SeatService {
         findRoom(roomId);
 
         List<Seat> seats = seatRepository.findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(roomId);
+
+        return seatMapper.toResponses(seats);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SeatResponse> getManagedSeats(UUID roomId, Boolean active) {
+        findRoom(roomId);
+
+        List<Seat> seats =
+                active == null
+                        ? seatRepository.findAllByRoom_IdOrderBySeatNumberAscIdAsc(roomId)
+                        : seatRepository.findAllByRoom_IdAndActiveOrderBySeatNumberAscIdAsc(
+                                roomId, active);
 
         return seatMapper.toResponses(seats);
     }
