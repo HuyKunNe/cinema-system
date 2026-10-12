@@ -24,6 +24,7 @@ import com.cinema.inventory.service.RoomLayoutPublicationService;
 import com.cinema.inventory.service.RoomLayoutService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -133,6 +134,10 @@ public class RoomLayoutController {
     }
 
     @Operation(operationId = "getRoomLayoutById", summary = "Get room layout metadata")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Room layout metadata",
+            content = @Content(schema = @Schema(implementation = RoomLayoutResponse.class)))
     @GetMapping("/{layoutId}")
     public ResponseEntity<RoomLayoutResponse> getById(@PathVariable("layoutId") UUID layoutId) {
 
@@ -147,6 +152,17 @@ public class RoomLayoutController {
                     Returns all layout versions, newest first.
                     Returns an empty array when the room has no layouts.
                     """)
+    @ApiResponse(
+            responseCode = "200",
+            description = "Room layout versions",
+            content =
+                    @Content(
+                            array =
+                                    @ArraySchema(
+                                            schema =
+                                                    @Schema(
+                                                            implementation =
+                                                                    RoomLayoutResponse.class))))
     @GetMapping
     public ResponseEntity<List<RoomLayoutResponse>> getByRoomId(
             @RequestParam("roomId") UUID roomId) {
@@ -178,19 +194,28 @@ public class RoomLayoutController {
                     Requires inventory:manage.
                     Replaces all seats and elements in a DRAFT layout.
                     Empty arrays clear the corresponding content.
-                    expectedVersion must match the current layout version field.
+                    expectedVersion must match layout.version, not layout.layoutVersion.
                     This operation does not publish or bind the layout to showtimes.
                     """)
-    @ApiResponse(
-            responseCode = "409",
-            description = "Layout is not DRAFT or expectedVersion is stale",
-            content =
-                    @Content(
-                            schema =
-                                    @Schema(
-                                            implementation =
-                                                    com.cinema.common.response.model.ApiResponse
-                                                            .class)))
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "200",
+                description = "Updated room layout content",
+                content =
+                        @Content(
+                                schema =
+                                        @Schema(implementation = RoomLayoutContentResponse.class))),
+        @ApiResponse(
+                responseCode = "409",
+                description = "Layout is not DRAFT or expectedVersion is stale",
+                content =
+                        @Content(
+                                schema =
+                                        @Schema(
+                                                implementation =
+                                                        com.cinema.common.response.model.ApiResponse
+                                                                .class)))
+    })
     @PutMapping("/{layoutId}/content")
     public ResponseEntity<RoomLayoutContentResponse> replaceContent(
             @PathVariable("layoutId") UUID layoutId,
