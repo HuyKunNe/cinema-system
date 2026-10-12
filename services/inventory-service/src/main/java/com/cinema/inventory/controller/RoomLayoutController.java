@@ -179,6 +179,10 @@ public class RoomLayoutController {
                     Returns layout metadata, seat snapshots and elements.
                     This response is for administration.
                     """)
+    @ApiResponse(
+            responseCode = "200",
+            description = "Room layout content",
+            content = @Content(schema = @Schema(implementation = RoomLayoutContentResponse.class)))
     @GetMapping("/{layoutId}/content")
     public ResponseEntity<RoomLayoutContentResponse> getContent(
             @PathVariable("layoutId") UUID layoutId) {
