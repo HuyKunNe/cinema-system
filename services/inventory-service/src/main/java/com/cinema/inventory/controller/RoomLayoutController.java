@@ -1,19 +1,5 @@
 package com.cinema.inventory.controller;
 
-import java.net.URI;
-import java.util.List;
-import java.util.UUID;
-
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.cinema.inventory.dto.request.CreateRoomLayoutRequest;
 import com.cinema.inventory.dto.request.PublishRoomLayoutRequest;
 import com.cinema.inventory.dto.request.ReplaceRoomLayoutContentRequest;
@@ -31,7 +17,22 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import jakarta.validation.Valid;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.net.URI;
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/room-layouts")
@@ -103,9 +104,13 @@ public class RoomLayoutController {
             description =
                     """
                     Creates an empty DRAFT layout.
-                    The backend assigns the next layoutVersion for the room.
-                    Canvas dimensions use logical layout units.
-                    This operation does not publish or bind a layout to showtimes.
+                    Send only roomId to create an empty 6x6 matrix.
+                    An explicit matrix may specify rowCount and columnCount,
+                    but its seats array must be empty.
+                    Legacy canvasWidth and canvasHeight remain supported.
+                    Legacy dimensions and matrix are mutually exclusive.
+                    The backend assigns layoutVersion.
+                    This operation does not publish or bind the layout to showtimes.
                     """)
     @ApiResponses({
         @ApiResponse(
@@ -176,8 +181,9 @@ public class RoomLayoutController {
             description =
                     """
                     Requires inventory:manage.
-                    Returns layout metadata, seat snapshots and elements.
-                    This response is for administration.
+                    Matrix layouts expose matrix with dimensions and occupied cells.
+                    Legacy layouts expose geometry in seats and elements.
+                    Matrix cells are independent of booking availability.
                     """)
     @ApiResponse(
             responseCode = "200",
@@ -196,10 +202,13 @@ public class RoomLayoutController {
             description =
                     """
                     Requires inventory:manage.
-                    Replaces all seats and elements in a DRAFT layout.
-                    Empty arrays clear the corresponding content.
-                    expectedVersion must match layout.version, not layout.layoutVersion.
-                    This operation does not publish or bind the layout to showtimes.
+                    Replaces content of a DRAFT layout.
+                    Matrix layouts accept expectedVersion and matrix.
+                    Legacy layouts accept expectedVersion, seats and elements.
+                    The two representations are mutually exclusive.
+                    expectedVersion refers to layout.version, not layoutVersion.
+                    Saving matrix content does not create or modify catalog seats.
+                    Legacy layouts cannot be converted in place.
                     """)
     @ApiResponses({
         @ApiResponse(

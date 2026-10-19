@@ -15,6 +15,7 @@ import com.cinema.inventory.service.RoomLayoutService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -51,9 +52,28 @@ public class RoomLayoutServiceImpl implements RoomLayoutService {
             throw new ConflictException(InventoryErrorCode.ROOM_LAYOUT_VERSION_EXHAUSTED);
         }
 
-        RoomLayout layout =
-                new RoomLayout(
-                        room, maximumVersion + 1, request.canvasWidth(), request.canvasHeight());
+        RoomLayout layout;
+
+        if (request.matrix() != null) {
+            int rows = request.matrix().rowCount();
+            int columns = request.matrix().columnCount();
+
+            layout =
+                    new RoomLayout(
+                            room,
+                            maximumVersion + 1,
+                            BigDecimal.valueOf(columns),
+                            BigDecimal.valueOf(rows + 1L));
+
+            layout.defineMatrix(rows, columns);
+        } else {
+            layout =
+                    new RoomLayout(
+                            room,
+                            maximumVersion + 1,
+                            request.canvasWidth(),
+                            request.canvasHeight());
+        }
 
         RoomLayout savedLayout = roomLayoutRepository.saveAndFlush(layout);
 

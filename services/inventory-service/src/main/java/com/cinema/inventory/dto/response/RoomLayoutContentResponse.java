@@ -12,17 +12,29 @@ import java.util.UUID;
 @Schema(
         description =
                 """
-                Geometry uses logical layout units.
-                x and y identify the unrotated top-left corner.
-                Rotation is around the rectangle center.
-                Positive rotationDegrees rotate clockwise in screen coordinates.
+                Administration content of one layout version.
+                Matrix layouts expose matrix.
+                Legacy layouts expose geometry in seats and elements.
                 """)
 public record RoomLayoutContentResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) RoomLayoutResponse layout,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
                 List<RoomLayoutSeatPositionResponse> seats,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
-                List<RoomLayoutElementPositionResponse> elements) {
+                List<RoomLayoutElementPositionResponse> elements,
+        @Schema(
+                        nullable = true,
+                        description =
+                                "Present for matrix layouts; absent for legacy geometry layouts")
+                RoomLayoutMatrixResponse matrix) {
+
+    public RoomLayoutContentResponse(
+            RoomLayoutResponse layout,
+            List<RoomLayoutSeatPositionResponse> seats,
+            List<RoomLayoutElementPositionResponse> elements) {
+
+        this(layout, seats, elements, null);
+    }
 
     public record RoomLayoutSeatPositionResponse(
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) UUID id,

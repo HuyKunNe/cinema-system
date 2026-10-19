@@ -45,6 +45,12 @@ public class RoomLayout extends BaseEntity {
     @Column(name = "content_revision", nullable = false)
     private long contentRevision = 0L;
 
+    @Column(name = "row_count")
+    private Integer rowCount;
+
+    @Column(name = "column_count")
+    private Integer columnCount;
+
     protected RoomLayout() {}
 
     public RoomLayout(
@@ -83,6 +89,34 @@ public class RoomLayout extends BaseEntity {
 
     public OffsetDateTime getPublishedAt() {
         return publishedAt;
+    }
+
+    public Integer getRowCount() {
+        return rowCount;
+    }
+
+    public Integer getColumnCount() {
+        return columnCount;
+    }
+
+    public boolean isMatrixLayout() {
+        return rowCount != null && columnCount != null;
+    }
+
+    public void defineMatrix(int rowCount, int columnCount) {
+        requireDraft();
+
+        if (rowCount < 1 || rowCount > 100 || columnCount < 1 || columnCount > 100) {
+            throw new ValidationException(InventoryErrorCode.ROOM_LAYOUT_DATA_INVALID);
+        }
+
+        this.rowCount = rowCount;
+        this.columnCount = columnCount;
+
+        // Compatibility dimensions in logical units.
+        // FE matrix editing does not use or submit these values.
+        this.canvasWidth = BigDecimal.valueOf(columnCount);
+        this.canvasHeight = BigDecimal.valueOf(rowCount + 1L);
     }
 
     public void requireDraft() {

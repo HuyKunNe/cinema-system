@@ -454,6 +454,18 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_SEAT_MAP_DATA_INCONSISTENT",
                     "Seat map data is inconsistent with the pinned layout");
 
+    public static final InventoryErrorCode ROOM_LAYOUT_MATRIX_CONVERSION_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_ROOM_LAYOUT_MATRIX_CONVERSION_REQUIRED",
+                    "Create a new matrix draft instead of replacing a legacy geometry layout");
+
+    public static final InventoryErrorCode ROOM_LAYOUT_MATRIX_PUBLICATION_PENDING =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_ROOM_LAYOUT_MATRIX_PUBLICATION_PENDING",
+                    "Matrix drafts can be saved but publication is not available yet");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

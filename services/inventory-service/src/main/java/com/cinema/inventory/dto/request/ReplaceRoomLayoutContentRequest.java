@@ -2,8 +2,12 @@ package com.cinema.inventory.dto.request;
 
 import com.cinema.inventory.entity.RoomLayoutGeometry;
 import com.cinema.inventory.enums.RoomLayoutElementKind;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
@@ -14,20 +18,43 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-import io.swagger.v3.oas.annotations.media.Schema;
-
 @Schema(
         description =
                 """
-                Geometry uses logical layout units.
-                x and y identify the unrotated top-left corner.
-                Rotation is around the rectangle center.
-                Positive rotationDegrees rotate clockwise in screen coordinates.
+                Replaces draft content.
+                Supply matrix for matrix layouts.
+                Supply seats and elements for legacy geometry layouts.
+                The two representations are mutually exclusive.
+                expectedVersion refers to layout.version.
                 """)
 public record ReplaceRoomLayoutContentRequest(
         @NotNull @PositiveOrZero Long expectedVersion,
-        @NotNull List<@NotNull @Valid RoomLayoutSeatInput> seats,
-        @NotNull List<@NotNull @Valid RoomLayoutElementInput> elements) {
+        List<@NotNull @Valid RoomLayoutSeatInput> seats,
+        List<@NotNull @Valid RoomLayoutElementInput> elements,
+        @Valid RoomLayoutMatrixInput matrix) {
+
+    public ReplaceRoomLayoutContentRequest(
+            Long expectedVersion,
+            List<RoomLayoutSeatInput> seats,
+            List<RoomLayoutElementInput> elements) {
+
+        this(expectedVersion, seats, elements, null);
+    }
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    @AssertTrue(
+            message =
+                    """
+                    Supply matrix or both legacy seats and elements, not both
+                    """)
+    public boolean isRepresentationValid() {
+        if (matrix != null) {
+            return seats == null && elements == null;
+        }
+
+        return seats != null && elements != null;
+    }
 
     public record RoomLayoutSeatInput(
             @NotNull UUID seatId, @NotNull @Valid RoomLayoutGeometryInput geometry) {}
