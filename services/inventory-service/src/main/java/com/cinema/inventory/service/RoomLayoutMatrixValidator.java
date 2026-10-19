@@ -32,31 +32,37 @@ public class RoomLayoutMatrixValidator {
             throw invalid();
         }
 
-        Set<Long> positions = new HashSet<>();
+        Set<Long> occupiedPositions = new HashSet<>();
         Set<UUID> seatIds = new HashSet<>();
         Map<Integer, List<MatrixSeatInput>> rows = new HashMap<>();
 
         for (MatrixSeatInput seat : matrix.seats()) {
-            if (seat.rowIndex() >= matrix.rowCount()
-                    || seat.columnIndex() >= matrix.columnCount()) {
+            int rowIndex = seat.rowIndex();
+            int columnIndex = seat.columnIndex();
+            int columnSpan = seat.seatType().getMatrixColumnSpan();
+            int endColumnExclusive = columnIndex + columnSpan;
+
+            if (rowIndex >= matrix.rowCount()
+                    || endColumnExclusive > matrix.columnCount()) {
                 throw invalid();
             }
 
-            long position =
-                    ((long) seat.rowIndex() << 32)
-                            | seat.columnIndex().longValue();
+            // Reserve every occupied column, not only the starting column.
+            for (int offset = 0; offset < columnSpan; offset++) {
+                long position =
+                        ((long) rowIndex << 32)
+                                | (long) (columnIndex + offset);
 
-            if (!positions.add(position)) {
-                throw invalid();
+                if (!occupiedPositions.add(position)) {
+                    throw invalid();
+                }
             }
 
             if (seat.seatId() != null && !seatIds.add(seat.seatId())) {
                 throw invalid();
             }
 
-            rows.computeIfAbsent(
-                            seat.rowIndex(),
-                            ignored -> new ArrayList<>())
+            rows.computeIfAbsent(rowIndex, ignored -> new ArrayList<>())
                     .add(seat);
         }
 

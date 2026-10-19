@@ -61,7 +61,8 @@ public class RoomLayoutMatrixCell extends BaseEntity {
                 || columnIndex >= layout.getColumnCount()
                 || number < 1
                 || number > layout.getColumnCount()
-                || seatType == null) {
+                || seatType == null
+                || columnIndex + seatType.getMatrixColumnSpan() > layout.getColumnCount()) {
             throw invalid();
         }
 
