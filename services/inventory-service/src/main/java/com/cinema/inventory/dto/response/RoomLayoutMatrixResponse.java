@@ -12,7 +12,7 @@ public record RoomLayoutMatrixResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int rowCount,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int columnCount,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<MatrixSeatResponse> seats) {
-
+    @Schema(name = "MatrixSeatResponse")
     public record MatrixSeatResponse(
             @JsonInclude(JsonInclude.Include.ALWAYS)
                     @Schema(
