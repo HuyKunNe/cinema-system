@@ -1,0 +1,2 @@
+ALTER TABLE cinemas
+    ADD COLUMN time_zone VARCHAR(64) NULL;

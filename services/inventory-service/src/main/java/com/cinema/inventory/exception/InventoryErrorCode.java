@@ -9,6 +9,18 @@ public final class InventoryErrorCode implements ErrorCode {
             new InventoryErrorCode(
                     ErrorCategory.RESOURCE, "INVENTORY_CINEMA_NOT_FOUND", "Cinema not found");
 
+    public static final InventoryErrorCode CINEMA_TIME_ZONE_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_CINEMA_TIME_ZONE_INVALID",
+                    "Cinema time zone must be a supported region-based time zone");
+
+    public static final InventoryErrorCode CINEMA_TIME_ZONE_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_CINEMA_TIME_ZONE_REQUIRED",
+                    "Configure the cinema time zone before using pricing policies");
+
     public static final InventoryErrorCode ROOM_NOT_FOUND =
             new InventoryErrorCode(
                     ErrorCategory.RESOURCE, "INVENTORY_ROOM_NOT_FOUND", "Room not found");

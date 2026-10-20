@@ -37,9 +37,26 @@ public class CinemaServiceImpl implements CinemaService {
                         normalize(request.address()),
                         normalize(request.city()));
 
+        cinema.changeTimeZone(request.timeZone());
+
         Cinema savedCinema = cinemaRepository.save(cinema);
 
         return cinemaMapper.toResponse(savedCinema);
+    }
+
+    @Override
+    @Transactional
+    public CinemaResponse update(UUID cinemaId, UpdateCinemaRequest request) {
+        Cinema cinema = findCinema(cinemaId);
+
+        cinema.changeTimeZone(request.timeZone());
+
+        cinema.update(
+                normalize(request.name()), normalize(request.address()), normalize(request.city()));
+
+        cinema.changeActive(request.active());
+
+        return cinemaMapper.toResponse(cinema);
     }
 
     @Override
@@ -86,19 +103,6 @@ public class CinemaServiceImpl implements CinemaService {
         }
 
         return cinemaMapper.toResponses(cinemas);
-    }
-
-    @Override
-    @Transactional
-    public CinemaResponse update(UUID cinemaId, UpdateCinemaRequest request) {
-        Cinema cinema = findCinema(cinemaId);
-
-        cinema.update(
-                normalize(request.name()), normalize(request.address()), normalize(request.city()));
-
-        cinema.changeActive(request.active());
-
-        return cinemaMapper.toResponse(cinema);
     }
 
     private Cinema findCinema(UUID cinemaId) {
