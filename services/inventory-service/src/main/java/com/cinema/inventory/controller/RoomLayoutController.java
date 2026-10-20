@@ -1,11 +1,27 @@
 package com.cinema.inventory.controller;
 
+import java.net.URI;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.cinema.inventory.dto.request.CopyPublishedRoomLayoutRequest;
 import com.cinema.inventory.dto.request.CreateRoomLayoutRequest;
 import com.cinema.inventory.dto.request.PublishRoomLayoutRequest;
 import com.cinema.inventory.dto.request.ReplaceRoomLayoutContentRequest;
 import com.cinema.inventory.dto.response.RoomLayoutContentResponse;
 import com.cinema.inventory.dto.response.RoomLayoutResponse;
 import com.cinema.inventory.service.RoomLayoutContentService;
+import com.cinema.inventory.service.RoomLayoutDraftCopyService;
 import com.cinema.inventory.service.RoomLayoutPublicationService;
 import com.cinema.inventory.service.RoomLayoutService;
 
@@ -20,20 +36,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import jakarta.validation.Valid;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.net.URI;
-import java.util.List;
-import java.util.UUID;
-
 @RestController
 @RequestMapping("/api/v1/room-layouts")
 @Tag(name = "room-layout-controller")
@@ -44,58 +46,49 @@ import java.util.UUID;
     @ApiResponse(
             responseCode = "400",
             description = "Invalid request",
-            content =
-                    @Content(
-                            schema =
-                                    @Schema(
-                                            implementation =
-                                                    com.cinema.common.response.model.ApiResponse
-                                                            .class))),
+            content = @Content(
+                    schema = @Schema(
+                            implementation =
+                                    com.cinema.common.response.model.ApiResponse.class))),
     @ApiResponse(
             responseCode = "401",
             description = "Authentication required",
-            content =
-                    @Content(
-                            schema =
-                                    @Schema(
-                                            implementation =
-                                                    com.cinema.common.response.model.ApiResponse
-                                                            .class))),
+            content = @Content(
+                    schema = @Schema(
+                            implementation =
+                                    com.cinema.common.response.model.ApiResponse.class))),
     @ApiResponse(
             responseCode = "403",
             description = "Requires inventory:manage",
-            content =
-                    @Content(
-                            schema =
-                                    @Schema(
-                                            implementation =
-                                                    com.cinema.common.response.model.ApiResponse
-                                                            .class))),
+            content = @Content(
+                    schema = @Schema(
+                            implementation =
+                                    com.cinema.common.response.model.ApiResponse.class))),
     @ApiResponse(
             responseCode = "404",
             description = "Room or layout not found",
-            content =
-                    @Content(
-                            schema =
-                                    @Schema(
-                                            implementation =
-                                                    com.cinema.common.response.model.ApiResponse
-                                                            .class)))
+            content = @Content(
+                    schema = @Schema(
+                            implementation =
+                                    com.cinema.common.response.model.ApiResponse.class)))
 })
 public class RoomLayoutController {
 
     private final RoomLayoutService roomLayoutService;
     private final RoomLayoutContentService roomLayoutContentService;
     private final RoomLayoutPublicationService roomLayoutPublicationService;
+    private final RoomLayoutDraftCopyService roomLayoutDraftCopyService;
 
     public RoomLayoutController(
             RoomLayoutService roomLayoutService,
             RoomLayoutContentService roomLayoutContentService,
-            RoomLayoutPublicationService roomLayoutPublicationService) {
+            RoomLayoutPublicationService roomLayoutPublicationService,
+            RoomLayoutDraftCopyService roomLayoutDraftCopyService) {
 
         this.roomLayoutService = roomLayoutService;
         this.roomLayoutContentService = roomLayoutContentService;
         this.roomLayoutPublicationService = roomLayoutPublicationService;
+        this.roomLayoutDraftCopyService = roomLayoutDraftCopyService;
     }
 
     @Operation(
@@ -116,17 +109,16 @@ public class RoomLayoutController {
         @ApiResponse(
                 responseCode = "201",
                 description = "Draft created",
-                content = @Content(schema = @Schema(implementation = RoomLayoutResponse.class))),
+                content = @Content(
+                        schema = @Schema(
+                                implementation = RoomLayoutResponse.class))),
         @ApiResponse(
                 responseCode = "409",
                 description = "Room layout version limit reached",
-                content =
-                        @Content(
-                                schema =
-                                        @Schema(
-                                                implementation =
-                                                        com.cinema.common.response.model.ApiResponse
-                                                                .class)))
+                content = @Content(
+                        schema = @Schema(
+                                implementation =
+                                        com.cinema.common.response.model.ApiResponse.class)))
     })
     @PostMapping
     public ResponseEntity<RoomLayoutResponse> createDraft(
@@ -134,17 +126,77 @@ public class RoomLayoutController {
 
         RoomLayoutResponse response = roomLayoutService.createDraft(request);
 
-        return ResponseEntity.created(URI.create("/api/v1/room-layouts/" + response.id()))
+        return ResponseEntity.created(
+                        URI.create("/api/v1/room-layouts/" + response.id()))
                 .body(response);
     }
 
-    @Operation(operationId = "getRoomLayoutById", summary = "Get room layout metadata")
+    @Operation(
+            operationId = "createRoomLayoutDraftFromPublished",
+            summary = "Create a draft from a published matrix layout",
+            description =
+                    """
+                    Requires inventory:manage.
+                    The source must be a PUBLISHED matrix layout.
+                    expectedVersion refers to the source version field,
+                    not layoutVersion.
+
+                    Creates a new DRAFT in the same room.
+                    Copies matrix dimensions, positions, numbers and seat types.
+                    Preserves every inventory seatId.
+                    Creates new layout-cell records without creating inventory seats.
+
+                    The backend allocates the next room layoutVersion.
+                    The source layout and existing showtimes remain unchanged.
+                    Returns the complete content of the new draft.
+
+                    Legacy geometry layouts are not converted by this operation.
+                    Repeating a successful request creates another draft.
+                    """)
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "201",
+                description = "Draft copied from the published matrix",
+                content = @Content(
+                        schema = @Schema(
+                                implementation = RoomLayoutContentResponse.class))),
+        @ApiResponse(
+                responseCode = "409",
+                description =
+                        "Stale source version, source is not a published matrix, "
+                                + "inconsistent source content or version limit reached",
+                content = @Content(
+                        schema = @Schema(
+                                implementation =
+                                        com.cinema.common.response.model.ApiResponse.class)))
+    })
+    @PostMapping("/{layoutId}/drafts")
+    public ResponseEntity<RoomLayoutContentResponse> createDraftFromPublished(
+            @PathVariable("layoutId") UUID layoutId,
+            @Valid @RequestBody CopyPublishedRoomLayoutRequest request) {
+
+        RoomLayoutContentResponse response =
+                roomLayoutDraftCopyService.copy(layoutId, request);
+
+        return ResponseEntity.created(
+                        URI.create(
+                                "/api/v1/room-layouts/"
+                                        + response.layout().id()))
+                .body(response);
+    }
+
+    @Operation(
+            operationId = "getRoomLayoutById",
+            summary = "Get room layout metadata")
     @ApiResponse(
             responseCode = "200",
             description = "Room layout metadata",
-            content = @Content(schema = @Schema(implementation = RoomLayoutResponse.class)))
+            content = @Content(
+                    schema = @Schema(
+                            implementation = RoomLayoutResponse.class)))
     @GetMapping("/{layoutId}")
-    public ResponseEntity<RoomLayoutResponse> getById(@PathVariable("layoutId") UUID layoutId) {
+    public ResponseEntity<RoomLayoutResponse> getById(
+            @PathVariable("layoutId") UUID layoutId) {
 
         return ResponseEntity.ok(roomLayoutService.getById(layoutId));
     }
@@ -160,14 +212,10 @@ public class RoomLayoutController {
     @ApiResponse(
             responseCode = "200",
             description = "Room layout versions",
-            content =
-                    @Content(
-                            array =
-                                    @ArraySchema(
-                                            schema =
-                                                    @Schema(
-                                                            implementation =
-                                                                    RoomLayoutResponse.class))))
+            content = @Content(
+                    array = @ArraySchema(
+                            schema = @Schema(
+                                    implementation = RoomLayoutResponse.class))))
     @GetMapping
     public ResponseEntity<List<RoomLayoutResponse>> getByRoomId(
             @RequestParam("roomId") UUID roomId) {
@@ -188,12 +236,15 @@ public class RoomLayoutController {
     @ApiResponse(
             responseCode = "200",
             description = "Room layout content",
-            content = @Content(schema = @Schema(implementation = RoomLayoutContentResponse.class)))
+            content = @Content(
+                    schema = @Schema(
+                            implementation = RoomLayoutContentResponse.class)))
     @GetMapping("/{layoutId}/content")
     public ResponseEntity<RoomLayoutContentResponse> getContent(
             @PathVariable("layoutId") UUID layoutId) {
 
-        return ResponseEntity.ok(roomLayoutContentService.getContent(layoutId));
+        return ResponseEntity.ok(
+                roomLayoutContentService.getContent(layoutId));
     }
 
     @Operation(
@@ -214,27 +265,24 @@ public class RoomLayoutController {
         @ApiResponse(
                 responseCode = "200",
                 description = "Updated room layout content",
-                content =
-                        @Content(
-                                schema =
-                                        @Schema(implementation = RoomLayoutContentResponse.class))),
+                content = @Content(
+                        schema = @Schema(
+                                implementation = RoomLayoutContentResponse.class))),
         @ApiResponse(
                 responseCode = "409",
                 description = "Layout is not DRAFT or expectedVersion is stale",
-                content =
-                        @Content(
-                                schema =
-                                        @Schema(
-                                                implementation =
-                                                        com.cinema.common.response.model.ApiResponse
-                                                                .class)))
+                content = @Content(
+                        schema = @Schema(
+                                implementation =
+                                        com.cinema.common.response.model.ApiResponse.class)))
     })
     @PutMapping("/{layoutId}/content")
     public ResponseEntity<RoomLayoutContentResponse> replaceContent(
             @PathVariable("layoutId") UUID layoutId,
             @Valid @RequestBody ReplaceRoomLayoutContentRequest request) {
 
-        return ResponseEntity.ok(roomLayoutContentService.replaceContent(layoutId, request));
+        return ResponseEntity.ok(
+                roomLayoutContentService.replaceContent(layoutId, request));
     }
 
     @Operation(
@@ -271,23 +319,23 @@ public class RoomLayoutController {
         @ApiResponse(
                 responseCode = "200",
                 description = "Layout published",
-                content = @Content(schema = @Schema(implementation = RoomLayoutResponse.class))),
+                content = @Content(
+                        schema = @Schema(
+                                implementation = RoomLayoutResponse.class))),
         @ApiResponse(
                 responseCode = "409",
                 description = "Layout is not DRAFT or expectedVersion is stale",
-                content =
-                        @Content(
-                                schema =
-                                        @Schema(
-                                                implementation =
-                                                        com.cinema.common.response.model.ApiResponse
-                                                                .class)))
+                content = @Content(
+                        schema = @Schema(
+                                implementation =
+                                        com.cinema.common.response.model.ApiResponse.class)))
     })
     @PostMapping("/{layoutId}/publish")
     public ResponseEntity<RoomLayoutResponse> publish(
             @PathVariable("layoutId") UUID layoutId,
             @Valid @RequestBody PublishRoomLayoutRequest request) {
 
-        return ResponseEntity.ok(roomLayoutPublicationService.publish(layoutId, request));
+        return ResponseEntity.ok(
+                roomLayoutPublicationService.publish(layoutId, request));
     }
 }
