@@ -69,6 +69,30 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_TICKET_SURCHARGE_RULE_DATA_INVALID",
                     "Ticket surcharge rule data is invalid");
 
+    public static final InventoryErrorCode PRICING_EVALUATION_CONTEXT_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_PRICING_EVALUATION_CONTEXT_INVALID",
+                    "Pricing evaluation context is invalid");
+
+    public static final InventoryErrorCode PRICING_POLICY_NOT_EFFECTIVE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_NOT_EFFECTIVE",
+                    "Pricing policy does not cover the local showtime date");
+
+    public static final InventoryErrorCode TICKET_PRICE_RULE_NOT_FOUND =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_TICKET_PRICE_RULE_NOT_FOUND",
+                    "No base ticket price rule matches the evaluation context");
+
+    public static final InventoryErrorCode TICKET_PRICE_RULE_AMBIGUOUS =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_TICKET_PRICE_RULE_AMBIGUOUS",
+                    "Multiple base ticket price rules share the highest matching priority");
+
     public static final InventoryErrorCode PRICING_POLICY_CONTENT_REVISION_EXHAUSTED =
             new InventoryErrorCode(
                     ErrorCategory.BUSINESS,
