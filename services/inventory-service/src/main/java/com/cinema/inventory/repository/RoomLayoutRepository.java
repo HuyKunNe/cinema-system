@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.cinema.inventory.entity.RoomLayout;
+import com.cinema.inventory.enums.RoomLayoutStatus;
 
 import jakarta.persistence.LockModeType;
 
@@ -17,9 +18,17 @@ public interface RoomLayoutRepository extends JpaRepository<RoomLayout, UUID> {
 
     List<RoomLayout> findAllByRoom_IdOrderByLayoutVersionDesc(UUID roomId);
 
-    Optional<RoomLayout> findByIdAndRoom_Id(UUID layoutId, UUID roomId);
+    Optional<RoomLayout> findByIdAndRoom_Id(
+            UUID layoutId,
+            UUID roomId);
 
-    boolean existsByRoom_IdAndLayoutVersion(UUID roomId, long layoutVersion);
+    Optional<RoomLayout> findFirstByRoom_IdAndStatusOrderByLayoutVersionDesc(
+            UUID roomId,
+            RoomLayoutStatus status);
+
+    boolean existsByRoom_IdAndLayoutVersion(
+            UUID roomId,
+            long layoutVersion);
 
     @Query(
             """
@@ -27,13 +36,16 @@ public interface RoomLayoutRepository extends JpaRepository<RoomLayout, UUID> {
             from RoomLayout layout
             where layout.room.id = :roomId
             """)
-    long findMaximumLayoutVersionByRoomId(@Param("roomId") UUID roomId);
+    long findMaximumLayoutVersionByRoomId(
+            @Param("roomId") UUID roomId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select layout from RoomLayout layout where layout.id = :layoutId")
-    Optional<RoomLayout> findByIdForUpdate(@Param("layoutId") UUID layoutId);
+    Optional<RoomLayout> findByIdForUpdate(
+            @Param("layoutId") UUID layoutId);
 
     @Lock(LockModeType.PESSIMISTIC_READ)
     @Query("select layout from RoomLayout layout where layout.id = :layoutId")
-    Optional<RoomLayout> findByIdForRead(@Param("layoutId") UUID layoutId);
+    Optional<RoomLayout> findByIdForRead(
+            @Param("layoutId") UUID layoutId);
 }
