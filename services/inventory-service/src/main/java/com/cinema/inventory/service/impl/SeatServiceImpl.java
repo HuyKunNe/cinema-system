@@ -33,6 +33,7 @@ public class SeatServiceImpl implements SeatService {
 
     public SeatServiceImpl(
             SeatRepository seatRepository, RoomRepository roomRepository, SeatMapper seatMapper) {
+
         this.seatRepository = seatRepository;
         this.roomRepository = roomRepository;
         this.seatMapper = seatMapper;
@@ -48,22 +49,15 @@ public class SeatServiceImpl implements SeatService {
             throw new ConflictException(InventoryErrorCode.ROOM_INACTIVE);
         }
 
-        String normalizedSeatNumber = normalize(request.seatNumber());
+        String seatNumber = normalize(request.seatNumber());
 
-        if (seatRepository.existsByRoom_IdAndSeatNumberIgnoreCase(roomId, normalizedSeatNumber)) {
+        if (seatRepository.existsByRoom_IdAndSeatNumberIgnoreCase(roomId, seatNumber)) {
             throw new ConflictException(InventoryErrorCode.SEAT_NUMBER_ALREADY_EXISTS);
         }
 
-        Seat seat =
-                new Seat(
-                        room,
-                        normalizedSeatNumber,
-                        normalize(request.rowLabel()),
-                        request.seatType());
+        Seat seat = new Seat(room, seatNumber, normalize(request.rowLabel()), request.seatType());
 
-        Seat savedSeat = seatRepository.save(seat);
-
-        return seatMapper.toResponse(savedSeat);
+        return seatMapper.toResponse(seatRepository.save(seat));
     }
 
     @Override
@@ -76,32 +70,29 @@ public class SeatServiceImpl implements SeatService {
             throw new ConflictException(InventoryErrorCode.ROOM_INACTIVE);
         }
 
-        String normalizedRowLabel = normalize(request.rowLabel()).toUpperCase(Locale.ROOT);
+        String rowLabel = normalize(request.rowLabel()).toUpperCase(Locale.ROOT);
 
         Set<String> existingSeatNumbers = new HashSet<>();
 
         seatRepository.findAllByRoom_IdOrderBySeatNumberAsc(roomId).stream()
                 .map(Seat::getSeatNumber)
-                .map(seatNumber -> seatNumber.toLowerCase(Locale.ROOT))
+                .map(number -> number.toLowerCase(Locale.ROOT))
                 .forEach(existingSeatNumbers::add);
 
         List<Seat> seats = new ArrayList<>();
 
         for (int number = request.startNumber(); number <= request.endNumber(); number++) {
 
-            String seatNumber = normalizedRowLabel + number;
+            String seatNumber = rowLabel + number;
 
             if (existingSeatNumbers.contains(seatNumber.toLowerCase(Locale.ROOT))) {
-
                 throw new ConflictException(InventoryErrorCode.SEAT_NUMBER_ALREADY_EXISTS);
             }
 
-            seats.add(new Seat(room, seatNumber, normalizedRowLabel, request.seatType()));
+            seats.add(new Seat(room, seatNumber, rowLabel, request.seatType()));
         }
 
-        List<Seat> savedSeats = seatRepository.saveAll(seats);
-
-        return seatMapper.toResponses(savedSeats);
+        return seatMapper.toResponses(seatRepository.saveAll(seats));
     }
 
     @Override
@@ -115,14 +106,14 @@ public class SeatServiceImpl implements SeatService {
     public List<SeatResponse> getActiveSeats(UUID roomId) {
         findRoom(roomId);
 
-        List<Seat> seats = seatRepository.findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(roomId);
-
-        return seatMapper.toResponses(seats);
+        return seatMapper.toResponses(
+                seatRepository.findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(roomId));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<SeatResponse> getManagedSeats(UUID roomId, Boolean active) {
+
         findRoom(roomId);
 
         List<Seat> seats =
@@ -139,16 +130,17 @@ public class SeatServiceImpl implements SeatService {
     public SeatResponse update(UUID seatId, UpdateSeatRequest request) {
 
         Seat seat = findSeat(seatId);
-        String normalizedSeatNumber = normalize(request.seatNumber());
+        String seatNumber = normalize(request.seatNumber());
 
-        UUID roomId = seat.getRoom().getId();
-
-        if (seatRepository.existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(
-                roomId, normalizedSeatNumber, seatId)) {
+        if (!seat.isLayoutManaged()
+                && seatRepository.existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(
+                        seat.getRoom().getId(), seatNumber, seatId)) {
             throw new ConflictException(InventoryErrorCode.SEAT_NUMBER_ALREADY_EXISTS);
         }
 
-        seat.setSeatNumber(normalizedSeatNumber);
+        // Layout-managed seats reject metadata changes in the entity.
+        // Unchanged metadata still permits an active-state update.
+        seat.setSeatNumber(seatNumber);
         seat.setRowLabel(normalize(request.rowLabel()));
         seat.setSeatType(request.seatType());
 

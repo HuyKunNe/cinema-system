@@ -27,6 +27,7 @@ public class RoomLayoutPublicationService {
     private final RoomLayoutPublicationValidator validator;
     private final RoomLayoutMapper mapper;
     private final Clock clock;
+    private final RoomLayoutSeatBindingService bindingService;
 
     public RoomLayoutPublicationService(
             RoomLayoutRepository layoutRepository,
@@ -34,7 +35,8 @@ public class RoomLayoutPublicationService {
             RoomLayoutElementRepository elementRepository,
             RoomLayoutPublicationValidator validator,
             RoomLayoutMapper mapper,
-            Clock clock) {
+            Clock clock,
+            RoomLayoutSeatBindingService bindingService) {
 
         this.layoutRepository = layoutRepository;
         this.seatRepository = seatRepository;
@@ -42,6 +44,7 @@ public class RoomLayoutPublicationService {
         this.validator = validator;
         this.mapper = mapper;
         this.clock = clock;
+        this.bindingService = bindingService;
     }
 
     @Transactional
@@ -62,13 +65,13 @@ public class RoomLayoutPublicationService {
         }
 
         if (layout.isMatrixLayout()) {
-            throw new ConflictException(InventoryErrorCode.ROOM_LAYOUT_MATRIX_PUBLICATION_PENDING);
+            bindingService.bindForPublication(layout);
+        } else {
+            validator.validate(
+                    layout,
+                    seatRepository.findAllByLayout_IdOrderBySeatNumberSnapshotAsc(layoutId),
+                    elementRepository.findAllByLayout_IdOrderByIdAsc(layoutId));
         }
-
-        validator.validate(
-                layout,
-                seatRepository.findAllByLayout_IdOrderBySeatNumberSnapshotAsc(layoutId),
-                elementRepository.findAllByLayout_IdOrderByIdAsc(layoutId));
 
         layout.publish(OffsetDateTime.now(clock));
         layoutRepository.flush();

@@ -1,10 +1,14 @@
 package com.cinema.inventory.entity;
 
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
+import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
 import com.cinema.inventory.enums.SeatType;
+import com.cinema.inventory.exception.InventoryErrorCode;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -37,11 +41,16 @@ public class Seat extends BaseEntity {
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
+    @Column(
+            name = "layout_managed",
+            nullable = false,
+            updatable = false)
+    private boolean layoutManaged = false;
+
     @OneToMany(mappedBy = "seat", fetch = FetchType.LAZY)
     private Set<ShowSeat> showSeats = new HashSet<>();
 
-    protected Seat() {
-    }
+    protected Seat() {}
 
     public Seat(
             Room room,
@@ -54,6 +63,36 @@ public class Seat extends BaseEntity {
         this.rowLabel = rowLabel;
         this.seatType = seatType;
         this.active = true;
+    }
+
+    public static Seat createForLayout(
+            Room room,
+            String seatNumber,
+            String rowLabel,
+            SeatType seatType) {
+
+        if (room == null
+                || room.getId() == null
+                || seatNumber == null
+                || seatNumber.isBlank()
+                || seatNumber.length() > 20
+                || rowLabel == null
+                || rowLabel.isBlank()
+                || rowLabel.length() > 10
+                || seatType == null) {
+            throw new ValidationException(
+                    InventoryErrorCode.ROOM_LAYOUT_DATA_INVALID);
+        }
+
+        Seat seat = new Seat(
+                room,
+                seatNumber,
+                rowLabel,
+                seatType);
+
+        seat.layoutManaged = true;
+
+        return seat;
     }
 
     public Room getRoom() {
@@ -69,6 +108,9 @@ public class Seat extends BaseEntity {
     }
 
     public void setSeatNumber(String seatNumber) {
+        requireMutableMetadata(
+                Objects.equals(this.seatNumber, seatNumber));
+
         this.seatNumber = seatNumber;
     }
 
@@ -77,6 +119,9 @@ public class Seat extends BaseEntity {
     }
 
     public void setRowLabel(String rowLabel) {
+        requireMutableMetadata(
+                Objects.equals(this.rowLabel, rowLabel));
+
         this.rowLabel = rowLabel;
     }
 
@@ -85,11 +130,17 @@ public class Seat extends BaseEntity {
     }
 
     public void setSeatType(SeatType seatType) {
+        requireMutableMetadata(this.seatType == seatType);
+
         this.seatType = seatType;
     }
 
     public boolean isActive() {
         return active;
+    }
+
+    public boolean isLayoutManaged() {
+        return layoutManaged;
     }
 
     public void activate() {
@@ -102,5 +153,12 @@ public class Seat extends BaseEntity {
 
     public Set<ShowSeat> getShowSeats() {
         return Set.copyOf(showSeats);
+    }
+
+    private void requireMutableMetadata(boolean unchanged) {
+        if (layoutManaged && !unchanged) {
+            throw new ConflictException(
+                    InventoryErrorCode.SEAT_LAYOUT_METADATA_READ_ONLY);
+        }
     }
 }

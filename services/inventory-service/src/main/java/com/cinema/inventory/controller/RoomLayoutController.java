@@ -244,10 +244,28 @@ public class RoomLayoutController {
                     """
                     Requires inventory:manage.
                     expectedVersion must match the current version field.
-                    Requires at least one seat and one SCREEN.
-                    Validates rotated geometry inside the canvas.
-                    Rejects seat-seat and seat-element overlaps.
-                    Publishes this layout version without binding it to showtimes.
+
+                    Matrix layouts:
+                    - require at least one seat.
+                    - validate dimensions, consecutive numbering and occupied cells.
+                    - COUPLE occupies two adjacent columns.
+                    - preserve every supplied seatId after checking its room.
+                    - create an inventory seat for each unbound cell.
+                    - never infer seat identity from its display number.
+                    - do not require a stored SCREEN element.
+                    - do not modify metadata of existing inventory seats.
+
+                    Legacy layouts:
+                    - require at least one seat and one SCREEN.
+                    - validate rotated geometry inside the canvas.
+                    - reject seat-seat and seat-element overlaps.
+
+                    Seat binding and publication share one transaction.
+                    Published layouts cannot be modified.
+                    Publication does not change existing showtimes.
+
+                    The response contains layout metadata.
+                    Reload layout content after publication to obtain bound seatIds.
                     """)
     @ApiResponses({
         @ApiResponse(

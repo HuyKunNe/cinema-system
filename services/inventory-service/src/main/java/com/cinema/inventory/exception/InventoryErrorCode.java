@@ -466,6 +466,18 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_ROOM_LAYOUT_MATRIX_PUBLICATION_PENDING",
                     "Matrix drafts can be saved but publication is not available yet");
 
+    public static final InventoryErrorCode ROOM_LAYOUT_MATRIX_EMPTY =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_ROOM_LAYOUT_MATRIX_EMPTY",
+                    "Add at least one seat before publishing the matrix");
+
+    public static final InventoryErrorCode SEAT_LAYOUT_METADATA_READ_ONLY =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SEAT_LAYOUT_METADATA_READ_ONLY",
+                    "Edit seat numbers and types in a new layout draft");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

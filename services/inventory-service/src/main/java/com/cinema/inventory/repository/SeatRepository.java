@@ -15,13 +15,54 @@ import java.util.UUID;
 
 public interface SeatRepository extends JpaRepository<Seat, UUID> {
 
-    List<Seat> findAllByRoom_IdOrderBySeatNumberAsc(UUID roomId);
+    // Catalog queries retain the legacy seat-management contract.
+    // Layout-managed seats are accessed through layout cells or explicit IDs.
 
-    List<Seat> findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(UUID roomId);
+    @Query(
+            """
+            select seat
+            from Seat seat
+            where seat.room.id = :roomId
+              and seat.layoutManaged = false
+            order by seat.seatNumber asc
+            """)
+    List<Seat> findAllByRoom_IdOrderBySeatNumberAsc(@Param("roomId") UUID roomId);
 
-    boolean existsByRoom_IdAndSeatNumberIgnoreCase(UUID roomId, String seatNumber);
+    @Query(
+            """
+            select seat
+            from Seat seat
+            where seat.room.id = :roomId
+              and seat.layoutManaged = false
+              and seat.active = true
+            order by seat.seatNumber asc
+            """)
+    List<Seat> findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(@Param("roomId") UUID roomId);
 
-    boolean existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(UUID roomId, String seatNumber, UUID id);
+    @Query(
+            """
+            select case when count(seat) > 0 then true else false end
+            from Seat seat
+            where seat.room.id = :roomId
+              and seat.layoutManaged = false
+              and lower(seat.seatNumber) = lower(:seatNumber)
+            """)
+    boolean existsByRoom_IdAndSeatNumberIgnoreCase(
+            @Param("roomId") UUID roomId, @Param("seatNumber") String seatNumber);
+
+    @Query(
+            """
+            select case when count(seat) > 0 then true else false end
+            from Seat seat
+            where seat.room.id = :roomId
+              and seat.layoutManaged = false
+              and lower(seat.seatNumber) = lower(:seatNumber)
+              and seat.id <> :id
+            """)
+    boolean existsByRoom_IdAndSeatNumberIgnoreCaseAndIdNot(
+            @Param("roomId") UUID roomId,
+            @Param("seatNumber") String seatNumber,
+            @Param("id") UUID id);
 
     @Lock(LockModeType.PESSIMISTIC_READ)
     @Query(
@@ -35,7 +76,25 @@ public interface SeatRepository extends JpaRepository<Seat, UUID> {
     List<Seat> findAllForLayoutGeneration(
             @Param("roomId") UUID roomId, @Param("seatIds") Collection<UUID> seatIds);
 
-    List<Seat> findAllByRoom_IdOrderBySeatNumberAscIdAsc(UUID roomId);
+    @Query(
+            """
+            select seat
+            from Seat seat
+            where seat.room.id = :roomId
+              and seat.layoutManaged = false
+            order by seat.seatNumber asc, seat.id asc
+            """)
+    List<Seat> findAllByRoom_IdOrderBySeatNumberAscIdAsc(@Param("roomId") UUID roomId);
 
-    List<Seat> findAllByRoom_IdAndActiveOrderBySeatNumberAscIdAsc(UUID roomId, boolean active);
+    @Query(
+            """
+            select seat
+            from Seat seat
+            where seat.room.id = :roomId
+              and seat.layoutManaged = false
+              and seat.active = :active
+            order by seat.seatNumber asc, seat.id asc
+            """)
+    List<Seat> findAllByRoom_IdAndActiveOrderBySeatNumberAscIdAsc(
+            @Param("roomId") UUID roomId, @Param("active") boolean active);
 }
