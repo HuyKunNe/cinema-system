@@ -57,6 +57,12 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PRICING_POLICY_VERSION_CONFLICT",
                     "Pricing policy has changed; reload before saving");
 
+    public static final InventoryErrorCode PRICING_POLICY_HOLIDAY_DATA_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_PRICING_POLICY_HOLIDAY_DATA_INVALID",
+                    "Pricing policy holiday dates are invalid");
+
     public static final InventoryErrorCode PRICING_POLICY_CONTENT_REVISION_EXHAUSTED =
             new InventoryErrorCode(
                     ErrorCategory.BUSINESS,
