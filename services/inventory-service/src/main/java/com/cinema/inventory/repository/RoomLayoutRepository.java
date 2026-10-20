@@ -32,6 +32,19 @@ public interface RoomLayoutRepository extends JpaRepository<RoomLayout, UUID> {
 
     @Query(
             """
+            select case when count(layout) > 0 then true else false end
+            from RoomLayout layout
+            where layout.room.id = :roomId
+              and layout.status = :status
+              and layout.rowCount is not null
+              and layout.columnCount is not null
+            """)
+    boolean existsMatrixByRoomAndStatus(
+            @Param("roomId") UUID roomId,
+            @Param("status") RoomLayoutStatus status);
+
+    @Query(
+            """
             select coalesce(max(layout.layoutVersion), 0)
             from RoomLayout layout
             where layout.room.id = :roomId

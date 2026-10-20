@@ -1,16 +1,5 @@
 package com.cinema.inventory.service.impl;
 
-import java.time.Clock;
-import java.time.Duration;
-import java.time.OffsetDateTime;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
@@ -29,6 +18,17 @@ import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ShowSeatGenerationService;
 import com.cinema.inventory.service.ShowtimeLayoutService;
 import com.cinema.inventory.service.ShowtimeService;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Clock;
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 @Service
 public class ShowtimeServiceImpl implements ShowtimeService {
@@ -65,17 +65,14 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     @Override
     @Transactional
     public ShowtimeResponse create(CreateShowtimeRequest request) {
-
         Room room = findRoom(request.roomId());
 
         validateRoomAvailable(room);
-        validateNoOverlap(room.getId(), request.startsAt(), request.endsAt());
 
         RoomLayout layout =
-                request.roomLayoutId() == null
-                        ? null
-                        : showtimeLayoutService.findPublishedLayout(
-                                request.roomLayoutId(), room.getId());
+                showtimeLayoutService.resolveForNewShowtime(room.getId(), request.roomLayoutId());
+
+        validateNoOverlap(room.getId(), request.startsAt(), request.endsAt());
 
         Showtime showtime =
                 new Showtime(request.movieId(), room, request.startsAt(), request.endsAt(), layout);

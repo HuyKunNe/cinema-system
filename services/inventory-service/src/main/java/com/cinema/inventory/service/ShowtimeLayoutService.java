@@ -74,6 +74,27 @@ public class ShowtimeLayoutService {
     }
 
     @Transactional
+    public RoomLayout resolveForNewShowtime(UUID roomId, UUID layoutId) {
+
+        if (roomId == null) {
+            throw new ValidationException(InventoryErrorCode.SHOWTIME_ROOM_REQUIRED);
+        }
+
+        if (layoutId != null) {
+            return findPublishedLayout(layoutId, roomId);
+        }
+
+        boolean hasPublishedMatrix =
+                layoutRepository.existsMatrixByRoomAndStatus(roomId, RoomLayoutStatus.PUBLISHED);
+
+        if (hasPublishedMatrix) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_LAYOUT_REQUIRED);
+        }
+
+        return null;
+    }
+
+    @Transactional
     public List<LayoutSeatSnapshot> getSeatSnapshotsForGeneration(Showtime showtime) {
 
         if (showtime == null || showtime.getRoomLayout() == null) {

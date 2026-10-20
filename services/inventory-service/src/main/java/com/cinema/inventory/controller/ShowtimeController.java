@@ -1,9 +1,19 @@
 package com.cinema.inventory.controller;
 
-import java.net.URI;
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.UUID;
+import com.cinema.inventory.dto.request.CreateShowtimeRequest;
+import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
+import com.cinema.inventory.dto.response.ShowtimeResponse;
+import com.cinema.inventory.service.ShowtimeService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+
+import jakarta.validation.Valid;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -17,19 +27,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.cinema.inventory.dto.request.CreateShowtimeRequest;
-import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
-import com.cinema.inventory.dto.response.ShowtimeResponse;
-import com.cinema.inventory.service.ShowtimeService;
-
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
-import jakarta.validation.Valid;
+import java.net.URI;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/showtimes")
@@ -47,16 +48,37 @@ public class ShowtimeController {
                     """
                     Requires showtime:manage.
 
-                    roomLayoutId is optional.
-                    When provided, it must identify a PUBLISHED layout of roomId.
-                    Seats are generated from that layout after validating its snapshots.
+                    When roomLayoutId is supplied, it must identify a
+                    PUBLISHED layout belonging to roomId.
+                    Seats are generated from that layout's snapshots.
                     Active seats start AVAILABLE; inactive seats start UNAVAILABLE.
 
-                    When omitted, existing active-seat generation is retained.
-                    Seat prices are calculated from basePrice using SeatPricingPolicy.
+                    roomLayoutId is required when the room has any
+                    PUBLISHED matrix layout.
+                    Omitting it in that case returns
+                    INVENTORY_SHOWTIME_LAYOUT_REQUIRED.
 
-                    The layout cannot be changed after creation.
+                    When the room has no published matrix layout,
+                    omission retains legacy active-catalog-seat generation.
+
+                    The server does not automatically select the latest layout.
+                    Seat prices are calculated from basePrice using SeatPricingPolicy.
+                    The pinned layout cannot be changed after creation.
+                    Existing showtimes are not migrated by this operation.
                     """)
+    @ApiResponse(
+            responseCode = "409",
+            description =
+                    "Layout selection required, selected layout is not published, "
+                            + "room or cinema inactive, schedule overlap "
+                            + "or seat-generation conflict",
+            content =
+                    @Content(
+                            schema =
+                                    @Schema(
+                                            implementation =
+                                                    com.cinema.common.response.model.ApiResponse
+                                                            .class)))
     @PostMapping
     public ResponseEntity<ShowtimeResponse> create(
             @Valid @RequestBody CreateShowtimeRequest request) {

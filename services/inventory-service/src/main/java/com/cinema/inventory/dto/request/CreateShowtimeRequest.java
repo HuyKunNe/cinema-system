@@ -20,15 +20,18 @@ public record CreateShowtimeRequest(
         @NotNull @Future OffsetDateTime startsAt,
         @NotNull @Future OffsetDateTime endsAt,
         @NotNull
-        @DecimalMin(value = "0.01")
-        @Digits(integer = 10, fraction = 2)
-        BigDecimal basePrice,
+                @DecimalMin(value = "0.01")
+                @Digits(integer = 10, fraction = 2)
+                BigDecimal basePrice,
         @Schema(
-                nullable = true,
-                description =
-                        "Optional published layout belonging to roomId. "
-                                + "When omitted, the existing active-seat generation is used.")
-        UUID roomLayoutId) {
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED,
+                        nullable = true,
+                        description =
+                                "Published layout belonging to roomId. "
+                                        + "Required when the room has a published matrix layout. "
+                                        + "Otherwise omission retains legacy catalog generation. "
+                                        + "The server does not automatically select a layout.")
+                UUID roomLayoutId) {
 
     public CreateShowtimeRequest(
             UUID movieId,
@@ -37,7 +40,13 @@ public record CreateShowtimeRequest(
             OffsetDateTime endsAt,
             BigDecimal basePrice) {
 
-        this(movieId, roomId, startsAt, endsAt, basePrice, null);
+        this(
+                movieId,
+                roomId,
+                startsAt,
+                endsAt,
+                basePrice,
+                null);
     }
 
     @JsonIgnore

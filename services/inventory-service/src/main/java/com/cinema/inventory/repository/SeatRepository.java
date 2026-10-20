@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface SeatRepository extends JpaRepository<Seat, UUID> {
@@ -75,6 +76,16 @@ public interface SeatRepository extends JpaRepository<Seat, UUID> {
             """)
     List<Seat> findAllForLayoutGeneration(
             @Param("roomId") UUID roomId, @Param("seatIds") Collection<UUID> seatIds);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            """
+            select seat
+            from Seat seat
+            where seat.id = :seatId
+              and seat.room.id = :roomId
+            """)
+    Optional<Seat> findForActiveUpdate(@Param("seatId") UUID seatId, @Param("roomId") UUID roomId);
 
     @Query(
             """
