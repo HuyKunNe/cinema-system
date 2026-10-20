@@ -1,5 +1,7 @@
 package com.cinema.inventory.dto.response;
 
+import com.cinema.inventory.dto.response.CinemaHolidayDatesResponse.HolidayDateResponse;
+import com.cinema.inventory.dto.response.CinemaSurchargesResponse.SurchargeResponse;
 import com.cinema.inventory.enums.PricingDayType;
 import com.cinema.inventory.enums.TicketCategory;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -12,7 +14,9 @@ import java.util.UUID;
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public record CinemaPricingPolicyContentResponse(
         CinemaPricingPolicyResponse policy,
-        List<RuleResponse> rules) {
+        List<RuleResponse> rules,
+        List<HolidayDateResponse> holidayDates,
+        List<SurchargeResponse> surcharges) {
 
     @JsonInclude(JsonInclude.Include.ALWAYS)
     public record RuleResponse(

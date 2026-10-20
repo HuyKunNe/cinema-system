@@ -23,28 +23,34 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/cinemas/{cinemaId}/pricing-policies")
 @Tag(name = "cinema-pricing-policy-controller")
-@SecurityRequirement(name = "oauth2", scopes = {"inventory:manage"})
+@SecurityRequirement(
+        name = "oauth2",
+        scopes = {"inventory:manage"})
 public class CinemaPricingPolicyContentController {
 
     private final CinemaPricingPolicyContentService contentService;
 
-    public CinemaPricingPolicyContentController(
-            CinemaPricingPolicyContentService contentService) {
+    public CinemaPricingPolicyContentController(CinemaPricingPolicyContentService contentService) {
 
         this.contentService = contentService;
     }
 
     @Operation(
             operationId = "getCinemaPricingPolicyContent",
-            summary = "Get pricing policy metadata and base price rules",
-            description = "Requires inventory:manage.")
+            summary = "Get complete pricing policy content",
+            description =
+                    """
+                    Requires inventory:manage.
+                    Returns policy metadata, base price rules, holiday dates
+                    and surcharge rules from one consistent policy version.
+                    This operation does not validate publication readiness
+                    or evaluate prices.
+                    """)
     @GetMapping("/{policyId}/content")
     public ResponseEntity<CinemaPricingPolicyContentResponse> getContent(
-            @PathVariable("cinemaId") UUID cinemaId,
-            @PathVariable("policyId") UUID policyId) {
+            @PathVariable("cinemaId") UUID cinemaId, @PathVariable("policyId") UUID policyId) {
 
-        return ResponseEntity.ok(
-                contentService.getContent(cinemaId, policyId));
+        return ResponseEntity.ok(contentService.getContent(cinemaId, policyId));
     }
 
     @Operation(
@@ -52,12 +58,14 @@ public class CinemaPricingPolicyContentController {
             summary = "Replace all base price rules of a draft",
             description =
                     """
-                    Requires inventory:manage.
-                    expectedVersion refers to policy.version, not policyVersion.
-                    Replaces every base price rule; an empty array clears the draft.
-                    Rule IDs are regenerated.
-                    Published policies cannot be modified.
-                    This operation does not publish or evaluate ticket prices.
+                     Requires inventory:manage.
+                     expectedVersion refers to policy.version, not policyVersion.
+                     Replaces every base price rule; an empty rules array clears only the base price rules.
+                     Holiday dates and surcharge rules are preserved.
+                     Rule IDs are regenerated.
+                     Published policies cannot be modified.
+                     Returns the complete policy content after saving.
+                     This operation does not publish or evaluate ticket prices.
                     """)
     @PutMapping("/{policyId}/content")
     public ResponseEntity<CinemaPricingPolicyContentResponse> replaceContent(
@@ -65,7 +73,6 @@ public class CinemaPricingPolicyContentController {
             @PathVariable("policyId") UUID policyId,
             @Valid @RequestBody ReplaceCinemaPricingPolicyContentRequest request) {
 
-        return ResponseEntity.ok(
-                contentService.replaceContent(cinemaId, policyId, request));
+        return ResponseEntity.ok(contentService.replaceContent(cinemaId, policyId, request));
     }
 }

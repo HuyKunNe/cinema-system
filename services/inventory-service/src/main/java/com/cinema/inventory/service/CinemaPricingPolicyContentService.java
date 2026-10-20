@@ -10,8 +10,10 @@ import com.cinema.inventory.entity.TicketPriceRule;
 import com.cinema.inventory.enums.TicketCategory;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.CinemaPricingPolicyContentMapper;
+import com.cinema.inventory.repository.CinemaHolidayDateRepository;
 import com.cinema.inventory.repository.CinemaPricingPolicyRepository;
 import com.cinema.inventory.repository.TicketPriceRuleRepository;
+import com.cinema.inventory.repository.TicketSurchargeRuleRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,49 +28,54 @@ public class CinemaPricingPolicyContentService {
 
     private final CinemaPricingPolicyRepository policyRepository;
     private final TicketPriceRuleRepository ruleRepository;
+    private final CinemaHolidayDateRepository holidayRepository;
+    private final TicketSurchargeRuleRepository surchargeRepository;
     private final CinemaPricingPolicyContentMapper contentMapper;
 
     public CinemaPricingPolicyContentService(
             CinemaPricingPolicyRepository policyRepository,
             TicketPriceRuleRepository ruleRepository,
+            CinemaHolidayDateRepository holidayRepository,
+            TicketSurchargeRuleRepository surchargeRepository,
             CinemaPricingPolicyContentMapper contentMapper) {
 
         this.policyRepository = policyRepository;
         this.ruleRepository = ruleRepository;
+        this.holidayRepository = holidayRepository;
+        this.surchargeRepository = surchargeRepository;
         this.contentMapper = contentMapper;
     }
 
     @Transactional
-    public CinemaPricingPolicyContentResponse getContent(
-            UUID cinemaId,
-            UUID policyId) {
+    public CinemaPricingPolicyContentResponse getContent(UUID cinemaId, UUID policyId) {
 
         CinemaPricingPolicy policy =
-                policyRepository.findForContentRead(cinemaId, policyId)
+                policyRepository
+                        .findForContentRead(cinemaId, policyId)
                         .orElseThrow(
-                                () -> new NotFoundException(
-                                        InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
+                                () ->
+                                        new NotFoundException(
+                                                InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
 
         return readContent(policy);
     }
 
     @Transactional
     public CinemaPricingPolicyContentResponse replaceContent(
-            UUID cinemaId,
-            UUID policyId,
-            ReplaceCinemaPricingPolicyContentRequest request) {
+            UUID cinemaId, UUID policyId, ReplaceCinemaPricingPolicyContentRequest request) {
 
         CinemaPricingPolicy policy =
-                policyRepository.findForContentUpdate(cinemaId, policyId)
+                policyRepository
+                        .findForContentUpdate(cinemaId, policyId)
                         .orElseThrow(
-                                () -> new NotFoundException(
-                                        InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
+                                () ->
+                                        new NotFoundException(
+                                                InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
 
         policy.requireDraft();
 
         if (!request.expectedVersion().equals(policy.getVersion())) {
-            throw new ConflictException(
-                    InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
         }
 
         Set<RuleKey> keys = new HashSet<>();
@@ -92,23 +99,20 @@ public class CinemaPricingPolicyContentService {
                                                     input.requiredChannel());
 
                                     RuleKey key =
-                                            new RuleKey(
-                                                    rule.getCode(),
-                                                    rule.getTicketCategory());
+                                            new RuleKey(rule.getCode(), rule.getTicketCategory());
 
                                     if (!keys.add(key)) {
                                         throw new ValidationException(
-                                                InventoryErrorCode
-                                                        .TICKET_PRICE_RULE_DATA_INVALID);
+                                                InventoryErrorCode.TICKET_PRICE_RULE_DATA_INVALID);
                                     }
 
                                     return rule;
                                 })
                         .toList();
 
-        // Validate every new rule before replacing stored content.
         policy.markContentChanged();
 
+        // Only base price rules are replaced by this operation.
         ruleRepository.deleteAllForPolicy(policy.getId());
         ruleRepository.saveAllAndFlush(newRules);
         policyRepository.flush();
@@ -116,15 +120,16 @@ public class CinemaPricingPolicyContentService {
         return readContent(policy);
     }
 
-    private CinemaPricingPolicyContentResponse readContent(
-            CinemaPricingPolicy policy) {
+    private CinemaPricingPolicyContentResponse readContent(CinemaPricingPolicy policy) {
 
-        List<TicketPriceRule> rules =
-                ruleRepository
-                        .findAllByPolicy_IdOrderByPriorityDescCodeAscTicketCategoryAsc(
-                                policy.getId());
+        UUID policyId = policy.getId();
 
-        return contentMapper.toResponse(policy, rules);
+        return contentMapper.toResponse(
+                policy,
+                ruleRepository.findAllByPolicy_IdOrderByPriorityDescCodeAscTicketCategoryAsc(
+                        policyId),
+                holidayRepository.findAllByPolicy_IdOrderByHolidayDateAsc(policyId),
+                surchargeRepository.findAllByPolicy_IdOrderByPriorityDescCodeAsc(policyId));
     }
 
     private record RuleKey(String code, TicketCategory ticketCategory) {}
