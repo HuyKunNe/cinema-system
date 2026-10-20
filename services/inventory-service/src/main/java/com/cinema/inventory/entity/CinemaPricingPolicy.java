@@ -57,6 +57,9 @@ public class CinemaPricingPolicy extends BaseEntity {
     @Column(name = "published_at")
     private OffsetDateTime publishedAt;
 
+    @Column(name = "content_revision", nullable = false)
+    private long contentRevision = 0L;
+
     protected CinemaPricingPolicy() {}
 
     public CinemaPricingPolicy(
@@ -129,6 +132,17 @@ public class CinemaPricingPolicy extends BaseEntity {
         if (status != PricingPolicyStatus.DRAFT) {
             throw new ConflictException(InventoryErrorCode.PRICING_POLICY_NOT_DRAFT);
         }
+    }
+
+    public void markContentChanged() {
+        requireDraft();
+
+        if (contentRevision == Long.MAX_VALUE) {
+            throw new ConflictException(
+                    InventoryErrorCode.PRICING_POLICY_CONTENT_REVISION_EXHAUSTED);
+        }
+
+        contentRevision += 1;
     }
 
     private static void validatePeriod(LocalDate effectiveFrom, LocalDate effectiveTo) {

@@ -45,6 +45,24 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PRICING_POLICY_VERSION_EXHAUSTED",
                     "Cinema pricing policy version limit has been reached");
 
+    public static final InventoryErrorCode TICKET_PRICE_RULE_DATA_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_TICKET_PRICE_RULE_DATA_INVALID",
+                    "Ticket price rule data is invalid");
+
+    public static final InventoryErrorCode PRICING_POLICY_VERSION_CONFLICT =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_VERSION_CONFLICT",
+                    "Pricing policy has changed; reload before saving");
+
+    public static final InventoryErrorCode PRICING_POLICY_CONTENT_REVISION_EXHAUSTED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_CONTENT_REVISION_EXHAUSTED",
+                    "Pricing policy content revision limit has been reached");
+
     public static final InventoryErrorCode ROOM_NOT_FOUND =
             new InventoryErrorCode(
                     ErrorCategory.RESOURCE, "INVENTORY_ROOM_NOT_FOUND", "Room not found");
