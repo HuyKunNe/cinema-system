@@ -98,7 +98,20 @@ public class RoomLayoutContentService {
         }
 
         if (request.matrix() != null) {
-            throw new ConflictException(InventoryErrorCode.ROOM_LAYOUT_MATRIX_CONVERSION_REQUIRED);
+            boolean hasLegacySeats =
+                    !layoutSeatRepository
+                            .findAllByLayout_IdOrderBySeatNumberSnapshotAsc(layoutId)
+                            .isEmpty();
+
+            boolean hasLegacyElements =
+                    !layoutElementRepository.findAllByLayout_IdOrderByIdAsc(layoutId).isEmpty();
+
+            if (hasLegacySeats || hasLegacyElements) {
+                throw new ConflictException(
+                        InventoryErrorCode.ROOM_LAYOUT_MATRIX_CONVERSION_REQUIRED);
+            }
+
+            return matrixService.replace(layout, request.matrix());
         }
 
         Set<UUID> seatIds = new HashSet<>();
