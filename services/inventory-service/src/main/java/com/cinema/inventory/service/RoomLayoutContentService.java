@@ -1,5 +1,16 @@
 package com.cinema.inventory.service;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
@@ -19,17 +30,6 @@ import com.cinema.inventory.repository.RoomLayoutElementRepository;
 import com.cinema.inventory.repository.RoomLayoutRepository;
 import com.cinema.inventory.repository.RoomLayoutSeatRepository;
 import com.cinema.inventory.repository.SeatRepository;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 public class RoomLayoutContentService {
@@ -98,15 +98,11 @@ public class RoomLayoutContentService {
         }
 
         if (request.matrix() != null) {
-            boolean hasLegacySeats =
-                    !layoutSeatRepository
-                            .findAllByLayout_IdOrderBySeatNumberSnapshotAsc(layoutId)
-                            .isEmpty();
+            boolean hasLegacyContent =
+                    layoutSeatRepository.existsByLayout_Id(layoutId)
+                            || layoutElementRepository.existsByLayout_Id(layoutId);
 
-            boolean hasLegacyElements =
-                    !layoutElementRepository.findAllByLayout_IdOrderByIdAsc(layoutId).isEmpty();
-
-            if (hasLegacySeats || hasLegacyElements) {
+            if (hasLegacyContent) {
                 throw new ConflictException(
                         InventoryErrorCode.ROOM_LAYOUT_MATRIX_CONVERSION_REQUIRED);
             }

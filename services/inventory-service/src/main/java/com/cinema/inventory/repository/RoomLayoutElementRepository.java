@@ -10,17 +10,17 @@ import org.springframework.data.repository.query.Param;
 
 import com.cinema.inventory.entity.RoomLayoutElement;
 
-public interface RoomLayoutElementRepository
-        extends JpaRepository<RoomLayoutElement, UUID> {
+public interface RoomLayoutElementRepository extends JpaRepository<RoomLayoutElement, UUID> {
 
-    List<RoomLayoutElement> findAllByLayout_IdOrderByIdAsc(
-            UUID layoutId);
+    List<RoomLayoutElement> findAllByLayout_IdOrderByIdAsc(UUID layoutId);
 
     @Modifying(flushAutomatically = true)
-    @Query("""
+    @Query(
+            """
             delete from RoomLayoutElement layoutElement
             where layoutElement.layout.id = :layoutId
             """)
-    void deleteAllForLayout(
-            @Param("layoutId") UUID layoutId);
+    void deleteAllForLayout(@Param("layoutId") UUID layoutId);
+
+    boolean existsByLayout_Id(UUID layoutId);
 }

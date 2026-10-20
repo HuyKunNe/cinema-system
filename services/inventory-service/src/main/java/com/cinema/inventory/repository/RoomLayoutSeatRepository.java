@@ -1,6 +1,7 @@
 package com.cinema.inventory.repository;
 
-import com.cinema.inventory.entity.RoomLayoutSeat;
+import java.util.List;
+import java.util.UUID;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,8 +9,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
-import java.util.UUID;
+import com.cinema.inventory.entity.RoomLayoutSeat;
 
 public interface RoomLayoutSeatRepository extends JpaRepository<RoomLayoutSeat, UUID> {
 
@@ -43,4 +43,6 @@ public interface RoomLayoutSeatRepository extends JpaRepository<RoomLayoutSeat, 
             order by position.seatNumberSnapshot asc
             """)
     List<RoomLayoutSeat> findAllForSeatMapByLayoutId(@Param("layoutId") UUID layoutId);
+
+    boolean existsByLayout_Id(UUID layoutId);
 }
