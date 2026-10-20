@@ -21,6 +21,30 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_CINEMA_TIME_ZONE_REQUIRED",
                     "Configure the cinema time zone before using pricing policies");
 
+    public static final InventoryErrorCode PRICING_POLICY_DATA_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_PRICING_POLICY_DATA_INVALID",
+                    "Cinema pricing policy data is invalid");
+
+    public static final InventoryErrorCode PRICING_POLICY_NOT_DRAFT =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_NOT_DRAFT",
+                    "Only draft pricing policies can be modified");
+
+    public static final InventoryErrorCode PRICING_POLICY_NOT_FOUND =
+            new InventoryErrorCode(
+                    ErrorCategory.RESOURCE,
+                    "INVENTORY_PRICING_POLICY_NOT_FOUND",
+                    "Cinema pricing policy not found");
+
+    public static final InventoryErrorCode PRICING_POLICY_VERSION_EXHAUSTED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_VERSION_EXHAUSTED",
+                    "Cinema pricing policy version limit has been reached");
+
     public static final InventoryErrorCode ROOM_NOT_FOUND =
             new InventoryErrorCode(
                     ErrorCategory.RESOURCE, "INVENTORY_ROOM_NOT_FOUND", "Room not found");
