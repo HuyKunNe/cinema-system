@@ -1,9 +1,5 @@
 package com.cinema.inventory.entity;
 
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
-import java.util.UUID;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
@@ -19,6 +15,10 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "show_seats")
@@ -52,13 +52,9 @@ public class ShowSeat extends BaseEntity {
     @Column(name = "hold_expires_at")
     private OffsetDateTime holdExpiresAt;
 
-    protected ShowSeat() {
-    }
+    protected ShowSeat() {}
 
-    public ShowSeat(
-            Showtime showtime,
-            Seat seat,
-            BigDecimal price) {
+    public ShowSeat(Showtime showtime, Seat seat, BigDecimal price) {
 
         validatePrice(price);
 
@@ -67,9 +63,32 @@ public class ShowSeat extends BaseEntity {
         this.seatNumber = seat.getSeatNumber();
         this.seatType = seat.getSeatType();
         this.price = price;
-        this.status = seat.isActive()
-                ? ShowSeatStatus.AVAILABLE
-                : ShowSeatStatus.UNAVAILABLE;
+        this.status = seat.isActive() ? ShowSeatStatus.AVAILABLE : ShowSeatStatus.UNAVAILABLE;
+    }
+
+    public ShowSeat(
+            Showtime showtime,
+            Seat seat,
+            String seatNumberSnapshot,
+            SeatType seatTypeSnapshot,
+            BigDecimal price) {
+
+        validatePrice(price);
+
+        if (seat == null
+                || seatNumberSnapshot == null
+                || seatNumberSnapshot.isBlank()
+                || seatNumberSnapshot.length() > 20
+                || seatTypeSnapshot == null) {
+            throw new ValidationException(InventoryErrorCode.ROOM_LAYOUT_DATA_INVALID);
+        }
+
+        this.showtime = showtime;
+        this.seat = seat;
+        this.seatNumber = seatNumberSnapshot;
+        this.seatType = seatTypeSnapshot;
+        this.price = price;
+        this.status = seat.isActive() ? ShowSeatStatus.AVAILABLE : ShowSeatStatus.UNAVAILABLE;
     }
 
     public Showtime getShowtime() {
@@ -113,17 +132,15 @@ public class ShowSeat extends BaseEntity {
         this.price = price;
     }
 
-    public void hold(
-            UUID bookingId,
-            OffsetDateTime expiresAt,
-            OffsetDateTime now) {
+    public void hold(UUID bookingId, OffsetDateTime expiresAt, OffsetDateTime now) {
 
         if (bookingId == null) {
             throw new ValidationException(InventoryErrorCode.BOOKING_ID_REQUIRED);
         }
 
         if (expiresAt == null || now == null) {
-            throw new ValidationException(InventoryErrorCode.HOLD_EXPIRATION_AND_CURRENT_TIME_REQUIRED);
+            throw new ValidationException(
+                    InventoryErrorCode.HOLD_EXPIRATION_AND_CURRENT_TIME_REQUIRED);
         }
 
         if (!expiresAt.isAfter(now)) {

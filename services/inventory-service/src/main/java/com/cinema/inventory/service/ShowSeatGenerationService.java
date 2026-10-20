@@ -1,8 +1,11 @@
 package com.cinema.inventory.service;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -11,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
-import com.cinema.inventory.entity.Seat;
 import com.cinema.inventory.entity.ShowSeat;
 import com.cinema.inventory.entity.Showtime;
 import com.cinema.inventory.exception.InventoryErrorCode;
@@ -43,38 +45,41 @@ public class ShowSeatGenerationService {
 
         validateShowtime(showtime);
 
-        List<Seat> seats;
+        List<LayoutSeatSnapshot> snapshots;
 
         if (showtime.getRoomLayout() == null) {
-            seats =
-                    seatRepository.findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(
-                            showtime.getRoom().getId());
+            snapshots =
+                    seatRepository
+                            .findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(
+                                    showtime.getRoom().getId())
+                            .stream()
+                            .map(LayoutSeatSnapshot::fromSeat)
+                            .toList();
 
-            if (seats.isEmpty()) {
+            if (snapshots.isEmpty()) {
                 throw new ConflictException(InventoryErrorCode.NO_ACTIVE_SEATS);
             }
         } else {
-            seats = showtimeLayoutService.getSeatsForGeneration(showtime);
+            snapshots = showtimeLayoutService.getSeatSnapshotsForGeneration(showtime);
         }
 
-        Set<UUID> existingSeatIds = findExistingSeatIds(showtime.getId());
+        List<ShowSeat> existingShowSeats =
+                showSeatRepository.findAllByShowtime_IdOrderBySeatNumberAsc(showtime.getId());
 
         if (showtime.getRoomLayout() != null) {
-            Set<UUID> layoutSeatIds = new HashSet<>();
+            validateExistingSnapshots(snapshots, existingShowSeats);
+        }
 
-            for (Seat seat : seats) {
-                layoutSeatIds.add(seat.getId());
-            }
+        Set<UUID> existingSeatIds = new HashSet<>();
 
-            if (!layoutSeatIds.containsAll(existingSeatIds)) {
-                throw new ConflictException(InventoryErrorCode.SHOWTIME_LAYOUT_SEATS_MISMATCH);
-            }
+        for (ShowSeat showSeat : existingShowSeats) {
+            existingSeatIds.add(showSeat.getSeat().getId());
         }
 
         List<ShowSeat> generatedShowSeats =
-                seats.stream()
-                        .filter(seat -> !existingSeatIds.contains(seat.getId()))
-                        .map(seat -> createShowSeat(showtime, seat, basePrice))
+                snapshots.stream()
+                        .filter(snapshot -> !existingSeatIds.contains(snapshot.seat().getId()))
+                        .map(snapshot -> createShowSeat(showtime, snapshot, basePrice))
                         .toList();
 
         if (generatedShowSeats.isEmpty()) {
@@ -84,25 +89,41 @@ public class ShowSeatGenerationService {
         return showSeatRepository.saveAll(generatedShowSeats);
     }
 
-    private Set<UUID> findExistingSeatIds(UUID showtimeId) {
+    private void validateExistingSnapshots(
+            List<LayoutSeatSnapshot> snapshots, List<ShowSeat> existingShowSeats) {
 
-        List<ShowSeat> existingShowSeats =
-                showSeatRepository.findAllByShowtime_IdOrderBySeatNumberAsc(showtimeId);
+        Map<UUID, LayoutSeatSnapshot> snapshotsBySeatId = new HashMap<>();
 
-        Set<UUID> existingSeatIds = new HashSet<>();
-
-        for (ShowSeat showSeat : existingShowSeats) {
-            existingSeatIds.add(showSeat.getSeat().getId());
+        for (LayoutSeatSnapshot snapshot : snapshots) {
+            snapshotsBySeatId.put(snapshot.seat().getId(), snapshot);
         }
 
-        return existingSeatIds;
+        for (ShowSeat showSeat : existingShowSeats) {
+            LayoutSeatSnapshot snapshot = snapshotsBySeatId.get(showSeat.getSeat().getId());
+
+            if (snapshot == null) {
+                throw new ConflictException(InventoryErrorCode.SHOWTIME_LAYOUT_SEATS_MISMATCH);
+            }
+
+            if (!Objects.equals(showSeat.getSeatNumber(), snapshot.seatNumber())
+                    || showSeat.getSeatType() != snapshot.seatType()) {
+                throw new ConflictException(InventoryErrorCode.SEAT_MAP_DATA_INCONSISTENT);
+            }
+        }
     }
 
-    private ShowSeat createShowSeat(Showtime showtime, Seat seat, BigDecimal basePrice) {
+    private ShowSeat createShowSeat(
+            Showtime showtime, LayoutSeatSnapshot snapshot, BigDecimal basePrice) {
 
-        BigDecimal price = seatPricingPolicy.calculate(basePrice, seat.getSeatType());
+        BigDecimal price = seatPricingPolicy.calculate(basePrice, snapshot.seatType());
 
-        ShowSeat showSeat = new ShowSeat(showtime, seat, price);
+        ShowSeat showSeat =
+                new ShowSeat(
+                        showtime,
+                        snapshot.seat(),
+                        snapshot.seatNumber(),
+                        snapshot.seatType(),
+                        price);
 
         showtime.addShowSeat(showSeat);
 
@@ -119,7 +140,6 @@ public class ShowSeatGenerationService {
         }
 
         if (showtime.getRoom() == null || showtime.getRoom().getId() == null) {
-
             throw new ValidationException(InventoryErrorCode.SHOWTIME_ROOM_REQUIRED);
         }
     }
