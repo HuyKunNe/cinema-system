@@ -105,6 +105,12 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PRICING_DIMENSION_DATA_INVALID",
                     "Pricing dimension data is invalid");
 
+    public static final InventoryErrorCode FARE_RULE_DATA_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_FARE_RULE_DATA_INVALID",
+                    "Fare rule data is invalid");
+
     public static final InventoryErrorCode PRICING_POLICY_CONTENT_REVISION_EXHAUSTED =
             new InventoryErrorCode(
                     ErrorCategory.BUSINESS,
