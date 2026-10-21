@@ -1,18 +1,19 @@
 package com.cinema.inventory.dto.request;
 
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.util.Set;
-
 import com.cinema.inventory.enums.ContentFormat;
 import com.cinema.inventory.enums.ExperienceType;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.Set;
 
 public record PreviewDraftFareMatrixRequest(
         @NotNull
@@ -45,4 +46,11 @@ public record PreviewDraftFareMatrixRequest(
                         description =
                                 "Hypothetical satisfied eligibility codes. "
                                         + "Omission means none are satisfied.")
-                Set<@NotBlank @Size(max = 64) String> simulatedEligibilityCodes) {}
+                Set<@NotBlank @Size(max = 64) String> simulatedEligibilityCodes,
+        @Size(max = 20)
+                @Schema(
+                        description =
+                                "Hypothetical movie attribute codes. "
+                                        + "Omission means an empty attribute set. "
+                                        + "Not verified against Movie Service.")
+                Set<@NotBlank @Size(max = 64) String> simulatedMovieAttributeCodes) {}

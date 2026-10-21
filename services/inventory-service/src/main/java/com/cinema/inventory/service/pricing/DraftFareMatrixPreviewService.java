@@ -1,14 +1,5 @@
 package com.cinema.inventory.service.pricing;
 
-import java.time.DateTimeException;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
@@ -24,6 +15,15 @@ import com.cinema.inventory.repository.CinemaHolidayDateRepository;
 import com.cinema.inventory.repository.CinemaPricingPolicyRepository;
 import com.cinema.inventory.repository.FareRuleRepository;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.DateTimeException;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.UUID;
+
 @Service
 public class DraftFareMatrixPreviewService {
 
@@ -36,6 +36,7 @@ public class DraftFareMatrixPreviewService {
     private final FareRuleSelector ruleSelector;
     private final DraftSeatTypeSimulationGuard seatTypeSimulationGuard;
     private final DraftSaleScopeResolver saleScopeResolver;
+    private final DraftFareSurchargeEvaluator surchargeEvaluator;
 
     public DraftFareMatrixPreviewService(
             CinemaPricingPolicyRepository policyRepository,
@@ -46,7 +47,8 @@ public class DraftFareMatrixPreviewService {
             FareRuleSelector ruleSelector,
             DraftTicketCategorySimulationGuard categorySimulationGuard,
             DraftSeatTypeSimulationGuard seatTypeSimulationGuard,
-            DraftSaleScopeResolver saleScopeResolver) {
+            DraftSaleScopeResolver saleScopeResolver,
+            DraftFareSurchargeEvaluator surchargeEvaluator) {
 
         this.policyRepository = policyRepository;
         this.fareRuleRepository = fareRuleRepository;
@@ -57,6 +59,7 @@ public class DraftFareMatrixPreviewService {
         this.categorySimulationGuard = categorySimulationGuard;
         this.seatTypeSimulationGuard = seatTypeSimulationGuard;
         this.saleScopeResolver = saleScopeResolver;
+        this.surchargeEvaluator = surchargeEvaluator;
     }
 
     @Transactional
@@ -112,12 +115,18 @@ public class DraftFareMatrixPreviewService {
             throw new ConflictException(InventoryErrorCode.PRICING_SCENARIO_NOT_FOR_SALE);
         }
 
+        var surchargePlan =
+                surchargeEvaluator.prepare(
+                        policy, context, seatType, request.simulatedMovieAttributeCodes());
+
         FareRuleSelector.Selection selection =
                 ruleSelector.select(
                         fareRuleRepository.findAllByPolicy_IdOrderByPriorityDescCodeAsc(
                                 policy.getId()),
                         context);
         seatTypeSimulationGuard.requireCompatibleFareUnits(seatType, selection.winners());
+
+        var surchargeEvaluation = surchargePlan.evaluate(selection);
 
         MatrixPreviewContext resolved =
                 new MatrixPreviewContext(
@@ -134,13 +143,14 @@ public class DraftFareMatrixPreviewService {
         return new PreviewDraftFareMatrixResponse(
                 true,
                 false,
-                false,
+                surchargeEvaluation.combinedAmountVnd() != null,
                 false,
                 false,
                 policyMapper.toResponse(policy),
                 resolved,
                 selection.status(),
-                selection.winners().stream().map(matrixMapper::toFareRuleResponse).toList());
+                selection.winners().stream().map(matrixMapper::toFareRuleResponse).toList(),
+                surchargeEvaluation);
     }
 
     private OffsetDateTime toLocalStartsAt(CinemaPricingPolicy policy, OffsetDateTime startsAt) {

@@ -28,6 +28,8 @@ public record DraftFareMatrixCoverageResponse(
         boolean hasGaps,
         boolean hasAmbiguities,
         boolean hasUnconfirmedUnits,
+        boolean hasSurchargeAmbiguities,
+        boolean hasUnresolvedSurcharges,
         boolean segmentsTruncated,
         List<MatrixCoverageSegment> segments) {
 
@@ -43,5 +45,6 @@ public record DraftFareMatrixCoverageResponse(
             int fromMinute,
             int toMinute,
             MatrixCoverageStatus status,
-            List<MatrixFareRuleResponse> winningRules) {}
+            List<MatrixFareRuleResponse> winningRules,
+            @Schema(nullable = true) DraftFareSurchargeEvaluationResponse surchargeEvaluation) {}
 }

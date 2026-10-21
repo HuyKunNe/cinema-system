@@ -69,6 +69,30 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_TICKET_SURCHARGE_RULE_DATA_INVALID",
                     "Ticket surcharge rule data is invalid");
 
+    public static final InventoryErrorCode PRICING_FARE_SURCHARGES_UNCONFIRMED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_FARE_SURCHARGES_UNCONFIRMED",
+                    "The fare surcharge mode is unconfirmed");
+
+    public static final InventoryErrorCode PRICING_FARE_SURCHARGES_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_FARE_SURCHARGES_INVALID",
+                    "The fare surcharge configuration is inconsistent");
+
+    public static final InventoryErrorCode PRICING_PAIR_SURCHARGE_UNIT_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_PAIR_SURCHARGE_UNIT_REQUIRED",
+                    "Surcharges for couple seats must use PER_PAIR");
+
+    public static final InventoryErrorCode PRICING_UNIT_AMOUNT_OVERFLOW =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_UNIT_AMOUNT_OVERFLOW",
+                    "The calculated unit amount exceeds the supported range");
+
     public static final InventoryErrorCode PRICING_EVALUATION_CONTEXT_INVALID =
             new InventoryErrorCode(
                     ErrorCategory.VALIDATION,
