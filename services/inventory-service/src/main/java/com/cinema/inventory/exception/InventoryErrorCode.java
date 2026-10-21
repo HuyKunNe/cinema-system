@@ -141,6 +141,18 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PRICING_SEAT_TYPE_DATA_INVALID",
                     "Pricing seat type data is invalid");
 
+    public static final InventoryErrorCode PRICING_SEAT_TYPE_NOT_CONFIGURED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_SEAT_TYPE_NOT_CONFIGURED",
+                    "The pricing seat type is not configured in this policy");
+
+    public static final InventoryErrorCode PRICING_SEAT_TYPE_MAPPING_UNCONFIRMED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_SEAT_TYPE_MAPPING_UNCONFIRMED",
+                    "The pricing seat type physical mapping is unconfirmed");
+
     public static final InventoryErrorCode PRICING_POLICY_CONTENT_REVISION_EXHAUSTED =
             new InventoryErrorCode(
                     ErrorCategory.BUSINESS,

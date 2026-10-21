@@ -33,6 +33,7 @@ public class DraftFareMatrixPreviewService {
     private final CinemaPricingPolicyMapper policyMapper;
     private final CinemaFareMatrixMapper matrixMapper;
     private final FareRuleSelector ruleSelector;
+    private final DraftSeatTypeSimulationGuard seatTypeSimulationGuard;
 
     public DraftFareMatrixPreviewService(
             CinemaPricingPolicyRepository policyRepository,
@@ -41,7 +42,8 @@ public class DraftFareMatrixPreviewService {
             CinemaPricingPolicyMapper policyMapper,
             CinemaFareMatrixMapper matrixMapper,
             FareRuleSelector ruleSelector,
-            DraftTicketCategorySimulationGuard categorySimulationGuard) {
+            DraftTicketCategorySimulationGuard categorySimulationGuard,
+            DraftSeatTypeSimulationGuard seatTypeSimulationGuard) {
 
         this.policyRepository = policyRepository;
         this.fareRuleRepository = fareRuleRepository;
@@ -50,6 +52,7 @@ public class DraftFareMatrixPreviewService {
         this.matrixMapper = matrixMapper;
         this.ruleSelector = ruleSelector;
         this.categorySimulationGuard = categorySimulationGuard;
+        this.seatTypeSimulationGuard = seatTypeSimulationGuard;
     }
 
     @Transactional
@@ -97,6 +100,7 @@ public class DraftFareMatrixPreviewService {
                         request.simulatedEligibilityCodes());
 
         categorySimulationGuard.requireForSimulation(context);
+        seatTypeSimulationGuard.requireForSimulation(context);
 
         FareRuleSelector.Selection selection =
                 ruleSelector.select(

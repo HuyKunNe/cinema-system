@@ -42,6 +42,7 @@ public class DraftFareMatrixCoverageService {
     private final CinemaFareMatrixMapper matrixMapper;
     private final FareRuleSelector ruleSelector;
     private final DraftTicketCategorySimulationGuard categorySimulationGuard;
+    private final DraftSeatTypeSimulationGuard seatTypeSimulationGuard;
 
     public DraftFareMatrixCoverageService(
             CinemaPricingPolicyRepository policyRepository,
@@ -50,7 +51,8 @@ public class DraftFareMatrixCoverageService {
             CinemaPricingPolicyMapper policyMapper,
             CinemaFareMatrixMapper matrixMapper,
             FareRuleSelector ruleSelector,
-            DraftTicketCategorySimulationGuard categorySimulationGuard) {
+            DraftTicketCategorySimulationGuard categorySimulationGuard,
+            DraftSeatTypeSimulationGuard seatTypeSimulationGuard) {
 
         this.policyRepository = policyRepository;
         this.fareRuleRepository = fareRuleRepository;
@@ -59,6 +61,7 @@ public class DraftFareMatrixCoverageService {
         this.matrixMapper = matrixMapper;
         this.ruleSelector = ruleSelector;
         this.categorySimulationGuard = categorySimulationGuard;
+        this.seatTypeSimulationGuard = seatTypeSimulationGuard;
     }
 
     @Transactional
@@ -108,6 +111,7 @@ public class DraftFareMatrixCoverageService {
                         scenario.simulatedEligibilityCodes());
 
         categorySimulationGuard.requireForSimulation(context);
+        seatTypeSimulationGuard.requireForSimulation(context);
         List<FareRule> rules =
                 fareRuleRepository.findAllByPolicy_IdOrderByPriorityDescCodeAsc(policy.getId());
         TreeSet<Integer> boundaries = new TreeSet<>();

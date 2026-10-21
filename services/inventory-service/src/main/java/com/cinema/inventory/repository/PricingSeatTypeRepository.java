@@ -9,11 +9,13 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Optional;
 
-public interface PricingSeatTypeRepository
-        extends JpaRepository<PricingSeatType, UUID> {
+public interface PricingSeatTypeRepository extends JpaRepository<PricingSeatType, UUID> {
 
     List<PricingSeatType> findAllByPolicy_IdOrderByCodeAsc(UUID policyId);
+
+    Optional<PricingSeatType> findByPolicy_IdAndCode(UUID policyId, String code);
 
     @Modifying(flushAutomatically = true)
     @Query(
