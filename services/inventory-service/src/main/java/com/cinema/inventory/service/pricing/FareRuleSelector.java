@@ -19,16 +19,34 @@ public class FareRuleSelector {
             List<FareRule> rules,
             FareRuleEvaluationContext context) {
 
-        if (rules == null || context == null) {
-            throw new ValidationException(
-                    InventoryErrorCode.PRICING_EVALUATION_CONTEXT_INVALID);
+        if (context == null) {
+            throw invalidContext();
+        }
+
+        return selectAtLocalMinute(rules, context, context.minuteOfDay());
+    }
+
+    /**
+     * Evaluates a wall-clock minute on context.localDate().
+     * This does not establish whether that minute is a valid scheduling instant.
+     */
+    public Selection selectAtLocalMinute(
+            List<FareRule> rules,
+            FareRuleEvaluationContext context,
+            int localMinute) {
+
+        if (rules == null
+                || context == null
+                || localMinute < 0
+                || localMinute >= 1440) {
+            throw invalidContext();
         }
 
         int highestPriority = Integer.MIN_VALUE;
         List<FareRule> winners = new ArrayList<>();
 
         for (FareRule rule : rules) {
-            if (!matches(rule, context)) {
+            if (!matches(rule, context, localMinute)) {
                 continue;
             }
 
@@ -50,7 +68,8 @@ public class FareRuleSelector {
 
     private boolean matches(
             FareRule rule,
-            FareRuleEvaluationContext context) {
+            FareRuleEvaluationContext context,
+            int localMinute) {
 
         if (!rule.getPolicy().getId().equals(context.policyId())
                 || rule.getExperienceType() != context.experienceType()
@@ -69,7 +88,7 @@ public class FareRuleSelector {
         }
 
         if (!rule.getDayGroup().matches(localDate, context.holiday())
-                || !rule.getTimeBand().matches(context.minuteOfDay())) {
+                || !rule.getTimeBand().matches(localMinute)) {
             return false;
         }
 
@@ -88,6 +107,11 @@ public class FareRuleSelector {
 
         return requiredEligibility == null
                 || context.eligibilityCodes().contains(requiredEligibility);
+    }
+
+    private static ValidationException invalidContext() {
+        return new ValidationException(
+                InventoryErrorCode.PRICING_EVALUATION_CONTEXT_INVALID);
     }
 
     public record Selection(List<FareRule> winners) {
