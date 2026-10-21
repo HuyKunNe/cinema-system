@@ -6,11 +6,11 @@ import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.inventory.dto.request.CheckDraftFareMatrixCoverageRequest;
 import com.cinema.inventory.dto.response.DraftFareMatrixCoverageResponse;
 import com.cinema.inventory.dto.response.DraftFareMatrixCoverageResponse.MatrixCoverageSegment;
+import com.cinema.inventory.dto.response.DraftFareMatrixCoverageResponse.MatrixCoverageStatus;
 import com.cinema.inventory.dto.response.PreviewDraftFareMatrixResponse.MatrixPreviewContext;
 import com.cinema.inventory.entity.CinemaPricingPolicy;
 import com.cinema.inventory.entity.FareRule;
 import com.cinema.inventory.entity.PricingSeatType;
-import com.cinema.inventory.enums.FareRuleSelectionStatus;
 import com.cinema.inventory.enums.FareUnit;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.CinemaFareMatrixMapper;
@@ -44,6 +44,7 @@ public class DraftFareMatrixCoverageService {
     private final FareRuleSelector ruleSelector;
     private final DraftTicketCategorySimulationGuard categorySimulationGuard;
     private final DraftSeatTypeSimulationGuard seatTypeSimulationGuard;
+    private final DraftSaleScopeResolver saleScopeResolver;
 
     public DraftFareMatrixCoverageService(
             CinemaPricingPolicyRepository policyRepository,
@@ -53,7 +54,8 @@ public class DraftFareMatrixCoverageService {
             CinemaFareMatrixMapper matrixMapper,
             FareRuleSelector ruleSelector,
             DraftTicketCategorySimulationGuard categorySimulationGuard,
-            DraftSeatTypeSimulationGuard seatTypeSimulationGuard) {
+            DraftSeatTypeSimulationGuard seatTypeSimulationGuard,
+            DraftSaleScopeResolver saleScopeResolver) {
 
         this.policyRepository = policyRepository;
         this.fareRuleRepository = fareRuleRepository;
@@ -63,6 +65,7 @@ public class DraftFareMatrixCoverageService {
         this.ruleSelector = ruleSelector;
         this.categorySimulationGuard = categorySimulationGuard;
         this.seatTypeSimulationGuard = seatTypeSimulationGuard;
+        this.saleScopeResolver = saleScopeResolver;
     }
 
     @Transactional
@@ -113,8 +116,11 @@ public class DraftFareMatrixCoverageService {
 
         categorySimulationGuard.requireForSimulation(context);
         PricingSeatType seatType = seatTypeSimulationGuard.requireForSimulation(context);
+        var saleScope = saleScopeResolver.resolve(context);
+
         List<FareRule> rules =
                 fareRuleRepository.findAllByPolicy_IdOrderByPriorityDescCodeAsc(policy.getId());
+
         TreeSet<Integer> boundaries = new TreeSet<>();
         boundaries.add(request.fromMinute());
         boundaries.add(request.toMinute());
@@ -124,12 +130,25 @@ public class DraftFareMatrixCoverageService {
             addBoundary(boundaries, rule.getTimeBand().getToMinute(), request);
         }
 
+        for (var window : saleScope.windows()) {
+            addBoundary(boundaries, window.fromMinute(), request);
+            addBoundary(boundaries, window.toMinute(), request);
+        }
+
         List<Integer> points = new ArrayList<>(boundaries);
         List<MatrixCoverageSegment> segments = new ArrayList<>();
 
         for (int index = 0; index < points.size() - 1; index++) {
             int from = points.get(index);
             int to = points.get(index + 1);
+
+            if (!saleScope.allowsMinute(from)) {
+                appendOrMerge(
+                        segments,
+                        new MatrixCoverageSegment(
+                                from, to, MatrixCoverageStatus.NOT_FOR_SALE, List.of()));
+                continue;
+            }
 
             FareRuleSelector.Selection selection =
                     ruleSelector.selectAtLocalMinute(rules, context, from);
@@ -140,7 +159,7 @@ public class DraftFareMatrixCoverageService {
                     new MatrixCoverageSegment(
                             from,
                             to,
-                            selection.status(),
+                            MatrixCoverageStatus.valueOf(selection.status().name()),
                             selection.winners().stream()
                                     .map(matrixMapper::toFareRuleResponse)
                                     .toList());
@@ -149,13 +168,16 @@ public class DraftFareMatrixCoverageService {
         }
 
         // Compute flags over the complete analysis before limiting the response.
-        boolean hasGaps =
+        boolean hasSaleSegments =
                 segments.stream()
-                        .anyMatch(segment -> segment.status() == FareRuleSelectionStatus.GAP);
+                        .anyMatch(segment -> segment.status() != MatrixCoverageStatus.NOT_FOR_SALE);
+
+        boolean hasGaps =
+                segments.stream().anyMatch(segment -> segment.status() == MatrixCoverageStatus.GAP);
 
         boolean hasAmbiguities =
                 segments.stream()
-                        .anyMatch(segment -> segment.status() == FareRuleSelectionStatus.AMBIGUOUS);
+                        .anyMatch(segment -> segment.status() == MatrixCoverageStatus.AMBIGUOUS);
 
         boolean hasUnconfirmedUnits =
                 segments.stream()
@@ -185,6 +207,7 @@ public class DraftFareMatrixCoverageService {
                 referenceContext,
                 request.fromMinute(),
                 request.toMinute(),
+                hasSaleSegments,
                 hasGaps,
                 hasAmbiguities,
                 hasUnconfirmedUnits,

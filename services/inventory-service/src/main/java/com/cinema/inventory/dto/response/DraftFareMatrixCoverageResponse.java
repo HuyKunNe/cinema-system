@@ -2,7 +2,6 @@ package com.cinema.inventory.dto.response;
 
 import com.cinema.inventory.dto.response.CinemaFareMatrixResponse.MatrixFareRuleResponse;
 import com.cinema.inventory.dto.response.PreviewDraftFareMatrixResponse.MatrixPreviewContext;
-import com.cinema.inventory.enums.FareRuleSelectionStatus;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -25,16 +24,24 @@ public record DraftFareMatrixCoverageResponse(
         MatrixPreviewContext referenceContext,
         int fromMinute,
         int toMinute,
+        boolean hasSaleSegments,
         boolean hasGaps,
         boolean hasAmbiguities,
         boolean hasUnconfirmedUnits,
         boolean segmentsTruncated,
         List<MatrixCoverageSegment> segments) {
 
+    public enum MatrixCoverageStatus {
+        NOT_FOR_SALE,
+        MATCHED,
+        GAP,
+        AMBIGUOUS
+    }
+
     @JsonInclude(JsonInclude.Include.ALWAYS)
     public record MatrixCoverageSegment(
             int fromMinute,
             int toMinute,
-            FareRuleSelectionStatus status,
+            MatrixCoverageStatus status,
             List<MatrixFareRuleResponse> winningRules) {}
 }

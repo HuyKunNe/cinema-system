@@ -294,3 +294,15 @@ feat(pricing): support cinema fare matrices by format and ticket category
   Một ShowSeat COUPLE được tính giá một lần theo PER_PAIR.
 - Đơn vị tính theo cặp không đồng nghĩa với giá/phụ thu tham khảo đã được duyệt.
 - Inventory migrations đã được gom thành V1–V3 cho database tạo mới.
+
+## Phạm vi bán của policy
+
+- Sale scope là danh sách cho phép bán, khai báo độc lập với fare rules.
+- Mỗi scope xác định experience/content, nhóm ngày, khung giờ,
+  category, mã ghế và điều kiện suất chiếu sớm.
+- Các scope khớp được hợp lại; scope không có priority.
+- Ngoài scope là NOT_FOR_SALE.
+- Trong scope nhưng không có fare khớp là GAP.
+- Scope áp dụng trong thời gian hiệu lực của policy.
+- Review kiểm tra tham chiếu; coverage hiện vẫn phân tích một ngày/scenario.
+- Chưa có chứng nhận coverage toàn policy hoặc quyền publish.

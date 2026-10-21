@@ -147,6 +147,30 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PRICING_PAIR_FARE_UNIT_REQUIRED",
                     "Fares for couple seats must use PER_PAIR");
 
+    public static final InventoryErrorCode PRICING_SALE_SCOPE_DATA_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_PRICING_SALE_SCOPE_DATA_INVALID",
+                    "Pricing sale scope data is invalid");
+
+    public static final InventoryErrorCode PRICING_SALE_SCOPE_NOT_CONFIGURED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_SALE_SCOPE_NOT_CONFIGURED",
+                    "The policy has no sale scope configuration");
+
+    public static final InventoryErrorCode PRICING_SALE_SCOPE_REFERENCE_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_SALE_SCOPE_REFERENCE_INVALID",
+                    "A sale scope references a missing pricing dimension");
+
+    public static final InventoryErrorCode PRICING_SCENARIO_NOT_FOR_SALE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_SCENARIO_NOT_FOR_SALE",
+                    "The scenario is outside the policy sale scope");
+
     public static final InventoryErrorCode PRICING_SEAT_TYPE_NOT_CONFIGURED =
             new InventoryErrorCode(
                     ErrorCategory.BUSINESS,

@@ -1,5 +1,14 @@
 package com.cinema.inventory.service.pricing;
 
+import java.time.DateTimeException;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
@@ -15,15 +24,6 @@ import com.cinema.inventory.repository.CinemaHolidayDateRepository;
 import com.cinema.inventory.repository.CinemaPricingPolicyRepository;
 import com.cinema.inventory.repository.FareRuleRepository;
 
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.DateTimeException;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.util.UUID;
-
 @Service
 public class DraftFareMatrixPreviewService {
 
@@ -35,6 +35,7 @@ public class DraftFareMatrixPreviewService {
     private final CinemaFareMatrixMapper matrixMapper;
     private final FareRuleSelector ruleSelector;
     private final DraftSeatTypeSimulationGuard seatTypeSimulationGuard;
+    private final DraftSaleScopeResolver saleScopeResolver;
 
     public DraftFareMatrixPreviewService(
             CinemaPricingPolicyRepository policyRepository,
@@ -44,7 +45,8 @@ public class DraftFareMatrixPreviewService {
             CinemaFareMatrixMapper matrixMapper,
             FareRuleSelector ruleSelector,
             DraftTicketCategorySimulationGuard categorySimulationGuard,
-            DraftSeatTypeSimulationGuard seatTypeSimulationGuard) {
+            DraftSeatTypeSimulationGuard seatTypeSimulationGuard,
+            DraftSaleScopeResolver saleScopeResolver) {
 
         this.policyRepository = policyRepository;
         this.fareRuleRepository = fareRuleRepository;
@@ -54,6 +56,7 @@ public class DraftFareMatrixPreviewService {
         this.ruleSelector = ruleSelector;
         this.categorySimulationGuard = categorySimulationGuard;
         this.seatTypeSimulationGuard = seatTypeSimulationGuard;
+        this.saleScopeResolver = saleScopeResolver;
     }
 
     @Transactional
@@ -102,6 +105,12 @@ public class DraftFareMatrixPreviewService {
 
         categorySimulationGuard.requireForSimulation(context);
         PricingSeatType seatType = seatTypeSimulationGuard.requireForSimulation(context);
+
+        var saleScope = saleScopeResolver.resolve(context);
+
+        if (!saleScope.allowsMinute(context.minuteOfDay())) {
+            throw new ConflictException(InventoryErrorCode.PRICING_SCENARIO_NOT_FOR_SALE);
+        }
 
         FareRuleSelector.Selection selection =
                 ruleSelector.select(

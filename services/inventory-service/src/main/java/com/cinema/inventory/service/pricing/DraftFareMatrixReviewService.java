@@ -10,6 +10,7 @@ import com.cinema.inventory.entity.CinemaHolidayDate;
 import com.cinema.inventory.entity.CinemaPricingPolicy;
 import com.cinema.inventory.entity.FareRule;
 import com.cinema.inventory.entity.PricingDayGroup;
+import com.cinema.inventory.entity.PricingSaleScope;
 import com.cinema.inventory.entity.PricingSeatType;
 import com.cinema.inventory.entity.PricingTicketCategory;
 import com.cinema.inventory.entity.PricingTimeBand;
@@ -22,6 +23,7 @@ import com.cinema.inventory.repository.CinemaHolidayDateRepository;
 import com.cinema.inventory.repository.CinemaPricingPolicyRepository;
 import com.cinema.inventory.repository.FareRuleRepository;
 import com.cinema.inventory.repository.PricingDayGroupRepository;
+import com.cinema.inventory.repository.PricingSaleScopeRepository;
 import com.cinema.inventory.repository.PricingSeatTypeRepository;
 import com.cinema.inventory.repository.PricingTicketCategoryRepository;
 import com.cinema.inventory.repository.PricingTimeBandRepository;
@@ -37,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class DraftFareMatrixReviewService {
@@ -49,6 +52,7 @@ public class DraftFareMatrixReviewService {
     private final FareRuleRepository fareRuleRepository;
     private final CinemaHolidayDateRepository holidayRepository;
     private final PricingTicketCategoryRepository categoryRepository;
+    private final PricingSaleScopeRepository scopeRepository;
     private final PricingSeatTypeRepository seatTypeRepository;
     private final CinemaPricingPolicyMapper policyMapper;
 
@@ -60,7 +64,8 @@ public class DraftFareMatrixReviewService {
             CinemaHolidayDateRepository holidayRepository,
             PricingTicketCategoryRepository categoryRepository,
             PricingSeatTypeRepository seatTypeRepository,
-            CinemaPricingPolicyMapper policyMapper) {
+            CinemaPricingPolicyMapper policyMapper,
+            PricingSaleScopeRepository scopeRepository) {
 
         this.policyRepository = policyRepository;
         this.dayGroupRepository = dayGroupRepository;
@@ -70,6 +75,7 @@ public class DraftFareMatrixReviewService {
         this.categoryRepository = categoryRepository;
         this.seatTypeRepository = seatTypeRepository;
         this.policyMapper = policyMapper;
+        this.scopeRepository = scopeRepository;
     }
 
     @Transactional
@@ -110,12 +116,16 @@ public class DraftFareMatrixReviewService {
         List<PricingSeatType> seatTypes =
                 seatTypeRepository.findAllByPolicy_IdOrderByCodeAsc(scopedPolicyId);
 
+        List<PricingSaleScope> saleScopes =
+                scopeRepository.findAllByPolicy_IdOrderByCodeAsc(scopedPolicyId);
+
         IssueCollector report = new IssueCollector();
 
         checkRequiredData(policy, dayGroups, timeBands, fareRules, report);
         checkPeriodsAndUnits(policy, fareRules, holidays, report);
         checkTicketCategories(ticketCategories, fareRules, report);
         checkSeatTypes(seatTypes, fareRules, report);
+        checkSaleScopes(saleScopes, dayGroups, timeBands, ticketCategories, seatTypes, report);
         checkDimensionUsage(dayGroups, timeBands, fareRules, holidays, report);
 
         return new CinemaFareMatrixReviewResponse(
@@ -127,11 +137,10 @@ public class DraftFareMatrixReviewService {
                 List.of(
                         "FARE_MATRIX_FULL_COVERAGE",
                         "HIGHEST_PRIORITY_AMBIGUITIES",
-                        "TICKET_CATEGORY_SALE_SCOPE",
+                        "SALE_SCOPE_BUSINESS_CONFIRMATION",
                         "CUSTOMER_ELIGIBILITY",
                         "ELIGIBILITY_RULE_IMPLEMENTATIONS",
                         "SEAT_TYPE_MAPPING_BUSINESS_CONFIRMATION",
-                        "PHYSICAL_SEAT_TYPE_SALE_SCOPE",
                         "PAIR_GROUPING_AND_CHARGING",
                         "EXPERIENCE_AND_CONTENT_COMPATIBILITY",
                         "OFFICIAL_RELEASE_DATE_RESOLUTION",
@@ -139,6 +148,80 @@ public class DraftFareMatrixReviewService {
                         "SURCHARGE_INCLUSION_AND_STACKING",
                         "PUBLISHED_POLICY_PERIOD_CONFLICTS",
                         "REFERENCE_TARIFF_BUSINESS_CONFIRMATION"));
+    }
+
+    private void checkSaleScopes(
+            List<PricingSaleScope> scopes,
+            List<PricingDayGroup> dayGroups,
+            List<PricingTimeBand> timeBands,
+            List<PricingTicketCategory> categories,
+            List<PricingSeatType> seatTypes,
+            IssueCollector report) {
+
+        if (scopes.isEmpty()) {
+            report.add(
+                    MatrixReviewSeverity.ERROR,
+                    "SALE_SCOPE_EMPTY",
+                    "Declare which combinations and time windows the policy sells.");
+        }
+
+        Set<String> dayCodes =
+                dayGroups.stream().map(PricingDayGroup::getCode).collect(Collectors.toSet());
+
+        Set<String> timeCodes =
+                timeBands.stream().map(PricingTimeBand::getCode).collect(Collectors.toSet());
+
+        Set<String> categoryCodes =
+                categories.stream().map(PricingTicketCategory::getCode).collect(Collectors.toSet());
+
+        Set<String> seatCodes =
+                seatTypes.stream().map(PricingSeatType::getCode).collect(Collectors.toSet());
+
+        for (PricingSaleScope scope : scopes) {
+            checkScopeReference(
+                    dayCodes,
+                    scope.getDayGroupCode(),
+                    "SALE_SCOPE_DAY_GROUP_UNKNOWN",
+                    scope.getId(),
+                    report);
+
+            checkScopeReference(
+                    timeCodes,
+                    scope.getTimeBandCode(),
+                    "SALE_SCOPE_TIME_BAND_UNKNOWN",
+                    scope.getId(),
+                    report);
+
+            checkScopeReference(
+                    categoryCodes,
+                    scope.getTicketCategoryCode(),
+                    "SALE_SCOPE_TICKET_CATEGORY_UNKNOWN",
+                    scope.getId(),
+                    report);
+
+            checkScopeReference(
+                    seatCodes,
+                    scope.getSeatTypeCode(),
+                    "SALE_SCOPE_SEAT_TYPE_UNKNOWN",
+                    scope.getId(),
+                    report);
+        }
+    }
+
+    private void checkScopeReference(
+            Set<String> knownCodes,
+            String referencedCode,
+            String issueCode,
+            UUID scopeId,
+            IssueCollector report) {
+
+        if (!knownCodes.contains(referencedCode)) {
+            report.add(
+                    MatrixReviewSeverity.ERROR,
+                    issueCode,
+                    "The sale scope references a code absent from this policy catalog.",
+                    scopeId);
+        }
     }
 
     private void checkRequiredData(
