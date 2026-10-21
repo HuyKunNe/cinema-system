@@ -41,6 +41,7 @@ public class DraftFareMatrixCoverageService {
     private final CinemaPricingPolicyMapper policyMapper;
     private final CinemaFareMatrixMapper matrixMapper;
     private final FareRuleSelector ruleSelector;
+    private final DraftTicketCategorySimulationGuard categorySimulationGuard;
 
     public DraftFareMatrixCoverageService(
             CinemaPricingPolicyRepository policyRepository,
@@ -48,7 +49,8 @@ public class DraftFareMatrixCoverageService {
             CinemaHolidayDateRepository holidayRepository,
             CinemaPricingPolicyMapper policyMapper,
             CinemaFareMatrixMapper matrixMapper,
-            FareRuleSelector ruleSelector) {
+            FareRuleSelector ruleSelector,
+            DraftTicketCategorySimulationGuard categorySimulationGuard) {
 
         this.policyRepository = policyRepository;
         this.fareRuleRepository = fareRuleRepository;
@@ -56,13 +58,12 @@ public class DraftFareMatrixCoverageService {
         this.policyMapper = policyMapper;
         this.matrixMapper = matrixMapper;
         this.ruleSelector = ruleSelector;
+        this.categorySimulationGuard = categorySimulationGuard;
     }
 
     @Transactional
     public DraftFareMatrixCoverageResponse check(
-            UUID cinemaId,
-            UUID policyId,
-            CheckDraftFareMatrixCoverageRequest request) {
+            UUID cinemaId, UUID policyId, CheckDraftFareMatrixCoverageRequest request) {
 
         var scenario = request.scenario();
 
@@ -78,25 +79,20 @@ public class DraftFareMatrixCoverageService {
         policy.requireDraft();
 
         if (!scenario.expectedVersion().equals(policy.getVersion())) {
-            throw new ConflictException(
-                    InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
         }
 
         if (!"VND".equals(policy.getCurrency())) {
-            throw new ValidationException(
-                    InventoryErrorCode.FARE_RULE_DATA_INVALID);
+            throw new ValidationException(InventoryErrorCode.FARE_RULE_DATA_INVALID);
         }
 
-        OffsetDateTime localStartsAt =
-                toLocalStartsAt(policy, scenario.startsAt());
+        OffsetDateTime localStartsAt = toLocalStartsAt(policy, scenario.startsAt());
 
         LocalDate localDate = localStartsAt.toLocalDate();
         requireEffectiveDate(policy, localDate);
 
         boolean holiday =
-                holidayRepository
-                        .findAllByPolicy_IdOrderByHolidayDateAsc(policy.getId())
-                        .stream()
+                holidayRepository.findAllByPolicy_IdOrderByHolidayDateAsc(policy.getId()).stream()
                         .anyMatch(entry -> entry.getHolidayDate().equals(localDate));
 
         FareRuleEvaluationContext context =
@@ -111,23 +107,16 @@ public class DraftFareMatrixCoverageService {
                         scenario.simulatedFirstShowing(),
                         scenario.simulatedEligibilityCodes());
 
+        categorySimulationGuard.requireForSimulation(context);
         List<FareRule> rules =
-                fareRuleRepository
-                        .findAllByPolicy_IdOrderByPriorityDescCodeAsc(policy.getId());
-
+                fareRuleRepository.findAllByPolicy_IdOrderByPriorityDescCodeAsc(policy.getId());
         TreeSet<Integer> boundaries = new TreeSet<>();
         boundaries.add(request.fromMinute());
         boundaries.add(request.toMinute());
 
         for (FareRule rule : rules) {
-            addBoundary(
-                    boundaries,
-                    rule.getTimeBand().getFromMinute(),
-                    request);
-            addBoundary(
-                    boundaries,
-                    rule.getTimeBand().getToMinute(),
-                    request);
+            addBoundary(boundaries, rule.getTimeBand().getFromMinute(), request);
+            addBoundary(boundaries, rule.getTimeBand().getToMinute(), request);
         }
 
         List<Integer> points = new ArrayList<>(boundaries);
@@ -155,13 +144,11 @@ public class DraftFareMatrixCoverageService {
         // Compute flags over the complete analysis before limiting the response.
         boolean hasGaps =
                 segments.stream()
-                        .anyMatch(segment ->
-                                segment.status() == FareRuleSelectionStatus.GAP);
+                        .anyMatch(segment -> segment.status() == FareRuleSelectionStatus.GAP);
 
         boolean hasAmbiguities =
                 segments.stream()
-                        .anyMatch(segment ->
-                                segment.status() == FareRuleSelectionStatus.AMBIGUOUS);
+                        .anyMatch(segment -> segment.status() == FareRuleSelectionStatus.AMBIGUOUS);
 
         boolean hasUnconfirmedUnits =
                 segments.stream()
@@ -198,18 +185,14 @@ public class DraftFareMatrixCoverageService {
     }
 
     private void addBoundary(
-            TreeSet<Integer> boundaries,
-            int minute,
-            CheckDraftFareMatrixCoverageRequest request) {
+            TreeSet<Integer> boundaries, int minute, CheckDraftFareMatrixCoverageRequest request) {
 
         if (minute > request.fromMinute() && minute < request.toMinute()) {
             boundaries.add(minute);
         }
     }
 
-    private void appendOrMerge(
-            List<MatrixCoverageSegment> segments,
-            MatrixCoverageSegment next) {
+    private void appendOrMerge(List<MatrixCoverageSegment> segments, MatrixCoverageSegment next) {
 
         if (!segments.isEmpty()) {
             MatrixCoverageSegment previous = segments.getLast();
@@ -233,36 +216,27 @@ public class DraftFareMatrixCoverageService {
         segments.add(next);
     }
 
-    private OffsetDateTime toLocalStartsAt(
-            CinemaPricingPolicy policy,
-            OffsetDateTime startsAt) {
+    private OffsetDateTime toLocalStartsAt(CinemaPricingPolicy policy, OffsetDateTime startsAt) {
 
         String timeZone = policy.getTimeZone();
 
         if (timeZone == null || timeZone.isBlank()) {
-            throw new ValidationException(
-                    InventoryErrorCode.CINEMA_TIME_ZONE_INVALID);
+            throw new ValidationException(InventoryErrorCode.CINEMA_TIME_ZONE_INVALID);
         }
 
         try {
-            return startsAt.toInstant()
-                    .atZone(ZoneId.of(timeZone))
-                    .toOffsetDateTime();
+            return startsAt.toInstant().atZone(ZoneId.of(timeZone)).toOffsetDateTime();
         } catch (DateTimeException exception) {
-            throw new ValidationException(
-                    InventoryErrorCode.CINEMA_TIME_ZONE_INVALID);
+            throw new ValidationException(InventoryErrorCode.CINEMA_TIME_ZONE_INVALID);
         }
     }
 
-    private void requireEffectiveDate(
-            CinemaPricingPolicy policy,
-            LocalDate localDate) {
+    private void requireEffectiveDate(CinemaPricingPolicy policy, LocalDate localDate) {
 
         if (localDate.isBefore(policy.getEffectiveFrom())
                 || (policy.getEffectiveTo() != null
                         && !localDate.isBefore(policy.getEffectiveTo()))) {
-            throw new ConflictException(
-                    InventoryErrorCode.PRICING_POLICY_NOT_EFFECTIVE);
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_NOT_EFFECTIVE);
         }
     }
 }

@@ -29,6 +29,7 @@ public class DraftFareMatrixPreviewService {
     private final CinemaPricingPolicyRepository policyRepository;
     private final FareRuleRepository fareRuleRepository;
     private final CinemaHolidayDateRepository holidayRepository;
+    private final DraftTicketCategorySimulationGuard categorySimulationGuard;
     private final CinemaPricingPolicyMapper policyMapper;
     private final CinemaFareMatrixMapper matrixMapper;
     private final FareRuleSelector ruleSelector;
@@ -39,7 +40,8 @@ public class DraftFareMatrixPreviewService {
             CinemaHolidayDateRepository holidayRepository,
             CinemaPricingPolicyMapper policyMapper,
             CinemaFareMatrixMapper matrixMapper,
-            FareRuleSelector ruleSelector) {
+            FareRuleSelector ruleSelector,
+            DraftTicketCategorySimulationGuard categorySimulationGuard) {
 
         this.policyRepository = policyRepository;
         this.fareRuleRepository = fareRuleRepository;
@@ -47,13 +49,12 @@ public class DraftFareMatrixPreviewService {
         this.policyMapper = policyMapper;
         this.matrixMapper = matrixMapper;
         this.ruleSelector = ruleSelector;
+        this.categorySimulationGuard = categorySimulationGuard;
     }
 
     @Transactional
     public PreviewDraftFareMatrixResponse preview(
-            UUID cinemaId,
-            UUID policyId,
-            PreviewDraftFareMatrixRequest request) {
+            UUID cinemaId, UUID policyId, PreviewDraftFareMatrixRequest request) {
 
         CinemaPricingPolicy policy =
                 policyRepository
@@ -67,25 +68,20 @@ public class DraftFareMatrixPreviewService {
         policy.requireDraft();
 
         if (!request.expectedVersion().equals(policy.getVersion())) {
-            throw new ConflictException(
-                    InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
         }
 
         if (!"VND".equals(policy.getCurrency())) {
-            throw new ValidationException(
-                    InventoryErrorCode.FARE_RULE_DATA_INVALID);
+            throw new ValidationException(InventoryErrorCode.FARE_RULE_DATA_INVALID);
         }
 
-        OffsetDateTime localStartsAt =
-                toLocalStartsAt(policy, request.startsAt());
+        OffsetDateTime localStartsAt = toLocalStartsAt(policy, request.startsAt());
 
         LocalDate localDate = localStartsAt.toLocalDate();
         requireEffectiveDate(policy, localDate);
 
         boolean holiday =
-                holidayRepository
-                        .findAllByPolicy_IdOrderByHolidayDateAsc(policy.getId())
-                        .stream()
+                holidayRepository.findAllByPolicy_IdOrderByHolidayDateAsc(policy.getId()).stream()
                         .anyMatch(entry -> entry.getHolidayDate().equals(localDate));
 
         FareRuleEvaluationContext context =
@@ -100,11 +96,12 @@ public class DraftFareMatrixPreviewService {
                         request.simulatedFirstShowing(),
                         request.simulatedEligibilityCodes());
 
+        categorySimulationGuard.requireForSimulation(context);
+
         FareRuleSelector.Selection selection =
                 ruleSelector.select(
-                        fareRuleRepository
-                                .findAllByPolicy_IdOrderByPriorityDescCodeAsc(
-                                        policy.getId()),
+                        fareRuleRepository.findAllByPolicy_IdOrderByPriorityDescCodeAsc(
+                                policy.getId()),
                         context);
 
         MatrixPreviewContext resolved =
@@ -127,41 +124,30 @@ public class DraftFareMatrixPreviewService {
                 policyMapper.toResponse(policy),
                 resolved,
                 selection.status(),
-                selection.winners().stream()
-                        .map(matrixMapper::toFareRuleResponse)
-                        .toList());
+                selection.winners().stream().map(matrixMapper::toFareRuleResponse).toList());
     }
 
-    private OffsetDateTime toLocalStartsAt(
-            CinemaPricingPolicy policy,
-            OffsetDateTime startsAt) {
+    private OffsetDateTime toLocalStartsAt(CinemaPricingPolicy policy, OffsetDateTime startsAt) {
 
         String timeZone = policy.getTimeZone();
 
         if (timeZone == null || timeZone.isBlank()) {
-            throw new ValidationException(
-                    InventoryErrorCode.CINEMA_TIME_ZONE_INVALID);
+            throw new ValidationException(InventoryErrorCode.CINEMA_TIME_ZONE_INVALID);
         }
 
         try {
-            return startsAt.toInstant()
-                    .atZone(ZoneId.of(timeZone))
-                    .toOffsetDateTime();
+            return startsAt.toInstant().atZone(ZoneId.of(timeZone)).toOffsetDateTime();
         } catch (DateTimeException exception) {
-            throw new ValidationException(
-                    InventoryErrorCode.CINEMA_TIME_ZONE_INVALID);
+            throw new ValidationException(InventoryErrorCode.CINEMA_TIME_ZONE_INVALID);
         }
     }
 
-    private void requireEffectiveDate(
-            CinemaPricingPolicy policy,
-            LocalDate localDate) {
+    private void requireEffectiveDate(CinemaPricingPolicy policy, LocalDate localDate) {
 
         if (localDate.isBefore(policy.getEffectiveFrom())
                 || (policy.getEffectiveTo() != null
                         && !localDate.isBefore(policy.getEffectiveTo()))) {
-            throw new ConflictException(
-                    InventoryErrorCode.PRICING_POLICY_NOT_EFFECTIVE);
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_NOT_EFFECTIVE);
         }
     }
 }

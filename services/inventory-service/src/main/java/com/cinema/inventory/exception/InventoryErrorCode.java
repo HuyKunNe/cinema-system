@@ -117,6 +117,24 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PRICING_TICKET_CATEGORY_DATA_INVALID",
                     "Pricing ticket category data is invalid");
 
+    public static final InventoryErrorCode PRICING_TICKET_CATEGORY_NOT_CONFIGURED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_TICKET_CATEGORY_NOT_CONFIGURED",
+                    "The ticket category is not configured in this policy");
+
+    public static final InventoryErrorCode PRICING_TICKET_CATEGORY_ELIGIBILITY_UNCONFIRMED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_TICKET_CATEGORY_ELIGIBILITY_UNCONFIRMED",
+                    "The ticket category eligibility requirements are unconfirmed");
+
+    public static final InventoryErrorCode PRICING_TICKET_CATEGORY_ELIGIBILITY_NOT_SIMULATED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_TICKET_CATEGORY_ELIGIBILITY_NOT_SIMULATED",
+                    "The simulation must explicitly satisfy the category eligibility rule");
+
     public static final InventoryErrorCode PRICING_POLICY_CONTENT_REVISION_EXHAUSTED =
             new InventoryErrorCode(
                     ErrorCategory.BUSINESS,

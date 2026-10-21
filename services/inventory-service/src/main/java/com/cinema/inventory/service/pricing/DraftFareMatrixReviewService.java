@@ -10,14 +10,17 @@ import com.cinema.inventory.entity.CinemaHolidayDate;
 import com.cinema.inventory.entity.CinemaPricingPolicy;
 import com.cinema.inventory.entity.FareRule;
 import com.cinema.inventory.entity.PricingDayGroup;
+import com.cinema.inventory.entity.PricingTicketCategory;
 import com.cinema.inventory.entity.PricingTimeBand;
 import com.cinema.inventory.enums.FareUnit;
+import com.cinema.inventory.enums.TicketEligibilityMode;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.CinemaPricingPolicyMapper;
 import com.cinema.inventory.repository.CinemaHolidayDateRepository;
 import com.cinema.inventory.repository.CinemaPricingPolicyRepository;
 import com.cinema.inventory.repository.FareRuleRepository;
 import com.cinema.inventory.repository.PricingDayGroupRepository;
+import com.cinema.inventory.repository.PricingTicketCategoryRepository;
 import com.cinema.inventory.repository.PricingTimeBandRepository;
 
 import org.springframework.stereotype.Service;
@@ -25,8 +28,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -40,6 +45,7 @@ public class DraftFareMatrixReviewService {
     private final PricingTimeBandRepository timeBandRepository;
     private final FareRuleRepository fareRuleRepository;
     private final CinemaHolidayDateRepository holidayRepository;
+    private final PricingTicketCategoryRepository categoryRepository;
     private final CinemaPricingPolicyMapper policyMapper;
 
     public DraftFareMatrixReviewService(
@@ -48,6 +54,7 @@ public class DraftFareMatrixReviewService {
             PricingTimeBandRepository timeBandRepository,
             FareRuleRepository fareRuleRepository,
             CinemaHolidayDateRepository holidayRepository,
+            PricingTicketCategoryRepository categoryRepository,
             CinemaPricingPolicyMapper policyMapper) {
 
         this.policyRepository = policyRepository;
@@ -55,14 +62,13 @@ public class DraftFareMatrixReviewService {
         this.timeBandRepository = timeBandRepository;
         this.fareRuleRepository = fareRuleRepository;
         this.holidayRepository = holidayRepository;
+        this.categoryRepository = categoryRepository;
         this.policyMapper = policyMapper;
     }
 
     @Transactional
     public CinemaFareMatrixReviewResponse review(
-            UUID cinemaId,
-            UUID policyId,
-            ReviewCinemaPricingPolicyRequest request) {
+            UUID cinemaId, UUID policyId, ReviewCinemaPricingPolicyRequest request) {
 
         CinemaPricingPolicy policy =
                 policyRepository
@@ -76,8 +82,7 @@ public class DraftFareMatrixReviewService {
         policy.requireDraft();
 
         if (!request.expectedVersion().equals(policy.getVersion())) {
-            throw new ConflictException(
-                    InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
         }
 
         UUID scopedPolicyId = policy.getId();
@@ -86,21 +91,20 @@ public class DraftFareMatrixReviewService {
                 dayGroupRepository.findAllByPolicy_IdOrderByCodeAsc(scopedPolicyId);
 
         List<PricingTimeBand> timeBands =
-                timeBandRepository.findAllByPolicy_IdOrderByFromMinuteAscCodeAsc(
-                        scopedPolicyId);
+                timeBandRepository.findAllByPolicy_IdOrderByFromMinuteAscCodeAsc(scopedPolicyId);
 
         List<FareRule> fareRules =
-                fareRuleRepository.findAllByPolicy_IdOrderByPriorityDescCodeAsc(
-                        scopedPolicyId);
+                fareRuleRepository.findAllByPolicy_IdOrderByPriorityDescCodeAsc(scopedPolicyId);
 
         List<CinemaHolidayDate> holidays =
-                holidayRepository.findAllByPolicy_IdOrderByHolidayDateAsc(
-                        scopedPolicyId);
-
+                holidayRepository.findAllByPolicy_IdOrderByHolidayDateAsc(scopedPolicyId);
+        List<PricingTicketCategory> ticketCategories =
+                categoryRepository.findAllByPolicy_IdOrderByCodeAsc(scopedPolicyId);
         IssueCollector report = new IssueCollector();
 
         checkRequiredData(policy, dayGroups, timeBands, fareRules, report);
         checkPeriodsAndUnits(policy, fareRules, holidays, report);
+        checkTicketCategories(ticketCategories, fareRules, report);
         checkDimensionUsage(dayGroups, timeBands, fareRules, holidays, report);
 
         return new CinemaFareMatrixReviewResponse(
@@ -112,7 +116,9 @@ public class DraftFareMatrixReviewService {
                 List.of(
                         "FARE_MATRIX_FULL_COVERAGE",
                         "HIGHEST_PRIORITY_AMBIGUITIES",
-                        "TICKET_CATEGORY_CATALOG_AND_ELIGIBILITY",
+                        "TICKET_CATEGORY_SALE_SCOPE",
+                        "CUSTOMER_ELIGIBILITY",
+                        "ELIGIBILITY_RULE_IMPLEMENTATIONS",
                         "SEAT_TYPE_MAPPING_AND_PAIR_GROUPING",
                         "EXPERIENCE_AND_CONTENT_COMPATIBILITY",
                         "FIRST_SHOWING_DEFINITION",
@@ -173,8 +179,7 @@ public class DraftFareMatrixReviewService {
                         rule.getId());
             }
 
-            if (periodOutsidePolicy(
-                    policy, rule.getEffectiveFrom(), rule.getEffectiveTo())) {
+            if (periodOutsidePolicy(policy, rule.getEffectiveFrom(), rule.getEffectiveTo())) {
 
                 report.add(
                         MatrixReviewSeverity.ERROR,
@@ -191,6 +196,69 @@ public class DraftFareMatrixReviewService {
                         "HOLIDAY_OUTSIDE_POLICY_PERIOD",
                         "The holiday date is outside the policy effective period.",
                         holiday.getId());
+            }
+        }
+    }
+
+    private void checkTicketCategories(
+            List<PricingTicketCategory> ticketCategories,
+            List<FareRule> fareRules,
+            IssueCollector report) {
+
+        if (ticketCategories.isEmpty()) {
+            report.add(
+                    MatrixReviewSeverity.ERROR,
+                    "TICKET_CATEGORY_CATALOG_EMPTY",
+                    "The policy has no ticket category definitions.");
+        }
+
+        Map<String, PricingTicketCategory> categoriesByCode = new HashMap<>();
+
+        for (PricingTicketCategory category : ticketCategories) {
+            categoriesByCode.put(category.getCode(), category);
+
+            if (category.getEligibilityMode() == TicketEligibilityMode.UNCONFIRMED) {
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "TICKET_CATEGORY_ELIGIBILITY_UNCONFIRMED",
+                        "Confirm the eligibility requirements of this ticket category.",
+                        category.getId());
+            }
+        }
+
+        Set<String> usedCategoryCodes = new HashSet<>();
+
+        for (FareRule rule : fareRules) {
+            String categoryCode = rule.getTicketCategoryCode();
+            usedCategoryCodes.add(categoryCode);
+
+            if (!categoriesByCode.containsKey(categoryCode)) {
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "FARE_TICKET_CATEGORY_UNKNOWN",
+                        "The fare references a ticket category absent from this policy catalog.",
+                        rule.getId());
+            }
+        }
+
+        // Emit warnings after checking all category errors.
+        for (PricingTicketCategory category : ticketCategories) {
+            if (!usedCategoryCodes.contains(category.getCode())) {
+                report.add(
+                        MatrixReviewSeverity.WARNING,
+                        "TICKET_CATEGORY_WITHOUT_FARES",
+                        "The ticket category is not referenced by any fare rule.",
+                        category.getId());
+            }
+
+            if (category.getEligibilityMode() == TicketEligibilityMode.RULE_REQUIRED) {
+                report.add(
+                        MatrixReviewSeverity.WARNING,
+                        "CATEGORY_ELIGIBILITY_RULE_UNVERIFIED",
+                        "This category requires an eligibility rule. "
+                                + "Its runtime implementation and customer evidence "
+                                + "are not verified by this review.",
+                        category.getId());
             }
         }
     }
@@ -237,31 +305,22 @@ public class DraftFareMatrixReviewService {
         }
     }
 
-    private boolean dateOutsidePolicy(
-            CinemaPricingPolicy policy,
-            LocalDate date) {
+    private boolean dateOutsidePolicy(CinemaPricingPolicy policy, LocalDate date) {
 
         return date.isBefore(policy.getEffectiveFrom())
-                || (policy.getEffectiveTo() != null
-                        && !date.isBefore(policy.getEffectiveTo()));
+                || (policy.getEffectiveTo() != null && !date.isBefore(policy.getEffectiveTo()));
     }
 
-    private boolean periodOutsidePolicy(
-            CinemaPricingPolicy policy,
-            LocalDate from,
-            LocalDate to) {
+    private boolean periodOutsidePolicy(CinemaPricingPolicy policy, LocalDate from, LocalDate to) {
 
-        if (from.isBefore(policy.getEffectiveFrom())
-                || (to != null && !to.isAfter(from))) {
+        if (from.isBefore(policy.getEffectiveFrom()) || (to != null && !to.isAfter(from))) {
             return true;
         }
 
         LocalDate policyEnd = policy.getEffectiveTo();
 
         return policyEnd != null
-                && (!from.isBefore(policyEnd)
-                        || to == null
-                        || to.isAfter(policyEnd));
+                && (!from.isBefore(policyEnd) || to == null || to.isAfter(policyEnd));
     }
 
     private static final class IssueCollector {
@@ -271,10 +330,7 @@ public class DraftFareMatrixReviewService {
         private boolean truncated;
 
         private void add(
-                MatrixReviewSeverity severity,
-                String code,
-                String message,
-                UUID... relatedIds) {
+                MatrixReviewSeverity severity, String code, String message, UUID... relatedIds) {
 
             // Keep the error flag accurate even after the response limit.
             if (severity == MatrixReviewSeverity.ERROR) {
@@ -286,12 +342,7 @@ public class DraftFareMatrixReviewService {
                 return;
             }
 
-            issues.add(
-                    new MatrixReviewIssue(
-                            severity,
-                            code,
-                            message,
-                            List.of(relatedIds)));
+            issues.add(new MatrixReviewIssue(severity, code, message, List.of(relatedIds)));
         }
     }
 }
