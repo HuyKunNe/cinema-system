@@ -46,11 +46,4 @@ public record PreviewDraftFareMatrixRequest(
                         description =
                                 "Hypothetical satisfied eligibility codes. "
                                         + "Omission means none are satisfied.")
-                Set<@NotBlank @Size(max = 64) String> simulatedEligibilityCodes,
-        @Size(max = 20)
-                @Schema(
-                        description =
-                                "Hypothetical movie attribute codes. "
-                                        + "Omission means an empty attribute set. "
-                                        + "Not verified against Movie Service.")
-                Set<@NotBlank @Size(max = 64) String> simulatedMovieAttributeCodes) {}
+                Set<@NotBlank @Size(max = 64) String> simulatedEligibilityCodes) {}

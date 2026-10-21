@@ -13,13 +13,12 @@ public record DraftFareMatrixCoverageResponse(
         CinemaPricingPolicyResponse policy,
         boolean simulation,
         boolean eligibilityVerified,
-        boolean additionalSurchargesEvaluated,
         boolean bookingQuote,
         boolean publicationValidated,
         @Schema(
-                        description =
-                                "Always true. Segments describe local clock minutes, "
-                                        + "not validated scheduling instants.")
+                description =
+                        "Always true. Segments describe local clock minutes, "
+                                + "not validated scheduling instants.")
                 boolean localWallClockOnly,
         MatrixPreviewContext referenceContext,
         int fromMinute,
@@ -28,8 +27,6 @@ public record DraftFareMatrixCoverageResponse(
         boolean hasGaps,
         boolean hasAmbiguities,
         boolean hasUnconfirmedUnits,
-        boolean hasSurchargeAmbiguities,
-        boolean hasUnresolvedSurcharges,
         boolean segmentsTruncated,
         List<MatrixCoverageSegment> segments) {
 
@@ -45,6 +42,5 @@ public record DraftFareMatrixCoverageResponse(
             int fromMinute,
             int toMinute,
             MatrixCoverageStatus status,
-            List<MatrixFareRuleResponse> winningRules,
-            @Schema(nullable = true) DraftFareSurchargeEvaluationResponse surchargeEvaluation) {}
+            List<MatrixFareRuleResponse> winningRules) {}
 }

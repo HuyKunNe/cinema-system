@@ -14,8 +14,13 @@ public record ValidateDraftFareMatrixResponse(
         CinemaPricingPolicyResponse policy,
         ValidationStatus status,
         boolean matrixValid,
+        @Schema(
+                        description =
+                                "True only when analysis completes and fare-unit pricing "
+                                        + "is valid under the declared predicate model.")
+                boolean unitPricingValid,
         @Schema(description = "Always false. This result does not authorize publication.")
-        boolean publicationValidated,
+                boolean publicationValidated,
         long datesVisited,
         long cellsChecked,
         long ruleEvaluations,
@@ -43,5 +48,11 @@ public record ValidateDraftFareMatrixResponse(
             int toMinute,
             boolean advanceScreening,
             List<String> eligibilityCodes,
-            List<UUID> winningFareRuleIds) {}
+            List<UUID> winningFareRuleIds,
+            List<String> movieAttributeCodes,
+            @Schema(
+                            description =
+                                    "For SURCHARGE_AMOUNT_BOUND_UNPROVEN, these rules form a"
+                                        + " conservative bound, not a simultaneous-match witness.")
+                    List<UUID> surchargeRuleIds) {}
 }

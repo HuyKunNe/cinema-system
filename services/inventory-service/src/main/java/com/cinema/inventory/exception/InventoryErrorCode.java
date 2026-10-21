@@ -105,6 +105,19 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PRICING_POLICY_NOT_EFFECTIVE",
                     "Pricing policy does not cover the local showtime date");
 
+    public static final InventoryErrorCode PRICING_CATEGORY_RULES_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_CATEGORY_RULES_INVALID",
+                    "Configure confirmed pricing roles and exactly one unrestricted regular"
+                        + " category");
+
+    public static final InventoryErrorCode PRICING_FIXED_FARE_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_FIXED_FARE_REQUIRED",
+                    "Fare matrix policies require all-inclusive fares without surcharges");
+
     public static final InventoryErrorCode TICKET_PRICE_RULE_NOT_FOUND =
             new InventoryErrorCode(
                     ErrorCategory.BUSINESS,

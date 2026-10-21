@@ -1,6 +1,7 @@
 package com.cinema.inventory.dto.response;
 
 import com.cinema.inventory.enums.TicketEligibilityMode;
+import com.cinema.inventory.enums.TicketPricingRole;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -14,8 +15,7 @@ import java.util.UUID;
                 "Stored ticket category definitions for one pricing policy. "
                         + "Does not verify customer eligibility or publication readiness.")
 public record CinemaPricingTicketCategoriesResponse(
-        CinemaPricingPolicyResponse policy,
-        List<PricingTicketCategoryResponse> ticketCategories) {
+        CinemaPricingPolicyResponse policy, List<PricingTicketCategoryResponse> ticketCategories) {
 
     @JsonInclude(JsonInclude.Include.ALWAYS)
     public record PricingTicketCategoryResponse(
@@ -23,6 +23,6 @@ public record CinemaPricingTicketCategoriesResponse(
             String code,
             String name,
             TicketEligibilityMode eligibilityMode,
-            @Schema(nullable = true)
-                    String eligibilityRuleCode) {}
+            @Schema(nullable = true) String eligibilityRuleCode,
+            TicketPricingRole pricingRole) {}
 }

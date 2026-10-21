@@ -3,6 +3,7 @@ package com.cinema.inventory.entity;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
 import com.cinema.inventory.enums.TicketEligibilityMode;
+import com.cinema.inventory.enums.TicketPricingRole;
 import com.cinema.inventory.exception.InventoryErrorCode;
 
 import jakarta.persistence.Column;
@@ -44,6 +45,14 @@ public class PricingTicketCategory extends BaseEntity {
     @Column(name = "eligibility_rule_code", length = 64)
     private String eligibilityRuleCode;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "pricing_role", nullable = false, length = 30)
+    private TicketPricingRole pricingRole = TicketPricingRole.UNCONFIRMED;
+
+    public TicketPricingRole getPricingRole() {
+        return pricingRole;
+    }
+
     protected PricingTicketCategory() {}
 
     public PricingTicketCategory(
@@ -53,9 +62,27 @@ public class PricingTicketCategory extends BaseEntity {
             TicketEligibilityMode eligibilityMode,
             String eligibilityRuleCode) {
 
+        this(
+                policy,
+                code,
+                name,
+                eligibilityMode,
+                eligibilityRuleCode,
+                TicketPricingRole.UNCONFIRMED);
+    }
+
+    public PricingTicketCategory(
+            CinemaPricingPolicy policy,
+            String code,
+            String name,
+            TicketEligibilityMode eligibilityMode,
+            String eligibilityRuleCode,
+            TicketPricingRole pricingRole) {
+
         if (policy == null
                 || policy.getId() == null
-                || eligibilityMode == null) {
+                || eligibilityMode == null
+                || pricingRole == null) {
             throw invalid();
         }
 
@@ -63,14 +90,16 @@ public class PricingTicketCategory extends BaseEntity {
         policy.requireDraft();
 
         String normalizedRuleCode =
-                eligibilityRuleCode == null
-                        ? null
-                        : normalizeCode(eligibilityRuleCode);
+                eligibilityRuleCode == null ? null : normalizeCode(eligibilityRuleCode);
 
-        boolean requiresRule =
-                eligibilityMode == TicketEligibilityMode.RULE_REQUIRED;
+        boolean requiresRule = eligibilityMode == TicketEligibilityMode.RULE_REQUIRED;
 
         if (requiresRule != (normalizedRuleCode != null)) {
+            throw invalid();
+        }
+
+        if (pricingRole == TicketPricingRole.REGULAR
+                && eligibilityMode != TicketEligibilityMode.UNRESTRICTED) {
             throw invalid();
         }
 
@@ -79,6 +108,7 @@ public class PricingTicketCategory extends BaseEntity {
         this.name = normalizeName(name);
         this.eligibilityMode = eligibilityMode;
         this.eligibilityRuleCode = normalizedRuleCode;
+        this.pricingRole = pricingRole;
     }
 
     public CinemaPricingPolicy getPolicy() {
@@ -130,7 +160,6 @@ public class PricingTicketCategory extends BaseEntity {
     }
 
     private static ValidationException invalid() {
-        return new ValidationException(
-                InventoryErrorCode.PRICING_TICKET_CATEGORY_DATA_INVALID);
+        return new ValidationException(InventoryErrorCode.PRICING_TICKET_CATEGORY_DATA_INVALID);
     }
 }

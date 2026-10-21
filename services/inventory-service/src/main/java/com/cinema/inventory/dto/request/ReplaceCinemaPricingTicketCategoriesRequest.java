@@ -1,6 +1,7 @@
 package com.cinema.inventory.dto.request;
 
 import com.cinema.inventory.enums.TicketEligibilityMode;
+import com.cinema.inventory.enums.TicketPricingRole;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -18,13 +19,11 @@ public record ReplaceCinemaPricingTicketCategoriesRequest(
                 @PositiveOrZero
                 @JsonDeserialize(
                         using =
-                                ReplaceCinemaPricingPolicyContentRequest
-                                        .StrictLongDeserializer.class)
+                                ReplaceCinemaPricingPolicyContentRequest.StrictLongDeserializer
+                                        .class)
                 @Schema(description = "Expected policy.version, not policyVersion.")
                 Long expectedVersion,
-        @NotNull
-                @Size(max = 100)
-                List<@NotNull @Valid CategoryInput> ticketCategories) {
+        @NotNull @Size(max = 100) List<@NotNull @Valid CategoryInput> ticketCategories) {
 
     public record CategoryInput(
             @NotBlank @Size(max = 64) String code,
@@ -34,7 +33,13 @@ public record ReplaceCinemaPricingTicketCategoriesRequest(
                     @Schema(
                             nullable = true,
                             description =
-                                    "Required only for RULE_REQUIRED. "
-                                            + "Declaring a code does not verify its implementation.")
-                    String eligibilityRuleCode) {}
+                                    "Required only for RULE_REQUIRED. Declaring a code does not"
+                                        + " verify its implementation.")
+                    String eligibilityRuleCode,
+            @NotNull
+                    @Schema(
+                            description =
+                                    "Pricing role. Each complete policy must contain exactly "
+                                            + "one unrestricted REGULAR category.")
+                    TicketPricingRole pricingRole) {}
 }

@@ -1,5 +1,11 @@
 package com.cinema.inventory.dto.request;
 
+import java.io.IOException;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Set;
+
 import com.cinema.inventory.dto.request.ReplaceCinemaPricingPolicyContentRequest.StrictIntegerDeserializer;
 import com.cinema.inventory.dto.request.ReplaceCinemaPricingPolicyContentRequest.StrictLongDeserializer;
 import com.cinema.inventory.enums.AdvanceScreeningCondition;
@@ -13,7 +19,6 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -22,12 +27,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
-
-import java.io.IOException;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Set;
 
 public record ReplaceCinemaFareMatrixRequest(
         @NotNull @PositiveOrZero @JsonDeserialize(using = StrictLongDeserializer.class)
@@ -58,7 +57,12 @@ public record ReplaceCinemaFareMatrixRequest(
             @NotBlank @Size(max = 64) String timeBandCode,
             @NotBlank @Size(max = 64) String ticketCategoryCode,
             @NotBlank @Size(max = 64) String seatTypeCode,
-            @NotNull AdvanceScreeningCondition advanceScreeningCondition,
+            @NotNull
+                    @Schema(
+                            description =
+                                    "Explicit fare applicability: REGULAR_SCREENING or "
+                                            + "ADVANCE_SCREENING. ANY is rejected for fare rules.")
+                    AdvanceScreeningCondition advanceScreeningCondition,
             @Size(max = 64) String requiredEligibilityCode,
             @NotBlank
                     @Pattern(regexp = "0|[1-9][0-9]{0,18}")

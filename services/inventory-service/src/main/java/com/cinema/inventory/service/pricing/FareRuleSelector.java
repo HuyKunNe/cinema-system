@@ -2,6 +2,7 @@ package com.cinema.inventory.service.pricing;
 
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.inventory.entity.FareRule;
+import com.cinema.inventory.enums.AdvanceScreeningCondition;
 import com.cinema.inventory.enums.FareRuleSelectionStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
 
@@ -74,6 +75,10 @@ public class FareRuleSelector {
      * context and local minute.
      */
     boolean matchesDimensions(FareRule rule, FareRuleEvaluationContext context, int localMinute) {
+
+        if (rule.getAdvanceScreeningCondition() == AdvanceScreeningCondition.ANY) {
+            return false;
+        }
 
         if (!rule.getPolicy().getId().equals(context.policyId())
                 || rule.getExperienceType() != context.experienceType()

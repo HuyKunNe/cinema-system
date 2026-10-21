@@ -36,7 +36,8 @@ public class DraftFareMatrixPreviewService {
     private final FareRuleSelector ruleSelector;
     private final DraftSeatTypeSimulationGuard seatTypeSimulationGuard;
     private final DraftSaleScopeResolver saleScopeResolver;
-    private final DraftFareSurchargeEvaluator surchargeEvaluator;
+    private final DraftFixedFareGuard fixedFareGuard;
+    private final FareCategoryResolver categoryResolver;
 
     public DraftFareMatrixPreviewService(
             CinemaPricingPolicyRepository policyRepository,
@@ -48,7 +49,8 @@ public class DraftFareMatrixPreviewService {
             DraftTicketCategorySimulationGuard categorySimulationGuard,
             DraftSeatTypeSimulationGuard seatTypeSimulationGuard,
             DraftSaleScopeResolver saleScopeResolver,
-            DraftFareSurchargeEvaluator surchargeEvaluator) {
+            DraftFixedFareGuard fixedFareGuard,
+            FareCategoryResolver categoryResolver) {
 
         this.policyRepository = policyRepository;
         this.fareRuleRepository = fareRuleRepository;
@@ -59,7 +61,8 @@ public class DraftFareMatrixPreviewService {
         this.categorySimulationGuard = categorySimulationGuard;
         this.seatTypeSimulationGuard = seatTypeSimulationGuard;
         this.saleScopeResolver = saleScopeResolver;
-        this.surchargeEvaluator = surchargeEvaluator;
+        this.fixedFareGuard = fixedFareGuard;
+        this.categoryResolver = categoryResolver;
     }
 
     @Transactional
@@ -85,6 +88,8 @@ public class DraftFareMatrixPreviewService {
             throw new ValidationException(InventoryErrorCode.FARE_RULE_DATA_INVALID);
         }
 
+        fixedFareGuard.requireFixedFares(policy);
+
         OffsetDateTime localStartsAt = toLocalStartsAt(policy, request.startsAt());
 
         LocalDate localDate = localStartsAt.toLocalDate();
@@ -106,6 +111,10 @@ public class DraftFareMatrixPreviewService {
                         request.simulatedReleaseDate(),
                         request.simulatedEligibilityCodes());
 
+        FareCategoryResolver.Resolution categoryResolution = categoryResolver.resolve(context);
+
+        context = categoryResolution.context();
+
         categorySimulationGuard.requireForSimulation(context);
         PricingSeatType seatType = seatTypeSimulationGuard.requireForSimulation(context);
 
@@ -115,18 +124,12 @@ public class DraftFareMatrixPreviewService {
             throw new ConflictException(InventoryErrorCode.PRICING_SCENARIO_NOT_FOR_SALE);
         }
 
-        var surchargePlan =
-                surchargeEvaluator.prepare(
-                        policy, context, seatType, request.simulatedMovieAttributeCodes());
-
         FareRuleSelector.Selection selection =
                 ruleSelector.select(
                         fareRuleRepository.findAllByPolicy_IdOrderByPriorityDescCodeAsc(
                                 policy.getId()),
                         context);
         seatTypeSimulationGuard.requireCompatibleFareUnits(seatType, selection.winners());
-
-        var surchargeEvaluation = surchargePlan.evaluate(selection);
 
         MatrixPreviewContext resolved =
                 new MatrixPreviewContext(
@@ -138,19 +141,19 @@ public class DraftFareMatrixPreviewService {
                         context.seatTypeCode(),
                         context.officialReleaseDate(),
                         context.advanceScreening(),
-                        context.eligibilityCodes().stream().sorted().toList());
+                        context.eligibilityCodes().stream().sorted().toList(),
+                        categoryResolution.requestedTicketCategoryCode(),
+                        categoryResolution.reason().name());
 
         return new PreviewDraftFareMatrixResponse(
                 true,
                 false,
-                surchargeEvaluation.combinedAmountVnd() != null,
                 false,
                 false,
                 policyMapper.toResponse(policy),
                 resolved,
                 selection.status(),
-                selection.winners().stream().map(matrixMapper::toFareRuleResponse).toList(),
-                surchargeEvaluation);
+                selection.winners().stream().map(matrixMapper::toFareRuleResponse).toList());
     }
 
     private OffsetDateTime toLocalStartsAt(CinemaPricingPolicy policy, OffsetDateTime startsAt) {

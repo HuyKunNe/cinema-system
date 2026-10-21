@@ -1,5 +1,18 @@
 package com.cinema.inventory.service.pricing;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.inventory.dto.request.ReviewCinemaPricingPolicyRequest;
@@ -15,12 +28,13 @@ import com.cinema.inventory.entity.PricingSaleScope;
 import com.cinema.inventory.entity.PricingSeatType;
 import com.cinema.inventory.entity.PricingTicketCategory;
 import com.cinema.inventory.entity.PricingTimeBand;
+import com.cinema.inventory.enums.AdvanceScreeningCondition;
+import com.cinema.inventory.enums.ExperienceType;
 import com.cinema.inventory.enums.FareSurchargeMode;
-import com.cinema.inventory.enums.FareSurchargeUnit;
 import com.cinema.inventory.enums.FareUnit;
 import com.cinema.inventory.enums.PricingSeatMappingStatus;
-import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.TicketEligibilityMode;
+import com.cinema.inventory.enums.TicketPricingRole;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.CinemaPricingPolicyMapper;
 import com.cinema.inventory.repository.CinemaHolidayDateRepository;
@@ -32,19 +46,6 @@ import com.cinema.inventory.repository.PricingSaleScopeRepository;
 import com.cinema.inventory.repository.PricingSeatTypeRepository;
 import com.cinema.inventory.repository.PricingTicketCategoryRepository;
 import com.cinema.inventory.repository.PricingTimeBandRepository;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class DraftFareMatrixReviewService {
@@ -137,7 +138,8 @@ public class DraftFareMatrixReviewService {
         checkRequiredData(policy, dayGroups, timeBands, fareRules, report);
         checkPeriodsAndUnits(policy, fareRules, holidays, report);
         checkTicketCategories(ticketCategories, fareRules, report);
-        checkFareSurcharges(policy, fareRules, seatTypes, fareSurcharges, report);
+        checkCategoryPricingRules(ticketCategories, fareRules, saleScopes, report);
+        checkFareSurcharges(policy, fareSurcharges, report);
         checkSeatTypes(seatTypes, fareRules, report);
         checkSaleScopes(saleScopes, dayGroups, timeBands, ticketCategories, seatTypes, report);
         checkDimensionUsage(dayGroups, timeBands, fareRules, holidays, report);
@@ -159,7 +161,6 @@ public class DraftFareMatrixReviewService {
                         "EXPERIENCE_AND_CONTENT_COMPATIBILITY",
                         "OFFICIAL_RELEASE_DATE_RESOLUTION",
                         "HOLIDAY_CALENDAR_COMPLETENESS",
-                        "SURCHARGE_INCLUSION_AND_STACKING",
                         "PUBLISHED_POLICY_PERIOD_CONFLICTS",
                         "REFERENCE_TARIFF_BUSINESS_CONFIRMATION"));
     }
@@ -447,116 +448,152 @@ public class DraftFareMatrixReviewService {
     }
 
     private void checkFareSurcharges(
-            CinemaPricingPolicy policy,
+            CinemaPricingPolicy policy, List<FareSurchargeRule> surcharges, IssueCollector report) {
+
+        if (policy.getFareSurchargeMode() != FareSurchargeMode.NONE || !surcharges.isEmpty()) {
+            report.add(
+                    MatrixReviewSeverity.ERROR,
+                    "FIXED_FARES_REQUIRED",
+                    "V2 fares must be all-inclusive. "
+                            + "Confirm fare amounts and clear legacy surcharge configuration.");
+        }
+    }
+
+    private void checkCategoryPricingRules(
+            List<PricingTicketCategory> categories,
             List<FareRule> fares,
-            List<PricingSeatType> seatTypes,
-            List<FareSurchargeRule> surcharges,
+            List<PricingSaleScope> scopes,
             IssueCollector report) {
 
-        if (policy.getFareSurchargeMode() == FareSurchargeMode.UNCONFIRMED) {
-            report.add(
-                    MatrixReviewSeverity.ERROR,
-                    "FARE_SURCHARGE_MODE_UNCONFIRMED",
-                    "Confirm whether fares need additional surcharges "
-                            + "and how matching surcharges are combined.");
-        }
+        Map<String, PricingTicketCategory> byCode = new HashMap<>();
+        long regularCount = 0;
 
-        if (policy.getFareSurchargeMode() == FareSurchargeMode.NONE && !surcharges.isEmpty()) {
-            report.add(
-                    MatrixReviewSeverity.ERROR,
-                    "FARE_SURCHARGES_PRESENT_WITH_NONE",
-                    "NONE mode requires an empty surcharge catalog.");
-        }
+        Map<String, TicketPricingRole> eligibilityRoles = new HashMap<>();
 
-        Map<String, FareRule> faresByCode = new HashMap<>();
-        fares.forEach(fare -> faresByCode.put(fare.getCode(), fare));
+        for (PricingTicketCategory category : categories) {
+            byCode.put(category.getCode(), category);
 
-        Map<String, PricingSeatType> seatsByCode = new HashMap<>();
-        seatTypes.forEach(seat -> seatsByCode.put(seat.getCode(), seat));
+            TicketPricingRole role = category.getPricingRole();
 
-        for (FareSurchargeRule surcharge : surcharges) {
-            if (surcharge.getUnit() == FareSurchargeUnit.UNCONFIRMED) {
+            if (role == null || role == TicketPricingRole.UNCONFIRMED) {
                 report.add(
                         MatrixReviewSeverity.ERROR,
-                        "FARE_SURCHARGE_UNIT_UNCONFIRMED",
-                        "Confirm the charging unit of this surcharge.",
-                        surcharge.getId());
-            }
-
-            if (periodOutsidePolicy(
-                    policy, surcharge.getEffectiveFrom(), surcharge.getEffectiveTo())) {
-
-                report.add(
-                        MatrixReviewSeverity.ERROR,
-                        "FARE_SURCHARGE_PERIOD_OUTSIDE_POLICY",
-                        "The surcharge period is outside the policy period.",
-                        surcharge.getId());
-            }
-
-            FareRule fare = faresByCode.get(surcharge.getFareRuleCode());
-
-            if (fare == null) {
-                report.add(
-                        MatrixReviewSeverity.ERROR,
-                        "FARE_SURCHARGE_FARE_UNKNOWN",
-                        "The surcharge references a fare absent from this policy.",
-                        surcharge.getId());
+                        "TICKET_PRICING_ROLE_UNCONFIRMED",
+                        "Confirm the pricing role of this category.",
+                        category.getId());
                 continue;
             }
 
-            LocalDate fareEnd = fare.getEffectiveTo();
+            if (role == TicketPricingRole.REGULAR) {
+                regularCount++;
 
-            boolean outsideFare =
-                    surcharge.getEffectiveFrom().isBefore(fare.getEffectiveFrom())
-                            || (fareEnd != null
-                                    && (surcharge.getEffectiveTo() == null
-                                            || surcharge.getEffectiveTo().isAfter(fareEnd)
-                                            || !surcharge.getEffectiveFrom().isBefore(fareEnd)));
-
-            if (outsideFare) {
-                report.add(
-                        MatrixReviewSeverity.ERROR,
-                        "FARE_SURCHARGE_PERIOD_OUTSIDE_FARE",
-                        "The surcharge period must be contained in its fare period.",
-                        surcharge.getId(),
-                        fare.getId());
+                if (category.getEligibilityMode() != TicketEligibilityMode.UNRESTRICTED) {
+                    report.add(
+                            MatrixReviewSeverity.ERROR,
+                            "REGULAR_CATEGORY_MUST_BE_UNRESTRICTED",
+                            "The regular price category must not require eligibility.",
+                            category.getId());
+                }
             }
 
-            PricingSeatType seat = seatsByCode.get(fare.getSeatTypeCode());
+            String eligibilityCode = category.getEligibilityRuleCode();
 
-            if (seat != null
-                    && seat.getPhysicalSeatType() == SeatType.COUPLE
-                    && surcharge.getUnit() != FareSurchargeUnit.UNCONFIRMED
-                    && surcharge.getUnit() != FareSurchargeUnit.PER_PAIR) {
+            if (eligibilityCode != null) {
+                TicketPricingRole previous = eligibilityRoles.putIfAbsent(eligibilityCode, role);
 
-                report.add(
-                        MatrixReviewSeverity.ERROR,
-                        "FARE_SURCHARGE_PAIR_UNIT_REQUIRED",
-                        "Surcharges targeting physical COUPLE seats must use PER_PAIR.",
-                        surcharge.getId(),
-                        fare.getId());
+                if (previous != null && previous != role) {
+                    report.add(
+                            MatrixReviewSeverity.ERROR,
+                            "ELIGIBILITY_CODE_PRICING_ROLE_CONFLICT",
+                            "An eligibility code cannot identify different pricing roles.",
+                            category.getId());
+                }
             }
         }
 
-        // Emit warnings after the configuration errors.
-        for (FareSurchargeRule surcharge : surcharges) {
-            if (surcharge.getMovieAttributeCode() != null
-                    || surcharge.getRequiredEligibilityCode() != null) {
-
-                report.add(
-                        MatrixReviewSeverity.WARNING,
-                        "FARE_SURCHARGE_CONDITIONS_UNVERIFIED",
-                        "The declared conditions require trusted runtime resolution.",
-                        surcharge.getId());
-            }
-        }
-
-        if (!surcharges.isEmpty()) {
+        if (regularCount != 1) {
             report.add(
-                    MatrixReviewSeverity.WARNING,
-                    "FARE_SURCHARGE_CALCULATION_PENDING",
-                    "This review does not calculate surcharge totals, "
-                            + "prove stacking determinism or verify fare inclusion.");
+                    MatrixReviewSeverity.ERROR,
+                    "EXACTLY_ONE_REGULAR_CATEGORY_REQUIRED",
+                    "The policy must define exactly one regular price category.");
+        }
+
+        for (FareRule fare : fares) {
+            PricingTicketCategory category = byCode.get(fare.getTicketCategoryCode());
+
+            if (fare.getAdvanceScreeningCondition() == AdvanceScreeningCondition.ANY) {
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "FARE_SCREENING_CONDITION_EXPLICIT_REQUIRED",
+                        "Declare REGULAR_SCREENING or ADVANCE_SCREENING explicitly.",
+                        fare.getId());
+            }
+
+            if (category == null
+                    || category.getPricingRole() == null
+                    || category.getPricingRole() == TicketPricingRole.UNCONFIRMED) {
+                continue;
+            }
+
+            TicketPricingRole role = category.getPricingRole();
+
+            if (fare.getExperienceType() == ExperienceType.PREMIUM_CINEMA
+                    && role == TicketPricingRole.CATEGORY_DISCOUNT) {
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "PREMIUM_CATEGORY_DISCOUNT_NOT_ALLOWED",
+                        "Use the regular category fare for Premium Cinema.",
+                        fare.getId());
+            }
+
+            if (role.excludedFromAdvanceScreening()
+                    && fare.getAdvanceScreeningCondition()
+                            != AdvanceScreeningCondition.REGULAR_SCREENING) {
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "PROGRAM_FARE_REGULAR_SCREENING_ONLY",
+                        "C'Monday, C'Member and C'Ten fares cannot apply to advance screenings.",
+                        fare.getId());
+            }
+
+            if (role == TicketPricingRole.REGULAR && fare.getRequiredEligibilityCode() != null) {
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "REGULAR_FARE_MUST_NOT_REQUIRE_ELIGIBILITY",
+                        "Represent promotional prices with their own pricing category.",
+                        fare.getId());
+            }
+        }
+
+        for (PricingSaleScope scope : scopes) {
+            PricingTicketCategory category = byCode.get(scope.getTicketCategoryCode());
+
+            if (category == null
+                    || category.getPricingRole() == null
+                    || category.getPricingRole() == TicketPricingRole.UNCONFIRMED) {
+                continue;
+            }
+
+            TicketPricingRole role = category.getPricingRole();
+
+            if (scope.getExperienceType() == ExperienceType.PREMIUM_CINEMA
+                    && role == TicketPricingRole.CATEGORY_DISCOUNT) {
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "PREMIUM_DISCOUNT_SCOPE_NOT_ALLOWED",
+                        "Declare the regular category sale scope for Premium Cinema.",
+                        scope.getId());
+            }
+
+            if (role.excludedFromAdvanceScreening()
+                    && scope.getAdvanceScreeningCondition()
+                            != AdvanceScreeningCondition.REGULAR_SCREENING) {
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "PROGRAM_SCOPE_REGULAR_SCREENING_ONLY",
+                        "These promotional scopes must exclude advance screenings.",
+                        scope.getId());
+            }
         }
     }
 

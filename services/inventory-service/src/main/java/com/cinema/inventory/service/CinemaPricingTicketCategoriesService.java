@@ -7,6 +7,7 @@ import com.cinema.inventory.dto.request.ReplaceCinemaPricingTicketCategoriesRequ
 import com.cinema.inventory.dto.response.CinemaPricingTicketCategoriesResponse;
 import com.cinema.inventory.entity.CinemaPricingPolicy;
 import com.cinema.inventory.entity.PricingTicketCategory;
+import com.cinema.inventory.enums.TicketPricingRole;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.CinemaPricingTicketCategoriesMapper;
 import com.cinema.inventory.repository.CinemaPricingPolicyRepository;
@@ -43,9 +44,7 @@ public class CinemaPricingTicketCategoriesService {
     }
 
     @Transactional
-    public CinemaPricingTicketCategoriesResponse getCategories(
-            UUID cinemaId,
-            UUID policyId) {
+    public CinemaPricingTicketCategoriesResponse getCategories(UUID cinemaId, UUID policyId) {
 
         CinemaPricingPolicy policy =
                 policyRepository
@@ -62,9 +61,7 @@ public class CinemaPricingTicketCategoriesService {
 
     @Transactional
     public CinemaPricingTicketCategoriesResponse replaceCategories(
-            UUID cinemaId,
-            UUID policyId,
-            ReplaceCinemaPricingTicketCategoriesRequest request) {
+            UUID cinemaId, UUID policyId, ReplaceCinemaPricingTicketCategoriesRequest request) {
 
         CinemaPricingPolicy policy =
                 policyRepository
@@ -78,8 +75,7 @@ public class CinemaPricingTicketCategoriesService {
         policy.requireDraft();
 
         if (!request.expectedVersion().equals(policy.getVersion())) {
-            throw new ConflictException(
-                    InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
         }
 
         Set<String> codes = new HashSet<>();
@@ -94,7 +90,8 @@ public class CinemaPricingTicketCategoriesService {
                                                     input.code(),
                                                     input.name(),
                                                     input.eligibilityMode(),
-                                                    input.eligibilityRuleCode());
+                                                    input.eligibilityRuleCode(),
+                                                    input.pricingRole());
 
                                     if (!codes.add(category.getCode())) {
                                         throw new ValidationException(
@@ -106,6 +103,15 @@ public class CinemaPricingTicketCategoriesService {
                                 })
                         .toList();
 
+        long regularCount =
+                newCategories.stream()
+                        .filter(category -> category.getPricingRole() == TicketPricingRole.REGULAR)
+                        .count();
+
+        if (regularCount > 1) {
+            throw new ValidationException(InventoryErrorCode.PRICING_TICKET_CATEGORY_DATA_INVALID);
+        }
+
         policy.markContentChanged();
 
         categoryRepository.deleteAllForPolicy(policy.getId());
@@ -115,12 +121,9 @@ public class CinemaPricingTicketCategoriesService {
         return readCategories(policy);
     }
 
-    private CinemaPricingTicketCategoriesResponse readCategories(
-            CinemaPricingPolicy policy) {
+    private CinemaPricingTicketCategoriesResponse readCategories(CinemaPricingPolicy policy) {
 
         return categoryMapper.toResponse(
-                policy,
-                categoryRepository.findAllByPolicy_IdOrderByCodeAsc(
-                        policy.getId()));
+                policy, categoryRepository.findAllByPolicy_IdOrderByCodeAsc(policy.getId()));
     }
 }

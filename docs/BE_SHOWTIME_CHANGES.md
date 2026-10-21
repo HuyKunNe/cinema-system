@@ -323,18 +323,22 @@ feat(pricing): support cinema fare matrices by format and ticket category
   phụ thu, capability phòng/phim, lịch lễ đầy đủ hoặc scheduling instants.
 - Publish phải kiểm tra lại version và nội dung dưới lock ghi.
 
-## Cấu hình phụ thu FARE_MATRIX_V2
+## Giá trọn gói và vai trò category
 
-- GET/PUT .../fare-matrix/surcharges quản lý phụ thu V2.
-- API .../surcharges hiện hữu thuộc BASE_RULES_V1.
-- Mỗi phụ thu V2 tham chiếu một fareRuleCode trong cùng policy.
-- Điều kiện movieAttributeCode và requiredEligibilityCode, nếu có,
-  được kết hợp bằng AND và cần nguồn xác minh từ Backend.
-- Mode phải được khai báo:
-  UNCONFIRMED, NONE, ADD_ALL hoặc HIGHEST_PRIORITY.
-- NONE yêu cầu danh sách phụ thu rỗng.
-- Mode áp dụng cho các rule khớp cùng fare/context.
-- Fare/phụ thu cho COUPLE dùng PER_PAIR, tính một lần cho cặp.
-- Review kiểm tra cấu hình, chưa tính tổng tiền hoặc chứng minh stacking.
-- Không thêm phụ thu đã nằm trong số tiền fare.
-- Preview/coverage hiện vẫn additionalSurchargesEvaluated=false.
+- FARE_MATRIX_V2 sử dụng giá trọn gói được cấu hình trong FareRule.
+- Không cộng phụ thu ghế, định dạng hoặc thuộc tính phim.
+- Mỗi policy hoàn chỉnh có đúng một category REGULAR, eligibility UNRESTRICTED.
+- CATEGORY_DISCOUNT biểu diễn giá giảm theo đối tượng.
+- Premium Cinema chuyển CATEGORY_DISCOUNT về category REGULAR.
+- C_MONDAY, C_MEMBER và C_TEN chuyển về REGULAR khi là suất chiếu sớm.
+- Suất chiếu sớm được xác định theo ngày bắt đầu ở timezone policy,
+  trước ngày công chiếu chính thức.
+- Fare phải khai báo REGULAR_SCREENING hoặc ADVANCE_SCREENING.
+- ANY chỉ được dùng cho sale scope, không được dùng cho fare.
+- Fare REGULAR không có requiredEligibilityCode.
+- Preview/coverage trả requestedTicketCategoryCode,
+  ticketCategoryCode thực dùng và categoryAdjustmentReason.
+- Sweetbox ánh xạ physical COUPLE; giá PER_PAIR tính một lần cho cả cặp.
+- Không triển khai chức năng hoàn vé trong phạm vi thay đổi này.
+- GET/PUT fare-matrix/surcharges chỉ còn phục vụ đối chiếu/xóa cấu hình cũ.
+- Giá tham khảo CGV chưa phải dữ liệu production đã được phê duyệt.

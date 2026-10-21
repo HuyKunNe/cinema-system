@@ -116,6 +116,9 @@ public class CinemaPricingPolicy extends BaseEntity {
         this.effectiveTo = effectiveTo;
         this.status = PricingPolicyStatus.DRAFT;
         this.pricingModel = pricingModel;
+        if (pricingModel == PricingPolicyModel.FARE_MATRIX_V2) {
+            this.fareSurchargeMode = FareSurchargeMode.NONE;
+        }
     }
 
     public Cinema getCinema() {
@@ -142,11 +145,11 @@ public class CinemaPricingPolicy extends BaseEntity {
         requireFareMatrixModel();
         requireDraft();
 
-        if (mode == null) {
+        if (mode != FareSurchargeMode.NONE) {
             throw new ValidationException(InventoryErrorCode.FARE_SURCHARGE_DATA_INVALID);
         }
 
-        this.fareSurchargeMode = mode;
+        this.fareSurchargeMode = FareSurchargeMode.NONE;
     }
 
     public void requireBaseRulesModel() {

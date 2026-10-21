@@ -111,6 +111,7 @@ public class FareRule extends BaseEntity {
                 || amountVnd == null
                 || amountVnd < 0
                 || fareUnit == null
+                || advanceScreeningCondition == AdvanceScreeningCondition.ANY
                 || priority < 0) {
             throw invalid();
         }
