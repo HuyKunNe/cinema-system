@@ -99,6 +99,12 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PRICING_POLICY_MODEL_UNSUPPORTED",
                     "This operation does not support the pricing policy model");
 
+    public static final InventoryErrorCode PRICING_DIMENSION_DATA_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_PRICING_DIMENSION_DATA_INVALID",
+                    "Pricing dimension data is invalid");
+
     public static final InventoryErrorCode PRICING_POLICY_CONTENT_REVISION_EXHAUSTED =
             new InventoryErrorCode(
                     ErrorCategory.BUSINESS,

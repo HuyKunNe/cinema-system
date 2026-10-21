@@ -135,6 +135,12 @@ public class CinemaPricingPolicy extends BaseEntity {
         }
     }
 
+    public void requireFareMatrixModel() {
+        if (pricingModel != PricingPolicyModel.FARE_MATRIX_V2) {
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_MODEL_UNSUPPORTED);
+        }
+    }
+
     public String getCurrency() {
         return currency;
     }
