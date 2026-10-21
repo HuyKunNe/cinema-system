@@ -9,19 +9,24 @@ import com.cinema.inventory.dto.response.CinemaFareMatrixReviewResponse.MatrixRe
 import com.cinema.inventory.entity.CinemaHolidayDate;
 import com.cinema.inventory.entity.CinemaPricingPolicy;
 import com.cinema.inventory.entity.FareRule;
+import com.cinema.inventory.entity.FareSurchargeRule;
 import com.cinema.inventory.entity.PricingDayGroup;
 import com.cinema.inventory.entity.PricingSaleScope;
 import com.cinema.inventory.entity.PricingSeatType;
 import com.cinema.inventory.entity.PricingTicketCategory;
 import com.cinema.inventory.entity.PricingTimeBand;
+import com.cinema.inventory.enums.FareSurchargeMode;
+import com.cinema.inventory.enums.FareSurchargeUnit;
 import com.cinema.inventory.enums.FareUnit;
 import com.cinema.inventory.enums.PricingSeatMappingStatus;
+import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.TicketEligibilityMode;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.CinemaPricingPolicyMapper;
 import com.cinema.inventory.repository.CinemaHolidayDateRepository;
 import com.cinema.inventory.repository.CinemaPricingPolicyRepository;
 import com.cinema.inventory.repository.FareRuleRepository;
+import com.cinema.inventory.repository.FareSurchargeRuleRepository;
 import com.cinema.inventory.repository.PricingDayGroupRepository;
 import com.cinema.inventory.repository.PricingSaleScopeRepository;
 import com.cinema.inventory.repository.PricingSeatTypeRepository;
@@ -55,6 +60,7 @@ public class DraftFareMatrixReviewService {
     private final PricingSaleScopeRepository scopeRepository;
     private final PricingSeatTypeRepository seatTypeRepository;
     private final CinemaPricingPolicyMapper policyMapper;
+    private final FareSurchargeRuleRepository fareSurchargeRepository;
 
     public DraftFareMatrixReviewService(
             CinemaPricingPolicyRepository policyRepository,
@@ -65,7 +71,8 @@ public class DraftFareMatrixReviewService {
             PricingTicketCategoryRepository categoryRepository,
             PricingSeatTypeRepository seatTypeRepository,
             CinemaPricingPolicyMapper policyMapper,
-            PricingSaleScopeRepository scopeRepository) {
+            PricingSaleScopeRepository scopeRepository,
+            FareSurchargeRuleRepository fareSurchargeRepository) {
 
         this.policyRepository = policyRepository;
         this.dayGroupRepository = dayGroupRepository;
@@ -76,6 +83,7 @@ public class DraftFareMatrixReviewService {
         this.seatTypeRepository = seatTypeRepository;
         this.policyMapper = policyMapper;
         this.scopeRepository = scopeRepository;
+        this.fareSurchargeRepository = fareSurchargeRepository;
     }
 
     @Transactional
@@ -110,6 +118,7 @@ public class DraftFareMatrixReviewService {
 
         List<CinemaHolidayDate> holidays =
                 holidayRepository.findAllByPolicy_IdOrderByHolidayDateAsc(scopedPolicyId);
+
         List<PricingTicketCategory> ticketCategories =
                 categoryRepository.findAllByPolicy_IdOrderByCodeAsc(scopedPolicyId);
 
@@ -119,11 +128,16 @@ public class DraftFareMatrixReviewService {
         List<PricingSaleScope> saleScopes =
                 scopeRepository.findAllByPolicy_IdOrderByCodeAsc(scopedPolicyId);
 
+        List<FareSurchargeRule> fareSurcharges =
+                fareSurchargeRepository.findAllByPolicy_IdOrderByPriorityDescCodeAsc(
+                        scopedPolicyId);
+
         IssueCollector report = new IssueCollector();
 
         checkRequiredData(policy, dayGroups, timeBands, fareRules, report);
         checkPeriodsAndUnits(policy, fareRules, holidays, report);
         checkTicketCategories(ticketCategories, fareRules, report);
+        checkFareSurcharges(policy, fareRules, seatTypes, fareSurcharges, report);
         checkSeatTypes(seatTypes, fareRules, report);
         checkSaleScopes(saleScopes, dayGroups, timeBands, ticketCategories, seatTypes, report);
         checkDimensionUsage(dayGroups, timeBands, fareRules, holidays, report);
@@ -429,6 +443,120 @@ public class DraftFareMatrixReviewService {
                                 + "ticket allocation or charging behavior.",
                         rule.getId());
             }
+        }
+    }
+
+    private void checkFareSurcharges(
+            CinemaPricingPolicy policy,
+            List<FareRule> fares,
+            List<PricingSeatType> seatTypes,
+            List<FareSurchargeRule> surcharges,
+            IssueCollector report) {
+
+        if (policy.getFareSurchargeMode() == FareSurchargeMode.UNCONFIRMED) {
+            report.add(
+                    MatrixReviewSeverity.ERROR,
+                    "FARE_SURCHARGE_MODE_UNCONFIRMED",
+                    "Confirm whether fares need additional surcharges "
+                            + "and how matching surcharges are combined.");
+        }
+
+        if (policy.getFareSurchargeMode() == FareSurchargeMode.NONE && !surcharges.isEmpty()) {
+            report.add(
+                    MatrixReviewSeverity.ERROR,
+                    "FARE_SURCHARGES_PRESENT_WITH_NONE",
+                    "NONE mode requires an empty surcharge catalog.");
+        }
+
+        Map<String, FareRule> faresByCode = new HashMap<>();
+        fares.forEach(fare -> faresByCode.put(fare.getCode(), fare));
+
+        Map<String, PricingSeatType> seatsByCode = new HashMap<>();
+        seatTypes.forEach(seat -> seatsByCode.put(seat.getCode(), seat));
+
+        for (FareSurchargeRule surcharge : surcharges) {
+            if (surcharge.getUnit() == FareSurchargeUnit.UNCONFIRMED) {
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "FARE_SURCHARGE_UNIT_UNCONFIRMED",
+                        "Confirm the charging unit of this surcharge.",
+                        surcharge.getId());
+            }
+
+            if (periodOutsidePolicy(
+                    policy, surcharge.getEffectiveFrom(), surcharge.getEffectiveTo())) {
+
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "FARE_SURCHARGE_PERIOD_OUTSIDE_POLICY",
+                        "The surcharge period is outside the policy period.",
+                        surcharge.getId());
+            }
+
+            FareRule fare = faresByCode.get(surcharge.getFareRuleCode());
+
+            if (fare == null) {
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "FARE_SURCHARGE_FARE_UNKNOWN",
+                        "The surcharge references a fare absent from this policy.",
+                        surcharge.getId());
+                continue;
+            }
+
+            LocalDate fareEnd = fare.getEffectiveTo();
+
+            boolean outsideFare =
+                    surcharge.getEffectiveFrom().isBefore(fare.getEffectiveFrom())
+                            || (fareEnd != null
+                                    && (surcharge.getEffectiveTo() == null
+                                            || surcharge.getEffectiveTo().isAfter(fareEnd)
+                                            || !surcharge.getEffectiveFrom().isBefore(fareEnd)));
+
+            if (outsideFare) {
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "FARE_SURCHARGE_PERIOD_OUTSIDE_FARE",
+                        "The surcharge period must be contained in its fare period.",
+                        surcharge.getId(),
+                        fare.getId());
+            }
+
+            PricingSeatType seat = seatsByCode.get(fare.getSeatTypeCode());
+
+            if (seat != null
+                    && seat.getPhysicalSeatType() == SeatType.COUPLE
+                    && surcharge.getUnit() != FareSurchargeUnit.UNCONFIRMED
+                    && surcharge.getUnit() != FareSurchargeUnit.PER_PAIR) {
+
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "FARE_SURCHARGE_PAIR_UNIT_REQUIRED",
+                        "Surcharges targeting physical COUPLE seats must use PER_PAIR.",
+                        surcharge.getId(),
+                        fare.getId());
+            }
+        }
+
+        // Emit warnings after the configuration errors.
+        for (FareSurchargeRule surcharge : surcharges) {
+            if (surcharge.getMovieAttributeCode() != null
+                    || surcharge.getRequiredEligibilityCode() != null) {
+
+                report.add(
+                        MatrixReviewSeverity.WARNING,
+                        "FARE_SURCHARGE_CONDITIONS_UNVERIFIED",
+                        "The declared conditions require trusted runtime resolution.",
+                        surcharge.getId());
+            }
+        }
+
+        if (!surcharges.isEmpty()) {
+            report.add(
+                    MatrixReviewSeverity.WARNING,
+                    "FARE_SURCHARGE_CALCULATION_PENDING",
+                    "This review does not calculate surcharge totals, "
+                            + "prove stacking determinism or verify fare inclusion.");
         }
     }
 

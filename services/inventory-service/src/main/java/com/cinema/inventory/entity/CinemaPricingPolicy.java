@@ -3,6 +3,7 @@ package com.cinema.inventory.entity;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
+import com.cinema.inventory.enums.FareSurchargeMode;
 import com.cinema.inventory.enums.PricingPolicyModel;
 import com.cinema.inventory.enums.PricingPolicyStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
@@ -46,6 +47,10 @@ public class CinemaPricingPolicy extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "pricing_model", nullable = false, updatable = false, length = 30)
     private PricingPolicyModel pricingModel = PricingPolicyModel.BASE_RULES_V1;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "fare_surcharge_mode", nullable = false, length = 30)
+    private FareSurchargeMode fareSurchargeMode = FareSurchargeMode.UNCONFIRMED;
 
     @Column(name = "currency", nullable = false, updatable = false, length = 3)
     private String currency;
@@ -127,6 +132,21 @@ public class CinemaPricingPolicy extends BaseEntity {
 
     public PricingPolicyModel getPricingModel() {
         return pricingModel;
+    }
+
+    public FareSurchargeMode getFareSurchargeMode() {
+        return fareSurchargeMode;
+    }
+
+    public void changeFareSurchargeMode(FareSurchargeMode mode) {
+        requireFareMatrixModel();
+        requireDraft();
+
+        if (mode == null) {
+            throw new ValidationException(InventoryErrorCode.FARE_SURCHARGE_DATA_INVALID);
+        }
+
+        this.fareSurchargeMode = mode;
     }
 
     public void requireBaseRulesModel() {

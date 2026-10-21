@@ -15,9 +15,7 @@ import java.util.List;
 @Component
 public class FareRuleSelector {
 
-    public Selection select(
-            List<FareRule> rules,
-            FareRuleEvaluationContext context) {
+    public Selection select(List<FareRule> rules, FareRuleEvaluationContext context) {
 
         if (context == null) {
             throw invalidContext();
@@ -27,18 +25,13 @@ public class FareRuleSelector {
     }
 
     /**
-     * Evaluates a wall-clock minute on context.localDate().
-     * This does not establish whether that minute is a valid scheduling instant.
+     * Evaluates a wall-clock minute on context.localDate(). This does not establish whether that
+     * minute is a valid scheduling instant.
      */
     public Selection selectAtLocalMinute(
-            List<FareRule> rules,
-            FareRuleEvaluationContext context,
-            int localMinute) {
+            List<FareRule> rules, FareRuleEvaluationContext context, int localMinute) {
 
-        if (rules == null
-                || context == null
-                || localMinute < 0
-                || localMinute >= 1440) {
+        if (rules == null || context == null || localMinute < 0 || localMinute >= 1440) {
             throw invalidContext();
         }
 
@@ -61,15 +54,26 @@ public class FareRuleSelector {
 
         // Sorting affects presentation only; every tied winner is retained.
         return new Selection(
-                winners.stream()
-                        .sorted(Comparator.comparing(FareRule::getCode))
-                        .toList());
+                winners.stream().sorted(Comparator.comparing(FareRule::getCode)).toList());
     }
 
-    private boolean matches(
-            FareRule rule,
-            FareRuleEvaluationContext context,
-            int localMinute) {
+    private boolean matches(FareRule rule, FareRuleEvaluationContext context, int localMinute) {
+
+        if (!matchesDimensions(rule, context, localMinute)) {
+            return false;
+        }
+
+        String requiredEligibility = rule.getRequiredEligibilityCode();
+
+        return requiredEligibility == null
+                || context.eligibilityCodes().contains(requiredEligibility);
+    }
+
+    /**
+     * Shared internal matching without the eligibility predicate. Callers supply a validated
+     * context and local minute.
+     */
+    boolean matchesDimensions(FareRule rule, FareRuleEvaluationContext context, int localMinute) {
 
         if (!rule.getPolicy().getId().equals(context.policyId())
                 || rule.getExperienceType() != context.experienceType()
@@ -82,8 +86,7 @@ public class FareRuleSelector {
         LocalDate localDate = context.localDate();
 
         if (localDate.isBefore(rule.getEffectiveFrom())
-                || (rule.getEffectiveTo() != null
-                        && !localDate.isBefore(rule.getEffectiveTo()))) {
+                || (rule.getEffectiveTo() != null && !localDate.isBefore(rule.getEffectiveTo()))) {
             return false;
         }
 
@@ -92,26 +95,15 @@ public class FareRuleSelector {
             return false;
         }
 
-        boolean screeningMatches =
-        switch (rule.getAdvanceScreeningCondition()) {
+        return switch (rule.getAdvanceScreeningCondition()) {
             case ANY -> true;
             case ADVANCE_SCREENING -> context.advanceScreening();
             case REGULAR_SCREENING -> !context.advanceScreening();
         };
-
-if (!screeningMatches) {
-    return false;
-}
-
-        String requiredEligibility = rule.getRequiredEligibilityCode();
-
-        return requiredEligibility == null
-                || context.eligibilityCodes().contains(requiredEligibility);
     }
 
     private static ValidationException invalidContext() {
-        return new ValidationException(
-                InventoryErrorCode.PRICING_EVALUATION_CONTEXT_INVALID);
+        return new ValidationException(InventoryErrorCode.PRICING_EVALUATION_CONTEXT_INVALID);
     }
 
     public record Selection(List<FareRule> winners) {

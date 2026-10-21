@@ -306,3 +306,35 @@ feat(pricing): support cinema fare matrices by format and ticket category
 - Scope áp dụng trong thời gian hiệu lực của policy.
 - Review kiểm tra tham chiếu; coverage hiện vẫn phân tích một ngày/scenario.
 - Chưa có chứng nhận coverage toàn policy hoặc quyền publish.
+
+## Kiểm tra toàn phạm vi ma trận
+
+- POST /api/v1/cinemas/{cinemaId}/pricing-policies/{policyId}/fare-matrix/validate
+  kiểm tra draft theo expectedVersion.
+- Chạy review cấu hình trước, sau đó kiểm tra coverage và ambiguity
+  trên các sale scopes trong toàn thời gian hiệu lực.
+- Ngày và giờ được chia tại các ranh giới làm thay đổi tập rule khớp.
+- Eligibility được kiểm tra theo mô hình các mã dương độc lập:
+  tối đa một requiredEligibilityCode trên mỗi fare và điều kiện category.
+- COMPLETE thể hiện phân tích hoàn tất; cần đọc matrixValid để biết kết quả.
+- ANALYSIS_LIMIT_REACHED không được xem là hợp lệ.
+- publicationValidated luôn false.
+- Kết quả chưa xác minh tương thích giữa eligibility codes, dữ liệu khách hàng,
+  phụ thu, capability phòng/phim, lịch lễ đầy đủ hoặc scheduling instants.
+- Publish phải kiểm tra lại version và nội dung dưới lock ghi.
+
+## Cấu hình phụ thu FARE_MATRIX_V2
+
+- GET/PUT .../fare-matrix/surcharges quản lý phụ thu V2.
+- API .../surcharges hiện hữu thuộc BASE_RULES_V1.
+- Mỗi phụ thu V2 tham chiếu một fareRuleCode trong cùng policy.
+- Điều kiện movieAttributeCode và requiredEligibilityCode, nếu có,
+  được kết hợp bằng AND và cần nguồn xác minh từ Backend.
+- Mode phải được khai báo:
+  UNCONFIRMED, NONE, ADD_ALL hoặc HIGHEST_PRIORITY.
+- NONE yêu cầu danh sách phụ thu rỗng.
+- Mode áp dụng cho các rule khớp cùng fare/context.
+- Fare/phụ thu cho COUPLE dùng PER_PAIR, tính một lần cho cặp.
+- Review kiểm tra cấu hình, chưa tính tổng tiền hoặc chứng minh stacking.
+- Không thêm phụ thu đã nằm trong số tiền fare.
+- Preview/coverage hiện vẫn additionalSurchargesEvaluated=false.

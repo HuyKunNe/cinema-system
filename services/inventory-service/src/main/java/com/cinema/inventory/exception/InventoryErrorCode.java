@@ -171,6 +171,12 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PRICING_SCENARIO_NOT_FOR_SALE",
                     "The scenario is outside the policy sale scope");
 
+    public static final InventoryErrorCode FARE_SURCHARGE_DATA_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_FARE_SURCHARGE_DATA_INVALID",
+                    "Fare surcharge data is invalid");
+
     public static final InventoryErrorCode PRICING_SEAT_TYPE_NOT_CONFIGURED =
             new InventoryErrorCode(
                     ErrorCategory.BUSINESS,
