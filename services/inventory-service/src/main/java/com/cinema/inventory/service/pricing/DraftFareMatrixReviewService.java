@@ -10,9 +10,11 @@ import com.cinema.inventory.entity.CinemaHolidayDate;
 import com.cinema.inventory.entity.CinemaPricingPolicy;
 import com.cinema.inventory.entity.FareRule;
 import com.cinema.inventory.entity.PricingDayGroup;
+import com.cinema.inventory.entity.PricingSeatType;
 import com.cinema.inventory.entity.PricingTicketCategory;
 import com.cinema.inventory.entity.PricingTimeBand;
 import com.cinema.inventory.enums.FareUnit;
+import com.cinema.inventory.enums.PricingSeatMappingStatus;
 import com.cinema.inventory.enums.TicketEligibilityMode;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.CinemaPricingPolicyMapper;
@@ -20,6 +22,7 @@ import com.cinema.inventory.repository.CinemaHolidayDateRepository;
 import com.cinema.inventory.repository.CinemaPricingPolicyRepository;
 import com.cinema.inventory.repository.FareRuleRepository;
 import com.cinema.inventory.repository.PricingDayGroupRepository;
+import com.cinema.inventory.repository.PricingSeatTypeRepository;
 import com.cinema.inventory.repository.PricingTicketCategoryRepository;
 import com.cinema.inventory.repository.PricingTimeBandRepository;
 
@@ -46,6 +49,7 @@ public class DraftFareMatrixReviewService {
     private final FareRuleRepository fareRuleRepository;
     private final CinemaHolidayDateRepository holidayRepository;
     private final PricingTicketCategoryRepository categoryRepository;
+    private final PricingSeatTypeRepository seatTypeRepository;
     private final CinemaPricingPolicyMapper policyMapper;
 
     public DraftFareMatrixReviewService(
@@ -55,6 +59,7 @@ public class DraftFareMatrixReviewService {
             FareRuleRepository fareRuleRepository,
             CinemaHolidayDateRepository holidayRepository,
             PricingTicketCategoryRepository categoryRepository,
+            PricingSeatTypeRepository seatTypeRepository,
             CinemaPricingPolicyMapper policyMapper) {
 
         this.policyRepository = policyRepository;
@@ -63,6 +68,7 @@ public class DraftFareMatrixReviewService {
         this.fareRuleRepository = fareRuleRepository;
         this.holidayRepository = holidayRepository;
         this.categoryRepository = categoryRepository;
+        this.seatTypeRepository = seatTypeRepository;
         this.policyMapper = policyMapper;
     }
 
@@ -100,11 +106,16 @@ public class DraftFareMatrixReviewService {
                 holidayRepository.findAllByPolicy_IdOrderByHolidayDateAsc(scopedPolicyId);
         List<PricingTicketCategory> ticketCategories =
                 categoryRepository.findAllByPolicy_IdOrderByCodeAsc(scopedPolicyId);
+
+        List<PricingSeatType> seatTypes =
+                seatTypeRepository.findAllByPolicy_IdOrderByCodeAsc(scopedPolicyId);
+
         IssueCollector report = new IssueCollector();
 
         checkRequiredData(policy, dayGroups, timeBands, fareRules, report);
         checkPeriodsAndUnits(policy, fareRules, holidays, report);
         checkTicketCategories(ticketCategories, fareRules, report);
+        checkSeatTypes(seatTypes, fareRules, report);
         checkDimensionUsage(dayGroups, timeBands, fareRules, holidays, report);
 
         return new CinemaFareMatrixReviewResponse(
@@ -119,7 +130,9 @@ public class DraftFareMatrixReviewService {
                         "TICKET_CATEGORY_SALE_SCOPE",
                         "CUSTOMER_ELIGIBILITY",
                         "ELIGIBILITY_RULE_IMPLEMENTATIONS",
-                        "SEAT_TYPE_MAPPING_AND_PAIR_GROUPING",
+                        "SEAT_TYPE_MAPPING_BUSINESS_CONFIRMATION",
+                        "PHYSICAL_SEAT_TYPE_SALE_SCOPE",
+                        "PAIR_GROUPING_AND_CHARGING",
                         "EXPERIENCE_AND_CONTENT_COMPATIBILITY",
                         "FIRST_SHOWING_DEFINITION",
                         "HOLIDAY_CALENDAR_COMPLETENESS",
@@ -259,6 +272,70 @@ public class DraftFareMatrixReviewService {
                                 + "Its runtime implementation and customer evidence "
                                 + "are not verified by this review.",
                         category.getId());
+            }
+        }
+    }
+
+    private void checkSeatTypes(
+            List<PricingSeatType> seatTypes, List<FareRule> fareRules, IssueCollector report) {
+
+        if (seatTypes.isEmpty()) {
+            report.add(
+                    MatrixReviewSeverity.ERROR,
+                    "SEAT_TYPE_CATALOG_EMPTY",
+                    "The policy has no pricing seat type definitions.");
+        }
+
+        Map<String, PricingSeatType> seatTypesByCode = new HashMap<>();
+
+        for (PricingSeatType seatType : seatTypes) {
+            seatTypesByCode.put(seatType.getCode(), seatType);
+
+            if (seatType.getMappingStatus() == PricingSeatMappingStatus.UNCONFIRMED) {
+
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "SEAT_TYPE_MAPPING_UNCONFIRMED",
+                        "Confirm the physical seat type mapping of this pricing definition.",
+                        seatType.getId());
+            }
+        }
+
+        Set<String> usedSeatTypeCodes = new HashSet<>();
+
+        for (FareRule rule : fareRules) {
+            String seatTypeCode = rule.getSeatTypeCode();
+            usedSeatTypeCodes.add(seatTypeCode);
+
+            if (!seatTypesByCode.containsKey(seatTypeCode)) {
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "FARE_SEAT_TYPE_UNKNOWN",
+                        "The fare references a seat type absent from this policy catalog.",
+                        rule.getId());
+            }
+        }
+
+        // Emit warnings after checking seat catalog and reference errors.
+        for (PricingSeatType seatType : seatTypes) {
+            if (!usedSeatTypeCodes.contains(seatType.getCode())) {
+                report.add(
+                        MatrixReviewSeverity.WARNING,
+                        "SEAT_TYPE_WITHOUT_FARES",
+                        "The pricing seat type is not referenced by any fare rule.",
+                        seatType.getId());
+            }
+        }
+
+        for (FareRule rule : fareRules) {
+            if (rule.getFareUnit() == FareUnit.PER_PAIR) {
+                report.add(
+                        MatrixReviewSeverity.WARNING,
+                        "PAIR_FARE_GROUPING_UNVERIFIED",
+                        "This fare applies per pair. "
+                                + "Physical mapping does not verify passenger grouping, "
+                                + "ticket allocation or charging behavior.",
+                        rule.getId());
             }
         }
     }

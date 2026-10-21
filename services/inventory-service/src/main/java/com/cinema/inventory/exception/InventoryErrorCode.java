@@ -135,6 +135,12 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PRICING_TICKET_CATEGORY_ELIGIBILITY_NOT_SIMULATED",
                     "The simulation must explicitly satisfy the category eligibility rule");
 
+    public static final InventoryErrorCode PRICING_SEAT_TYPE_DATA_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_PRICING_SEAT_TYPE_DATA_INVALID",
+                    "Pricing seat type data is invalid");
+
     public static final InventoryErrorCode PRICING_POLICY_CONTENT_REVISION_EXHAUSTED =
             new InventoryErrorCode(
                     ErrorCategory.BUSINESS,
