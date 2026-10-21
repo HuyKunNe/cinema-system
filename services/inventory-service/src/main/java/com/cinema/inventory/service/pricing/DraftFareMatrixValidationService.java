@@ -9,33 +9,25 @@ import com.cinema.inventory.dto.response.ValidateDraftFareMatrixResponse.Validat
 import com.cinema.inventory.entity.CinemaHolidayDate;
 import com.cinema.inventory.entity.CinemaPricingPolicy;
 import com.cinema.inventory.entity.FareRule;
-import com.cinema.inventory.entity.FareSurchargeRule;
 import com.cinema.inventory.entity.PricingDayGroup;
 import com.cinema.inventory.entity.PricingSaleScope;
-import com.cinema.inventory.entity.PricingSeatType;
 import com.cinema.inventory.entity.PricingTicketCategory;
 import com.cinema.inventory.entity.PricingTimeBand;
 import com.cinema.inventory.enums.AdvanceScreeningCondition;
 import com.cinema.inventory.enums.FareRuleSelectionStatus;
-import com.cinema.inventory.enums.FareSurchargeMode;
-import com.cinema.inventory.enums.FareSurchargeUnit;
-import com.cinema.inventory.enums.FareUnit;
 import com.cinema.inventory.enums.TicketEligibilityMode;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.repository.CinemaHolidayDateRepository;
 import com.cinema.inventory.repository.CinemaPricingPolicyRepository;
 import com.cinema.inventory.repository.FareRuleRepository;
-import com.cinema.inventory.repository.FareSurchargeRuleRepository;
 import com.cinema.inventory.repository.PricingDayGroupRepository;
 import com.cinema.inventory.repository.PricingSaleScopeRepository;
-import com.cinema.inventory.repository.PricingSeatTypeRepository;
 import com.cinema.inventory.repository.PricingTicketCategoryRepository;
 import com.cinema.inventory.repository.PricingTimeBandRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -52,7 +44,7 @@ import java.util.stream.Collectors;
 @Service
 public class DraftFareMatrixValidationService {
 
-    // Resource budgets, not pricing/business limits.
+    // Resource budgets, not pricing or business limits.
     private static final long MAX_DATE_VISITS = 100_000;
     private static final long MAX_CELLS = 100_000;
     private static final long MAX_RULE_EVALUATIONS = 2_000_000;
@@ -66,10 +58,8 @@ public class DraftFareMatrixValidationService {
     private final PricingTimeBandRepository timeBandRepository;
     private final PricingTicketCategoryRepository categoryRepository;
     private final CinemaHolidayDateRepository holidayRepository;
-    private final FareSurchargeRuleRepository surchargeRepository;
-    private final PricingSeatTypeRepository seatTypeRepository;
-    private final FareCategoryResolver categoryResolver;
     private final FareRuleSelector selector;
+    private final FareCategoryResolver categoryResolver;
 
     public DraftFareMatrixValidationService(
             DraftFareMatrixReviewService reviewService,
@@ -81,8 +71,6 @@ public class DraftFareMatrixValidationService {
             PricingTicketCategoryRepository categoryRepository,
             CinemaHolidayDateRepository holidayRepository,
             FareRuleSelector selector,
-            FareSurchargeRuleRepository surchargeRepository,
-            PricingSeatTypeRepository seatTypeRepository,
             FareCategoryResolver categoryResolver) {
 
         this.reviewService = reviewService;
@@ -94,8 +82,6 @@ public class DraftFareMatrixValidationService {
         this.categoryRepository = categoryRepository;
         this.holidayRepository = holidayRepository;
         this.selector = selector;
-        this.surchargeRepository = surchargeRepository;
-        this.seatTypeRepository = seatTypeRepository;
         this.categoryResolver = categoryResolver;
     }
 
@@ -103,8 +89,18 @@ public class DraftFareMatrixValidationService {
     public ValidateDraftFareMatrixResponse validateMatrix(
             UUID cinemaId, UUID policyId, ReviewCinemaPricingPolicyRequest request) {
 
-        // Joins this transaction and holds the parent policy read lock.
-        // Also checks cinema scope, V2, draft and expectedVersion.
+        /*
+         * Joins this transaction and holds the parent policy read lock.
+         *
+         * Review checks:
+         * - cinema ownership;
+         * - FARE_MATRIX_V2 and DRAFT status;
+         * - expected policy.version;
+         * - required configuration and catalog references;
+         * - confirmed fare units and COUPLE/PER_PAIR compatibility;
+         * - all-inclusive pricing without surcharges;
+         * - category pricing roles and forbidden sale scopes.
+         */
         CinemaFareMatrixReviewResponse review = reviewService.review(cinemaId, policyId, request);
 
         Report report = new Report();
@@ -126,13 +122,6 @@ public class DraftFareMatrixValidationService {
         List<FareRule> allRules =
                 fareRepository.findAllByPolicy_IdOrderByPriorityDescCodeAsc(policyId);
 
-        List<FareSurchargeRule> allSurcharges =
-                surchargeRepository.findAllByPolicy_IdOrderByPriorityDescCodeAsc(policyId);
-
-        Map<String, PricingSeatType> seatTypes =
-                seatTypeRepository.findAllByPolicy_IdOrderByCodeAsc(policyId).stream()
-                        .collect(Collectors.toMap(PricingSeatType::getCode, Function.identity()));
-
         Map<String, PricingDayGroup> dayGroups =
                 dayGroupRepository.findAllByPolicy_IdOrderByCodeAsc(policyId).stream()
                         .collect(Collectors.toMap(PricingDayGroup::getCode, Function.identity()));
@@ -141,20 +130,21 @@ public class DraftFareMatrixValidationService {
                 timeBandRepository.findAllByPolicy_IdOrderByFromMinuteAscCodeAsc(policyId).stream()
                         .collect(Collectors.toMap(PricingTimeBand::getCode, Function.identity()));
 
+        List<PricingTicketCategory> categorySnapshot =
+                List.copyOf(categoryRepository.findAllByPolicy_IdOrderByCodeAsc(policyId));
+
         Map<String, PricingTicketCategory> categories =
-                categoryRepository.findAllByPolicy_IdOrderByCodeAsc(policyId).stream()
+                categorySnapshot.stream()
                         .collect(
                                 Collectors.toMap(
                                         PricingTicketCategory::getCode, Function.identity()));
-
-        List<PricingTicketCategory> categorySnapshot = List.copyOf(categories.values());
 
         Set<LocalDate> holidays =
                 holidayRepository.findAllByPolicy_IdOrderByHolidayDateAsc(policyId).stream()
                         .map(CinemaHolidayDate::getHolidayDate)
                         .collect(Collectors.toSet());
 
-        List<LocalDate> dates = representativeDates(policy, allRules, allSurcharges, holidays);
+        List<LocalDate> dates = representativeDates(policy, allRules, holidays);
 
         ValidationStatus status;
 
@@ -162,8 +152,15 @@ public class DraftFareMatrixValidationService {
             for (PricingSaleScope scope : scopes) {
                 report.spendRules(allRules.size());
 
+                /*
+                 * Category is resolved later because the business rules can
+                 * replace a requested category with the regular price category.
+                 *
+                 * Keep all categories for the same experience/content/seat
+                 * dimensions so candidate filtering uses the effective category.
+                 */
                 List<FareRule> bucket =
-                        allRules.stream().filter(rule -> sameDimensions(scope, rule)).toList();
+                        allRules.stream().filter(rule -> sameSaleDimensions(scope, rule)).toList();
 
                 PricingDayGroup scopeDay = dayGroups.get(scope.getDayGroupCode());
 
@@ -171,7 +168,10 @@ public class DraftFareMatrixValidationService {
 
                 PricingTicketCategory category = categories.get(scope.getTicketCategoryCode());
 
-                // References and eligibility mode were checked by review.
+                /*
+                 * References and eligibility modes were checked by review.
+                 * This is a hypothetical profile, not verified customer evidence.
+                 */
                 Set<String> baseEligibility =
                         category.getEligibilityMode() == TicketEligibilityMode.RULE_REQUIRED
                                 ? Set.of(category.getEligibilityRuleCode())
@@ -190,13 +190,18 @@ public class DraftFareMatrixValidationService {
 
                     for (boolean advance : screeningStates(scope.getAdvanceScreeningCondition())) {
 
-                        // No representable later release date exists at LocalDate.MAX.
+                        // No representable later release date exists at MAX.
                         if (advance && date.equals(LocalDate.MAX)) {
                             continue;
                         }
 
                         LocalDate releaseDate = advance ? date.plusDays(1) : date;
 
+                        /*
+                         * UTC only carries the representative local date.
+                         * This is local wall-clock analysis, not validation
+                         * of actual scheduling instants in the policy timezone.
+                         */
                         FareRuleEvaluationContext context =
                                 new FareRuleEvaluationContext(
                                         policyId,
@@ -208,6 +213,11 @@ public class DraftFareMatrixValidationService {
                                         scope.getSeatTypeCode(),
                                         releaseDate,
                                         baseEligibility);
+
+                        report.spendRules(categorySnapshot.size());
+
+                        FareRuleEvaluationContext resolvedBaseContext =
+                                categoryResolver.resolve(context, categorySnapshot).context();
 
                         for (int index = 0; index < minutes.size() - 1; index++) {
                             int from = minutes.get(index);
@@ -221,23 +231,19 @@ public class DraftFareMatrixValidationService {
                                             .filter(
                                                     rule ->
                                                             selector.matchesDimensions(
-                                                                    rule, context, from))
+                                                                    rule,
+                                                                    resolvedBaseContext,
+                                                                    from))
                                             .toList();
 
                             Cell cell = new Cell(scope, from, to);
 
-                            // The minimal eligible state establishes universal coverage
-                            // because fare predicates are positive requirements.
+                            /*
+                             * Positive eligibility predicates cannot remove
+                             * a matching fare when more permitted codes are added.
+                             * The minimal eligible profile checks coverage.
+                             */
                             inspect(candidates, context, cell, true, report, categorySnapshot);
-
-                            inspectSurcharges(
-                                    policy,
-                                    candidates,
-                                    allSurcharges,
-                                    seatTypes.get(scope.getSeatTypeCode()),
-                                    context,
-                                    cell,
-                                    report);
 
                             List<String> optionalCodes =
                                     candidates.stream()
@@ -248,10 +254,19 @@ public class DraftFareMatrixValidationService {
                                             .sorted()
                                             .toList();
 
-                            // One or two extra codes cover minimal witnesses for
-                            // a tied highest-priority pair in the current model.
+                            /*
+                             * Each fare has at most one additional positive
+                             * eligibility requirement.
+                             *
+                             * Single-code and two-code profiles cover minimal
+                             * witnesses for a tied highest-priority pair.
+                             *
+                             * FareCategoryResolver is applied to every profile,
+                             * so disabled program codes cannot affect selection.
+                             */
                             for (int first = 0; first < optionalCodes.size(); first++) {
                                 Set<String> single = new HashSet<>(baseEligibility);
+
                                 single.add(optionalCodes.get(first));
 
                                 inspect(
@@ -267,6 +282,7 @@ public class DraftFareMatrixValidationService {
                                         second++) {
 
                                     Set<String> pair = new HashSet<>(single);
+
                                     pair.add(optionalCodes.get(second));
 
                                     inspect(
@@ -316,231 +332,10 @@ public class DraftFareMatrixValidationService {
         }
     }
 
-    private void inspectSurcharges(
-            CinemaPricingPolicy policy,
-            List<FareRule> candidates,
-            List<FareSurchargeRule> allSurcharges,
-            PricingSeatType seatType,
-            FareRuleEvaluationContext baseContext,
-            Cell cell,
-            Report report) {
+    private boolean sameSaleDimensions(PricingSaleScope scope, FareRule rule) {
 
-        for (FareRule fare : candidates) {
-            Set<String> fareCodes = new HashSet<>(baseContext.eligibilityCodes());
-
-            if (fare.getRequiredEligibilityCode() != null) {
-                fareCodes.add(fare.getRequiredEligibilityCode());
-            }
-
-            FareRuleEvaluationContext fareContext = withEligibility(baseContext, fareCodes);
-
-            // A positive predicate can add matching rules but cannot remove one.
-            // If this fare cannot win uniquely in its minimal state,
-            // it cannot become a unique winner in a larger state.
-            if (!winsFare(candidates, fareContext, cell, fare, report)) {
-                continue;
-            }
-
-            report.spendRules(allSurcharges.size());
-
-            List<FareSurchargeRule> active =
-                    allSurcharges.stream()
-                            .filter(
-                                    rule ->
-                                            rule.getFareRuleCode().equals(fare.getCode())
-                                                    && !fareContext
-                                                            .localDate()
-                                                            .isBefore(rule.getEffectiveFrom())
-                                                    && (rule.getEffectiveTo() == null
-                                                            || fareContext
-                                                                    .localDate()
-                                                                    .isBefore(
-                                                                            rule.getEffectiveTo())))
-                            .toList();
-
-            report.spendRules(active.size());
-
-            if (!amountBoundFits(policy.getFareSurchargeMode(), fare, active)) {
-                report.addSurcharge(
-                        "SURCHARGE_AMOUNT_BOUND_UNPROVEN",
-                        cell,
-                        fareContext,
-                        fare,
-                        Set.of(),
-                        active.stream().map(FareSurchargeRule::getId).toList());
-                continue;
-            }
-
-            // Includes unconditional surcharges and the no-extra-charge state.
-            inspectSurchargeCase(
-                    policy,
-                    candidates,
-                    allSurcharges,
-                    seatType,
-                    fareContext,
-                    Set.of(),
-                    fare,
-                    cell,
-                    report);
-
-            for (int first = 0; first < active.size(); first++) {
-                FareSurchargeRule left = active.get(first);
-
-                Set<String> eligibility = new HashSet<>(fareCodes);
-                Set<String> movieCodes = new HashSet<>();
-
-                addConditionCodes(left, eligibility, movieCodes);
-
-                inspectSurchargeCase(
-                        policy,
-                        candidates,
-                        allSurcharges,
-                        seatType,
-                        withEligibility(baseContext, eligibility),
-                        movieCodes,
-                        fare,
-                        cell,
-                        report);
-
-                if (policy.getFareSurchargeMode() != FareSurchargeMode.HIGHEST_PRIORITY) {
-                    continue;
-                }
-
-                for (int second = first + 1; second < active.size(); second++) {
-                    report.spendRules(1);
-
-                    FareSurchargeRule right = active.get(second);
-
-                    if (left.getPriority() != right.getPriority()) {
-                        continue;
-                    }
-
-                    Set<String> pairEligibility = new HashSet<>(eligibility);
-                    Set<String> pairMovies = new HashSet<>(movieCodes);
-
-                    addConditionCodes(right, pairEligibility, pairMovies);
-
-                    inspectSurchargeCase(
-                            policy,
-                            candidates,
-                            allSurcharges,
-                            seatType,
-                            withEligibility(baseContext, pairEligibility),
-                            pairMovies,
-                            fare,
-                            cell,
-                            report);
-                }
-            }
-        }
-    }
-
-    private boolean winsFare(
-            List<FareRule> candidates,
-            FareRuleEvaluationContext context,
-            Cell cell,
-            FareRule expected,
-            Report report) {
-
-        report.spendRules(candidates.size());
-
-        FareRuleSelector.Selection selection =
-                selector.selectAtLocalMinute(candidates, context, cell.fromMinute());
-
-        return selection.status() == FareRuleSelectionStatus.MATCHED
-                && selection.winners().getFirst().getId().equals(expected.getId());
-    }
-
-    private void inspectSurchargeCase(
-            CinemaPricingPolicy policy,
-            List<FareRule> candidates,
-            List<FareSurchargeRule> snapshot,
-            PricingSeatType seatType,
-            FareRuleEvaluationContext context,
-            Set<String> movieCodes,
-            FareRule expectedFare,
-            Cell cell,
-            Report report) {
-
-        // Charge the budget before performing work.
-        report.spendRules(candidates.size() + 2 * snapshot.size());
-
-        FareRuleSelector.Selection selection =
-                selector.selectAtLocalMinute(candidates, context, cell.fromMinute());
-
-        if (selection.status() != FareRuleSelectionStatus.MATCHED
-                || !selection.winners().getFirst().getId().equals(expectedFare.getId())) {
-            return;
-        }
-
-        var evaluation =
-                surchargeEvaluator
-                        .prepareFromSnapshot(policy, context, seatType, movieCodes, snapshot)
-                        .evaluate(selection);
-
-        switch (evaluation.status()) {
-            case NONE, MATCHED -> {
-                // A complete amount for one fare unit is available.
-            }
-            default ->
-                    report.addSurcharge(
-                            "SURCHARGE_" + evaluation.status().name(),
-                            cell,
-                            context,
-                            expectedFare,
-                            movieCodes,
-                            evaluation.selectedRules().stream().map(rule -> rule.id()).toList());
-        }
-    }
-
-    private void addConditionCodes(
-            FareSurchargeRule rule, Set<String> eligibility, Set<String> movieCodes) {
-
-        if (rule.getRequiredEligibilityCode() != null) {
-            eligibility.add(rule.getRequiredEligibilityCode());
-        }
-
-        if (rule.getMovieAttributeCode() != null) {
-            movieCodes.add(rule.getMovieAttributeCode());
-        }
-    }
-
-    private boolean amountBoundFits(
-            FareSurchargeMode mode, FareRule fare, List<FareSurchargeRule> active) {
-
-        BigInteger additional = BigInteger.ZERO;
-
-        for (FareSurchargeRule rule : active) {
-            boolean sameUnit =
-                    (fare.getFareUnit() == FareUnit.PER_TICKET
-                                    && rule.getUnit() == FareSurchargeUnit.PER_TICKET)
-                            || (fare.getFareUnit() == FareUnit.PER_PAIR
-                                    && rule.getUnit() == FareSurchargeUnit.PER_PAIR);
-
-            if (!sameUnit) {
-                // Unit conversions are checked by scenario evaluation.
-                continue;
-            }
-
-            BigInteger amount = BigInteger.valueOf(rule.getAmountVnd());
-
-            if (mode == FareSurchargeMode.ADD_ALL) {
-                additional = additional.add(amount);
-            } else if (mode == FareSurchargeMode.HIGHEST_PRIORITY) {
-                additional = additional.max(amount);
-            }
-        }
-
-        return BigInteger.valueOf(fare.getAmountVnd())
-                        .add(additional)
-                        .compareTo(BigInteger.valueOf(Long.MAX_VALUE))
-                <= 0;
-    }
-
-    private boolean sameDimensions(PricingSaleScope scope, FareRule rule) {
         return scope.getExperienceType() == rule.getExperienceType()
                 && scope.getContentFormat() == rule.getContentFormat()
-                && scope.getTicketCategoryCode().equals(rule.getTicketCategoryCode())
                 && scope.getSeatTypeCode().equals(rule.getSeatTypeCode());
     }
 
@@ -571,6 +366,7 @@ public class DraftFareMatrixValidationService {
     private List<Integer> boundaries(PricingTimeBand scopeTime, List<FareRule> rules) {
 
         TreeSet<Integer> points = new TreeSet<>();
+
         int from = scopeTime.getFromMinute();
         int to = scopeTime.getToMinute();
 
@@ -594,10 +390,7 @@ public class DraftFareMatrixValidationService {
     }
 
     private List<LocalDate> representativeDates(
-            CinemaPricingPolicy policy,
-            List<FareRule> rules,
-            List<FareSurchargeRule> surcharges,
-            Set<LocalDate> holidays) {
+            CinemaPricingPolicy policy, List<FareRule> rules, Set<LocalDate> holidays) {
 
         TreeSet<LocalDate> cuts = new TreeSet<>();
         cuts.add(policy.getEffectiveFrom());
@@ -605,11 +398,6 @@ public class DraftFareMatrixValidationService {
         for (FareRule rule : rules) {
             addDateCut(cuts, policy, rule.getEffectiveFrom());
             addDateCut(cuts, policy, rule.getEffectiveTo());
-        }
-
-        for (FareSurchargeRule surcharge : surcharges) {
-            addDateCut(cuts, policy, surcharge.getEffectiveFrom());
-            addDateCut(cuts, policy, surcharge.getEffectiveTo());
         }
 
         for (LocalDate holiday : holidays) {
@@ -621,15 +409,20 @@ public class DraftFareMatrixValidationService {
         }
 
         List<LocalDate> starts = new ArrayList<>(cuts);
+
         List<LocalDate> result = new ArrayList<>();
 
         for (int index = 0; index < starts.size(); index++) {
             LocalDate date = starts.get(index);
+
             LocalDate end =
                     index + 1 < starts.size() ? starts.get(index + 1) : policy.getEffectiveTo();
 
-            // Inside an interval, rule date predicates are constant.
-            // Seven consecutive dates cover every weekday.
+            /*
+             * Fare date predicates are constant inside each interval.
+             * Seven consecutive dates cover every weekday.
+             * Holidays are isolated by cuts at the date and following date.
+             */
             for (int count = 0; count < 7 && (end == null || date.isBefore(end)); count++) {
 
                 result.add(date);
@@ -662,22 +455,23 @@ public class DraftFareMatrixValidationService {
         boolean matrixValid =
                 status == ValidationStatus.COMPLETE
                         && !review.hasErrors()
-                        && report.matrixFindingCount == 0;
+                        && report.findingCount == 0;
 
-        boolean unitPricingValid = matrixValid && report.surchargeFindingCount == 0;
+        /*
+         * Fixed fares require no surcharge composition or arithmetic.
+         * Review has already checked declared fare units and pair mapping.
+         *
+         * This flag does not verify runtime passenger grouping,
+         * booking totals, customer evidence or payment.
+         */
+        boolean unitPricingValid = matrixValid;
 
         if (status == ValidationStatus.COMPLETE) {
             unchecked.remove("FARE_MATRIX_FULL_COVERAGE");
             unchecked.remove("HIGHEST_PRIORITY_AMBIGUITIES");
         }
 
-        if (unitPricingValid) {
-            unchecked.remove("SURCHARGE_INCLUSION_AND_STACKING");
-            unchecked.add("FARE_SURCHARGE_INCLUSION_BUSINESS_CONFIRMATION");
-        }
-
         unchecked.add("ELIGIBILITY_CODE_COMPATIBILITY");
-        unchecked.add("MOVIE_ATTRIBUTE_CODE_COMPATIBILITY");
         unchecked.add("VALID_SCHEDULING_INSTANTS");
 
         return new ValidateDraftFareMatrixResponse(
@@ -705,8 +499,6 @@ public class DraftFareMatrixValidationService {
         private long cellsChecked;
         private long ruleEvaluations;
         private long findingCount;
-        private long matrixFindingCount;
-        private long surchargeFindingCount;
 
         private final List<MatrixFinding> findings = new ArrayList<>();
 
@@ -714,6 +506,7 @@ public class DraftFareMatrixValidationService {
             if (datesVisited >= MAX_DATE_VISITS) {
                 throw new AnalysisLimitReached();
             }
+
             datesVisited++;
         }
 
@@ -721,6 +514,7 @@ public class DraftFareMatrixValidationService {
             if (cellsChecked >= MAX_CELLS) {
                 throw new AnalysisLimitReached();
             }
+
             cellsChecked++;
         }
 
@@ -728,44 +522,14 @@ public class DraftFareMatrixValidationService {
             if (ruleEvaluations > MAX_RULE_EVALUATIONS - count) {
                 throw new AnalysisLimitReached();
             }
+
             ruleEvaluations += count;
         }
 
         private void add(
                 String code, Cell cell, FareRuleEvaluationContext context, List<FareRule> winners) {
 
-            matrixFindingCount++;
-
-            append(
-                    code,
-                    cell,
-                    context,
-                    winners.stream().map(FareRule::getId).toList(),
-                    Set.of(),
-                    List.of());
-        }
-
-        private void addSurcharge(
-                String code,
-                Cell cell,
-                FareRuleEvaluationContext context,
-                FareRule fare,
-                Set<String> movieCodes,
-                List<UUID> surchargeIds) {
-
-            surchargeFindingCount++;
-
-            append(code, cell, context, List.of(fare.getId()), movieCodes, surchargeIds);
-        }
-
-        private void append(
-                String code,
-                Cell cell,
-                FareRuleEvaluationContext context,
-                List<UUID> fareIds,
-                Set<String> movieCodes,
-                List<UUID> surchargeIds) {
-
+            // Preserve the total count beyond the response display limit.
             findingCount++;
 
             if (findings.size() >= MAX_FINDINGS) {
@@ -783,13 +547,14 @@ public class DraftFareMatrixValidationService {
                             cell.toMinute(),
                             context.advanceScreening(),
                             context.eligibilityCodes().stream().sorted().toList(),
-                            fareIds,
-                            movieCodes.stream().sorted().toList(),
-                            List.copyOf(surchargeIds)));
+                            winners.stream().map(FareRule::getId).toList(),
+                            List.of(),
+                            List.of()));
         }
     }
 
     private static final class AnalysisLimitReached extends RuntimeException {
+
         private static final long serialVersionUID = 1L;
     }
 }
