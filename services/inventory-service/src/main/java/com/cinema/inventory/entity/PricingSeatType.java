@@ -2,6 +2,7 @@ package com.cinema.inventory.entity;
 
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
+import com.cinema.inventory.enums.FareUnit;
 import com.cinema.inventory.enums.PricingSeatMappingStatus;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.exception.InventoryErrorCode;
@@ -58,17 +59,14 @@ public class PricingSeatType extends BaseEntity {
             PricingSeatMappingStatus mappingStatus,
             SeatType physicalSeatType) {
 
-        if (policy == null
-                || policy.getId() == null
-                || mappingStatus == null) {
+        if (policy == null || policy.getId() == null || mappingStatus == null) {
             throw invalid();
         }
 
         policy.requireFareMatrixModel();
         policy.requireDraft();
 
-        boolean confirmed =
-                mappingStatus == PricingSeatMappingStatus.CONFIRMED;
+        boolean confirmed = mappingStatus == PricingSeatMappingStatus.CONFIRMED;
 
         if (confirmed != (physicalSeatType != null)) {
             throw invalid();
@@ -129,8 +127,15 @@ public class PricingSeatType extends BaseEntity {
         return normalized;
     }
 
+    public boolean acceptsFareUnit(FareUnit fareUnit) {
+        if (fareUnit == null) {
+            return false;
+        }
+
+        return physicalSeatType != SeatType.COUPLE || fareUnit == FareUnit.PER_PAIR;
+    }
+
     private static ValidationException invalid() {
-        return new ValidationException(
-                InventoryErrorCode.PRICING_SEAT_TYPE_DATA_INVALID);
+        return new ValidationException(InventoryErrorCode.PRICING_SEAT_TYPE_DATA_INVALID);
     }
 }

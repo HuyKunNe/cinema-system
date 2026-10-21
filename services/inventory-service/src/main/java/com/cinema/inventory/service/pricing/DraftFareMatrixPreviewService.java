@@ -7,6 +7,7 @@ import com.cinema.inventory.dto.request.PreviewDraftFareMatrixRequest;
 import com.cinema.inventory.dto.response.PreviewDraftFareMatrixResponse;
 import com.cinema.inventory.dto.response.PreviewDraftFareMatrixResponse.MatrixPreviewContext;
 import com.cinema.inventory.entity.CinemaPricingPolicy;
+import com.cinema.inventory.entity.PricingSeatType;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.CinemaFareMatrixMapper;
 import com.cinema.inventory.mapper.CinemaPricingPolicyMapper;
@@ -96,17 +97,18 @@ public class DraftFareMatrixPreviewService {
                         request.contentFormat(),
                         request.ticketCategoryCode(),
                         request.seatTypeCode(),
-                        request.simulatedFirstShowing(),
+                        request.simulatedReleaseDate(),
                         request.simulatedEligibilityCodes());
 
         categorySimulationGuard.requireForSimulation(context);
-        seatTypeSimulationGuard.requireForSimulation(context);
+        PricingSeatType seatType = seatTypeSimulationGuard.requireForSimulation(context);
 
         FareRuleSelector.Selection selection =
                 ruleSelector.select(
                         fareRuleRepository.findAllByPolicy_IdOrderByPriorityDescCodeAsc(
                                 policy.getId()),
                         context);
+        seatTypeSimulationGuard.requireCompatibleFareUnits(seatType, selection.winners());
 
         MatrixPreviewContext resolved =
                 new MatrixPreviewContext(
@@ -116,7 +118,8 @@ public class DraftFareMatrixPreviewService {
                         context.contentFormat(),
                         context.ticketCategoryCode(),
                         context.seatTypeCode(),
-                        context.firstShowing(),
+                        context.officialReleaseDate(),
+                        context.advanceScreening(),
                         context.eligibilityCodes().stream().sorted().toList());
 
         return new PreviewDraftFareMatrixResponse(

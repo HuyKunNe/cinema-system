@@ -1,3 +1,6 @@
+-- Consolidated schema for fresh Inventory databases.
+
+-- Source: V3__create_room_layout_schema.sql
 CREATE TABLE room_layouts (
     id BINARY(16) NOT NULL,
     room_id BINARY(16) NOT NULL,
@@ -120,3 +123,93 @@ CREATE TABLE room_layout_elements (
 
 CREATE INDEX idx_room_layout_elements_layout
     ON room_layout_elements (layout_id);
+
+-- Source: V4__add_room_layout_content_revision.sql
+ALTER TABLE room_layouts
+    ADD COLUMN content_revision BIGINT NOT NULL DEFAULT 0,
+    ADD CONSTRAINT chk_room_layouts_content_revision
+        CHECK (content_revision >= 0);
+
+-- Source: V5__add_showtime_room_layout.sql
+ALTER TABLE showtimes
+    ADD COLUMN room_layout_id BINARY(16) NULL,
+    ADD INDEX idx_showtimes_room_layout (room_layout_id),
+    ADD CONSTRAINT fk_showtimes_room_layout
+        FOREIGN KEY (room_layout_id)
+        REFERENCES room_layouts (id);
+
+-- Source: V6__add_room_layout_matrix_drafts.sql
+ALTER TABLE room_layouts
+    ADD COLUMN row_count INT NULL,
+    ADD COLUMN column_count INT NULL,
+    ADD CONSTRAINT chk_room_layouts_matrix_dimensions
+        CHECK (
+            (row_count IS NULL AND column_count IS NULL)
+            OR (
+                row_count IS NOT NULL
+                AND column_count IS NOT NULL
+                AND row_count BETWEEN 1 AND 100
+                AND column_count BETWEEN 1 AND 100
+            )
+        );
+
+CREATE TABLE room_layout_matrix_cells (
+    id BINARY(16) NOT NULL,
+    layout_id BINARY(16) NOT NULL,
+    seat_id BINARY(16) NULL,
+    row_index INT NOT NULL,
+    column_index INT NOT NULL,
+    seat_number_in_row INT NOT NULL,
+    seat_type VARCHAR(50) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
+
+    CONSTRAINT pk_room_layout_matrix_cells
+        PRIMARY KEY (id),
+
+    CONSTRAINT fk_room_layout_matrix_cells_layout
+        FOREIGN KEY (layout_id)
+        REFERENCES room_layouts (id),
+
+    CONSTRAINT fk_room_layout_matrix_cells_seat
+        FOREIGN KEY (seat_id)
+        REFERENCES seats (id),
+
+    CONSTRAINT uk_room_layout_matrix_cells_position
+        UNIQUE (layout_id, row_index, column_index),
+
+    CONSTRAINT uk_room_layout_matrix_cells_number
+        UNIQUE (layout_id, row_index, seat_number_in_row),
+
+    CONSTRAINT uk_room_layout_matrix_cells_seat
+        UNIQUE (layout_id, seat_id),
+
+    CONSTRAINT chk_room_layout_matrix_cells_indices
+        CHECK (
+            row_index BETWEEN 0 AND 99
+            AND column_index BETWEEN 0 AND 99
+        ),
+
+    CONSTRAINT chk_room_layout_matrix_cells_number
+        CHECK (seat_number_in_row BETWEEN 1 AND 100),
+
+    CONSTRAINT chk_room_layout_matrix_cells_type
+        CHECK (
+            seat_type IN ('STANDARD', 'VIP', 'COUPLE', 'ACCESSIBLE')
+        )
+);
+
+-- Source: V7__support_layout_managed_seats.sql
+ALTER TABLE seats
+    ADD COLUMN layout_managed BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN legacy_seat_number VARCHAR(20)
+        GENERATED ALWAYS AS (
+            CASE
+                WHEN layout_managed = FALSE THEN seat_number
+                ELSE NULL
+            END
+        ) STORED,
+    DROP INDEX uk_seats_room_number,
+    ADD CONSTRAINT uk_seats_room_legacy_number
+        UNIQUE (room_id, legacy_seat_number);

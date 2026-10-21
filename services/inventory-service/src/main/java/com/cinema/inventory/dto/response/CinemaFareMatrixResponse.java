@@ -4,7 +4,7 @@ import com.cinema.inventory.dto.response.CinemaHolidayDatesResponse.HolidayDateR
 import com.cinema.inventory.enums.ContentFormat;
 import com.cinema.inventory.enums.ExperienceType;
 import com.cinema.inventory.enums.FareUnit;
-import com.cinema.inventory.enums.FirstShowingCondition;
+import com.cinema.inventory.enums.AdvanceScreeningCondition;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -54,7 +54,7 @@ public record CinemaFareMatrixResponse(
             String timeBandCode,
             String ticketCategoryCode,
             String seatTypeCode,
-            FirstShowingCondition firstShowingCondition,
+            AdvanceScreeningCondition advanceScreeningCondition,
             @Schema(nullable = true)
                     String requiredEligibilityCode,
             @Schema(

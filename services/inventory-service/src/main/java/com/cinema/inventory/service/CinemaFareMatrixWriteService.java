@@ -1,5 +1,17 @@
 package com.cinema.inventory.service;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
@@ -17,18 +29,6 @@ import com.cinema.inventory.repository.PricingDayGroupRepository;
 import com.cinema.inventory.repository.PricingTimeBandRepository;
 
 import jakarta.persistence.EntityManager;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
 
 @Service
 public class CinemaFareMatrixWriteService {
@@ -158,7 +158,7 @@ public class CinemaFareMatrixWriteService {
                             timeBand,
                             input.ticketCategoryCode(),
                             input.seatTypeCode(),
-                            input.firstShowingCondition(),
+                            input.advanceScreeningCondition(),
                             input.requiredEligibilityCode(),
                             parseAmount(input.amountVnd()),
                             input.fareUnit(),

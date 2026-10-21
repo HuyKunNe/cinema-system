@@ -92,16 +92,16 @@ public class FareRuleSelector {
             return false;
         }
 
-        boolean firstShowingMatches =
-                switch (rule.getFirstShowingCondition()) {
-                    case ANY -> true;
-                    case FIRST_SHOWING -> context.firstShowing();
-                    case NOT_FIRST_SHOWING -> !context.firstShowing();
-                };
+        boolean screeningMatches =
+        switch (rule.getAdvanceScreeningCondition()) {
+            case ANY -> true;
+            case ADVANCE_SCREENING -> context.advanceScreening();
+            case REGULAR_SCREENING -> !context.advanceScreening();
+        };
 
-        if (!firstShowingMatches) {
-            return false;
-        }
+if (!screeningMatches) {
+    return false;
+}
 
         String requiredEligibility = rule.getRequiredEligibilityCode();
 

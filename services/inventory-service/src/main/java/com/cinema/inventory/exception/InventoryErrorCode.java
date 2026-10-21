@@ -141,6 +141,12 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PRICING_SEAT_TYPE_DATA_INVALID",
                     "Pricing seat type data is invalid");
 
+    public static final InventoryErrorCode PRICING_PAIR_FARE_UNIT_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_PAIR_FARE_UNIT_REQUIRED",
+                    "Fares for couple seats must use PER_PAIR");
+
     public static final InventoryErrorCode PRICING_SEAT_TYPE_NOT_CONFIGURED =
             new InventoryErrorCode(
                     ErrorCategory.BUSINESS,

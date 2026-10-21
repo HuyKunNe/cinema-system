@@ -9,6 +9,7 @@ import com.cinema.inventory.dto.response.DraftFareMatrixCoverageResponse.MatrixC
 import com.cinema.inventory.dto.response.PreviewDraftFareMatrixResponse.MatrixPreviewContext;
 import com.cinema.inventory.entity.CinemaPricingPolicy;
 import com.cinema.inventory.entity.FareRule;
+import com.cinema.inventory.entity.PricingSeatType;
 import com.cinema.inventory.enums.FareRuleSelectionStatus;
 import com.cinema.inventory.enums.FareUnit;
 import com.cinema.inventory.exception.InventoryErrorCode;
@@ -107,11 +108,11 @@ public class DraftFareMatrixCoverageService {
                         scenario.contentFormat(),
                         scenario.ticketCategoryCode(),
                         scenario.seatTypeCode(),
-                        scenario.simulatedFirstShowing(),
+                        scenario.simulatedReleaseDate(),
                         scenario.simulatedEligibilityCodes());
 
         categorySimulationGuard.requireForSimulation(context);
-        seatTypeSimulationGuard.requireForSimulation(context);
+        PricingSeatType seatType = seatTypeSimulationGuard.requireForSimulation(context);
         List<FareRule> rules =
                 fareRuleRepository.findAllByPolicy_IdOrderByPriorityDescCodeAsc(policy.getId());
         TreeSet<Integer> boundaries = new TreeSet<>();
@@ -132,6 +133,8 @@ public class DraftFareMatrixCoverageService {
 
             FareRuleSelector.Selection selection =
                     ruleSelector.selectAtLocalMinute(rules, context, from);
+
+            seatTypeSimulationGuard.requireCompatibleFareUnits(seatType, selection.winners());
 
             MatrixCoverageSegment next =
                     new MatrixCoverageSegment(
@@ -167,7 +170,8 @@ public class DraftFareMatrixCoverageService {
                         context.contentFormat(),
                         context.ticketCategoryCode(),
                         context.seatTypeCode(),
-                        context.firstShowing(),
+                        context.officialReleaseDate(),
+                        context.advanceScreening(),
                         context.eligibilityCodes().stream().sorted().toList());
 
         return new DraftFareMatrixCoverageResponse(

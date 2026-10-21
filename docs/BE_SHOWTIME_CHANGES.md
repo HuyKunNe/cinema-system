@@ -278,3 +278,19 @@ FE gửi ghế và loại vé được chọn; BE tự xác định giá từ po
 ```text
 feat(pricing): support cinema fare matrices by format and ticket category
 ```
+
+## Quyết định nghiệp vụ đã xác nhận
+
+- Suất chiếu sớm là suất có ngày bắt đầu theo timezone policy
+  trước ngày công chiếu chính thức.
+- Dùng advanceScreeningCondition:
+  ANY, ADVANCE_SCREENING, REGULAR_SCREENING.
+- Khung giờ sáng/Matinee được cấu hình riêng bằng time band.
+- Draft simulation nhận simulatedReleaseDate; Backend tự phân loại.
+- Luồng showtime/quote thực tế phải lấy ngày công chiếu từ Movie Service.
+  Thiếu ngày công chiếu phải được xử lý rõ ràng trước khi tính giá thực tế.
+- SWEETBOX trong pricing catalog được cấu hình ánh xạ tới physical COUPLE.
+- Fare và phụ thu Sweetbox/COUPLE tính theo cặp.
+  Một ShowSeat COUPLE được tính giá một lần theo PER_PAIR.
+- Đơn vị tính theo cặp không đồng nghĩa với giá/phụ thu tham khảo đã được duyệt.
+- Inventory migrations đã được gom thành V1–V3 cho database tạo mới.

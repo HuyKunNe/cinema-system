@@ -20,13 +20,14 @@ public record FareRuleEvaluationContext(
         ContentFormat contentFormat,
         String ticketCategoryCode,
         String seatTypeCode,
-        boolean firstShowing,
+        LocalDate officialReleaseDate,
         Set<String> eligibilityCodes) {
 
     public FareRuleEvaluationContext {
         if (policyId == null
                 || localStartsAt == null
                 || experienceType == null
+                || officialReleaseDate == null
                 || contentFormat == null) {
             throw invalid();
         }
@@ -44,6 +45,10 @@ public record FareRuleEvaluationContext(
 
     public LocalDate localDate() {
         return localStartsAt.toLocalDate();
+    }
+
+    public boolean advanceScreening() {
+        return localDate().isBefore(officialReleaseDate);
     }
 
     public int minuteOfDay() {
@@ -65,7 +70,6 @@ public record FareRuleEvaluationContext(
     }
 
     private static ValidationException invalid() {
-        return new ValidationException(
-                InventoryErrorCode.PRICING_EVALUATION_CONTEXT_INVALID);
+        return new ValidationException(InventoryErrorCode.PRICING_EVALUATION_CONTEXT_INVALID);
     }
 }

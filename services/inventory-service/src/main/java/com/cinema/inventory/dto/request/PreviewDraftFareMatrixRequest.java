@@ -1,26 +1,26 @@
 package com.cinema.inventory.dto.request;
 
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.Set;
+
 import com.cinema.inventory.enums.ContentFormat;
 import com.cinema.inventory.enums.ExperienceType;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
-
-import java.time.OffsetDateTime;
-import java.util.Set;
 
 public record PreviewDraftFareMatrixRequest(
         @NotNull
                 @PositiveOrZero
                 @JsonDeserialize(
                         using =
-                                ReplaceCinemaPricingPolicyContentRequest
-                                        .StrictLongDeserializer.class)
+                                ReplaceCinemaPricingPolicyContentRequest.StrictLongDeserializer
+                                        .class)
                 @Schema(description = "Expected policy.version, not policyVersion.")
                 Long expectedVersion,
         @NotNull
@@ -35,9 +35,11 @@ public record PreviewDraftFareMatrixRequest(
         @NotNull
                 @Schema(
                         description =
-                                "Hypothetical first-showing flag. "
-                                        + "The server does not infer first showing.")
-                Boolean simulatedFirstShowing,
+                                "Hypothetical official release date used by draft simulation. "
+                                        + "The server derives advance screening from the "
+                                        + "show date in the policy time zone. "
+                                        + "This date is not verified against Movie Service.")
+                LocalDate simulatedReleaseDate,
         @Size(max = 20)
                 @Schema(
                         description =

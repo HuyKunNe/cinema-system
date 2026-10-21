@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.OffsetDateTime;
+import java.time.LocalDate;
 import java.util.List;
 
 @JsonInclude(JsonInclude.Include.ALWAYS)
@@ -38,6 +39,7 @@ public record PreviewDraftFareMatrixResponse(
             ContentFormat contentFormat,
             String ticketCategoryCode,
             String seatTypeCode,
-            boolean simulatedFirstShowing,
+            LocalDate simulatedReleaseDate,
+boolean simulatedAdvanceScreening,
             List<String> simulatedEligibilityCodes) {}
 }

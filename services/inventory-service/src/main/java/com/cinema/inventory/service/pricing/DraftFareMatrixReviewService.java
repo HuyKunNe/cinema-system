@@ -134,7 +134,7 @@ public class DraftFareMatrixReviewService {
                         "PHYSICAL_SEAT_TYPE_SALE_SCOPE",
                         "PAIR_GROUPING_AND_CHARGING",
                         "EXPERIENCE_AND_CONTENT_COMPATIBILITY",
-                        "FIRST_SHOWING_DEFINITION",
+                        "OFFICIAL_RELEASE_DATE_RESOLUTION",
                         "HOLIDAY_CALENDAR_COMPLETENESS",
                         "SURCHARGE_INCLUSION_AND_STACKING",
                         "PUBLISHED_POLICY_PERIOD_CONFLICTS",
@@ -307,12 +307,21 @@ public class DraftFareMatrixReviewService {
             String seatTypeCode = rule.getSeatTypeCode();
             usedSeatTypeCodes.add(seatTypeCode);
 
-            if (!seatTypesByCode.containsKey(seatTypeCode)) {
+            PricingSeatType seatType = seatTypesByCode.get(seatTypeCode);
+
+            if (seatType == null) {
                 report.add(
                         MatrixReviewSeverity.ERROR,
                         "FARE_SEAT_TYPE_UNKNOWN",
                         "The fare references a seat type absent from this policy catalog.",
                         rule.getId());
+            } else if (!seatType.acceptsFareUnit(rule.getFareUnit())) {
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "FARE_PAIR_UNIT_REQUIRED",
+                        "Fares mapped to physical COUPLE seats must use PER_PAIR.",
+                        rule.getId(),
+                        seatType.getId());
             }
         }
 

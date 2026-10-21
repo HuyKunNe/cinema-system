@@ -2,10 +2,10 @@ package com.cinema.inventory.dto.request;
 
 import com.cinema.inventory.dto.request.ReplaceCinemaPricingPolicyContentRequest.StrictIntegerDeserializer;
 import com.cinema.inventory.dto.request.ReplaceCinemaPricingPolicyContentRequest.StrictLongDeserializer;
+import com.cinema.inventory.enums.AdvanceScreeningCondition;
 import com.cinema.inventory.enums.ContentFormat;
 import com.cinema.inventory.enums.ExperienceType;
 import com.cinema.inventory.enums.FareUnit;
-import com.cinema.inventory.enums.FirstShowingCondition;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -30,19 +30,11 @@ import java.util.List;
 import java.util.Set;
 
 public record ReplaceCinemaFareMatrixRequest(
-        @NotNull
-                @PositiveOrZero
-                @JsonDeserialize(using = StrictLongDeserializer.class)
+        @NotNull @PositiveOrZero @JsonDeserialize(using = StrictLongDeserializer.class)
                 Long expectedVersion,
-        @NotNull
-                @Size(max = 100)
-                List<@NotNull @Valid DayGroupInput> dayGroups,
-        @NotNull
-                @Size(max = 100)
-                List<@NotNull @Valid TimeBandInput> timeBands,
-        @NotNull
-                @Size(max = 2000)
-                List<@NotNull @Valid FareRuleInput> fareRules) {
+        @NotNull @Size(max = 100) List<@NotNull @Valid DayGroupInput> dayGroups,
+        @NotNull @Size(max = 100) List<@NotNull @Valid TimeBandInput> timeBands,
+        @NotNull @Size(max = 2000) List<@NotNull @Valid FareRuleInput> fareRules) {
 
     public record DayGroupInput(
             @NotBlank @Size(max = 64) String code,
@@ -53,15 +45,9 @@ public record ReplaceCinemaFareMatrixRequest(
     public record TimeBandInput(
             @NotBlank @Size(max = 64) String code,
             @NotBlank @Size(max = 150) String name,
-            @NotNull
-                    @Min(0)
-                    @Max(1439)
-                    @JsonDeserialize(using = StrictIntegerDeserializer.class)
+            @NotNull @Min(0) @Max(1439) @JsonDeserialize(using = StrictIntegerDeserializer.class)
                     Integer fromMinute,
-            @NotNull
-                    @Min(1)
-                    @Max(1440)
-                    @JsonDeserialize(using = StrictIntegerDeserializer.class)
+            @NotNull @Min(1) @Max(1440) @JsonDeserialize(using = StrictIntegerDeserializer.class)
                     Integer toMinute) {}
 
     public record FareRuleInput(
@@ -72,7 +58,7 @@ public record ReplaceCinemaFareMatrixRequest(
             @NotBlank @Size(max = 64) String timeBandCode,
             @NotBlank @Size(max = 64) String ticketCategoryCode,
             @NotBlank @Size(max = 64) String seatTypeCode,
-            @NotNull FirstShowingCondition firstShowingCondition,
+            @NotNull AdvanceScreeningCondition advanceScreeningCondition,
             @Size(max = 64) String requiredEligibilityCode,
             @NotBlank
                     @Pattern(regexp = "0|[1-9][0-9]{0,18}")
@@ -85,25 +71,20 @@ public record ReplaceCinemaFareMatrixRequest(
                             example = "150000")
                     String amountVnd,
             @NotNull FareUnit fareUnit,
-            @NotNull
-                    @PositiveOrZero
-                    @JsonDeserialize(using = StrictIntegerDeserializer.class)
+            @NotNull @PositiveOrZero @JsonDeserialize(using = StrictIntegerDeserializer.class)
                     Integer priority,
             @NotNull LocalDate effectiveFrom,
             LocalDate effectiveTo) {}
 
-    public static final class StrictAmountStringDeserializer
-            extends JsonDeserializer<String> {
+    public static final class StrictAmountStringDeserializer extends JsonDeserializer<String> {
 
         @Override
-        public String deserialize(
-                JsonParser parser, DeserializationContext context)
+        public String deserialize(JsonParser parser, DeserializationContext context)
                 throws IOException {
 
             if (!parser.hasToken(JsonToken.VALUE_STRING)) {
                 return context.reportInputMismatch(
-                        String.class,
-                        "amountVnd must be a JSON string containing integer VND");
+                        String.class, "amountVnd must be a JSON string containing integer VND");
             }
 
             return parser.getText();

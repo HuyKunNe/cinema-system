@@ -2,10 +2,10 @@ package com.cinema.inventory.entity;
 
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
+import com.cinema.inventory.enums.AdvanceScreeningCondition;
 import com.cinema.inventory.enums.ContentFormat;
 import com.cinema.inventory.enums.ExperienceType;
 import com.cinema.inventory.enums.FareUnit;
-import com.cinema.inventory.enums.FirstShowingCondition;
 import com.cinema.inventory.exception.InventoryErrorCode;
 
 import jakarta.persistence.Column;
@@ -61,8 +61,8 @@ public class FareRule extends BaseEntity {
     private String seatTypeCode;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "first_showing_condition", nullable = false, length = 30)
-    private FirstShowingCondition firstShowingCondition;
+    @Column(name = "advance_screening_condition", nullable = false, length = 30)
+    private AdvanceScreeningCondition advanceScreeningCondition;
 
     @Column(name = "required_eligibility_code", length = 64)
     private String requiredEligibilityCode;
@@ -94,7 +94,7 @@ public class FareRule extends BaseEntity {
             PricingTimeBand timeBand,
             String ticketCategoryCode,
             String seatTypeCode,
-            FirstShowingCondition firstShowingCondition,
+            AdvanceScreeningCondition advanceScreeningCondition,
             String requiredEligibilityCode,
             Long amountVnd,
             FareUnit fareUnit,
@@ -107,7 +107,7 @@ public class FareRule extends BaseEntity {
                 || contentFormat == null
                 || dayGroup == null
                 || timeBand == null
-                || firstShowingCondition == null
+                || advanceScreeningCondition == null
                 || amountVnd == null
                 || amountVnd < 0
                 || fareUnit == null
@@ -138,11 +138,9 @@ public class FareRule extends BaseEntity {
         this.timeBand = timeBand;
         this.ticketCategoryCode = normalizeCode(ticketCategoryCode);
         this.seatTypeCode = normalizeCode(seatTypeCode);
-        this.firstShowingCondition = firstShowingCondition;
+        this.advanceScreeningCondition = advanceScreeningCondition;
         this.requiredEligibilityCode =
-                requiredEligibilityCode == null
-                        ? null
-                        : normalizeCode(requiredEligibilityCode);
+                requiredEligibilityCode == null ? null : normalizeCode(requiredEligibilityCode);
         this.amountVnd = amountVnd;
         this.fareUnit = fareUnit;
         this.priority = priority;
@@ -182,8 +180,8 @@ public class FareRule extends BaseEntity {
         return seatTypeCode;
     }
 
-    public FirstShowingCondition getFirstShowingCondition() {
-        return firstShowingCondition;
+    public AdvanceScreeningCondition getAdvanceScreeningCondition() {
+        return advanceScreeningCondition;
     }
 
     public String getRequiredEligibilityCode() {
@@ -211,14 +209,11 @@ public class FareRule extends BaseEntity {
     }
 
     private static void validatePeriod(
-            CinemaPricingPolicy policy,
-            LocalDate effectiveFrom,
-            LocalDate effectiveTo) {
+            CinemaPricingPolicy policy, LocalDate effectiveFrom, LocalDate effectiveTo) {
 
         if (effectiveFrom == null
                 || effectiveFrom.isBefore(policy.getEffectiveFrom())
-                || (effectiveTo != null
-                        && !effectiveTo.isAfter(effectiveFrom))) {
+                || (effectiveTo != null && !effectiveTo.isAfter(effectiveFrom))) {
             throw invalid();
         }
 
@@ -247,7 +242,6 @@ public class FareRule extends BaseEntity {
     }
 
     private static ValidationException invalid() {
-        return new ValidationException(
-                InventoryErrorCode.FARE_RULE_DATA_INVALID);
+        return new ValidationException(InventoryErrorCode.FARE_RULE_DATA_INVALID);
     }
 }

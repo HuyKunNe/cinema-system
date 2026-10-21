@@ -1,6 +1,7 @@
 # config run at local
 
 ## Create DB
+
 CREATE DATABASE IF NOT EXISTS cinema_user_db
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
@@ -224,3 +225,5 @@ Không mở lại R28 Notification đang được hoãn.
 7. **Commit message:** đưa một commit message phù hợp cho round đó.
 
 Bắt đầu bằng việc đọc tài liệu và source mới nhất, sau đó hướng dẫn round đầu tiên. Không yêu cầu tôi xác nhận trước nếu tài liệu và code đã đủ để bắt đầu.```
+
+python scripts/consolidate_inventory_migrations.py
