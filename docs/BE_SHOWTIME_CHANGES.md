@@ -1,214 +1,280 @@
-# Đề xuất thay đổi Backend: suất chiếu và chính sách giá vé
+# Đề xuất BE: chính sách giá vé theo ma trận rạp, định dạng và nhóm vé
 
-> Đề xuất cập nhật theo bảng giá Cinestar Parkcity Hanoi trong ảnh. Đây là tài liệu hướng dẫn; không sửa repository.
+> Bản thay thế cho đề xuất giá suất chiếu cũ. Repository BE chỉ đọc; hãy tự chép nội dung đã duyệt vào tài liệu tương ứng trong repo `cinema-system`.
+>
+> Ảnh tham khảo nhận diện thương hiệu CGV. Giá dưới đây chỉ mô tả dữ liệu đọc từ ảnh, không mặc định là giá áp dụng cho mọi rạp của dự án. Cần nghiệp vụ xác nhận rạp, chi nhánh, ngày hiệu lực và điều kiện trước khi nhập dữ liệu.
 
-## 1. Mục tiêu
+## 1. Mục tiêu và quyết định mô hình
 
-- Backend tự chốt sơ đồ PUBLISHED mới nhất của phòng khi tạo suất chiếu.
-- Chính sách giá của rạp mô tả giá theo ngày, khung giờ, nhóm vé và điều kiện ưu đãi.
-- Phụ thu ghế, phim và định dạng được cấu hình riêng, không trộn vào giá gốc theo nhóm vé.
-- Suất chiếu lưu phiên bản chính sách đã áp dụng; giá cuối cùng được tính khi khách lấy báo giá/đặt vé.
+Tách giá vé thành các chiều độc lập để biểu diễn được nhiều bảng giá cùng lúc:
 
-## 2. Hiện trạng đã đối chiếu
+| Chiều                   | Ví dụ                                                                         | Nguồn dữ liệu / ý nghĩa                                                                             |
+| ----------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Rạp và chính sách       | `cinemaId`, policy version                                                    | Chủ sở hữu bảng giá và lịch sử thay đổi                                                             |
+| Loại trải nghiệm        | `STANDARD`, `PREMIUM_CINEMA`, `4DX`, `IMAX`                                   | Năng lực phòng/loại suất chiếu; không phải loại ghế                                                 |
+| Phiên bản nội dung      | `2D`, `3D`                                                                    | Ghép với loại trải nghiệm thành nhãn như `STANDARD · 3D`; cần riêng cho 4DX, IMAX và Premium Cinema |
+| Nhóm ngày               | `MON_TUE_THU`, `WEDNESDAY`, `FRI_SAT_SUN_HOLIDAY`                             | Ngày địa phương tại rạp; ngày lễ dùng lịch được cấu hình                                            |
+| Khung giờ / cờ suất đầu | `BEFORE_12`, `12_17`, `17_21_30`, `AFTER_21_30`, `FIRST_SHOWING`, `BEFORE_17` | Khung giờ tính theo timezone của rạp; `FIRST_SHOWING` là thuộc tính của suất chiếu                  |
+| Nhóm vé                 | `ADULT`, `CHILD`, `CGV_YOUNG`, `STUDENT`, `SENIOR`                            | Nhóm người mua/điều kiện ưu đãi; không phải loại ghế                                                |
+| Loại ghế                | `STANDARD`, `VIP`, `SWEETBOX`                                                 | Lấy từ sơ đồ ghế đã xuất bản của phòng                                                              |
+| Điều kiện ưu đãi        | thành viên, tuổi, giấy tờ, giờ áp dụng                                        | Phải được xác minh bằng nghiệp vụ; không suy ra chỉ từ lựa chọn FE                                  |
 
-- CreateShowtimeRequest hiện cần movieId, roomId, startsAt, endsAt, basePrice; roomLayoutId là tùy chọn.
-- ShowtimeServiceImpl.create() gọi ShowtimeLayoutService.resolveForNewShowtime(...), sau đó ShowSeatGenerationService.generate(showtime, basePrice).
-- Nếu không truyền roomLayoutId nhưng phòng có layout đã xuất bản, backend trả lỗi SHOWTIME_LAYOUT_REQUIRED. Nếu không có layout matrix PUBLISHED, luồng hiện tại có thể dùng ghế legacy.
-- Đã có GET /api/v1/room-layouts/published-seat-map?roomId={roomId}. API tìm layout matrix PUBLISHED mới nhất và hiện yêu cầu inventory:manage.
-- SeatPricingPolicy hiện có hệ số toàn cục theo SeatType; ShowSeat.price hiện được lưu lúc sinh ghế.
-- Bảng ảnh có các nhóm khách và khung giờ; mức vé không thể biểu diễn đầy đủ bằng một giá cố định cho từng SeatType.
+**Đề xuất:** lưu giá theo các dòng `FareRule` có thể khớp nhiều chiều, và lưu phần cộng thêm riêng bằng `SurchargeRule` chỉ khi bảng thực sự mô tả phụ thu. Không dùng một `basePrice` duy nhất trên showtime, không dùng hệ số toàn cục theo `SeatType`, và không lưu giá chốt trong `ShowSeat`.
 
-## 3. Tách loại vé khỏi loại ghế
+Một số dòng trong bảng đã là giá trọn gói theo định dạng/nhóm vé/loại ghế; không cộng lại phụ thu VIP hoặc Sweetbox vào các dòng đó. Phụ thu được cộng ở bước quote chỉ khi đúng điều kiện và `stackable` đã được xác nhận.
 
-| Khái niệm      | Ví dụ                                             | Dùng để                                        |
-| -------------- | ------------------------------------------------- | ---------------------------------------------- |
-| TicketCategory | ADULT, SENIOR_55_PLUS, STUDENT_U22_TEACHER, CHILD | Chọn giá cơ bản và xác minh điều kiện mua      |
-| SeatType       | STANDARD, VIP, COUPLE, ACCESSIBLE                 | Xác định vị trí/đặc tính ghế và phụ thu nếu có |
-| ShowtimeFormat | STANDARD_2D, IMAX, SPECIAL_FORMAT                 | Phụ thu theo định dạng                         |
-| MovieAttribute | BLOCKBUSTER                                       | Phụ thu theo thuộc tính phim                   |
+## 2. Bảng giá tham khảo cần cấu hình
 
-Không đặt các nhóm khách vào SeatType. Ghế đôi +10.000đ là phụ thu ghế; vé người cao tuổi 55.000đ là giá theo TicketCategory và khung giờ.
+Đơn vị là VND. Giá và điều kiện chưa có ngày hiệu lực trong ảnh; phải xác nhận trước khi publish.
 
-## 4. Quy tắc giá cần biểu diễn
+### 2.1. Vé 2D
 
-Các con số dưới đây được đọc từ ảnh tham khảo và chỉ nên dùng làm dữ liệu cấu hình cho đúng rạp, sau khi nghiệp vụ xác nhận:
+| Nhóm ngày                       | Điều kiện                                                                       |     Giá |
+| ------------------------------- | ------------------------------------------------------------------------------- | ------: |
+| Thứ Hai, Ba, Năm                | Trẻ em và thành viên CGV Young                                                  |  60.000 |
+| Thứ Hai, Ba, Năm                | Matinee trước 12:00: học sinh, sinh viên, người cao tuổi và suất chiếu đầu tiên |  70.000 |
+| Thứ Hai, Ba, Năm                | Người lớn từ 12:00                                                              |  85.000 |
+| Thứ Tư                          | Thứ Tư Vui Vẻ                                                                   |  75.000 |
+| Thứ Sáu, Bảy, Chủ Nhật, ngày lễ | CGV Young và trẻ em trước 17:00                                                 |  70.000 |
+| Thứ Sáu, Bảy, Chủ Nhật, ngày lễ | Học sinh, sinh viên, người cao tuổi trước 17:00                                 |  80.000 |
+| Thứ Sáu, Bảy, Chủ Nhật, ngày lễ | Người lớn                                                                       | 105.000 |
 
-| Điều kiện                                         | Người lớn | Trên 55 tuổi | HSSV/U22/Giáo viên | Trẻ em |
-| ------------------------------------------------- | --------: | -----------: | -----------------: | -----: |
-| C’Monday thứ Hai                                  |    45.000 |       45.000 |             45.000 | 45.000 |
-| C’Member thứ Tư                                   |    45.000 |       45.000 |             45.000 | 45.000 |
-| C’Ten trước 10:00 hoặc từ 22:00, không gồm lễ/Tết |    49.000 |       49.000 |             49.000 | 49.000 |
-| Trong tuần 10:00–18:00                            |    69.000 |       55.000 |             49.000 | 49.000 |
-| Trong tuần 18:00–22:00                            |    75.000 |       55.000 |             49.000 | 49.000 |
-| Cuối tuần 10:00–18:00                             |    75.000 |       55.000 |             49.000 | 49.000 |
-| Cuối tuần 18:00–22:00                             |    79.000 |       55.000 |             49.000 | 49.000 |
-| Lễ/Tết                                            |    89.000 |       89.000 |             89.000 | 65.000 |
+| Phân hạng Premium Cinema | Nhóm ngày                       |     Giá |
+| ------------------------ | ------------------------------- | ------: |
+| Premium Cinema 2D        | Thứ Hai, Ba, Năm                | 180.000 |
+| Premium Cinema 2D        | Thứ Sáu, Bảy, Chủ Nhật, ngày lễ | 230.000 |
 
-Ảnh ghi thứ trong tuần, phạm vi ngày, điều kiện C’Member và cách tính phụ thu. Hãy xác nhận các điều kiện này với nghiệp vụ trước khi nhập dữ liệu. Happy Hour ghi chú không áp dụng lễ/Tết. Trẻ dưới 0,7 m được miễn phí khi ngồi cùng phụ huynh; trẻ 0,7–1,3 m thuộc nhóm vé trẻ em.
+Phụ thu 2D đọc từ ảnh: ghế VIP `+5.000`, phim bom tấn `+5.000`, Sweetbox `+25.000`. Cụm Matinee/“Suất Chiếu Đầu Tiên” chưa chỉ rõ điều kiện là AND hay OR; cần nghiệp vụ xác nhận. Xác nhận phụ thu có áp dụng cho Premium Cinema, có cộng dồn không, và Sweetbox tính cho mỗi vé hay cả cặp.
 
-Phụ thu được cấu hình riêng trong ảnh: ghế đôi +10.000đ, phim bom tấn +5.000đ, định dạng đặc biệt +5.000đ. Cần chốt rõ phụ thu ghế đôi tính cho mỗi ghế hay cho cả cặp, và các phụ thu phim/định dạng có được cộng dồn hay không.
+### 2.2. Vé 3D — người lớn
 
-## 5. Mô hình dữ liệu đề xuất
+| Nhóm ngày                       | Khung giờ   | Ghế thường | Ghế VIP | Sweetbox |
+| ------------------------------- | ----------- | ---------: | ------: | -------: |
+| Thứ Hai, Ba, Năm                | Trước 12:00 |     90.000 | 100.000 |  120.000 |
+| Thứ Hai, Ba, Năm                | 12:00–17:00 |    110.000 | 120.000 |  150.000 |
+| Thứ Hai, Ba, Năm                | 17:00–21:30 |    130.000 | 140.000 |  170.000 |
+| Thứ Hai, Ba, Năm                | Sau 21:30   |    110.000 | 120.000 |  150.000 |
+| Thứ Tư                          | Cả ngày     |    100.000 | 100.000 |  120.000 |
+| Thứ Sáu, Bảy, Chủ Nhật, ngày lễ | Trước 12:00 |    110.000 | 120.000 |  140.000 |
+| Thứ Sáu, Bảy, Chủ Nhật, ngày lễ | 12:00–17:00 |    130.000 | 140.000 |  170.000 |
+| Thứ Sáu, Bảy, Chủ Nhật, ngày lễ | 17:00–21:30 |    150.000 | 200.000 |  200.000 |
+| Thứ Sáu, Bảy, Chủ Nhật, ngày lễ | Sau 21:30   |    130.000 | 140.000 |  170.000 |
 
-| Thành phần          | Trách nhiệm                                                                                                                             |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| CinemaPricingPolicy | Chính sách phiên bản hóa thuộc cinema: cinemaId, version, status, currency, effective dates, publishedAt và audit fields.               |
-| TicketPriceRule     | Quy tắc giá cơ bản: ngày/loại ngày, khoảng giờ địa phương, TicketCategory, số tiền, điều kiện thành viên/kênh, ngày hiệu lực, priority. |
-| CinemaHolidayDate   | Lịch ngày lễ áp dụng cho rạp/khu vực; dùng để ưu tiên giá lễ và loại Happy Hour.                                                        |
-| TicketSurchargeRule | Phụ thu theo SeatType, ShowtimeFormat hoặc MovieAttribute; gồm amount, unit, stackable và điều kiện áp dụng.                            |
-| Showtime            | Giữ roomLayoutId và pricingPolicyId/version đã chốt lúc tạo suất chiếu.                                                                 |
-| ShowSeat            | Quản lý ghế, vị trí và trạng thái giữ/đặt; không giữ giá cuối cùng theo loại vé.                                                        |
-| BookingLine/Ticket  | Lưu TicketCategory, seatId, giá cuối cùng, currency và snapshot rule/policy dùng để tính.                                               |
+| Phân hạng Premium Cinema | Nhóm ngày                       |     Giá |
+| ------------------------ | ------------------------------- | ------: |
+| Premium Cinema 3D        | Thứ Hai, Ba, Năm                | 230.000 |
+| Premium Cinema 3D        | Thứ Sáu, Bảy, Chủ Nhật, ngày lễ | 270.000 |
 
-Chính sách PUBLISHED không sửa tại chỗ. Tạo phiên bản mới rồi publish. Suất chiếu đã tạo giữ policy version của nó; nếu nghiệp vụ muốn cập nhật giá cho suất chiếu đã mở bán thì cần một luồng cập nhật riêng.
+**Cần xác minh hai ô 17:00–21:30 của bảng 3D cuối tuần:** ảnh hiển thị `200.000` cho VIP và `200.000` cho Sweetbox. Giữ đúng giá trị đọc được trong dữ liệu nháp, nhưng không publish trước khi rạp xác nhận.
 
-## 6. Cấu trúc rule minh họa
+### 2.3. Vé 3D ưu đãi
 
-Mỗi rule giá cơ bản trả về một mức giá theo TicketCategory. Quy tắc cùng nhóm giá cơ bản không cộng dồn; chọn một rule theo priority. Phụ thu được tính sau đó theo cấu hình stackable.
+| Nhóm vé                             | Nhóm ngày                       | Điều kiện giờ     | Giá ghế thường / VIP |
+| ----------------------------------- | ------------------------------- | ----------------- | -------------------: |
+| Học sinh, sinh viên, người cao tuổi | Thứ Hai, Ba, Năm                | Trước 17:00       |               90.000 |
+| Học sinh, sinh viên, người cao tuổi | Thứ Tư Vui Vẻ                   | Cả ngày theo bảng |              100.000 |
+| Học sinh, sinh viên, người cao tuổi | Thứ Sáu, Bảy, Chủ Nhật, ngày lễ | Trước 17:00       |              110.000 |
+| Trẻ em và CGV Young                 | Thứ Hai, Ba, Năm                | Trước 17:00       |               80.000 |
+| Trẻ em và CGV Young                 | Thứ Tư Vui Vẻ                   | Cả ngày theo bảng |              100.000 |
+| Trẻ em và CGV Young                 | Thứ Sáu, Bảy, Chủ Nhật, ngày lễ | Trước 17:00       |              100.000 |
 
-```json
-{
-  "currency": "VND",
-  "rules": [
-    {
-      "code": "MONDAY_HAPPY_DAY",
-      "priority": 400,
-      "days": ["MONDAY"],
-      "ticketPrices": {
-        "ADULT": 45000,
-        "SENIOR_55_PLUS": 45000,
-        "STUDENT_U22_TEACHER": 45000,
-        "CHILD": 45000
-      }
-    },
-    {
-      "code": "WEDNESDAY_C_MEMBER",
-      "priority": 400,
-      "days": ["WEDNESDAY"],
-      "memberTier": "C_MEMBER",
-      "ticketPrices": {
-        "ADULT": 45000,
-        "SENIOR_55_PLUS": 45000,
-        "STUDENT_U22_TEACHER": 45000,
-        "CHILD": 45000
-      }
-    },
-    {
-      "code": "HAPPY_HOUR",
-      "priority": 300,
-      "timeRanges": [
-        { "from": "00:00", "to": "10:00" },
-        { "from": "22:00", "to": "24:00" }
-      ],
-      "excludeDayType": "HOLIDAY",
-      "ticketPrices": {
-        "ADULT": 49000,
-        "SENIOR_55_PLUS": 49000,
-        "STUDENT_U22_TEACHER": 49000,
-        "CHILD": 49000
-      }
-    }
-  ],
-  "surcharges": [
-    {
-      "code": "COUPLE_SEAT",
-      "condition": { "seatType": "COUPLE" },
-      "amount": 10000,
-      "unit": "CONFIRM_WITH_BUSINESS",
-      "stackable": true
-    },
-    {
-      "code": "BLOCKBUSTER",
-      "condition": { "movieAttribute": "BLOCKBUSTER" },
-      "amount": 5000,
-      "unit": "PER_TICKET",
-      "stackable": true
-    },
-    {
-      "code": "SPECIAL_FORMAT",
-      "condition": { "showtimeFormat": "SPECIAL" },
-      "amount": 5000,
-      "unit": "PER_TICKET",
-      "stackable": true
-    }
-  ]
-}
-```
+Ghi chú ảnh: Sweetbox của vé ưu đãi 3D `+20.000`. Xác nhận giá VIP có bằng ghế thường cho các nhóm ưu đãi, và phụ thu Sweetbox tính mỗi vé hay mỗi cặp.
 
-Đây chỉ là ví dụ contract. Mức giá và điều kiện phải lưu theo rạp, không hardcode trong enum, service hay FE. Dùng khoảng thời gian nửa mở, ví dụ 10:00–18:00 gồm 10:00 và không gồm 18:00, để hai khung giờ không bị chồng lấn.
+### 2.4. Vé 4DX
 
-## 7. API đề xuất
+| Phiên bản phim | Nhóm ngày                       |     Trước 12:00 |     12:00–17:00 |     17:00–21:30 |       Sau 21:30 |
+| -------------- | ------------------------------- | --------------: | --------------: | --------------: | --------------: |
+| 3D             | Thứ Hai, Ba, Năm                |         160.000 |         190.000 |         210.000 |         190.000 |
+| 3D             | Thứ Tư Vui Vẻ                   | 170.000 cả ngày | 170.000 cả ngày | 170.000 cả ngày | 170.000 cả ngày |
+| 3D             | Thứ Sáu, Bảy, Chủ Nhật, ngày lễ |         180.000 |         210.000 |         270.000 |         210.000 |
+| 2D             | Thứ Hai, Ba, Năm                |         150.000 |         160.000 |         180.000 |         160.000 |
+| 2D             | Thứ Tư Vui Vẻ                   | 150.000 cả ngày | 150.000 cả ngày | 150.000 cả ngày | 150.000 cả ngày |
+| 2D             | Thứ Sáu, Bảy, Chủ Nhật, ngày lễ |         170.000 |         180.000 |         200.000 |         180.000 |
+
+### 2.5. Vé IMAX
+
+| Phiên bản phim | Nhóm ngày                       | Suất chiếu đầu tiên | Trước 17:00 | Sau 17:00 |
+| -------------- | ------------------------------- | ------------------: | ----------: | --------: |
+| 3D             | Thứ Hai, Ba, Tư, Năm            |             120.000 |     150.000 |   180.000 |
+| 3D             | Thứ Sáu, Bảy, Chủ Nhật, ngày lễ |             140.000 |     190.000 |   250.000 |
+| 2D             | Thứ Hai, Ba, Tư, Năm            |             100.000 |     120.000 |   140.000 |
+| 2D             | Thứ Sáu, Bảy, Chủ Nhật, ngày lễ |             120.000 |     150.000 |   180.000 |
+
+## 3. Mô hình dữ liệu đề xuất
+
+Tên class/entity cần theo quy ước hiện có của BE; bảng dưới là trách nhiệm dữ liệu, không bắt buộc đúng tên.
+
+| Entity                   | Trường chính / trách nhiệm                                                                                                                                                                                                                                              |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CinemaPricingPolicy`    | `id`, `cinemaId`, `version`, `status` (`DRAFT/PUBLISHED/ARCHIVED`), `currency`, `timezone`, `effectiveFrom`, `effectiveTo`, `publishedAt`, audit fields.                                                                                                                |
+| `FareRule`               | `policyId`, `experienceType`, nullable `contentFormat`, `dayGroup`, nullable `timeBand`, nullable `ticketCategory`, nullable `seatType`, điều kiện `isFirstShowing`, `amount`, `priority`, `ruleCode`, `effective dates`. Null chỉ được dùng như wildcard có kiểm soát. |
+| `SurchargeRule`          | điều kiện khớp (seat type, movie attribute, experience format, ticket category), `amount`, `unit` (`PER_TICKET/PER_PAIR/PER_BOOKING`), `stackable`, thời hạn.                                                                                                           |
+| `CinemaHoliday`          | `cinemaId` hoặc vùng áp dụng, ngày, tên, `dayGroupOverride`; ngày lễ phải có ưu tiên xác định so với Wednesday/weekday.                                                                                                                                                 |
+| `Showtime`               | `roomId`, `startsAt`, `endsAt`, `experienceType`, `contentFormat`, `pricingPolicyId/version`, `roomLayoutId/version`. Loại trải nghiệm và phiên bản nội dung phải tương thích với phòng và bản phát hành phim.                                                          |
+| `ShowSeat`               | Seat identity/type/location và trạng thái tồn kho; không phải nguồn giá chốt.                                                                                                                                                                                           |
+| `BookingLine` / `Ticket` | `showtimeId`, `seatId`, `ticketCategory`, policy version, matched fare rule IDs, surcharge breakdown, final amount, currency; snapshot để giữ lịch sử.                                                                                                                  |
+
+Ràng buộc:
+
+- Mỗi suất chiếu tham chiếu một bản policy đã publish để tránh giá thay đổi giữa lúc mở bán. Quy định rõ cách xử lý suất chiếu đã tạo nếu policy mới được publish.
+- Policy đã publish bất biến; sửa bằng revision mới và publish theo ngày hiệu lực.
+- Dùng giờ địa phương của rạp để xác định nhóm ngày và khung giờ; API nên truyền/đáp lại ISO-8601 có offset.
+- Lịch lễ có độ ưu tiên cao hơn nhóm thứ trong tuần. Không suy ra ngày lễ từ client.
+- Không cho hai rule cùng độ ưu tiên khớp cùng một tổ hợp dimensions. Validate missing cells, overlap, khoảng giờ rỗng/chồng lấn trước publish.
+- Lưu giá tiền dạng số nguyên VND; không dùng floating point.
+- Cần chốt các câu hỏi ghi ở trên (Premium, cờ suất đầu, cách tính Sweetbox, VIP trong ưu đãi, hai ô 3D cuối tuần) trước khi nhập tariff production.
+
+## 4. API đề xuất
+
+Giữ route/convention hiện hữu của dự án nếu đã có endpoint tương đương. Các API dưới đây là contract đề xuất, không khẳng định đang tồn tại.
 
 ```http
-GET  /api/v1/cinemas/{cinemaId}/pricing-policies/active
-POST /api/v1/cinemas/{cinemaId}/pricing-policies
-POST /api/v1/cinemas/{cinemaId}/pricing-policies/{policyId}/publish
-POST /api/v1/showtimes/pricing-preview
-POST /api/v1/bookings/quote
+GET    /api/v1/cinemas/{cinemaId}/pricing-policies/active
+GET    /api/v1/cinemas/{cinemaId}/pricing-policies/{policyId}
+POST   /api/v1/cinemas/{cinemaId}/pricing-policies
+PUT    /api/v1/cinemas/{cinemaId}/pricing-policies/{policyId}/fare-rules
+POST   /api/v1/cinemas/{cinemaId}/pricing-policies/{policyId}/validate
+POST   /api/v1/cinemas/{cinemaId}/pricing-policies/{policyId}/publish
+POST   /api/v1/showtimes/pricing-preview
+POST   /api/v1/bookings/quote
 ```
 
-- GET policy trả phiên bản PUBLISHED và các rule/phụ thu để trang cấu hình hoặc preview hiển thị.
-- Pricing preview nhận cinemaId, roomId, movieId, startsAt và trả mức giá dự kiến theo nhóm vé cùng phụ thu tương ứng.
-- Booking quote nhận showtimeId, seatId và TicketCategory cho từng vé; backend xác minh điều kiện thành viên/giấy tờ theo khả năng của hệ thống rồi trả tổng tiền.
-- Quyền đọc policy/preview phải phù hợp cho người quản lý suất chiếu; API sơ đồ PUBLISHED hiện cần xem lại quyền inventory:manage.
+### 4.1. Tạo suất chiếu
 
-Tạo suất chiếu sau chuyển đổi:
+Loại bỏ `basePrice`. Cấu hình giá thuộc policy của rạp. Nếu `experienceType` xác định từ phòng thì BE lấy từ phòng; nếu chọn theo phiên bản phát hành phim thì FE gửi riêng `experienceType` và `contentFormat`, BE kiểm tra tương thích với phòng/phim.
 
 ```json
 {
   "movieId": "movie-uuid",
   "roomId": "room-uuid",
-  "startsAt": "2026-10-25T18:30:00+07:00",
-  "endsAt": "2026-10-25T20:42:00+07:00"
+  "startsAt": "2026-10-23T19:00:00+07:00",
+  "endsAt": "2026-10-23T21:12:00+07:00",
+  "experienceType": "STANDARD",
+  "contentFormat": "3D"
 }
 ```
 
-Bỏ basePrice khỏi CreateShowtimeRequest. Backend tự chọn layout PUBLISHED mới nhất và policy version đang được áp dụng. Sau giai đoạn tương thích, bỏ roomLayoutId khỏi request.
+`experienceType` nhận `STANDARD`, `PREMIUM_CINEMA`, `4DX`, `IMAX`; `contentFormat` nhận `2D` hoặc `3D`. Cần xác nhận `PREMIUM_CINEMA` là loại phòng hay loại trải nghiệm trong domain BE. Không ghép công nghệ, phiên bản nội dung và phân hạng phòng vào một enum.
 
-## 8. Luồng tính tiền và tạo suất chiếu
+### 4.2. Pricing preview
 
-1. Khi tạo suất chiếu, xác thực movie, room, thời gian và quyền.
-2. Chọn layout PUBLISHED mới nhất của room theo layoutVersion.
-3. Chọn pricing policy PUBLISHED của cinema và lưu policy ID/version lên Showtime.
-4. Sinh ShowSeat từ layout, chỉ tạo dữ liệu ghế/trạng thái.
-5. Khi khách xem giá, đánh giá ngày/giờ bắt đầu theo timezone của rạp, loại ngày, nhóm vé và ưu đãi.
-6. Chọn một rule giá cơ bản theo priority; áp dụng các phụ thu đủ điều kiện; trả báo giá.
-7. Khi đặt vé, lưu tổng giá và rule/policy snapshot lên BookingLine/Ticket để bảo toàn lịch sử.
+Input cần đủ rạp/phòng/phim/thời gian/format; preview trả policy version, nhóm ngày/khung giờ đã khớp, mức giá theo nhóm vé/loại ghế và thông báo nếu ô giá thiếu.
 
-Nếu thiếu layout hoặc policy, trả lỗi nghiệp vụ rõ ràng; không âm thầm fallback sang ghế legacy cho form mới.
+```json
+{
+  "cinemaId": "cinema-uuid",
+  "roomId": "room-uuid",
+  "movieId": "movie-uuid",
+  "startsAt": "2026-10-23T19:00:00+07:00",
+  "experienceType": "STANDARD",
+  "contentFormat": "3D"
+}
+```
 
-## 9. Lỗi nghiệp vụ gợi ý
+```json
+{
+  "policy": { "id": "policy-uuid", "version": 4, "currency": "VND" },
+  "resolved": {
+    "dayGroup": "FRI_SAT_SUN_HOLIDAY",
+    "timeBand": "17_21_30",
+    "isFirstShowing": false
+  },
+  "fares": [
+    {
+      "ticketCategory": "ADULT",
+      "seatType": "STANDARD",
+      "amount": 150000,
+      "ruleCode": "3D_WEEKEND_EVENING_ADULT_STD"
+    },
+    {
+      "ticketCategory": "ADULT",
+      "seatType": "VIP",
+      "amount": 200000,
+      "ruleCode": "3D_WEEKEND_EVENING_ADULT_VIP",
+      "needsBusinessConfirmation": true
+    }
+  ],
+  "surcharges": [],
+  "warnings": ["Giá VIP 3D cuối tuần 17:00–21:30 cần rạp xác nhận trước khi publish."]
+}
+```
 
-| Trường hợp                               | HTTP gợi ý | Mã lỗi                                   |
-| ---------------------------------------- | ---------- | ---------------------------------------- |
-| Phòng chưa có layout matrix PUBLISHED    | 409        | PUBLISHED_ROOM_LAYOUT_REQUIRED           |
-| Rạp chưa có pricing policy PUBLISHED     | 409        | PUBLISHED_CINEMA_PRICING_POLICY_REQUIRED |
-| Không có rule cho khung giờ/nhóm vé      | 409        | TICKET_PRICE_RULE_NOT_FOUND              |
-| TicketCategory không đủ điều kiện ưu đãi | 422        | TICKET_CATEGORY_NOT_ELIGIBLE             |
-| Không có quyền xem cấu hình              | 403        | Mã quyền hiện có                         |
+### 4.3. Booking quote
 
-## 10. Khu vực BE cần cập nhật
+FE gửi ghế và loại vé được chọn; BE tự xác định giá từ policy đã gắn với showtime, kiểm tra ghế/nhóm vé/ưu đãi và trả breakdown. Không tin tổng tiền FE gửi lên.
 
-- DTO CreateShowtimeRequest, pricing policy/rule, preview và booking quote.
-- ShowtimeServiceImpl, ShowtimeLayoutService, ShowSeatGenerationService.
-- Thêm entity/repository/migration cho policy, price rules, holiday calendar và surcharge rules.
-- Tách TicketCategory khỏi SeatType.
-- Tạo pricing resolver dùng timezone cinema, điều kiện ngày/giờ, ưu đãi và priority.
-- Không dùng ShowSeat.price làm giá cuối cùng; lưu số tiền đã chốt trên BookingLine/Ticket.
-- Điều chỉnh API/authorization đọc layout và policy cho showtime manager.
-- Cập nhật OpenAPI; sau đó tái sinh FE API client.
+```json
+{
+  "showtimeId": "showtime-uuid",
+  "items": [
+    { "seatId": "seat-uuid-1", "ticketCategory": "ADULT" },
+    { "seatId": "seat-uuid-2", "ticketCategory": "STUDENT" }
+  ]
+}
+```
 
-## 11. Thứ tự triển khai
+```json
+{
+  "currency": "VND",
+  "policyVersion": 4,
+  "items": [
+    {
+      "seatId": "seat-uuid-1",
+      "ticketCategory": "ADULT",
+      "seatType": "VIP",
+      "fare": 200000,
+      "surcharges": [],
+      "total": 200000
+    }
+  ],
+  "total": 200000,
+  "expiresAt": "2026-10-21T12:10:00Z"
+}
+```
 
-1. Chốt bảng giá, ngày áp dụng, ưu tiên Happy Day/C’Ten/lễ, điều kiện thành viên và quy tắc cộng phụ thu.
-2. Thêm model và API quản lý policy version, rule, holiday và surcharge.
-3. Thêm pricing preview và booking quote resolver.
-4. Gắn policy version vào Showtime; refactor lưu giá cuối cùng trên booking/ticket.
-5. Chuyển FE rồi loại basePrice khỏi request; giữ compatibility có thời hạn nếu cần.
-6. Cập nhật OpenAPI và migration cho suất chiếu/ghế hiện có.
+## 5. Luồng xử lý BE
 
-## 12. Commit message gợi ý
+1. Tạo suất chiếu: kiểm tra movie, room, format/content format, xung đột lịch, quyền tạo và timezone.
+2. Chọn layout PUBLISHED mới nhất của phòng; gắn `roomLayoutId/version` vào showtime.
+3. Chọn policy PUBLISHED của cinema tại `startsAt`; gắn policy/version vào showtime.
+4. Xác thực policy có thể tính giá cho các seat types, nhóm vé và format của suất chiếu. Nếu chưa đủ, trả lỗi trước khi phát hành/mở bán.
+5. Sinh `ShowSeat` từ layout với dữ liệu inventory, không sao chép giá cơ bản cố định.
+6. Preview/quote phân giải day group, time band, cờ first showing, ticket category, seat type và surcharge trên server.
+7. Lưu quote snapshot và fare breakdown vào booking/ticket khi xác nhận; không tính lại lịch sử theo policy hiện hành.
+
+## 6. Lỗi nghiệp vụ
+
+| Trường hợp                                       | HTTP gợi ý | Mã lỗi                                     |
+| ------------------------------------------------ | ---------: | ------------------------------------------ |
+| Chưa có layout đã publish                        |        409 | `PUBLISHED_ROOM_LAYOUT_REQUIRED`           |
+| Chưa có policy giá đã publish                    |        409 | `PUBLISHED_CINEMA_PRICING_POLICY_REQUIRED` |
+| Không có giá khớp chiều của suất chiếu           |        409 | `TICKET_PRICE_RULE_NOT_FOUND`              |
+| Có nhiều rule cùng độ ưu tiên khớp               |        409 | `AMBIGUOUS_TICKET_PRICE_RULE`              |
+| Format không tương thích phòng/phim              |        422 | `SHOWTIME_FORMAT_NOT_SUPPORTED`            |
+| Không đủ điều kiện nhóm vé                       |        422 | `TICKET_CATEGORY_NOT_ELIGIBLE`             |
+| Policy chưa thể publish do matrix thiếu/xung đột |        422 | `PRICING_POLICY_INVALID`                   |
+
+## 7. Khu vực BE cần cập nhật
+
+- `CreateShowtimeRequest`: bỏ `basePrice`; chuẩn hóa format công nghệ và format nội dung.
+- Pricing entities, repositories, DTOs, migrations, validation và authorization.
+- Pricing resolver dùng timezone cinema, holiday calendar, time band, first-show flag và rule priority.
+- Showtime creation: gắn policy/layout version và kiểm tra matrix trước khi mở bán.
+- Booking quote/confirm: giá tính trên server, snapshot từng vé; xem lại mọi chỗ đọc `ShowSeat.price`.
+- Cập nhật OpenAPI và tái sinh FE API client sau khi BE contract được chốt.
+- Bảo toàn tương thích với showtime/booking hiện có bằng migration có kiểm soát; không đổi lại giá lịch sử.
+
+## 8. Thứ tự triển khai
+
+1. Nghiệp vụ xác nhận tariff trong mục 2, ngày hiệu lực, ngày lễ, timezone, định nghĩa suất đầu, Premium Cinema và phụ thu.
+2. Thêm policy version + fare matrix + holiday/surcharge model và luồng validate/publish.
+3. Thêm pricing preview; nối vào tạo suất chiếu.
+4. Thêm quote/confirm và lưu giá snapshot cho từng booking line/ticket.
+5. FE chuyển sang các API mới; bỏ `basePrice` sau giai đoạn tương thích.
+6. Cập nhật OpenAPI, migration và dữ liệu cấu hình theo từng cinema.
+
+## 9. Commit message gợi ý
 
 ```text
-feat(pricing): add versioned cinema tariff rules and ticket surcharges
+feat(pricing): support cinema fare matrices by format and ticket category
 ```
