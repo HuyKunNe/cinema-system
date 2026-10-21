@@ -58,7 +58,8 @@ public class CinemaPricingPolicyServiceImpl implements CinemaPricingPolicyServic
                         maximumVersion + 1,
                         request.currency(),
                         request.effectiveFrom(),
-                        request.effectiveTo());
+                        request.effectiveTo(),
+                        request.pricingModel());
 
         CinemaPricingPolicy savedPolicy = policyRepository.saveAndFlush(policy);
 

@@ -3,6 +3,7 @@ package com.cinema.inventory.entity;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
+import com.cinema.inventory.enums.PricingPolicyModel;
 import com.cinema.inventory.enums.PricingPolicyStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
 
@@ -42,6 +43,10 @@ public class CinemaPricingPolicy extends BaseEntity {
     @Column(name = "status", nullable = false, length = 30)
     private PricingPolicyStatus status = PricingPolicyStatus.DRAFT;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "pricing_model", nullable = false, updatable = false, length = 30)
+    private PricingPolicyModel pricingModel = PricingPolicyModel.BASE_RULES_V1;
+
     @Column(name = "currency", nullable = false, updatable = false, length = 3)
     private String currency;
 
@@ -69,7 +74,27 @@ public class CinemaPricingPolicy extends BaseEntity {
             LocalDate effectiveFrom,
             LocalDate effectiveTo) {
 
-        if (cinema == null || cinema.getId() == null || policyVersion <= 0) {
+        this(
+                cinema,
+                policyVersion,
+                currency,
+                effectiveFrom,
+                effectiveTo,
+                PricingPolicyModel.BASE_RULES_V1);
+    }
+
+    public CinemaPricingPolicy(
+            Cinema cinema,
+            long policyVersion,
+            String currency,
+            LocalDate effectiveFrom,
+            LocalDate effectiveTo,
+            PricingPolicyModel pricingModel) {
+
+        if (cinema == null
+                || cinema.getId() == null
+                || policyVersion <= 0
+                || pricingModel == null) {
             throw invalid();
         }
 
@@ -85,6 +110,7 @@ public class CinemaPricingPolicy extends BaseEntity {
         this.effectiveFrom = effectiveFrom;
         this.effectiveTo = effectiveTo;
         this.status = PricingPolicyStatus.DRAFT;
+        this.pricingModel = pricingModel;
     }
 
     public Cinema getCinema() {
@@ -97,6 +123,16 @@ public class CinemaPricingPolicy extends BaseEntity {
 
     public PricingPolicyStatus getStatus() {
         return status;
+    }
+
+    public PricingPolicyModel getPricingModel() {
+        return pricingModel;
+    }
+
+    public void requireBaseRulesModel() {
+        if (pricingModel != PricingPolicyModel.BASE_RULES_V1) {
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_MODEL_UNSUPPORTED);
+        }
     }
 
     public String getCurrency() {

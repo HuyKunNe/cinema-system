@@ -38,36 +38,35 @@ public class CinemaSurchargesService {
     }
 
     @Transactional
-    public CinemaSurchargesResponse getSurcharges(
-            UUID cinemaId,
-            UUID policyId) {
+    public CinemaSurchargesResponse getSurcharges(UUID cinemaId, UUID policyId) {
 
         CinemaPricingPolicy policy =
-                policyRepository.findForContentRead(cinemaId, policyId)
+                policyRepository
+                        .findForContentRead(cinemaId, policyId)
                         .orElseThrow(
-                                () -> new NotFoundException(
-                                        InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
-
+                                () ->
+                                        new NotFoundException(
+                                                InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
+        policy.requireBaseRulesModel();
         return readSurcharges(policy);
     }
 
     @Transactional
     public CinemaSurchargesResponse replaceSurcharges(
-            UUID cinemaId,
-            UUID policyId,
-            ReplaceCinemaSurchargesRequest request) {
+            UUID cinemaId, UUID policyId, ReplaceCinemaSurchargesRequest request) {
 
         CinemaPricingPolicy policy =
-                policyRepository.findForContentUpdate(cinemaId, policyId)
+                policyRepository
+                        .findForContentUpdate(cinemaId, policyId)
                         .orElseThrow(
-                                () -> new NotFoundException(
-                                        InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
-
+                                () ->
+                                        new NotFoundException(
+                                                InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
+        policy.requireBaseRulesModel();
         policy.requireDraft();
 
         if (!request.expectedVersion().equals(policy.getVersion())) {
-            throw new ConflictException(
-                    InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
         }
 
         Set<String> codes = new HashSet<>();
@@ -107,13 +106,10 @@ public class CinemaSurchargesService {
         return readSurcharges(policy);
     }
 
-    private CinemaSurchargesResponse readSurcharges(
-            CinemaPricingPolicy policy) {
+    private CinemaSurchargesResponse readSurcharges(CinemaPricingPolicy policy) {
 
         return surchargeMapper.toResponse(
                 policy,
-                surchargeRepository
-                        .findAllByPolicy_IdOrderByPriorityDescCodeAsc(
-                                policy.getId()));
+                surchargeRepository.findAllByPolicy_IdOrderByPriorityDescCodeAsc(policy.getId()));
     }
 }

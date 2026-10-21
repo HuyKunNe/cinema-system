@@ -5,6 +5,7 @@ import com.cinema.inventory.dto.response.CinemaPricingPolicyContentResponse;
 import com.cinema.inventory.service.CinemaPricingPolicyContentService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -46,6 +47,9 @@ public class CinemaPricingPolicyContentController {
                     This operation does not validate publication readiness
                     or evaluate prices.
                     """)
+    @ApiResponse(
+            responseCode = "409",
+            description = "This endpoint supports BASE_RULES_V1 policies only")
     @GetMapping("/{policyId}/content")
     public ResponseEntity<CinemaPricingPolicyContentResponse> getContent(
             @PathVariable("cinemaId") UUID cinemaId, @PathVariable("policyId") UUID policyId) {

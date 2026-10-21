@@ -56,21 +56,20 @@ public class DraftBasePriceCoverageService {
 
     @Transactional
     public DraftBasePriceCoverageResponse check(
-            UUID cinemaId,
-            UUID policyId,
-            CheckDraftBasePriceCoverageRequest request) {
+            UUID cinemaId, UUID policyId, CheckDraftBasePriceCoverageRequest request) {
 
         CinemaPricingPolicy policy =
-                policyRepository.findForContentRead(cinemaId, policyId)
+                policyRepository
+                        .findForContentRead(cinemaId, policyId)
                         .orElseThrow(
-                                () -> new NotFoundException(
-                                        InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
-
+                                () ->
+                                        new NotFoundException(
+                                                InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
+        policy.requireBaseRulesModel();
         policy.requireDraft();
 
         if (!request.expectedVersion().equals(policy.getVersion())) {
-            throw new ConflictException(
-                    InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
         }
 
         BasePriceEvaluationContext context =
@@ -89,30 +88,24 @@ public class DraftBasePriceCoverageService {
                             .atZone(ZoneId.of(policy.getTimeZone()))
                             .toLocalDate();
         } catch (DateTimeException exception) {
-            throw new ValidationException(
-                    InventoryErrorCode.CINEMA_TIME_ZONE_INVALID);
+            throw new ValidationException(InventoryErrorCode.CINEMA_TIME_ZONE_INVALID);
         }
 
         if (localDate.isBefore(policy.getEffectiveFrom())
                 || (policy.getEffectiveTo() != null
                         && !localDate.isBefore(policy.getEffectiveTo()))) {
-            throw new ConflictException(
-                    InventoryErrorCode.PRICING_POLICY_NOT_EFFECTIVE);
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_NOT_EFFECTIVE);
         }
 
         boolean holiday =
-                holidayRepository
-                        .findAllByPolicy_IdOrderByHolidayDateAsc(policyId)
-                        .stream()
+                holidayRepository.findAllByPolicy_IdOrderByHolidayDateAsc(policyId).stream()
                         .anyMatch(entry -> entry.getHolidayDate().equals(localDate));
 
-        PricingDayType dayType =
-                holiday ? PricingDayType.HOLIDAY : PricingDayType.REGULAR;
+        PricingDayType dayType = holiday ? PricingDayType.HOLIDAY : PricingDayType.REGULAR;
 
         List<TicketPriceRule> rules =
-                ruleRepository
-                        .findAllByPolicy_IdOrderByPriorityDescCodeAscTicketCategoryAsc(
-                                policyId);
+                ruleRepository.findAllByPolicy_IdOrderByPriorityDescCodeAscTicketCategoryAsc(
+                        policyId);
 
         TreeSet<Integer> boundaries = new TreeSet<>();
         boundaries.add(request.fromMinute());
@@ -131,21 +124,17 @@ public class DraftBasePriceCoverageService {
             int to = points.get(index + 1);
 
             BasePriceRuleSelector.Selection selection =
-                    ruleSelector.select(
-                            rules,
-                            context,
-                            localDate,
-                            from,
-                            dayType);
+                    ruleSelector.select(rules, context, localDate, from, dayType);
 
             List<RuleReference> references =
                     selection.winners().stream()
                             .map(
-                                    rule -> new RuleReference(
-                                            rule.getId(),
-                                            rule.getCode(),
-                                            rule.getPriority(),
-                                            rule.getAmount()))
+                                    rule ->
+                                            new RuleReference(
+                                                    rule.getId(),
+                                                    rule.getCode(),
+                                                    rule.getPriority(),
+                                                    rule.getAmount()))
                             .toList();
 
             Segment next =
@@ -161,12 +150,10 @@ public class DraftBasePriceCoverageService {
             appendOrMerge(segments, next);
         }
 
-        boolean hasGaps =
-                segments.stream().anyMatch(segment -> segment.status() == Status.GAP);
+        boolean hasGaps = segments.stream().anyMatch(segment -> segment.status() == Status.GAP);
 
         boolean hasAmbiguities =
-                segments.stream()
-                        .anyMatch(segment -> segment.status() == Status.AMBIGUOUS);
+                segments.stream().anyMatch(segment -> segment.status() == Status.AMBIGUOUS);
 
         return new DraftBasePriceCoverageResponse(
                 policyMapper.toResponse(policy),
@@ -184,9 +171,7 @@ public class DraftBasePriceCoverageService {
     }
 
     private void addBoundary(
-            TreeSet<Integer> boundaries,
-            int minute,
-            CheckDraftBasePriceCoverageRequest request) {
+            TreeSet<Integer> boundaries, int minute, CheckDraftBasePriceCoverageRequest request) {
 
         if (minute > request.fromMinute() && minute < request.toMinute()) {
             boundaries.add(minute);

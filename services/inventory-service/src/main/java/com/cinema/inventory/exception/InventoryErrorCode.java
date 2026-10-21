@@ -93,6 +93,12 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_TICKET_PRICE_RULE_AMBIGUOUS",
                     "Multiple base ticket price rules share the highest matching priority");
 
+    public static final InventoryErrorCode PRICING_POLICY_MODEL_UNSUPPORTED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_MODEL_UNSUPPORTED",
+                    "This operation does not support the pricing policy model");
+
     public static final InventoryErrorCode PRICING_POLICY_CONTENT_REVISION_EXHAUSTED =
             new InventoryErrorCode(
                     ErrorCategory.BUSINESS,

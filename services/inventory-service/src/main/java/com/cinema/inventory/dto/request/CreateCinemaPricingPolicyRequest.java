@@ -1,15 +1,15 @@
 package com.cinema.inventory.dto.request;
 
+import java.time.LocalDate;
+
+import com.cinema.inventory.enums.PricingPolicyModel;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-
-import java.time.LocalDate;
 
 public record CreateCinemaPricingPolicyRequest(
         @NotBlank
@@ -23,10 +23,34 @@ public record CreateCinemaPricingPolicyRequest(
                 LocalDate effectiveFrom,
         @Schema(
                         nullable = true,
-                        example = "2026-12-01",
+                        description = "Exclusive ending local date. Null means no ending date.")
+                LocalDate effectiveTo,
+        @Schema(
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED,
+                        defaultValue = "BASE_RULES_V1",
                         description =
-                                "Exclusive ending local date. Null means no ending date.")
-                LocalDate effectiveTo) {
+                                "Immutable pricing model. Omission or null retains "
+                                        + "BASE_RULES_V1 compatibility. FARE_MATRIX_V2 "
+                                        + "creates metadata only until its rule APIs are implemented.")
+                PricingPolicyModel pricingModel) {
+
+    public CreateCinemaPricingPolicyRequest {
+        if (pricingModel == null) {
+            pricingModel = PricingPolicyModel.BASE_RULES_V1;
+        }
+    }
+
+    public CreateCinemaPricingPolicyRequest(
+            String currency,
+            LocalDate effectiveFrom,
+            LocalDate effectiveTo) {
+
+        this(
+                currency,
+                effectiveFrom,
+                effectiveTo,
+                PricingPolicyModel.BASE_RULES_V1);
+    }
 
     @JsonIgnore
     @AssertTrue(message = "effectiveTo must be after effectiveFrom")

@@ -64,7 +64,7 @@ public class DraftPricingPolicyReviewService {
                                 () ->
                                         new NotFoundException(
                                                 InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
-
+        policy.requireBaseRulesModel();
         policy.requireDraft();
 
         if (!request.expectedVersion().equals(policy.getVersion())) {

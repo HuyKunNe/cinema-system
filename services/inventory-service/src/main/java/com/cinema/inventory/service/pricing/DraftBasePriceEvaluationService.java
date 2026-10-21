@@ -59,7 +59,7 @@ public class DraftBasePriceEvaluationService {
                                 () ->
                                         new NotFoundException(
                                                 InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
-
+        policy.requireBaseRulesModel();
         policy.requireDraft();
 
         OffsetDateTime localStartsAt = toLocalStartsAt(policy, context);
@@ -105,6 +105,7 @@ public class DraftBasePriceEvaluationService {
                 winner.getPriority(),
                 winner.getAmount());
     }
+
     private OffsetDateTime toLocalStartsAt(
             CinemaPricingPolicy policy, BasePriceEvaluationContext context) {
 

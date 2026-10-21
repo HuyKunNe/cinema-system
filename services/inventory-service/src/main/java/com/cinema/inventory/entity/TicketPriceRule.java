@@ -103,6 +103,7 @@ public class TicketPriceRule extends BaseEntity {
             throw invalid();
         }
 
+        policy.requireBaseRulesModel();
         policy.requireDraft();
 
         this.policy = policy;

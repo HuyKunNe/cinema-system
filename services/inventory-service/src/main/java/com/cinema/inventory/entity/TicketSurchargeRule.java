@@ -71,22 +71,18 @@ public class TicketSurchargeRule extends BaseEntity {
             boolean stackable,
             int priority) {
 
-        if (policy == null
-                || target == null
-                || unit == null
-                || priority < 0) {
+        if (policy == null || target == null || unit == null || priority < 0) {
             throw invalid();
         }
 
+        policy.requireBaseRulesModel();
         policy.requireDraft();
 
         String normalizedTargetCode = normalizeCode(targetCode);
 
         if (target == SurchargeTarget.SEAT_TYPE
                 && Arrays.stream(SeatType.values())
-                        .noneMatch(
-                                seatType ->
-                                        seatType.name().equals(normalizedTargetCode))) {
+                        .noneMatch(seatType -> seatType.name().equals(normalizedTargetCode))) {
             throw invalid();
         }
 
@@ -167,7 +163,6 @@ public class TicketSurchargeRule extends BaseEntity {
     }
 
     private static ValidationException invalid() {
-        return new ValidationException(
-                InventoryErrorCode.TICKET_SURCHARGE_RULE_DATA_INVALID);
+        return new ValidationException(InventoryErrorCode.TICKET_SURCHARGE_RULE_DATA_INVALID);
     }
 }
