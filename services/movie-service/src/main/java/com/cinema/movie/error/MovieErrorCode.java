@@ -52,7 +52,17 @@ public enum MovieErrorCode implements ErrorCode {
     INVALID_CATALOG_MOVIE_IDS(
             "INVALID_CATALOG_MOVIE_IDS",
             "Catalog movie ID filter contains null IDs or exceeds the supported limit",
-            ErrorCategory.VALIDATION);
+            ErrorCategory.VALIDATION),
+
+    INVALID_SCREENING_FORMATS(
+            "INVALID_SCREENING_FORMATS",
+            "Movie screening formats are invalid",
+            ErrorCategory.VALIDATION),
+
+    SCREENING_CAPABILITY_VERSION_CONFLICT(
+            "SCREENING_CAPABILITY_VERSION_CONFLICT",
+            "The movie has changed; reload its current version",
+            ErrorCategory.BUSINESS);
 
     private final String code;
     private final String message;

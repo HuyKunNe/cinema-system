@@ -23,6 +23,7 @@ public interface MovieMapper {
     @Mapping(target = "heroPriority", ignore = true)
     @Mapping(target = "heroStartsAt", ignore = true)
     @Mapping(target = "heroEndsAt", ignore = true)
+    @Mapping(target = "screeningFormats", ignore = true)
     Movie toEntity(CreateMovieRequest request);
 
     MovieResponse toResponse(Movie movie);
@@ -38,5 +39,6 @@ public interface MovieMapper {
     @Mapping(target = "heroPriority", ignore = true)
     @Mapping(target = "heroStartsAt", ignore = true)
     @Mapping(target = "heroEndsAt", ignore = true)
+    @Mapping(target = "screeningFormats", ignore = true)
     void updateEntity(UpdateMovieRequest request, @MappingTarget Movie movie);
 }

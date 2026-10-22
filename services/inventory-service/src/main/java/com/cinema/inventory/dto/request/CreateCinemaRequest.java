@@ -11,14 +11,22 @@ public record CreateCinemaRequest(
         @NotBlank @Size(max = 100) String city,
         @Size(max = 64)
                 @Schema(
+                        requiredMode = Schema.RequiredMode.NOT_REQUIRED,
                         nullable = true,
+                        defaultValue = "Asia/Ho_Chi_Minh",
                         example = "Asia/Ho_Chi_Minh",
                         description =
-                                "Region-based time zone supported by the server. Optional during"
-                                    + " migration; omission leaves it unconfigured.")
+                                "Region-based time zone supported by the server. "
+                                        + "Omission or null defaults to Asia/Ho_Chi_Minh "
+                                        + "when creating a cinema. "
+                                        + "Blank or unsupported values are rejected.")
                 String timeZone) {
 
-    public CreateCinemaRequest(String name, String address, String city) {
+    public CreateCinemaRequest(
+            String name,
+            String address,
+            String city) {
+
         this(name, address, city, null);
     }
 }

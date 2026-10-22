@@ -123,7 +123,7 @@ public final class InventoryErrorCode implements ErrorCode {
                     ErrorCategory.VALIDATION,
                     "INVENTORY_PRICING_POLICY_PUBLICATION_DATA_INVALID",
                     "Publication requires business confirmation, its reference and an authenticated"
-                        + " publisher");
+                            + " publisher");
 
     public static final InventoryErrorCode PRICING_POLICY_PERIOD_OVERLAP =
             new InventoryErrorCode(
@@ -262,6 +262,18 @@ public final class InventoryErrorCode implements ErrorCode {
                     ErrorCategory.BUSINESS,
                     "INVENTORY_PRICING_POLICY_CONTENT_REVISION_EXHAUSTED",
                     "Pricing policy content revision limit has been reached");
+
+    public static final InventoryErrorCode ROOM_SCREENING_FORMATS_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_ROOM_SCREENING_FORMATS_INVALID",
+                    "Room screening formats are invalid");
+
+    public static final InventoryErrorCode ROOM_SCREENING_VERSION_CONFLICT =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_ROOM_SCREENING_VERSION_CONFLICT",
+                    "The room has changed; reload its current version");
 
     public static final InventoryErrorCode ROOM_NOT_FOUND =
             new InventoryErrorCode(

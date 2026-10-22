@@ -30,4 +30,8 @@ public interface RoomRepository extends JpaRepository<Room, UUID> {
     List<Room> findAllByCinema_IdOrderByNameAscIdAsc(UUID cinemaId);
 
     List<Room> findAllByCinema_IdAndActiveOrderByNameAscIdAsc(UUID cinemaId, boolean active);
+
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("select room from Room room where room.id = :roomId")
+    Optional<Room> findByIdForRead(@Param("roomId") UUID roomId);
 }

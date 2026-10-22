@@ -4,10 +4,13 @@ import com.cinema.movie.entity.Genre;
 import com.cinema.movie.entity.Movie;
 import com.cinema.movie.entity.MovieStatus;
 
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -232,4 +235,12 @@ public interface MovieRepository extends JpaRepository<Movie, UUID> {
             """)
     List<Genre> findCatalogGenresByMovieIds(
             @Param("status") MovieStatus status, @Param("movieIds") Collection<UUID> movieIds);
+
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("select movie from Movie movie where movie.id = :movieId")
+    Optional<Movie> findByIdForScreeningRead(@Param("movieId") UUID movieId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select movie from Movie movie where movie.id = :movieId")
+    Optional<Movie> findByIdForScreeningUpdate(@Param("movieId") UUID movieId);
 }

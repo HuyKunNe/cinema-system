@@ -1,13 +1,14 @@
 package com.cinema.movie.entity;
 
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.util.HashSet;
-import java.util.Set;
+import com.cinema.common.exception.exception.ValidationException;
 
+import com.cinema.common.api.screening.ScreeningFormat;
 import com.cinema.common.jpa.entity.BaseEntity;
+import com.cinema.movie.error.MovieErrorCode;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -16,6 +17,11 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
+
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "movies")
@@ -68,6 +74,12 @@ public class Movie extends BaseEntity {
             joinColumns = @JoinColumn(name = "movie_id", nullable = false),
             inverseJoinColumns = @JoinColumn(name = "genre_id", nullable = false))
     private Set<Genre> genres = new HashSet<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "movie_screening_formats", joinColumns = @JoinColumn(name = "movie_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "screening_format", nullable = false, length = 40)
+    private Set<ScreeningFormat> screeningFormats = new HashSet<>();
 
     public Movie() {}
 
@@ -185,5 +197,18 @@ public class Movie extends BaseEntity {
         if (genres != null) {
             this.genres.addAll(genres);
         }
+    }
+
+    public Set<ScreeningFormat> getScreeningFormats() {
+        return Set.copyOf(screeningFormats);
+    }
+
+    public void replaceScreeningFormats(Set<ScreeningFormat> formats) {
+        if (formats == null || formats.contains(null)) {
+            throw new ValidationException(MovieErrorCode.INVALID_SCREENING_FORMATS);
+        }
+
+        screeningFormats.clear();
+        screeningFormats.addAll(formats);
     }
 }

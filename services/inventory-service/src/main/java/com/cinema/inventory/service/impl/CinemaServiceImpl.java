@@ -1,12 +1,5 @@
 package com.cinema.inventory.service.impl;
 
-import java.util.List;
-import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
-
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.inventory.dto.request.CreateCinemaRequest;
 import com.cinema.inventory.dto.request.UpdateCinemaRequest;
@@ -16,6 +9,13 @@ import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.CinemaMapper;
 import com.cinema.inventory.repository.CinemaRepository;
 import com.cinema.inventory.service.CinemaService;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.util.List;
+import java.util.UUID;
 
 @Service
 public class CinemaServiceImpl implements CinemaService {
@@ -35,9 +35,8 @@ public class CinemaServiceImpl implements CinemaService {
                 new Cinema(
                         normalize(request.name()),
                         normalize(request.address()),
-                        normalize(request.city()));
-
-        cinema.changeTimeZone(request.timeZone());
+                        normalize(request.city()),
+                        request.timeZone());
 
         Cinema savedCinema = cinemaRepository.save(cinema);
 

@@ -3,10 +3,15 @@ package com.cinema.inventory.entity;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.cinema.common.api.screening.ScreeningFormat;
+import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
 import com.cinema.inventory.enums.RoomType;
+import com.cinema.inventory.exception.InventoryErrorCode;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -40,13 +45,15 @@ public class Room extends BaseEntity {
     @OneToMany(mappedBy = "room", fetch = FetchType.LAZY)
     private Set<Showtime> showtimes = new HashSet<>();
 
-    protected Room() {
-    }
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "room_screening_formats", joinColumns = @JoinColumn(name = "room_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "screening_format", nullable = false, length = 40)
+    private Set<ScreeningFormat> screeningFormats = new HashSet<>();
 
-    public Room(
-            Cinema cinema,
-            String name,
-            RoomType roomType) {
+    protected Room() {}
+
+    public Room(Cinema cinema, String name, RoomType roomType) {
 
         this.cinema = cinema;
         this.name = name;
@@ -114,5 +121,18 @@ public class Room extends BaseEntity {
 
         showtimes.add(showtime);
         showtime.assignRoom(this);
+    }
+
+    public Set<ScreeningFormat> getScreeningFormats() {
+        return Set.copyOf(screeningFormats);
+    }
+
+    public void replaceScreeningFormats(Set<ScreeningFormat> formats) {
+        if (formats == null || formats.contains(null)) {
+            throw new ValidationException(InventoryErrorCode.ROOM_SCREENING_FORMATS_INVALID);
+        }
+
+        screeningFormats.clear();
+        screeningFormats.addAll(formats);
     }
 }

@@ -18,6 +18,7 @@ import java.util.Set;
 @Entity
 @Table(name = "cinemas")
 public class Cinema extends BaseEntity {
+    public static final String DEFAULT_TIME_ZONE = "Asia/Ho_Chi_Minh";
 
     @Column(name = "name", nullable = false, length = 150)
     private String name;
@@ -40,11 +41,17 @@ public class Cinema extends BaseEntity {
     protected Cinema() {}
 
     public Cinema(String name, String address, String city) {
+        this(name, address, city, null);
+    }
+
+    public Cinema(String name, String address, String city, String timeZone) {
 
         this.name = name;
         this.address = address;
         this.city = city;
         this.active = true;
+
+        changeTimeZone(timeZone == null ? DEFAULT_TIME_ZONE : timeZone);
     }
 
     public void update(String name, String address, String city) {

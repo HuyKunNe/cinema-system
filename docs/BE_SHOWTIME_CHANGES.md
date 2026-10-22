@@ -360,3 +360,19 @@ feat(pricing): support cinema fare matrices by format and ticket category
 - Không chọn policy theo policyVersion lớn nhất.
 - Showtime chưa gắn policy trong round này.
 - Booking/ticket và giá lịch sử chưa thay đổi.
+
+## Capability phòng và phiên bản chiếu của phim
+
+- Room và Movie khai báo tập ScreeningFormat riêng.
+- Không suy luận capability từ RoomType.
+- RoomType.VIP không tự ánh xạ thành PREMIUM_CINEMA.
+- Không mặc định phim hỗ trợ 3D, 4DX hoặc IMAX.
+- GET/PUT /api/v1/rooms/{roomId}/screening-capabilities quản lý capability phòng.
+- GET/PUT /api/v1/movies/{movieId}/screening-capabilities quản lý bản chiếu phim.
+- PUT là full replacement và kiểm tra optimistic version của owner.
+- configuredFormats là danh sách được khai báo cho owner cụ thể.
+- supportedFormatOptions chỉ là danh mục tổ hợp hệ thống nhận biết.
+- Movie response trả releaseDate thật, status và version cùng formats.
+- Danh sách rỗng không cho phép suy ra bất kỳ tổ hợp nào.
+- Dữ liệu cũ không được tự seed capability bằng migration.
+- Luồng tạo suất chiếu chưa được chuyển trong phần triển khai này.
