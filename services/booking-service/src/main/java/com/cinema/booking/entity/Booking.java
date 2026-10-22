@@ -14,6 +14,9 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Locale;
@@ -71,6 +74,13 @@ public class Booking extends BaseEntity {
 
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
+
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(name = "pricing_quote_id", updatable = false, columnDefinition = "BINARY(16)")
+    private UUID pricingQuoteId;
+
+    @Column(name = "pricing_quote_snapshot_json", columnDefinition = "LONGTEXT")
+    private String pricingQuoteSnapshotJson;
 
     protected Booking() {}
 
@@ -142,6 +152,50 @@ public class Booking extends BaseEntity {
 
     public boolean isPending() {
         return status == BookingStatus.PENDING;
+    }
+
+    public UUID getPricingQuoteId() {
+        return pricingQuoteId;
+    }
+
+    public String getPricingQuoteSnapshotJson() {
+        return pricingQuoteSnapshotJson;
+    }
+
+    /** Called during creation, before the booking is persisted. */
+    public void assignPricingQuote(UUID quoteId) {
+        requirePending();
+
+        if (quoteId == null || pricingQuoteId != null) {
+            throw new ConflictException(BookingErrorCode.RESERVATION_RESULT_MISMATCH);
+        }
+
+        pricingQuoteId = quoteId;
+    }
+
+    /** Called after validating the trusted reservation result. */
+    public void completePricingQuoteSnapshot(
+            UUID quoteId,
+            String snapshotJson,
+            OffsetDateTime heldAt,
+            OffsetDateTime actualExpiresAt) {
+
+        requirePending();
+
+        if (pricingQuoteId == null
+                || !pricingQuoteId.equals(quoteId)
+                || pricingQuoteSnapshotJson != null
+                || snapshotJson == null
+                || snapshotJson.isBlank()
+                || heldAt == null
+                || actualExpiresAt == null
+                || !actualExpiresAt.isAfter(heldAt)
+                || actualExpiresAt.isAfter(expiresAt)) {
+            throw new ConflictException(BookingErrorCode.RESERVATION_RESULT_MISMATCH);
+        }
+
+        pricingQuoteSnapshotJson = snapshotJson;
+        expiresAt = actualExpiresAt;
     }
 
     public void reserve(BigDecimal totalAmount, String currency) {

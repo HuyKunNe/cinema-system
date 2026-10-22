@@ -417,3 +417,20 @@ feat(pricing): support cinema fare matrices by format and ticket category
 - Chưa nối service này vào Kafka consumer.
 - Chưa thay đổi event contract hoặc CreateBookingRequest.
 - Chưa gỡ chặn mở bán suất theo policy.
+
+## Booking nhận kết quả reservation theo policy
+
+- Booking nhận seat-reserved version 1 và version 2.
+- Version 1 không được mang pricingQuote.
+- Version 2 bắt buộc có pricingQuote là snapshot đầy đủ.
+- Booking phải được gắn pricingQuoteId trước khi nhận kết quả.
+- Không tự gắn quote từ event vào một booking legacy.
+- Version 2 được phép rút ngắn deadline, không được kéo dài.
+- Booking lưu toàn bộ quote snapshot.
+- BookingSeat lưu line snapshot và giá chốt của dòng.
+- Snapshot, trạng thái RESERVED, processed event và PaymentRequested outbox
+  được ghi trong cùng transaction.
+- Booking cũ giữ pricingQuoteId và pricing snapshots là null.
+- Inventory chưa phát seat-reserved version 2 trong round này.
+- CreateBookingRequest chưa nhận quoteId.
+- Chưa gỡ chặn mở bán suất theo policy.

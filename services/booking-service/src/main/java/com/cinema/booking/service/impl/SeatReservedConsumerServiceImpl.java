@@ -1,5 +1,20 @@
 package com.cinema.booking.service.impl;
 
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.OffsetDateTime;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
 import com.cinema.booking.event.BookingEventContract;
@@ -11,6 +26,7 @@ import com.cinema.booking.event.validation.SeatReservedMessageValidator;
 import com.cinema.booking.exception.BookingErrorCode;
 import com.cinema.booking.repository.BookingRepository;
 import com.cinema.booking.repository.BookingSeatRepository;
+import com.cinema.booking.service.BookingPricingSnapshotService;
 import com.cinema.booking.service.ProcessedEventRegistrationService;
 import com.cinema.booking.service.SeatReservedConsumerService;
 import com.cinema.common.exception.exception.ConflictException;
@@ -20,21 +36,6 @@ import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.common.outbox.model.OutboxEventMessage;
 import com.cinema.common.outbox.service.OutboxService;
 import com.cinema.common.validation.UuidVersions;
-
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.time.Clock;
-import java.time.OffsetDateTime;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
 
 @Service
 public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerService {
@@ -53,6 +54,8 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
 
     private final OutboxService outboxService;
 
+    private final BookingPricingSnapshotService pricingSnapshotService;
+
     private final Clock clock;
 
     public SeatReservedConsumerServiceImpl(
@@ -63,7 +66,8 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
             BookingSeatRepository bookingSeatRepository,
             PaymentRequestedOutboxFactory paymentRequestedOutboxFactory,
             OutboxService outboxService,
-            @Qualifier("systemClock") Clock clock) {
+            @Qualifier("systemClock") Clock clock,
+            BookingPricingSnapshotService pricingSnapshotService) {
 
         this.messageValidator = messageValidator;
         this.payloadReader = payloadReader;
@@ -73,6 +77,7 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
         this.paymentRequestedOutboxFactory = paymentRequestedOutboxFactory;
         this.outboxService = outboxService;
         this.clock = clock;
+        this.pricingSnapshotService = pricingSnapshotService;
     }
 
     @Override
@@ -84,6 +89,13 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
         SeatReservedPayload payload = payloadReader.read(message);
 
         validatePayloadIdentifiers(message, payload);
+
+        boolean policyEvent =
+                BookingEventContract.SEAT_RESERVED_POLICY_VERSION.equals(message.eventVersion());
+
+        if (policyEvent != (payload.pricingQuote() != null)) {
+            throw new ValidationException(BookingErrorCode.EVENT_PAYLOAD_INVALID);
+        }
 
         boolean registered =
                 processedEventRegistrationService.register(
@@ -114,6 +126,10 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
         BigDecimal calculatedTotal = completeSeatSnapshots(bookingSeats, reservedSeats);
 
         validateTotal(payload.totalAmount(), calculatedTotal);
+
+        if (policyEvent) {
+            pricingSnapshotService.apply(booking, bookingSeats, payload);
+        }
 
         booking.reserve(payload.totalAmount(), payload.currency());
 
@@ -165,12 +181,24 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
     private void validateBookingMatch(Booking booking, SeatReservedPayload payload) {
 
         if (!booking.getShowtimeId().equals(payload.showtimeId())) {
-
             throw mismatch();
         }
 
-        if (!booking.getExpiresAt().equals(payload.holdExpiresAt())) {
+        if (payload.pricingQuote() == null) {
+            // Legacy events cannot complete a policy-based booking.
+            if (booking.getPricingQuoteId() != null
+                    || !booking.getExpiresAt()
+                            .toInstant()
+                            .equals(payload.holdExpiresAt().toInstant())) {
+                throw mismatch();
+            }
 
+            return;
+        }
+
+        if (booking.getPricingQuoteId() == null
+                || !booking.getPricingQuoteId().equals(payload.pricingQuote().quoteId())
+                || payload.holdExpiresAt().isAfter(booking.getExpiresAt())) {
             throw mismatch();
         }
     }

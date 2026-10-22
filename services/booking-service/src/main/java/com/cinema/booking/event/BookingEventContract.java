@@ -56,5 +56,7 @@ public final class BookingEventContract {
 
     public static final String SEAT_RELEASE_REQUESTED_VERSION = "1";
 
+    public static final String SEAT_RESERVED_POLICY_VERSION = "2";
+    
     private BookingEventContract() {}
 }
