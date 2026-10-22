@@ -16,23 +16,28 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/v1/bookings/quote")
-@SecurityRequirement(name = "oauth2", scopes = {"booking:create"})
+@SecurityRequirement(
+        name = "oauth2",
+        scopes = {"booking:create"})
 public class BookingQuoteController {
 
     private final InventoryQuoteClient client;
     private final BookingProperties bookingProperties;
 
     public BookingQuoteController(
-            InventoryQuoteClient client,
-            BookingProperties bookingProperties) {
+            InventoryQuoteClient client, BookingProperties bookingProperties) {
 
         this.client = client;
         this.bookingProperties = bookingProperties;
@@ -57,12 +62,30 @@ public class BookingQuoteController {
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
 
         if (request.items().size() > bookingProperties.maxSeatsPerBooking()) {
-            throw new ValidationException(
-                    BookingErrorCode.TOO_MANY_SEATS);
+            throw new ValidationException(BookingErrorCode.TOO_MANY_SEATS);
         }
 
-        return ResponseEntity.ok(
-                ResponseFactory.success(
-                        client.create(request, authorization)));
+        return ResponseEntity.ok(ResponseFactory.success(client.create(request, authorization)));
+    }
+
+    @Operation(
+            operationId = "getBookingQuote",
+            summary = "Read the current user's unexpired quote snapshot",
+            description =
+                    """
+                    Requires booking:create.
+                    Returns the original quote without recalculating prices.
+                    Missing or foreign-owned quotes return 404.
+                    Expired quotes return 409.
+
+                    saleOpen describes the state at quote issuance.
+                    Reading a quote does not reserve seats or create a booking.
+                    """)
+    @GetMapping("/{quoteId}")
+    public ResponseEntity<ApiResponse<BookingQuoteResponse>> get(
+            @PathVariable UUID quoteId,
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
+
+        return ResponseEntity.ok(ResponseFactory.success(client.get(quoteId, authorization)));
     }
 }

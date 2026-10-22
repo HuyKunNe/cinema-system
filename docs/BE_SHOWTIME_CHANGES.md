@@ -386,3 +386,18 @@ feat(pricing): support cinema fare matrices by format and ticket category
 - Danh sách rỗng không cho phép suy ra bất kỳ tổ hợp nào.
 - Dữ liệu cũ không được tự seed capability bằng migration.
 - Luồng tạo suất chiếu đã kiểm tra capability phòng/phim, chọn published layout và published policy, kiểm tra coverage, rồi sinh ShowSeat không chứa giá chốt.
+
+## Đọc lại quote theo chủ sở hữu
+
+- GET /api/v1/bookings/quote/{quoteId} trả ApiResponse<BookingQuoteResponse>.
+- Inventory cung cấp GET /api/v1/booking-quotes/{quoteId}.
+- Cả hai API yêu cầu booking:create.
+- Chủ sở hữu lấy từ JWT; request không nhận userId.
+- Quote không tồn tại hoặc thuộc người khác cùng trả 404.
+- Quote hết hạn trả 409 INVENTORY_QUOTE_EXPIRED.
+- Trả snapshot đã lưu, không tính lại giá.
+- saleOpen là trạng thái tại thời điểm báo giá, không phải trạng thái hiện tại.
+- GET không giữ ghế, không tiêu thụ quote và không xác nhận khả năng đặt vé.
+- Bước consume quote phải kiểm tra owner, expiry, showtime version,
+  trạng thái mở bán và trạng thái ghế trong luồng reservation.
+- Booking vẫn chưa nhận quoteId; suất dùng policy vẫn bị chặn mở bán.

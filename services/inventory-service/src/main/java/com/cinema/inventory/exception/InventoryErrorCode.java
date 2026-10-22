@@ -858,6 +858,22 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_SEAT_LAYOUT_METADATA_READ_ONLY",
                     "Edit seat numbers and types in a new layout draft");
 
+    public static final InventoryErrorCode QUOTE_NOT_FOUND =
+            new InventoryErrorCode(
+                    ErrorCategory.RESOURCE, "INVENTORY_QUOTE_NOT_FOUND", "Pricing quote not found");
+
+    public static final InventoryErrorCode QUOTE_EXPIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_QUOTE_EXPIRED",
+                    "Pricing quote has expired; request a new quote");
+
+    public static final InventoryErrorCode QUOTE_SNAPSHOT_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "INVENTORY_QUOTE_SNAPSHOT_INVALID",
+                    "Stored pricing quote snapshot is invalid");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

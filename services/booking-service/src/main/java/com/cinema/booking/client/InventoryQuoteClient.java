@@ -23,6 +23,8 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.util.UUID;
+
 @Component
 public class InventoryQuoteClient {
 
@@ -68,6 +70,33 @@ public class InventoryQuoteClient {
                 || !request.showtimeId().equals(response.showtimeId())
                 || response.items() == null
                 || response.items().size() != request.items().size()) {
+            throw unavailable();
+        }
+
+        return response;
+    }
+
+    public BookingQuoteResponse get(UUID quoteId, String authorization) {
+        BookingQuoteResponse response;
+
+        try {
+            response =
+                    client.get()
+                            .uri("/api/v1/booking-quotes/{quoteId}", quoteId)
+                            .header(HttpHeaders.AUTHORIZATION, authorization)
+                            .retrieve()
+                            .body(BookingQuoteResponse.class);
+        } catch (RestClientResponseException exception) {
+            throw translate(exception);
+        } catch (RestClientException exception) {
+            throw unavailable();
+        }
+
+        if (response == null
+                || !quoteId.equals(response.quoteId())
+                || response.showtimeId() == null
+                || response.items() == null
+                || response.items().isEmpty()) {
             throw unavailable();
         }
 
