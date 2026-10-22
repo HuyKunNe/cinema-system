@@ -454,3 +454,18 @@ feat(pricing): support cinema fare matrices by format and ticket category
 - Chỉ bật sau khi Inventory đã triển khai consumer request version 2.
 - Chưa gỡ chặn mở bán suất theo policy.
 
+## Mở bán suất theo policy
+
+- Inventory và Booking đã có reservation request/result version 2.
+- Mở bán dùng policy/layout đã gắn, không chọn lại phiên bản mới.
+- Kiểm tra capability hiện tại và release date khớp snapshot.
+- Kiểm tra policy/layout version, coverage giá thường và ShowSeat.
+- ShowSeat phải khớp layout, không có giá chốt hoặc dữ liệu hold tồn dư.
+- Phải có ít nhất một ghế AVAILABLE và suất chưa bắt đầu.
+- Mở bán làm thay đổi showtime version; phải lấy quote mới sau khi mở.
+- Legacy hold không dùng cho suất theo policy.
+- Booking nhận reservation đã hết hạn sẽ ghi EXPIRED,
+  phát booking-expired và không phát PaymentRequested.
+- BOOKING_QUOTE_BOOKING_ENABLED và INVENTORY_POLICY_BOOKING_ENABLED
+  mặc định false; bật sau khi triển khai đầy đủ hai service.
+- Các category cần xác minh vẫn yêu cầu verifier thực tế.
