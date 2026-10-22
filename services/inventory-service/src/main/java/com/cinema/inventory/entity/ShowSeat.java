@@ -165,6 +165,31 @@ public class ShowSeat extends BaseEntity {
     }
 
     public void hold(UUID bookingId, OffsetDateTime expiresAt, OffsetDateTime now) {
+        if (showtime.usesPolicyPricing()) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_POLICY_BOOKING_NOT_READY);
+        }
+
+        applyHold(bookingId, expiresAt, now);
+    }
+
+    /**
+     * Internal policy-pricing path. Caller must validate and lock the quote and all requested seats
+     * first.
+     */
+    public void holdFromQuote(UUID bookingId, OffsetDateTime expiresAt, OffsetDateTime now) {
+
+        if (!showtime.usesPolicyPricing()) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_POLICY_BINDING_INVALID);
+        }
+
+        if (price != null) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_POLICY_PRICE_NOT_ALLOWED);
+        }
+
+        applyHold(bookingId, expiresAt, now);
+    }
+
+    private void applyHold(UUID bookingId, OffsetDateTime expiresAt, OffsetDateTime now) {
 
         if (bookingId == null) {
             throw new ValidationException(InventoryErrorCode.BOOKING_ID_REQUIRED);
@@ -181,10 +206,6 @@ public class ShowSeat extends BaseEntity {
 
         if (status != ShowSeatStatus.AVAILABLE) {
             throw new ConflictException(InventoryErrorCode.ONLY_AVAILABLE_SEATS_CAN_BE_HELD);
-        }
-
-        if (showtime.usesPolicyPricing()) {
-            throw new ConflictException(InventoryErrorCode.SHOWTIME_POLICY_BOOKING_NOT_READY);
         }
 
         status = ShowSeatStatus.HELD;

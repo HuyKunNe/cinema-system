@@ -1,5 +1,6 @@
 package com.cinema.inventory.entity;
 
+import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
 import com.cinema.inventory.exception.InventoryErrorCode;
@@ -50,6 +51,15 @@ public class PricingQuote extends BaseEntity {
             updatable = false,
             columnDefinition = "LONGTEXT")
     private String snapshotJson;
+
+    @Column(name = "consumed_by_booking_id", columnDefinition = "BINARY(16)")
+    private UUID consumedByBookingId;
+
+    @Column(name = "consumed_at")
+    private OffsetDateTime consumedAt;
+
+    @Column(name = "reservation_expires_at")
+    private OffsetDateTime reservationExpiresAt;
 
     protected PricingQuote() {}
 
@@ -116,6 +126,43 @@ public class PricingQuote extends BaseEntity {
 
     public String getSnapshotJson() {
         return snapshotJson;
+    }
+
+    public UUID getConsumedByBookingId() {
+        return consumedByBookingId;
+    }
+
+    public OffsetDateTime getConsumedAt() {
+        return consumedAt;
+    }
+
+    public OffsetDateTime getReservationExpiresAt() {
+        return reservationExpiresAt;
+    }
+
+    public boolean isConsumed() {
+        return consumedByBookingId != null;
+    }
+
+    public void consume(UUID bookingId, OffsetDateTime now, OffsetDateTime holdExpiresAt) {
+
+        if (isConsumed()) {
+            throw new ConflictException(InventoryErrorCode.QUOTE_ALREADY_CONSUMED);
+        }
+
+        if (bookingId == null
+                || now == null
+                || holdExpiresAt == null
+                || now.isBefore(issuedAt)
+                || !now.isBefore(expiresAt)
+                || !holdExpiresAt.isAfter(now)
+                || holdExpiresAt.isAfter(expiresAt)) {
+            throw invalid();
+        }
+
+        consumedByBookingId = bookingId;
+        consumedAt = now;
+        reservationExpiresAt = holdExpiresAt;
     }
 
     private static ValidationException invalid() {

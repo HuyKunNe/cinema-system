@@ -401,3 +401,19 @@ feat(pricing): support cinema fare matrices by format and ticket category
 - Bước consume quote phải kiểm tra owner, expiry, showtime version,
   trạng thái mở bán và trạng thái ghế trong luồng reservation.
 - Booking vẫn chưa nhận quoteId; suất dùng policy vẫn bị chặn mở bán.
+
+## Nền tảng consume quote và giữ ghế
+
+- PricingQuote lưu consumedByBookingId, consumedAt và reservationExpiresAt.
+- Một quote chỉ dùng cho một booking; một booking chỉ consume một quote.
+- QuoteReservationService chạy trong transaction của reservation consumer.
+- Thứ tự khóa: cinema -> room -> showtime -> quote -> show seats.
+- Kiểm tra owner, expiry, showtime version, policy binding,
+  trạng thái mở bán và trạng thái ghế trước khi giữ ghế.
+- Giá lấy từ snapshot quote, không ghi vào ShowSeat.
+- COUPLE dùng PER_PAIR và tính amount một lần cho một ShowSeat.
+- Hold deadline không vượt quote expiry hoặc showtime start.
+- Retry cùng booking trả receipt cũ, không tạo lại hold.
+- Chưa nối service này vào Kafka consumer.
+- Chưa thay đổi event contract hoặc CreateBookingRequest.
+- Chưa gỡ chặn mở bán suất theo policy.

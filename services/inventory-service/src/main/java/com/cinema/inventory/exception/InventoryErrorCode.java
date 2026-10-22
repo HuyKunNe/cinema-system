@@ -874,6 +874,18 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_QUOTE_SNAPSHOT_INVALID",
                     "Stored pricing quote snapshot is invalid");
 
+    public static final InventoryErrorCode QUOTE_ALREADY_CONSUMED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_QUOTE_ALREADY_CONSUMED",
+                    "Pricing quote has already been used by another booking");
+
+    public static final InventoryErrorCode QUOTE_STALE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_QUOTE_STALE",
+                    "Showtime has changed; request a new pricing quote");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

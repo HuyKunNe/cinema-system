@@ -26,9 +26,7 @@ public class BookingQuoteQueryService {
     private final Clock clock;
 
     public BookingQuoteQueryService(
-            PricingQuoteRepository quoteRepository,
-            ObjectMapper objectMapper,
-            Clock clock) {
+            PricingQuoteRepository quoteRepository, ObjectMapper objectMapper, Clock clock) {
 
         this.quoteRepository = quoteRepository;
         this.objectMapper = objectMapper;
@@ -42,17 +40,19 @@ public class BookingQuoteQueryService {
         }
 
         PricingQuote quote =
-                quoteRepository.findByIdAndUserId(quoteId, userId)
+                quoteRepository
+                        .findByIdAndUserId(quoteId, userId)
                         .orElseThrow(BookingQuoteQueryService::notFound);
 
         if (!quote.getExpiresAt().isAfter(OffsetDateTime.now(clock))) {
             throw new ConflictException(InventoryErrorCode.QUOTE_EXPIRED);
         }
+        return readStoredSnapshot(quote);
+    }
 
+    BookingQuoteResponse readStoredSnapshot(PricingQuote quote) {
         BookingQuoteResponse snapshot = readSnapshot(quote);
-
         validateHeader(quote, snapshot);
-
         return snapshot;
     }
 
@@ -66,30 +66,22 @@ public class BookingQuoteQueryService {
         try {
             return objectMapper.readValue(json, BookingQuoteResponse.class);
         } catch (JsonProcessingException exception) {
-            throw new InternalServerException(
-                    InventoryErrorCode.QUOTE_SNAPSHOT_INVALID,
-                    exception);
+            throw new InternalServerException(InventoryErrorCode.QUOTE_SNAPSHOT_INVALID, exception);
         }
     }
 
-    private void validateHeader(
-            PricingQuote quote,
-            BookingQuoteResponse snapshot) {
+    private void validateHeader(PricingQuote quote, BookingQuoteResponse snapshot) {
 
         if (snapshot == null
                 || !quote.getId().equals(snapshot.quoteId())
                 || !quote.getShowtimeId().equals(snapshot.showtimeId())
-                || !Objects.equals(
-                        quote.getShowtimeVersion(),
-                        snapshot.showtimeVersion())
+                || !Objects.equals(quote.getShowtimeVersion(), snapshot.showtimeVersion())
                 || !quote.getPolicyId().equals(snapshot.pricingPolicyId())
                 || quote.getPolicyVersion() != snapshot.pricingPolicyVersion()
                 || snapshot.issuedAt() == null
                 || snapshot.expiresAt() == null
-                || !quote.getIssuedAt().toInstant()
-                        .equals(snapshot.issuedAt().toInstant())
-                || !quote.getExpiresAt().toInstant()
-                        .equals(snapshot.expiresAt().toInstant())
+                || !quote.getIssuedAt().toInstant().equals(snapshot.issuedAt().toInstant())
+                || !quote.getExpiresAt().toInstant().equals(snapshot.expiresAt().toInstant())
                 || snapshot.items() == null
                 || snapshot.items().isEmpty()
                 || snapshot.items().stream().anyMatch(Objects::isNull)
@@ -107,7 +99,6 @@ public class BookingQuoteQueryService {
     }
 
     private static InternalServerException invalidSnapshot() {
-        return new InternalServerException(
-                InventoryErrorCode.QUOTE_SNAPSHOT_INVALID);
+        return new InternalServerException(InventoryErrorCode.QUOTE_SNAPSHOT_INVALID);
     }
 }
