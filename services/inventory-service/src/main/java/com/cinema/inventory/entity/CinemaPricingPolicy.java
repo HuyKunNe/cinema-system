@@ -22,6 +22,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Currency;
 import java.util.Locale;
+import java.util.UUID;
 
 @Entity
 @Table(
@@ -66,6 +67,12 @@ public class CinemaPricingPolicy extends BaseEntity {
 
     @Column(name = "published_at")
     private OffsetDateTime publishedAt;
+
+    @Column(name = "published_by")
+    private UUID publishedBy;
+
+    @Column(name = "publication_confirmation_reference", length = 500)
+    private String publicationConfirmationReference;
 
     @Column(name = "content_revision", nullable = false)
     private long contentRevision = 0L;
@@ -182,6 +189,52 @@ public class CinemaPricingPolicy extends BaseEntity {
 
     public OffsetDateTime getPublishedAt() {
         return publishedAt;
+    }
+
+    public UUID getPublishedBy() {
+        return publishedBy;
+    }
+
+    public String getPublicationConfirmationReference() {
+        return publicationConfirmationReference;
+    }
+
+    public void publish(
+            OffsetDateTime publishedAt, UUID publishedBy, String confirmationReference) {
+
+        requireFareMatrixModel();
+        requireDraft();
+
+        if (publishedAt == null
+                || publishedBy == null
+                || confirmationReference == null
+                || confirmationReference.isBlank()
+                || confirmationReference.trim().length() > 500) {
+            throw new ValidationException(
+                    InventoryErrorCode.PRICING_POLICY_PUBLICATION_DATA_INVALID);
+        }
+
+        if (fareSurchargeMode != FareSurchargeMode.NONE || !"VND".equals(currency)) {
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_PUBLICATION_INVALID);
+        }
+
+        this.publishedAt = publishedAt;
+        this.publishedBy = publishedBy;
+        this.publicationConfirmationReference = confirmationReference.trim();
+        this.status = PricingPolicyStatus.PUBLISHED;
+    }
+
+    public void requirePublishedConfiguration() {
+        if (status != PricingPolicyStatus.PUBLISHED
+                || pricingModel != PricingPolicyModel.FARE_MATRIX_V2
+                || fareSurchargeMode != FareSurchargeMode.NONE
+                || !"VND".equals(currency)
+                || publishedAt == null
+                || publishedBy == null
+                || publicationConfirmationReference == null
+                || publicationConfirmationReference.isBlank()) {
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_PUBLICATION_INVALID);
+        }
     }
 
     public void changeEffectivePeriod(LocalDate effectiveFrom, LocalDate effectiveTo) {

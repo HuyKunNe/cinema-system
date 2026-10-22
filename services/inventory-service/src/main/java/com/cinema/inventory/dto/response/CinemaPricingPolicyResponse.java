@@ -1,23 +1,21 @@
 package com.cinema.inventory.dto.response;
 
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.util.UUID;
-
 import com.cinema.inventory.enums.PricingPolicyModel;
 import com.cinema.inventory.enums.PricingPolicyStatus;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public record CinemaPricingPolicyResponse(
         UUID id,
         UUID cinemaId,
-        @Schema(description = "Business policy version within this cinema.")
-                long policyVersion,
-        @Schema(description = "Optimistic-lock version.")
-                long version,
+        @Schema(description = "Business policy version within this cinema.") long policyVersion,
+        @Schema(description = "Optimistic-lock version.") long version,
         PricingPolicyStatus status,
         @Schema(
                         requiredMode = Schema.RequiredMode.REQUIRED,
@@ -29,4 +27,6 @@ public record CinemaPricingPolicyResponse(
         @Schema(nullable = true) LocalDate effectiveTo,
         @Schema(nullable = true) OffsetDateTime publishedAt,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt) {}
+        OffsetDateTime updatedAt,
+        @Schema(nullable = true) UUID publishedBy,
+        @Schema(nullable = true) String publicationConfirmationReference) {}

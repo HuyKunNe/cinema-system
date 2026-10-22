@@ -1,17 +1,17 @@
 package com.cinema.inventory.repository;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import com.cinema.inventory.entity.Cinema;
+
+import jakarta.persistence.LockModeType;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import com.cinema.inventory.entity.Cinema;
-
-import jakarta.persistence.LockModeType;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 public interface CinemaRepository extends JpaRepository<Cinema, UUID> {
 
@@ -30,4 +30,8 @@ public interface CinemaRepository extends JpaRepository<Cinema, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select cinema from Cinema cinema where cinema.id = :cinemaId")
     Optional<Cinema> findByIdForUpdate(@Param("cinemaId") UUID cinemaId);
+
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("select cinema from Cinema cinema where cinema.id = :cinemaId")
+    Optional<Cinema> findByIdForRead(@Param("cinemaId") UUID cinemaId);
 }

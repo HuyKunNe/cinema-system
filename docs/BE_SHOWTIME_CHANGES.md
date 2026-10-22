@@ -342,3 +342,21 @@ feat(pricing): support cinema fare matrices by format and ticket category
 - Không triển khai chức năng hoàn vé trong phạm vi thay đổi này.
 - GET/PUT fare-matrix/surcharges chỉ còn phục vụ đối chiếu/xóa cấu hình cũ.
 - Giá tham khảo CGV chưa phải dữ liệu production đã được phê duyệt.
+
+## Publish và phân giải published policy
+
+- POST .../pricing-policies/{policyId}/publish xuất bản FARE_MATRIX_V2 draft.
+- expectedVersion là optimistic policy.version.
+- Publish lấy lock rạp trước, sau đó lock ghi policy.
+- Kiểm tra overlap và chạy lại toàn bộ matrix validator trong transaction.
+- Chỉ publish khi analysis COMPLETE, matrixValid và unitPricingValid đều true.
+- Ghi publishedAt, publishedBy và publicationConfirmationReference.
+- Business confirmation không thay thế xác minh khách hàng hoặc capability thực tế.
+- Published policy và nội dung của nó bất biến qua các API hiện hữu.
+- Không tự cắt hiệu lực policy đã publish.
+- GET .../pricing-policies/active?startsAt=... chọn policy theo showtime start.
+- Mỗi policy sử dụng timezone snapshot để diễn giải ngày hiệu lực.
+- Khoảng hiệu lực là [effectiveFrom, effectiveTo].
+- Không chọn policy theo policyVersion lớn nhất.
+- Showtime chưa gắn policy trong round này.
+- Booking/ticket và giá lịch sử chưa thay đổi.

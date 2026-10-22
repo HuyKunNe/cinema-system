@@ -110,13 +110,44 @@ public final class InventoryErrorCode implements ErrorCode {
                     ErrorCategory.BUSINESS,
                     "INVENTORY_PRICING_CATEGORY_RULES_INVALID",
                     "Configure confirmed pricing roles and exactly one unrestricted regular"
-                        + " category");
+                            + " category");
 
     public static final InventoryErrorCode PRICING_FIXED_FARE_REQUIRED =
             new InventoryErrorCode(
                     ErrorCategory.BUSINESS,
                     "INVENTORY_PRICING_FIXED_FARE_REQUIRED",
                     "Fare matrix policies require all-inclusive fares without surcharges");
+
+    public static final InventoryErrorCode PRICING_POLICY_PUBLICATION_DATA_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_PRICING_POLICY_PUBLICATION_DATA_INVALID",
+                    "Publication requires business confirmation, its reference and an authenticated"
+                        + " publisher");
+
+    public static final InventoryErrorCode PRICING_POLICY_PERIOD_OVERLAP =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_PERIOD_OVERLAP",
+                    "The effective period overlaps another published policy of this cinema");
+
+    public static final InventoryErrorCode PRICING_PUBLISHED_POLICY_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_PUBLISHED_POLICY_REQUIRED",
+                    "No published pricing policy covers the requested showtime start");
+
+    public static final InventoryErrorCode PRICING_PUBLISHED_POLICY_AMBIGUOUS =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_PUBLISHED_POLICY_AMBIGUOUS",
+                    "Multiple published pricing policies cover the requested showtime start");
+
+    public static final InventoryErrorCode PRICING_POLICY_PUBLICATION_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_PUBLICATION_INVALID",
+                    "The policy is not a confirmed published all-inclusive fare matrix");
 
     public static final InventoryErrorCode TICKET_PRICE_RULE_NOT_FOUND =
             new InventoryErrorCode(
