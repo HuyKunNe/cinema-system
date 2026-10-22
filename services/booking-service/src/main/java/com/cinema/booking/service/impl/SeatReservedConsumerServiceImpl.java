@@ -1,23 +1,9 @@
 package com.cinema.booking.service.impl;
 
-import java.math.BigDecimal;
-import java.time.Clock;
-import java.time.OffsetDateTime;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
 import com.cinema.booking.event.BookingEventContract;
+import com.cinema.booking.event.BookingExpiredOutboxFactory;
 import com.cinema.booking.event.PaymentRequestedOutboxFactory;
 import com.cinema.booking.event.payload.ReservedSeatPayload;
 import com.cinema.booking.event.payload.SeatReservedPayload;
@@ -36,6 +22,21 @@ import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.common.outbox.model.OutboxEventMessage;
 import com.cinema.common.outbox.service.OutboxService;
 import com.cinema.common.validation.UuidVersions;
+
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.OffsetDateTime;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 @Service
 public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerService {
@@ -56,6 +57,8 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
 
     private final BookingPricingSnapshotService pricingSnapshotService;
 
+    private final BookingExpiredOutboxFactory bookingExpiredOutboxFactory;
+
     private final Clock clock;
 
     public SeatReservedConsumerServiceImpl(
@@ -65,6 +68,7 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
             BookingRepository bookingRepository,
             BookingSeatRepository bookingSeatRepository,
             PaymentRequestedOutboxFactory paymentRequestedOutboxFactory,
+            BookingExpiredOutboxFactory bookingExpiredOutboxFactory,
             OutboxService outboxService,
             @Qualifier("systemClock") Clock clock,
             BookingPricingSnapshotService pricingSnapshotService) {
@@ -78,6 +82,7 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
         this.outboxService = outboxService;
         this.clock = clock;
         this.pricingSnapshotService = pricingSnapshotService;
+        this.bookingExpiredOutboxFactory = bookingExpiredOutboxFactory;
     }
 
     @Override
@@ -139,6 +144,14 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
 
         OffsetDateTime requestedAt = OffsetDateTime.now(clock);
 
+        if (!savedBooking.getExpiresAt().isAfter(requestedAt)) {
+            savedBooking.expire(requestedAt);
+
+            outboxService.save(bookingExpiredOutboxFactory.create(savedBooking, requestedAt));
+
+            return Result.expired();
+        }
+        
         OutboxEventEntity paymentRequestedEvent =
                 paymentRequestedOutboxFactory.create(savedBooking, message, requestedAt);
 

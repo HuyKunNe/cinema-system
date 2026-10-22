@@ -8,8 +8,8 @@ public interface SeatReservedConsumerService {
 
     enum Status {
         DUPLICATE,
-
-        RESERVED
+        RESERVED,
+        EXPIRED
     }
 
     record Result(Status status) {
@@ -22,6 +22,10 @@ public interface SeatReservedConsumerService {
         public static Result reserved() {
 
             return new Result(Status.RESERVED);
+        }
+
+        public static Result expired() {
+            return new Result(Status.EXPIRED);
         }
     }
 }

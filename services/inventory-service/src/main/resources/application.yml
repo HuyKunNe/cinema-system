@@ -107,6 +107,10 @@ cinema:
     quote:
       ttl: ${BOOKING_QUOTE_TTL:PT3M}
       max-seats: ${BOOKING_MAX_SEATS_PER_BOOKING:10}
+
+    policy-booking:
+      enabled: ${INVENTORY_POLICY_BOOKING_ENABLED:false}
+
   outbox:
     enabled: ${INVENTORY_OUTBOX_ENABLED:true}
     producer: inventory-service

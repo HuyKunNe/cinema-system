@@ -109,4 +109,14 @@ public interface ShowSeatRepository extends JpaRepository<ShowSeat, UUID> {
     List<ShowSeat> findAllForQuote(
             @Param("showtimeId") UUID showtimeId,
             @Param("showSeatIds") Collection<UUID> showSeatIds);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            """
+            select showSeat
+            from ShowSeat showSeat
+            where showSeat.showtime.id = :showtimeId
+            order by showSeat.id asc
+            """)
+    List<ShowSeat> findAllForOpening(@Param("showtimeId") UUID showtimeId);
 }

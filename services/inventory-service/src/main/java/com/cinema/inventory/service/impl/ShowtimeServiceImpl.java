@@ -18,6 +18,7 @@ import com.cinema.inventory.mapper.ShowtimeMapper;
 import com.cinema.inventory.repository.CinemaRepository;
 import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
+import com.cinema.inventory.service.PolicyShowtimeOpeningService;
 import com.cinema.inventory.service.ShowSeatGenerationService;
 import com.cinema.inventory.service.ShowtimeLayoutService;
 import com.cinema.inventory.service.ShowtimePreparationValidator;
@@ -48,6 +49,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     private final Clock clock;
     private final BookableShowtimeProperties bookableShowtimeProperties;
     private final ShowtimeLayoutService showtimeLayoutService;
+    private final PolicyShowtimeOpeningService policyOpeningService;
     private final CinemaRepository cinemaRepository;
     private final MovieScreeningClient movieClient;
     private final PublishedCinemaPricingPolicyResolver policyResolver;
@@ -61,6 +63,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
             Clock clock,
             BookableShowtimeProperties bookableShowtimeProperties,
             ShowtimeLayoutService showtimeLayoutService,
+            PolicyShowtimeOpeningService policyOpeningService,
             CinemaRepository cinemaRepository,
             MovieScreeningClient movieClient,
             PublishedCinemaPricingPolicyResolver policyResolver,
@@ -73,6 +76,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         this.clock = clock;
         this.bookableShowtimeProperties = bookableShowtimeProperties;
         this.showtimeLayoutService = showtimeLayoutService;
+        this.policyOpeningService = policyOpeningService;
         this.cinemaRepository = cinemaRepository;
         this.movieClient = movieClient;
         this.policyResolver = policyResolver;
@@ -252,7 +256,14 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         Showtime showtime = lockForMutation(showtimeId);
 
         validateRoomAvailable(showtime.getRoom());
-        showtime.openForBooking();
+
+        if (showtime.usesPolicyPricing()) {
+            policyOpeningService.open(showtime);
+        } else {
+            showtime.openForBooking();
+        }
+
+        showtimeRepository.flush();
 
         return showtimeMapper.toResponse(showtime);
     }

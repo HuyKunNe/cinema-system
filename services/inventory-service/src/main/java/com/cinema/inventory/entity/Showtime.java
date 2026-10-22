@@ -275,6 +275,37 @@ public class Showtime extends BaseEntity {
         this.status = ShowtimeStatus.OPEN_FOR_BOOKING;
     }
 
+    public void openPolicyForBooking(OffsetDateTime now) {
+        requireStatus(ShowtimeStatus.SCHEDULED);
+
+        if (!usesPolicyPricing()
+                || roomLayout == null
+                || experienceType == null
+                || contentFormat == null
+                || officialReleaseDate == null
+                || movieVersion == null
+                || movieVersion < 0
+                || pricingPolicyVersion == null
+                || pricingPolicyVersion.longValue() != pricingPolicy.getPolicyVersion()
+                || roomLayoutVersion == null
+                || roomLayoutVersion.longValue() != roomLayout.getLayoutVersion()
+                || roomLayout.getStatus() != RoomLayoutStatus.PUBLISHED) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_POLICY_BINDING_INVALID);
+        }
+
+        pricingPolicy.requirePublishedConfiguration();
+
+        if (now == null || !startsAt.isAfter(now)) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_BOOKABLE);
+        }
+
+        if (!PricingPolicyPeriod.from(pricingPolicy).contains(startsAt.toInstant())) {
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_NOT_EFFECTIVE);
+        }
+
+        status = ShowtimeStatus.OPEN_FOR_BOOKING;
+    }
+
     public void close() {
         requireStatus(ShowtimeStatus.OPEN_FOR_BOOKING);
         this.status = ShowtimeStatus.CLOSED;

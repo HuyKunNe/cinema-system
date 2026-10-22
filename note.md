@@ -84,6 +84,8 @@ $env:CINEMA_AUTH_JWK_SET_URI = "http://localhost:8082/oauth2/jwks"
 $env:CINEMA_AUTH_AUDIENCE = "cinema-api"
 $env:KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
 $env:INVENTORY_KAFKA_ENABLED = "true"
+$env:BOOKING_QUOTE_BOOKING_ENABLED = "true"
+$env:INVENTORY_POLICY_BOOKING_ENABLED = "true"
 .\mvnw.cmd -pl services/inventory-service spring-boot:run
 
 ## Booking Service
@@ -98,6 +100,8 @@ $env:CINEMA_AUTH_JWK_SET_URI = "http://localhost:8082/oauth2/jwks"
 $env:CINEMA_AUTH_AUDIENCE = "cinema-api"
 $env:KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
 $env:BOOKING_KAFKA_ENABLED = "true"
+$env:BOOKING_QUOTE_BOOKING_ENABLED = "true"
+$env:INVENTORY_POLICY_BOOKING_ENABLED = "true"
 .\mvnw.cmd -pl services/booking-service spring-boot:run
 
 ## Payment Service
