@@ -10,10 +10,21 @@ public record SeatReservationRequestedPayload(
         UUID showtimeId,
         List<RequestedSeatPayload> seats,
         OffsetDateTime requestedAt,
-        OffsetDateTime holdExpiresAt) {
+        OffsetDateTime holdExpiresAt,
+        UUID quoteId) {
 
     public SeatReservationRequestedPayload {
-
         seats = seats == null ? List.of() : List.copyOf(seats);
+    }
+
+    public SeatReservationRequestedPayload(
+            UUID bookingId,
+            UUID userId,
+            UUID showtimeId,
+            List<RequestedSeatPayload> seats,
+            OffsetDateTime requestedAt,
+            OffsetDateTime holdExpiresAt) {
+
+        this(bookingId, userId, showtimeId, seats, requestedAt, holdExpiresAt, null);
     }
 }

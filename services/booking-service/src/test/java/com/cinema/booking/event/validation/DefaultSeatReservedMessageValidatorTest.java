@@ -123,7 +123,6 @@ class DefaultSeatReservedMessageValidatorTest {
 
     @Test
     void unsupportedEventVersionShouldBeRejected() {
-
         UUID bookingId = UuidGenerator.next();
 
         OutboxEventMessage message =
@@ -132,7 +131,7 @@ class DefaultSeatReservedMessageValidatorTest {
                         bookingId,
                         AGGREGATE_TYPE,
                         EVENT_TYPE,
-                        "2",
+                        "3",
                         OCCURRED_AT,
                         PRODUCER,
                         UuidGenerator.next(),
@@ -372,6 +371,25 @@ class DefaultSeatReservedMessageValidatorTest {
 
         assertThrows(
                 ValidationException.class, () -> validator.validate(bookingId.toString(), message));
+    }
+
+    @Test
+    void policyEventVersionShouldPassEnvelopeValidation() {
+        UUID bookingId = UuidGenerator.next();
+
+        OutboxEventMessage message =
+                message(
+                        UuidGenerator.next(),
+                        bookingId,
+                        AGGREGATE_TYPE,
+                        EVENT_TYPE,
+                        "2",
+                        OCCURRED_AT,
+                        PRODUCER,
+                        UuidGenerator.next(),
+                        validPayload(bookingId));
+
+        assertDoesNotThrow(() -> validator.validate(bookingId.toString(), message));
     }
 
     private OutboxEventMessage message(

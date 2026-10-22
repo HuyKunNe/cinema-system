@@ -19,6 +19,7 @@ import com.cinema.booking.event.serialization.SeatReservedPayloadReader;
 import com.cinema.booking.event.validation.SeatReservedMessageValidator;
 import com.cinema.booking.repository.BookingRepository;
 import com.cinema.booking.repository.BookingSeatRepository;
+import com.cinema.booking.service.BookingPricingSnapshotService;
 import com.cinema.booking.service.ProcessedEventRegistrationService;
 import com.cinema.booking.service.SeatReservedConsumerService;
 import com.cinema.common.core.id.UuidGenerator;
@@ -72,11 +73,12 @@ class SeatReservedConsumerServiceImplTest {
 
     @Mock private OutboxService outboxService;
 
+    @Mock private BookingPricingSnapshotService pricingSnapshotService;
+
     private SeatReservedConsumerServiceImpl service;
 
     @BeforeEach
     void setUp() {
-
         service =
                 new SeatReservedConsumerServiceImpl(
                         messageValidator,
@@ -86,7 +88,8 @@ class SeatReservedConsumerServiceImplTest {
                         bookingSeatRepository,
                         paymentRequestedOutboxFactory,
                         outboxService,
-                        Clock.fixed(REQUESTED_INSTANT, ZoneOffset.UTC));
+                        Clock.fixed(REQUESTED_INSTANT, ZoneOffset.UTC),
+                        pricingSnapshotService);
     }
 
     @Test

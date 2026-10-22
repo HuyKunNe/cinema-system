@@ -56,5 +56,9 @@ public final class InventoryEventContract {
 
     public static final String BOOKING_EXPIRED_CONSUMER = "inventory-booking-expired";
 
+    public static final String SEAT_RESERVATION_REQUESTED_POLICY_VERSION = "2";
+
+    public static final String SEAT_RESERVED_POLICY_VERSION = "2";
+
     private InventoryEventContract() {}
 }
