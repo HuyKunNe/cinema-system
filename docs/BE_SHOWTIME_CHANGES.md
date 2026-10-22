@@ -434,3 +434,23 @@ feat(pricing): support cinema fare matrices by format and ticket category
 - Inventory chưa phát seat-reserved version 2 trong round này.
 - CreateBookingRequest chưa nhận quoteId.
 - Chưa gỡ chặn mở bán suất theo policy.
+
+## Tạo booking từ quote
+
+- POST /api/v1/bookings/from-quote nhận clientRequestId và quoteId.
+- Yêu cầu booking:create; owner lấy từ JWT.
+- Booking đọc quote qua Inventory bằng JWT người dùng.
+- Không nhận lại ghế, category hoặc giá từ client.
+- Booking gắn pricingQuoteId trước khi persist.
+- Booking, BookingSeat và request outbox cùng transaction.
+- Booking theo quote phát seat-reservation-requested version 2.
+- Request version 2 mang quoteId cùng danh sách ghế từ quote.
+- Luồng legacy tiếp tục phát version 1.
+- Idempotency dùng user/clientRequestId và fingerprint chứa quoteId.
+- Một quote chỉ được gắn với một booking.
+- Deadline không vượt quote expiry hoặc giờ bắt đầu suất.
+- Snapshot giá chốt được ghi khi nhận seat-reserved version 2.
+- quote-booking.enabled mặc định false.
+- Chỉ bật sau khi Inventory đã triển khai consumer request version 2.
+- Chưa gỡ chặn mở bán suất theo policy.
+

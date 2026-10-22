@@ -107,6 +107,9 @@ cinema:
 
     inventory-service:
       base-url: ${INVENTORY_SERVICE_BASE_URL:http://localhost:8083}
+
+    quote-booking:
+      enabled: ${BOOKING_QUOTE_BOOKING_ENABLED:false}
   outbox:
     producer: booking-service
     batch-size: 100

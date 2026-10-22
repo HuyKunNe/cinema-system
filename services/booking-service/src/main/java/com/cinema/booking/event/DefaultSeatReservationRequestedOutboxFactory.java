@@ -41,7 +41,13 @@ public class DefaultSeatReservationRequestedOutboxFactory
                         booking.getShowtimeId(),
                         requestedSeats(bookingSeats),
                         occurredAt,
-                        booking.getExpiresAt());
+                        booking.getExpiresAt(),
+                        booking.getPricingQuoteId());
+
+        String eventVersion =
+                booking.getPricingQuoteId() == null
+                        ? BookingEventContract.SEAT_RESERVATION_REQUESTED_VERSION
+                        : BookingEventContract.SEAT_RESERVATION_REQUESTED_POLICY_VERSION;
 
         UUID eventId = UuidGenerator.next();
 
@@ -52,7 +58,7 @@ public class DefaultSeatReservationRequestedOutboxFactory
                 AggregateType.BOOKING,
                 booking.getId(),
                 BookingEventContract.SEAT_RESERVATION_REQUESTED,
-                BookingEventContract.SEAT_RESERVATION_REQUESTED_VERSION,
+                eventVersion,
                 BookingEventContract.SEAT_RESERVATION_REQUESTED,
                 booking.getId().toString(),
                 occurredAt,

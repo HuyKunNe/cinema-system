@@ -326,6 +326,24 @@ public final class BookingErrorCode implements ErrorCode {
                     "BOOKING_QUOTE_ACCESS_DENIED",
                     "Quote access is denied");
 
+    public static final BookingErrorCode QUOTE_BOOKING_NOT_READY =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_QUOTE_BOOKING_NOT_READY",
+                    "Booking from a pricing quote is not enabled");
+
+    public static final BookingErrorCode QUOTE_NOT_BOOKABLE =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_QUOTE_NOT_BOOKABLE",
+                    "Quote is expired or was issued before the showtime opened for sale");
+
+    public static final BookingErrorCode QUOTE_ALREADY_USED =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_QUOTE_ALREADY_USED",
+                    "Quote has already been assigned to a booking");
+
     private final ErrorCategory category;
 
     private final String code;
