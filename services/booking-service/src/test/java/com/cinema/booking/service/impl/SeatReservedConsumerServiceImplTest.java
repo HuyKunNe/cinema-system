@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
 import com.cinema.booking.enums.BookingStatus;
+import com.cinema.booking.event.BookingExpiredOutboxFactory;
 import com.cinema.booking.event.PaymentRequestedOutboxFactory;
 import com.cinema.booking.event.payload.ReservedSeatPayload;
 import com.cinema.booking.event.payload.SeatReservedPayload;
@@ -75,6 +76,8 @@ class SeatReservedConsumerServiceImplTest {
 
     @Mock private BookingPricingSnapshotService pricingSnapshotService;
 
+    @Mock private BookingExpiredOutboxFactory bookingExpiredOutboxFactory;
+
     private SeatReservedConsumerServiceImpl service;
 
     @BeforeEach
@@ -87,6 +90,7 @@ class SeatReservedConsumerServiceImplTest {
                         bookingRepository,
                         bookingSeatRepository,
                         paymentRequestedOutboxFactory,
+                        bookingExpiredOutboxFactory,
                         outboxService,
                         Clock.fixed(REQUESTED_INSTANT, ZoneOffset.UTC),
                         pricingSnapshotService);
