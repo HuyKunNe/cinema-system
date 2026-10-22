@@ -1,8 +1,7 @@
 package com.cinema.movie.entity;
 
-import com.cinema.common.exception.exception.ValidationException;
-
 import com.cinema.common.api.screening.ScreeningFormat;
+import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
 import com.cinema.movie.error.MovieErrorCode;
 
@@ -204,11 +203,13 @@ public class Movie extends BaseEntity {
     }
 
     public void replaceScreeningFormats(Set<ScreeningFormat> formats) {
-        if (formats == null || formats.contains(null)) {
+        if (formats == null || formats.stream().anyMatch(java.util.Objects::isNull)) {
             throw new ValidationException(MovieErrorCode.INVALID_SCREENING_FORMATS);
         }
 
+        Set<ScreeningFormat> replacement = new HashSet<>(formats);
+
         screeningFormats.clear();
-        screeningFormats.addAll(formats);
+        screeningFormats.addAll(replacement);
     }
 }

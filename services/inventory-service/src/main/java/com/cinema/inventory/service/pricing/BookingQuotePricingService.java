@@ -62,8 +62,7 @@ public class BookingQuotePricingService {
 
     // DECIMAL(19,2) in the existing booking money snapshots:
     // at most 17 integer digits for integer VND.
-    private static final long MAX_BOOKING_AMOUNT_VND =
-            99_999_999_999_999_999L;
+    private static final long MAX_BOOKING_AMOUNT_VND = 99_999_999_999_999_999L;
 
     private final ShowtimeRepository showtimeRepository;
     private final ShowSeatRepository showSeatRepository;
@@ -100,8 +99,7 @@ public class BookingQuotePricingService {
             @Value("${cinema.inventory.quote.ttl:PT3M}") Duration ttl,
             @Value("${cinema.inventory.quote.max-seats:10}") int maxSeats) {
 
-        if (ttl.isZero() || ttl.isNegative()
-                || maxSeats < 1 || maxSeats > 100) {
+        if (ttl.isZero() || ttl.isNegative() || maxSeats < 1 || maxSeats > 100) {
             throw new IllegalStateException("Invalid quote limits");
         }
 
@@ -124,9 +122,7 @@ public class BookingQuotePricingService {
     }
 
     @Transactional
-    public BookingQuoteResponse create(
-            UUID userId,
-            CreateBookingQuoteRequest request) {
+    public BookingQuoteResponse create(UUID userId, CreateBookingQuoteRequest request) {
 
         if (userId == null
                 || request == null
@@ -139,21 +135,18 @@ public class BookingQuotePricingService {
         Set<UUID> ids = new HashSet<>();
 
         for (var item : request.items()) {
-            if (item == null
-                    || item.showSeatId() == null
-                    || !ids.add(item.showSeatId())) {
+            if (item == null || item.showSeatId() == null || !ids.add(item.showSeatId())) {
                 throw invalidRequest();
             }
         }
 
         Showtime showtime =
-                showtimeRepository.findByIdForQuote(request.showtimeId())
-                        .orElseThrow(() ->
-                                new NotFoundException(
-                                        InventoryErrorCode.SHOWTIME_NOT_FOUND));
+                showtimeRepository
+                        .findByIdForQuote(request.showtimeId())
+                        .orElseThrow(
+                                () -> new NotFoundException(InventoryErrorCode.SHOWTIME_NOT_FOUND));
 
-        OffsetDateTime now =
-                OffsetDateTime.now(clock).truncatedTo(ChronoUnit.MICROS);
+        OffsetDateTime now = OffsetDateTime.now(clock).truncatedTo(ChronoUnit.MICROS);
 
         if (!showtime.usesPolicyPricing()
                 || (showtime.getStatus() != ShowtimeStatus.SCHEDULED
@@ -161,38 +154,33 @@ public class BookingQuotePricingService {
                 || !showtime.getStartsAt().isAfter(now)
                 || !showtime.getRoom().isActive()
                 || !showtime.getRoom().getCinema().isActive()) {
-            throw new ConflictException(
-                    InventoryErrorCode.QUOTE_SHOWTIME_UNAVAILABLE);
+            throw new ConflictException(InventoryErrorCode.QUOTE_SHOWTIME_UNAVAILABLE);
         }
 
         CinemaPricingPolicy policy =
-                policyRepository.findForContentRead(
+                policyRepository
+                        .findForContentRead(
                                 showtime.getRoom().getCinema().getId(),
                                 showtime.getPricingPolicy().getId())
-                        .orElseThrow(() ->
-                                new NotFoundException(
-                                        InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
+                        .orElseThrow(
+                                () ->
+                                        new NotFoundException(
+                                                InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
 
         policy.requirePublishedConfiguration();
 
         if (showtime.getPricingPolicyVersion() == null
-                || showtime.getPricingPolicyVersion().longValue()
-                        != policy.getPolicyVersion()
+                || showtime.getPricingPolicyVersion().longValue() != policy.getPolicyVersion()
                 || showtime.getExperienceType() == null
                 || showtime.getContentFormat() == null
                 || showtime.getOfficialReleaseDate() == null
-                || !PricingPolicyPeriod.from(policy)
-                        .contains(showtime.getStartsAt().toInstant())) {
-            throw new ConflictException(
-                    InventoryErrorCode.SHOWTIME_POLICY_BINDING_INVALID);
+                || !PricingPolicyPeriod.from(policy).contains(showtime.getStartsAt().toInstant())) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_POLICY_BINDING_INVALID);
         }
 
         Map<UUID, ShowSeat> seats =
-                showSeatRepository.findAllForQuote(showtime.getId(), ids)
-                        .stream()
-                        .collect(Collectors.toMap(
-                                ShowSeat::getId,
-                                Function.identity()));
+                showSeatRepository.findAllForQuote(showtime.getId(), ids).stream()
+                        .collect(Collectors.toMap(ShowSeat::getId, Function.identity()));
 
         if (seats.size() != ids.size()) {
             throw seatUnavailable();
@@ -203,9 +191,9 @@ public class BookingQuotePricingService {
 
         Map<String, PricingTicketCategory> categoriesByCode =
                 categories.stream()
-                        .collect(Collectors.toMap(
-                                PricingTicketCategory::getCode,
-                                Function.identity()));
+                        .collect(
+                                Collectors.toMap(
+                                        PricingTicketCategory::getCode, Function.identity()));
 
         List<PricingSeatType> seatTypes =
                 seatTypeRepository.findAllByPolicy_IdOrderByCodeAsc(policy.getId());
@@ -214,18 +202,18 @@ public class BookingQuotePricingService {
                 fareRepository.findAllByPolicy_IdOrderByPriorityDescCodeAsc(policy.getId());
 
         OffsetDateTime localStartsAt =
-                showtime.getStartsAt().toInstant()
+                showtime.getStartsAt()
+                        .toInstant()
                         .atZone(ZoneId.of(policy.getTimeZone()))
                         .toOffsetDateTime();
 
         boolean holiday =
-                holidayRepository.findAllByPolicy_IdOrderByHolidayDateAsc(policy.getId())
-                        .stream()
-                        .anyMatch(entry ->
-                                entry.getHolidayDate().equals(localStartsAt.toLocalDate()));
+                holidayRepository.findAllByPolicy_IdOrderByHolidayDateAsc(policy.getId()).stream()
+                        .anyMatch(
+                                entry ->
+                                        entry.getHolidayDate().equals(localStartsAt.toLocalDate()));
 
-        OffsetDateTime expiresAt =
-                earlier(now.plus(ttl), showtime.getStartsAt());
+        OffsetDateTime expiresAt = earlier(now.plus(ttl), showtime.getStartsAt());
 
         List<Line> lines = new ArrayList<>();
         long total = 0;
@@ -263,12 +251,10 @@ public class BookingQuotePricingService {
         expiresAt = expiresAt.truncatedTo(ChronoUnit.MICROS);
 
         if (!expiresAt.isAfter(OffsetDateTime.now(clock))) {
-            throw new ConflictException(
-                    InventoryErrorCode.QUOTE_ELIGIBILITY_UNAVAILABLE);
+            throw new ConflictException(InventoryErrorCode.QUOTE_ELIGIBILITY_UNAVAILABLE);
         }
 
-        PricingQuote quote =
-                new PricingQuote(userId, showtime, policy, now, expiresAt);
+        PricingQuote quote = new PricingQuote(userId, showtime, policy, now, expiresAt);
 
         BookingQuoteResponse response =
                 new BookingQuoteResponse(
@@ -281,10 +267,8 @@ public class BookingQuotePricingService {
                         localStartsAt,
                         showtime.getOfficialReleaseDate(),
                         Boolean.TRUE.equals(showtime.getAdvanceScreening()),
-                        objectMapper.convertValue(
-                                showtime.getExperienceType(), String.class),
-                        objectMapper.convertValue(
-                                showtime.getContentFormat(), String.class),
+                        objectMapper.convertValue(showtime.getExperienceType(), String.class),
+                        objectMapper.convertValue(showtime.getContentFormat(), String.class),
                         policy.getCurrency(),
                         List.copyOf(lines),
                         Long.toString(total),
@@ -296,9 +280,7 @@ public class BookingQuotePricingService {
         try {
             quote.sealSnapshot(objectMapper.writeValueAsString(response));
         } catch (JsonProcessingException exception) {
-            throw new InternalServerException(
-                    InventoryErrorCode.QUOTE_SNAPSHOT_FAILED,
-                    exception);
+            throw new InternalServerException(InventoryErrorCode.QUOTE_SNAPSHOT_FAILED, exception);
         }
 
         entityManager.persist(quote);
@@ -326,17 +308,16 @@ public class BookingQuotePricingService {
         }
 
         if (seat.getPrice() != null) {
-            throw new ConflictException(
-                    InventoryErrorCode.SHOWTIME_POLICY_PRICE_NOT_ALLOWED);
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_POLICY_PRICE_NOT_ALLOWED);
         }
 
         List<PricingSeatType> mappings =
                 seatTypes.stream()
-                        .filter(type ->
-                                type.getMappingStatus()
-                                        == PricingSeatMappingStatus.CONFIRMED)
-                        .filter(type ->
-                                type.getPhysicalSeatType() == seat.getSeatType())
+                        .filter(
+                                type ->
+                                        type.getMappingStatus()
+                                                == PricingSeatMappingStatus.CONFIRMED)
+                        .filter(type -> type.getPhysicalSeatType() == seat.getSeatType())
                         .toList();
 
         if (mappings.size() != 1) {
@@ -359,8 +340,7 @@ public class BookingQuotePricingService {
         var initialResolution = categoryResolver.resolve(raw, categories);
         var initialContext = initialResolution.context();
 
-        PricingTicketCategory category =
-                categoriesByCode.get(initialContext.ticketCategoryCode());
+        PricingTicketCategory category = categoriesByCode.get(initialContext.ticketCategoryCode());
 
         if (category == null
                 || category.getEligibilityMode() == TicketEligibilityMode.UNCONFIRMED) {
@@ -368,42 +348,20 @@ public class BookingQuotePricingService {
                     InventoryErrorCode.PRICING_TICKET_CATEGORY_ELIGIBILITY_UNCONFIRMED);
         }
 
-        if (!scopeResolver.resolve(initialContext)
-                .allowsMinute(initialContext.minuteOfDay())) {
-            throw new ConflictException(
-                    InventoryErrorCode.PRICING_SCENARIO_NOT_FOR_SALE);
+        if (!scopeResolver.resolve(initialContext).allowsMinute(initialContext.minuteOfDay())) {
+            throw new ConflictException(InventoryErrorCode.PRICING_SCENARIO_NOT_FOR_SALE);
         }
 
         List<FareRule> candidates =
                 fares.stream()
-                        .filter(rule ->
-                                selector.matchesDimensions(
-                                        rule,
-                                        initialContext,
-                                        initialContext.minuteOfDay()))
+                        .filter(
+                                rule ->
+                                        selector.matchesDimensions(
+                                                rule, initialContext, initialContext.minuteOfDay()))
                         .toList();
 
-        Set<String> requiredCodes = new TreeSet<>();
-
-        if (category.getEligibilityMode() == TicketEligibilityMode.RULE_REQUIRED) {
-            if (category.getEligibilityRuleCode() == null) {
-                throw eligibilityUnavailable();
-            }
-
-            requiredCodes.add(category.getEligibilityRuleCode());
-        }
-
-        candidates.stream()
-                .map(FareRule::getRequiredEligibilityCode)
-                .filter(Objects::nonNull)
-                .forEach(requiredCodes::add);
-
-        // Resource bound, not a tariff rule.
-        if (requiredCodes.size() > 20) {
-            throw eligibilityUnavailable();
-        }
-
         Map<String, EligibilityEvidence> verified = new HashMap<>();
+        Set<String> checkedCodes = new HashSet<>();
 
         EligibilityRule.Context verificationContext =
                 new EligibilityRule.Context(
@@ -414,55 +372,36 @@ public class BookingQuotePricingService {
                         localStartsAt,
                         now);
 
-        for (String code : requiredCodes) {
-            var decision =
-                    eligibilityRegistry.verify(code, verificationContext);
+        // Category eligibility is mandatory before selecting a fare.
+        if (category.getEligibilityMode() == TicketEligibilityMode.RULE_REQUIRED) {
+            String categoryCode = category.getEligibilityRuleCode();
 
-            if (decision.eligible()) {
-                verified.put(
-                        code,
-                        new EligibilityEvidence(
-                                code,
-                                decision.reference(),
-                                now,
-                                decision.validUntil()));
+            if (categoryCode == null || categoryCode.isBlank()) {
+                throw eligibilityUnavailable();
+            }
+
+            verifyEligibility(categoryCode, verificationContext, checkedCodes, verified);
+
+            var categoryResolution =
+                    categoryResolver.resolve(withEligibility(raw, verified.keySet()), categories);
+
+            if (!categoryResolution.context().eligibilityCodes().contains(categoryCode)) {
+                throw new ConflictException(InventoryErrorCode.QUOTE_CATEGORY_NOT_ELIGIBLE);
             }
         }
 
-        FareRuleEvaluationContext verifiedRaw =
-                new FareRuleEvaluationContext(
-                        raw.policyId(),
-                        raw.localStartsAt(),
-                        raw.holiday(),
-                        raw.experienceType(),
-                        raw.contentFormat(),
-                        raw.ticketCategoryCode(),
-                        raw.seatTypeCode(),
-                        raw.officialReleaseDate(),
-                        Set.copyOf(verified.keySet()));
+        // Only verify fare conditions at priorities that can affect the result.
+        FareRule fare =
+                selectVerifiedFare(
+                        candidates, raw, categories, verificationContext, checkedCodes, verified);
 
-        var resolution = categoryResolver.resolve(verifiedRaw, categories);
+        var resolution =
+                categoryResolver.resolve(withEligibility(raw, verified.keySet()), categories);
+
         var context = resolution.context();
 
-        if (category.getEligibilityMode() == TicketEligibilityMode.RULE_REQUIRED
-                && !context.eligibilityCodes()
-                        .contains(category.getEligibilityRuleCode())) {
-            throw new ConflictException(
-                    InventoryErrorCode.QUOTE_CATEGORY_NOT_ELIGIBLE);
-        }
-
-        var selection = selector.select(candidates, context);
-
-        if (selection.status() != FareRuleSelectionStatus.MATCHED) {
-            throw fareUnavailable();
-        }
-
-        FareRule fare = selection.winners().getFirst();
-
         FareUnit expectedUnit =
-                seat.getSeatType() == SeatType.COUPLE
-                        ? FareUnit.PER_PAIR
-                        : FareUnit.PER_TICKET;
+                seat.getSeatType() == SeatType.COUPLE ? FareUnit.PER_PAIR : FareUnit.PER_TICKET;
 
         if (fare.getFareUnit() != expectedUnit
                 || fare.getAmountVnd() < 0
@@ -480,10 +419,7 @@ public class BookingQuotePricingService {
             evidenceUsed.add(fare.getRequiredEligibilityCode());
         }
 
-        List<EligibilityEvidence> evidence =
-                evidenceUsed.stream()
-                        .map(verified::get)
-                        .toList();
+        List<EligibilityEvidence> evidence = evidenceUsed.stream().map(verified::get).toList();
 
         if (evidence.stream().anyMatch(Objects::isNull)) {
             throw eligibilityUnavailable();
@@ -513,48 +449,141 @@ public class BookingQuotePricingService {
                         Long.toString(fare.getAmountVnd()),
                         List.copyOf(evidence));
 
-        return new PricedLine(
-                line,
-                fare.getAmountVnd(),
-                evidenceExpiresAt);
+        return new PricedLine(line, fare.getAmountVnd(), evidenceExpiresAt);
     }
 
-    private static OffsetDateTime earlier(
-            OffsetDateTime current,
-            OffsetDateTime candidate) {
+    private static OffsetDateTime earlier(OffsetDateTime current, OffsetDateTime candidate) {
 
-        return candidate != null && candidate.isBefore(current)
-                ? candidate
-                : current;
+        return candidate != null && candidate.isBefore(current) ? candidate : current;
+    }
+
+    private FareRule selectVerifiedFare(
+            List<FareRule> candidates,
+            FareRuleEvaluationContext raw,
+            List<PricingTicketCategory> categories,
+            EligibilityRule.Context verificationContext,
+            Set<String> checkedCodes,
+            Map<String, EligibilityEvidence> verified) {
+
+        List<FareRule> ordered =
+                candidates.stream()
+                        .sorted(
+                                Comparator.comparingInt(FareRule::getPriority)
+                                        .reversed()
+                                        .thenComparing(FareRule::getCode))
+                        .toList();
+
+        int index = 0;
+
+        while (index < ordered.size()) {
+            int start = index;
+            int priority = ordered.get(index).getPriority();
+
+            while (index < ordered.size() && ordered.get(index).getPriority() == priority) {
+                index++;
+            }
+
+            List<FareRule> priorityGroup = ordered.subList(start, index);
+
+            // Verify the whole priority group to detect tied eligible fares.
+            Set<String> groupCodes =
+                    priorityGroup.stream()
+                            .map(FareRule::getRequiredEligibilityCode)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toCollection(TreeSet::new));
+
+            for (String code : groupCodes) {
+                verifyEligibility(code, verificationContext, checkedCodes, verified);
+            }
+
+            var resolution =
+                    categoryResolver.resolve(withEligibility(raw, verified.keySet()), categories);
+
+            var selection = selector.select(priorityGroup, resolution.context());
+
+            if (selection.status() == FareRuleSelectionStatus.AMBIGUOUS) {
+                throw fareUnavailable();
+            }
+
+            if (selection.status() == FareRuleSelectionStatus.MATCHED) {
+                return selection.winners().getFirst();
+            }
+
+            // Every fare at this priority was conclusively ineligible.
+            // Continue to the next lower priority.
+        }
+
+        throw fareUnavailable();
+    }
+
+    private void verifyEligibility(
+            String code,
+            EligibilityRule.Context context,
+            Set<String> checkedCodes,
+            Map<String, EligibilityEvidence> verified) {
+
+        if (code == null || code.isBlank()) {
+            throw eligibilityUnavailable();
+        }
+
+        if (checkedCodes.contains(code)) {
+            return;
+        }
+
+        // Bound actual verifier calls per line, including rejected decisions.
+        if (checkedCodes.size() >= 20) {
+            throw eligibilityUnavailable();
+        }
+
+        var decision = eligibilityRegistry.verify(code, context);
+
+        checkedCodes.add(code);
+
+        if (decision.eligible()) {
+            verified.put(
+                    code,
+                    new EligibilityEvidence(
+                            code,
+                            decision.reference(),
+                            context.checkedAt(),
+                            decision.validUntil()));
+        }
+    }
+
+    private static FareRuleEvaluationContext withEligibility(
+            FareRuleEvaluationContext source, Set<String> eligibilityCodes) {
+
+        return new FareRuleEvaluationContext(
+                source.policyId(),
+                source.localStartsAt(),
+                source.holiday(),
+                source.experienceType(),
+                source.contentFormat(),
+                source.ticketCategoryCode(),
+                source.seatTypeCode(),
+                source.officialReleaseDate(),
+                Set.copyOf(eligibilityCodes));
     }
 
     private static ValidationException invalidRequest() {
-        return new ValidationException(
-                InventoryErrorCode.QUOTE_REQUEST_INVALID);
+        return new ValidationException(InventoryErrorCode.QUOTE_REQUEST_INVALID);
     }
 
     private static ConflictException seatUnavailable() {
-        return new ConflictException(
-                InventoryErrorCode.QUOTE_SEAT_UNAVAILABLE);
+        return new ConflictException(InventoryErrorCode.QUOTE_SEAT_UNAVAILABLE);
     }
 
     private static ConflictException fareUnavailable() {
-        return new ConflictException(
-                InventoryErrorCode.QUOTE_FARE_UNAVAILABLE);
+        return new ConflictException(InventoryErrorCode.QUOTE_FARE_UNAVAILABLE);
     }
 
     private static ConflictException eligibilityUnavailable() {
-        return new ConflictException(
-                InventoryErrorCode.QUOTE_ELIGIBILITY_UNAVAILABLE);
+        return new ConflictException(InventoryErrorCode.QUOTE_ELIGIBILITY_UNAVAILABLE);
     }
 
     private static ConflictException invalidAmount() {
-        return new ConflictException(
-                InventoryErrorCode.QUOTE_AMOUNT_INVALID);
+        return new ConflictException(InventoryErrorCode.QUOTE_AMOUNT_INVALID);
     }
 
-    private record PricedLine(
-            Line line,
-            long amount,
-            OffsetDateTime evidenceExpiresAt) {}
+    private record PricedLine(Line line, long amount, OffsetDateTime evidenceExpiresAt) {}
 }

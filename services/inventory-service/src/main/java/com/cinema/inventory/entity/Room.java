@@ -1,8 +1,5 @@
 package com.cinema.inventory.entity;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import com.cinema.common.api.screening.ScreeningFormat;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
@@ -20,6 +17,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "rooms")
@@ -128,11 +128,13 @@ public class Room extends BaseEntity {
     }
 
     public void replaceScreeningFormats(Set<ScreeningFormat> formats) {
-        if (formats == null || formats.contains(null)) {
+        if (formats == null || formats.stream().anyMatch(java.util.Objects::isNull)) {
             throw new ValidationException(InventoryErrorCode.ROOM_SCREENING_FORMATS_INVALID);
         }
 
+        Set<ScreeningFormat> replacement = new HashSet<>(formats);
+
         screeningFormats.clear();
-        screeningFormats.addAll(formats);
+        screeningFormats.addAll(replacement);
     }
 }

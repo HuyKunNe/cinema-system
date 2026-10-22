@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.inventory.client.MovieScreeningClient;
 import com.cinema.inventory.config.BookableShowtimeProperties;
 import com.cinema.inventory.dto.request.CreateShowtimeRequest;
 import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
@@ -22,12 +23,17 @@ import com.cinema.inventory.dto.response.ShowtimeResponse;
 import com.cinema.inventory.entity.Cinema;
 import com.cinema.inventory.entity.Room;
 import com.cinema.inventory.entity.Showtime;
+import com.cinema.inventory.enums.ContentFormat;
+import com.cinema.inventory.enums.ExperienceType;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.mapper.ShowtimeMapper;
+import com.cinema.inventory.repository.CinemaRepository;
 import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ShowSeatGenerationService;
 import com.cinema.inventory.service.ShowtimeLayoutService;
+import com.cinema.inventory.service.ShowtimePreparationValidator;
+import com.cinema.inventory.service.pricing.PublishedCinemaPricingPolicyResolver;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,6 +75,14 @@ class ShowtimeServiceImplTest {
 
     @Mock private ShowtimeLayoutService showtimeLayoutService;
 
+    @Mock private CinemaRepository cinemaRepository;
+
+    @Mock private MovieScreeningClient movieClient;
+
+    @Mock private PublishedCinemaPricingPolicyResolver policyResolver;
+
+    @Mock private ShowtimePreparationValidator preparationValidator;
+
     private ShowtimeServiceImpl showtimeService;
 
     private static final BigDecimal BASE_PRICE = new BigDecimal("100000.00");
@@ -83,7 +97,11 @@ class ShowtimeServiceImplTest {
                         showSeatGenerationService,
                         Clock.fixed(STARTS_AT.minusDays(1).toInstant(), STARTS_AT.getOffset()),
                         new BookableShowtimeProperties(),
-                        showtimeLayoutService);
+                        showtimeLayoutService,
+                        cinemaRepository,
+                        movieClient,
+                        policyResolver,
+                        preparationValidator);
     }
 
     @Test
@@ -691,7 +709,8 @@ class ShowtimeServiceImplTest {
 
     private CreateShowtimeRequest createRequest(OffsetDateTime startsAt, OffsetDateTime endsAt) {
 
-        return new CreateShowtimeRequest(MOVIE_ID, ROOM_ID, startsAt, endsAt, BASE_PRICE);
+        return new CreateShowtimeRequest(
+                MOVIE_ID, ROOM_ID, startsAt, endsAt, ExperienceType.STANDARD, ContentFormat.TWO_D);
     }
 
     private Room availableRoom() {
@@ -735,7 +754,17 @@ class ShowtimeServiceImplTest {
                 startsAt,
                 endsAt,
                 status,
-                null,
-                null);
+                null, // createdAt
+                null, // updatedAt
+                null, // roomLayoutId
+                null, // roomLayoutVersion
+                null, // pricingPolicyId
+                null, // pricingPolicyVersion
+                null, // experienceType
+                null, // contentFormat
+                null, // officialReleaseDate
+                null, // movieVersion
+                null // advanceScreening
+                );
     }
 }

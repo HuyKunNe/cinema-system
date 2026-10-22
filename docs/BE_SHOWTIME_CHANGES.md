@@ -199,38 +199,48 @@ Input cần đủ rạp/phòng/phim/thời gian/format; preview trả policy ver
 }
 ```
 
-### 4.3. Booking quote
+### 4.3. Booking quote — contract đang tồn tại
 
-FE gửi ghế và loại vé được chọn; BE tự xác định giá từ policy đã gắn với showtime, kiểm tra ghế/nhóm vé/ưu đãi và trả breakdown. Không tin tổng tiền FE gửi lên.
+FE gọi POST /api/v1/bookings/quote với quyền booking:create.
 
 ```json
 {
-  "showtimeId": "showtime-uuid",
+  "showtimeId": "UUID-v5-hoặc-v7",
   "items": [
-    { "seatId": "seat-uuid-1", "ticketCategory": "ADULT" },
-    { "seatId": "seat-uuid-2", "ticketCategory": "STUDENT" }
+    {
+      "showSeatId": "UUID-v5-hoặc-v7",
+      "ticketCategoryCode": "ADULT"
+    }
   ]
 }
 ```
 
-```json
-{
-  "currency": "VND",
-  "policyVersion": 4,
-  "items": [
-    {
-      "seatId": "seat-uuid-1",
-      "ticketCategory": "ADULT",
-      "seatType": "VIP",
-      "fare": 200000,
-      "surcharges": [],
-      "total": 200000
-    }
-  ],
-  "total": 200000,
-  "expiresAt": "2026-10-21T12:10:00Z"
-}
-```
+- showSeatId là ID ghế của suất chiếu, không phải seatId vật lý.
+- ticketCategoryCode phải thuộc catalog của policy gắn với suất chiếu.
+- Booking Service trả ApiResponse<BookingQuoteResponse>.
+- Inventory cung cấp POST /api/v1/booking-quotes cho cùng luồng;
+  endpoint này trả BookingQuoteResponse trực tiếp.
+- Backend tự tính giá trọn gói; số tiền VND trong response là chuỗi số nguyên.
+- Response có quoteId, showtimeVersion, pricingPolicyId,
+  pricingPolicyVersion, items, totalAmountVnd, issuedAt và expiresAt.
+- Mỗi item có requested/effective category, fare rule, fare unit,
+  amountVnd và evidence điều kiện thực sự sử dụng.
+- COUPLE tính một lần theo PER_PAIR.
+- Quote lưu snapshot nhưng không giữ ghế và không tạo booking.
+- Suất SCHEDULED trả saleOpen=false; seatsHeld=false.
+- Category bắt buộc được xác minh trước.
+- Fare được xét theo priority giảm dần; chỉ xác minh các nhóm
+  priority cần thiết để xác định kết quả duy nhất.
+- Thiếu verifier không được coi là khách hàng không đủ điều kiện.
+- Chưa có implementation xác minh ưu đãi thực tế trong repo.
+- CreateBookingRequest chưa nhận quoteId; booking chưa tiêu thụ quote.
+- Suất dùng policy vẫn bị chặn mở bán bằng
+  SHOWTIME_POLICY_BOOKING_NOT_READY cho đến khi hoàn tất tích hợp booking.
+- Các ví dụ phụ thu và first-show flag ở phần thiết kế ban đầu
+  là nội dung lịch sử, không phải contract triển khai hiện tại.
+- FARE_MATRIX_V2 dùng giá trọn gói, không cộng phụ thu.
+- Suất chiếu sớm được xác định bằng ngày địa phương của policy
+  trước ngày công chiếu chính thức đã snapshot.
 
 ## 5. Luồng xử lý BE
 
@@ -356,9 +366,9 @@ feat(pricing): support cinema fare matrices by format and ticket category
 - Không tự cắt hiệu lực policy đã publish.
 - GET .../pricing-policies/active?startsAt=... chọn policy theo showtime start.
 - Mỗi policy sử dụng timezone snapshot để diễn giải ngày hiệu lực.
-- Khoảng hiệu lực là [effectiveFrom, effectiveTo].
+- Khoảng hiệu lực là [effectiveFrom, effectiveTo]; effectiveTo không được bao gồm.
 - Không chọn policy theo policyVersion lớn nhất.
-- Showtime chưa gắn policy trong round này.
+- Showtime mới đã gắn published policy ID/business version, published layout ID/business version và Movie release-date/version snapshot.
 - Booking/ticket và giá lịch sử chưa thay đổi.
 
 ## Capability phòng và phiên bản chiếu của phim
@@ -375,4 +385,4 @@ feat(pricing): support cinema fare matrices by format and ticket category
 - Movie response trả releaseDate thật, status và version cùng formats.
 - Danh sách rỗng không cho phép suy ra bất kỳ tổ hợp nào.
 - Dữ liệu cũ không được tự seed capability bằng migration.
-- Luồng tạo suất chiếu chưa được chuyển trong phần triển khai này.
+- Luồng tạo suất chiếu đã kiểm tra capability phòng/phim, chọn published layout và published policy, kiểm tra coverage, rồi sinh ShowSeat không chứa giá chốt.
