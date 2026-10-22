@@ -104,6 +104,9 @@ cinema:
       retry:
         interval: ${BOOKING_KAFKA_RETRY_INTERVAL:1s}
         maximum-retries: ${BOOKING_KAFKA_MAXIMUM_RETRIES:3}
+
+    inventory-service:
+      base-url: ${INVENTORY_SERVICE_BASE_URL:http://localhost:8083}
   outbox:
     producer: booking-service
     batch-size: 100

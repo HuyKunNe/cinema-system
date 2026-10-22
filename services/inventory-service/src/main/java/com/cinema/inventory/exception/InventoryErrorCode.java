@@ -341,6 +341,54 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_SHOWTIME_POLICY_PRICE_NOT_ALLOWED",
                     "Policy-priced show seats must not store a fixed ticket price");
 
+    public static final InventoryErrorCode QUOTE_REQUEST_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_QUOTE_REQUEST_INVALID",
+                    "Quote items are invalid, duplicated or exceed the configured limit");
+
+    public static final InventoryErrorCode QUOTE_SHOWTIME_UNAVAILABLE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_QUOTE_SHOWTIME_UNAVAILABLE",
+                    "This showtime is unavailable for policy pricing");
+
+    public static final InventoryErrorCode QUOTE_SEAT_UNAVAILABLE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_QUOTE_SEAT_UNAVAILABLE",
+                    "One or more requested show seats are unavailable");
+
+    public static final InventoryErrorCode QUOTE_CATEGORY_NOT_ELIGIBLE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_QUOTE_CATEGORY_NOT_ELIGIBLE",
+                    "The requirements of the effective ticket category are not satisfied");
+
+    public static final InventoryErrorCode QUOTE_ELIGIBILITY_UNAVAILABLE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_QUOTE_ELIGIBILITY_UNAVAILABLE",
+                    "The required eligibility verification is unavailable");
+
+    public static final InventoryErrorCode QUOTE_FARE_UNAVAILABLE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_QUOTE_FARE_UNAVAILABLE",
+                    "No single applicable fare with the correct unit is available");
+
+    public static final InventoryErrorCode QUOTE_AMOUNT_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_QUOTE_AMOUNT_INVALID",
+                    "The quote amount exceeds supported booking snapshot limits");
+
+    public static final InventoryErrorCode QUOTE_SNAPSHOT_FAILED =
+            new InventoryErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "INVENTORY_QUOTE_SNAPSHOT_FAILED",
+                    "Unable to store the pricing quote snapshot");
+
     public static final InventoryErrorCode ROOM_NOT_FOUND =
             new InventoryErrorCode(
                     ErrorCategory.RESOURCE, "INVENTORY_ROOM_NOT_FOUND", "Room not found");

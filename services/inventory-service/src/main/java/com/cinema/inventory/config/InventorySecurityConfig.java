@@ -102,6 +102,8 @@ public class InventorySecurityConfig {
                                         .hasAuthority("showtime:manage")
                                         .requestMatchers(INVENTORY_MANAGEMENT_ENDPOINTS)
                                         .hasAuthority("inventory:manage")
+                                        .requestMatchers("/api/v1/booking-quotes")
+                                        .hasAuthority("booking:create")
                                         .anyRequest()
                                         .denyAll())
                 .exceptionHandling(
