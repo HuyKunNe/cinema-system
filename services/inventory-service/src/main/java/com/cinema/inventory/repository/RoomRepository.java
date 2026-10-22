@@ -34,4 +34,7 @@ public interface RoomRepository extends JpaRepository<Room, UUID> {
     @Lock(LockModeType.PESSIMISTIC_READ)
     @Query("select room from Room room where room.id = :roomId")
     Optional<Room> findByIdForRead(@Param("roomId") UUID roomId);
+
+    @Query("select room.cinema.id from Room room where room.id = :roomId")
+    Optional<UUID> findCinemaIdByRoomId(@Param("roomId") UUID roomId);
 }

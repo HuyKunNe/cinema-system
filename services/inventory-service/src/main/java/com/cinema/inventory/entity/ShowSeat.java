@@ -39,7 +39,7 @@ public class ShowSeat extends BaseEntity {
     @Column(name = "seat_type", nullable = false, length = 50)
     private SeatType seatType;
 
-    @Column(name = "price", nullable = false, precision = 12, scale = 2)
+    @Column(name = "price", precision = 12, scale = 2)
     private BigDecimal price;
 
     @Enumerated(EnumType.STRING)
@@ -56,6 +56,10 @@ public class ShowSeat extends BaseEntity {
 
     public ShowSeat(Showtime showtime, Seat seat, BigDecimal price) {
 
+        if (showtime != null && showtime.usesPolicyPricing()) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_POLICY_PRICE_NOT_ALLOWED);
+        }
+
         validatePrice(price);
 
         this.showtime = showtime;
@@ -67,11 +71,36 @@ public class ShowSeat extends BaseEntity {
     }
 
     public ShowSeat(
+            Showtime showtime, Seat seat, String seatNumberSnapshot, SeatType seatTypeSnapshot) {
+
+        if (showtime == null
+                || !showtime.usesPolicyPricing()
+                || seat == null
+                || seatNumberSnapshot == null
+                || seatNumberSnapshot.isBlank()
+                || seatNumberSnapshot.length() > 20
+                || seatTypeSnapshot == null) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_POLICY_BINDING_INVALID);
+        }
+
+        this.showtime = showtime;
+        this.seat = seat;
+        this.seatNumber = seatNumberSnapshot;
+        this.seatType = seatTypeSnapshot;
+        this.price = null;
+        this.status = seat.isActive() ? ShowSeatStatus.AVAILABLE : ShowSeatStatus.UNAVAILABLE;
+    }
+
+    public ShowSeat(
             Showtime showtime,
             Seat seat,
             String seatNumberSnapshot,
             SeatType seatTypeSnapshot,
             BigDecimal price) {
+
+        if (showtime != null && showtime.usesPolicyPricing()) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_POLICY_PRICE_NOT_ALLOWED);
+        }
 
         validatePrice(price);
 
@@ -128,6 +157,9 @@ public class ShowSeat extends BaseEntity {
     }
 
     public void changePrice(BigDecimal price) {
+        if (showtime.usesPolicyPricing()) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_POLICY_PRICE_NOT_ALLOWED);
+        }
         validatePrice(price);
         this.price = price;
     }
@@ -149,6 +181,10 @@ public class ShowSeat extends BaseEntity {
 
         if (status != ShowSeatStatus.AVAILABLE) {
             throw new ConflictException(InventoryErrorCode.ONLY_AVAILABLE_SEATS_CAN_BE_HELD);
+        }
+
+        if (showtime.usesPolicyPricing()) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_POLICY_BOOKING_NOT_READY);
         }
 
         status = ShowSeatStatus.HELD;

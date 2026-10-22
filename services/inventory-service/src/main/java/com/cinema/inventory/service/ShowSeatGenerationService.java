@@ -1,5 +1,16 @@
 package com.cinema.inventory.service;
 
+import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.inventory.entity.ShowSeat;
+import com.cinema.inventory.entity.Showtime;
+import com.cinema.inventory.exception.InventoryErrorCode;
+import com.cinema.inventory.repository.SeatRepository;
+import com.cinema.inventory.repository.ShowSeatRepository;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -8,17 +19,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.cinema.common.exception.exception.ConflictException;
-import com.cinema.common.exception.exception.ValidationException;
-import com.cinema.inventory.entity.ShowSeat;
-import com.cinema.inventory.entity.Showtime;
-import com.cinema.inventory.exception.InventoryErrorCode;
-import com.cinema.inventory.repository.SeatRepository;
-import com.cinema.inventory.repository.ShowSeatRepository;
 
 @Service
 public class ShowSeatGenerationService {
@@ -44,6 +44,10 @@ public class ShowSeatGenerationService {
     public List<ShowSeat> generate(Showtime showtime, BigDecimal basePrice) {
 
         validateShowtime(showtime);
+
+        if (showtime.usesPolicyPricing()) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_POLICY_PRICE_NOT_ALLOWED);
+        }
 
         List<LayoutSeatSnapshot> snapshots;
 
@@ -87,6 +91,52 @@ public class ShowSeatGenerationService {
         }
 
         return showSeatRepository.saveAll(generatedShowSeats);
+    }
+
+    @Transactional
+    public List<ShowSeat> generate(Showtime showtime) {
+        validateShowtime(showtime);
+
+        if (!showtime.usesPolicyPricing() || showtime.getRoomLayout() == null) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_POLICY_BINDING_INVALID);
+        }
+
+        List<LayoutSeatSnapshot> snapshots =
+                showtimeLayoutService.getSeatSnapshotsForGeneration(showtime);
+
+        List<ShowSeat> existing =
+                showSeatRepository.findAllByShowtime_IdOrderBySeatNumberAsc(showtime.getId());
+
+        validateExistingSnapshots(snapshots, existing);
+
+        Set<UUID> existingSeatIds = new HashSet<>();
+
+        for (ShowSeat seat : existing) {
+            if (seat.getPrice() != null) {
+                throw new ConflictException(InventoryErrorCode.SHOWTIME_POLICY_PRICE_NOT_ALLOWED);
+            }
+
+            existingSeatIds.add(seat.getSeat().getId());
+        }
+
+        List<ShowSeat> generated =
+                snapshots.stream()
+                        .filter(snapshot -> !existingSeatIds.contains(snapshot.seat().getId()))
+                        .map(
+                                snapshot -> {
+                                    ShowSeat seat =
+                                            new ShowSeat(
+                                                    showtime,
+                                                    snapshot.seat(),
+                                                    snapshot.seatNumber(),
+                                                    snapshot.seatType());
+
+                                    showtime.addShowSeat(seat);
+                                    return seat;
+                                })
+                        .toList();
+
+        return generated.isEmpty() ? List.of() : showSeatRepository.saveAll(generated);
     }
 
     private void validateExistingSnapshots(

@@ -3,21 +3,26 @@ package com.cinema.inventory.service.impl;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.inventory.client.MovieScreeningClient;
 import com.cinema.inventory.config.BookableShowtimeProperties;
 import com.cinema.inventory.dto.request.CreateShowtimeRequest;
 import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
 import com.cinema.inventory.dto.response.ShowtimeResponse;
+import com.cinema.inventory.entity.CinemaPricingPolicy;
 import com.cinema.inventory.entity.Room;
 import com.cinema.inventory.entity.RoomLayout;
 import com.cinema.inventory.entity.Showtime;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.ShowtimeMapper;
+import com.cinema.inventory.repository.CinemaRepository;
 import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ShowSeatGenerationService;
 import com.cinema.inventory.service.ShowtimeLayoutService;
+import com.cinema.inventory.service.ShowtimePreparationValidator;
 import com.cinema.inventory.service.ShowtimeService;
+import com.cinema.inventory.service.pricing.PublishedCinemaPricingPolicyResolver;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +48,10 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     private final Clock clock;
     private final BookableShowtimeProperties bookableShowtimeProperties;
     private final ShowtimeLayoutService showtimeLayoutService;
+    private final CinemaRepository cinemaRepository;
+    private final MovieScreeningClient movieClient;
+    private final PublishedCinemaPricingPolicyResolver policyResolver;
+    private final ShowtimePreparationValidator preparationValidator;
 
     public ShowtimeServiceImpl(
             ShowtimeRepository showtimeRepository,
@@ -51,7 +60,11 @@ public class ShowtimeServiceImpl implements ShowtimeService {
             ShowSeatGenerationService showSeatGenerationService,
             Clock clock,
             BookableShowtimeProperties bookableShowtimeProperties,
-            ShowtimeLayoutService showtimeLayoutService) {
+            ShowtimeLayoutService showtimeLayoutService,
+            CinemaRepository cinemaRepository,
+            MovieScreeningClient movieClient,
+            PublishedCinemaPricingPolicyResolver policyResolver,
+            ShowtimePreparationValidator preparationValidator) {
 
         this.showtimeRepository = showtimeRepository;
         this.roomRepository = roomRepository;
@@ -60,28 +73,71 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         this.clock = clock;
         this.bookableShowtimeProperties = bookableShowtimeProperties;
         this.showtimeLayoutService = showtimeLayoutService;
+        this.cinemaRepository = cinemaRepository;
+        this.movieClient = movieClient;
+        this.policyResolver = policyResolver;
+        this.preparationValidator = preparationValidator;
     }
 
     @Override
     @Transactional
     public ShowtimeResponse create(CreateShowtimeRequest request) {
-        Room room = findRoom(request.roomId());
+        // Fetch remote data before acquiring local database locks.
+        var movie = movieClient.get(request.movieId());
+
+        UUID cinemaId =
+                roomRepository
+                        .findCinemaIdByRoomId(request.roomId())
+                        .orElseThrow(
+                                () -> new NotFoundException(InventoryErrorCode.ROOM_NOT_FOUND));
+
+        // Locks cinema and reads published policy before locking room.
+        CinemaPricingPolicy policy = policyResolver.resolveForStart(cinemaId, request.startsAt());
+
+        Room room =
+                roomRepository
+                        .findByIdForUpdate(request.roomId())
+                        .orElseThrow(
+                                () -> new NotFoundException(InventoryErrorCode.ROOM_NOT_FOUND));
 
         validateRoomAvailable(room);
 
-        RoomLayout layout =
-                showtimeLayoutService.resolveForNewShowtime(room.getId(), request.roomLayoutId());
+        preparationValidator.requireScreening(
+                room, movie, request.experienceType(), request.contentFormat());
+
+        RoomLayout layout = showtimeLayoutService.resolveLatestPublished(room.getId());
 
         validateNoOverlap(room.getId(), request.startsAt(), request.endsAt());
 
         Showtime showtime =
-                new Showtime(request.movieId(), room, request.startsAt(), request.endsAt(), layout);
+                Showtime.withPricingPolicy(
+                        request.movieId(),
+                        room,
+                        request.startsAt(),
+                        request.endsAt(),
+                        layout,
+                        policy,
+                        request.experienceType(),
+                        request.contentFormat(),
+                        movie.releaseDate(),
+                        movie.version());
 
-        Showtime savedShowtime = showtimeRepository.save(showtime);
+        var snapshots = showtimeLayoutService.getSeatSnapshotsForGeneration(showtime);
 
-        showSeatGenerationService.generate(savedShowtime, request.basePrice());
+        preparationValidator.requirePolicyCoverage(
+                policy,
+                request.experienceType(),
+                request.contentFormat(),
+                movie.releaseDate(),
+                request.startsAt(),
+                snapshots);
 
-        return showtimeMapper.toResponse(savedShowtime);
+        Showtime saved = showtimeRepository.save(showtime);
+
+        showSeatGenerationService.generate(saved);
+        showtimeRepository.flush();
+
+        return showtimeMapper.toResponse(saved);
     }
 
     @Override
@@ -149,12 +205,43 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     @Transactional
     public ShowtimeResponse update(UUID showtimeId, UpdateShowtimeRequest request) {
 
-        Showtime showtime = findShowtime(showtimeId);
+        Showtime showtime = lockForMutation(showtimeId);
+
+        if (showtime.usesPolicyPricing()) {
+            if (showtime.getStatus() != ShowtimeStatus.SCHEDULED
+                    || request.status() != ShowtimeStatus.SCHEDULED) {
+                throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_EDITABLE);
+            }
+
+            validateRoomAvailable(showtime.getRoom());
+
+            var movie = movieClient.get(showtime.getMovieId());
+
+            preparationValidator.requireScreening(
+                    showtime.getRoom(),
+                    movie,
+                    showtime.getExperienceType(),
+                    showtime.getContentFormat());
+
+            if (!movie.releaseDate().equals(showtime.getOfficialReleaseDate())) {
+                throw new ConflictException(InventoryErrorCode.SHOWTIME_MOVIE_RELEASE_CHANGED);
+            }
+
+            preparationValidator.requirePolicyCoverage(
+                    showtime.getPricingPolicy(),
+                    showtime.getExperienceType(),
+                    showtime.getContentFormat(),
+                    showtime.getOfficialReleaseDate(),
+                    request.startsAt(),
+                    showtimeLayoutService.getSeatSnapshotsForGeneration(showtime));
+        }
 
         validateNoOverlapExcludingId(
                 showtime.getRoom().getId(), showtimeId, request.startsAt(), request.endsAt());
 
         showtime.changeSchedule(request.startsAt(), request.endsAt());
+
+        showtimeRepository.flush();
 
         return showtimeMapper.toResponse(showtime);
     }
@@ -162,7 +249,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     @Override
     @Transactional
     public ShowtimeResponse openForBooking(UUID showtimeId) {
-        Showtime showtime = findShowtime(showtimeId);
+        Showtime showtime = lockForMutation(showtimeId);
 
         validateRoomAvailable(showtime.getRoom());
         showtime.openForBooking();
@@ -173,7 +260,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     @Override
     @Transactional
     public ShowtimeResponse close(UUID showtimeId) {
-        Showtime showtime = findShowtime(showtimeId);
+        Showtime showtime = lockForMutation(showtimeId);
         showtime.close();
 
         return showtimeMapper.toResponse(showtime);
@@ -182,7 +269,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     @Override
     @Transactional
     public ShowtimeResponse cancel(UUID showtimeId) {
-        Showtime showtime = findShowtime(showtimeId);
+        Showtime showtime = lockForMutation(showtimeId);
         showtime.cancel();
 
         return showtimeMapper.toResponse(showtime);
@@ -191,7 +278,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     @Override
     @Transactional
     public ShowtimeResponse complete(UUID showtimeId) {
-        Showtime showtime = findShowtime(showtimeId);
+        Showtime showtime = lockForMutation(showtimeId);
         showtime.complete();
 
         return showtimeMapper.toResponse(showtime);
@@ -223,11 +310,9 @@ public class ShowtimeServiceImpl implements ShowtimeService {
 
         validateTimeRange(startsAt, endsAt);
 
-        boolean overlapping =
-                showtimeRepository.existsOverlappingShowtime(
-                        roomId, startsAt, endsAt, NON_BLOCKING_STATUSES);
-
-        if (overlapping) {
+        if (!showtimeRepository
+                .findOverlapsForRead(roomId, startsAt, endsAt, null, NON_BLOCKING_STATUSES)
+                .isEmpty()) {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_OVERLAP);
         }
     }
@@ -237,11 +322,9 @@ public class ShowtimeServiceImpl implements ShowtimeService {
 
         validateTimeRange(startsAt, endsAt);
 
-        boolean overlapping =
-                showtimeRepository.existsOverlappingShowtimeExcludingId(
-                        roomId, showtimeId, startsAt, endsAt, NON_BLOCKING_STATUSES);
-
-        if (overlapping) {
+        if (!showtimeRepository
+                .findOverlapsForRead(roomId, startsAt, endsAt, showtimeId, NON_BLOCKING_STATUSES)
+                .isEmpty()) {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_OVERLAP);
         }
     }
@@ -255,5 +338,31 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         if (!endsAt.isAfter(startsAt)) {
             throw new ValidationException(InventoryErrorCode.INVALID_SHOWTIME_PERIOD);
         }
+    }
+
+    private Showtime lockForMutation(UUID showtimeId) {
+        UUID roomId =
+                showtimeRepository
+                        .findRoomIdByShowtimeId(showtimeId)
+                        .orElseThrow(
+                                () -> new NotFoundException(InventoryErrorCode.SHOWTIME_NOT_FOUND));
+
+        UUID cinemaId =
+                roomRepository
+                        .findCinemaIdByRoomId(roomId)
+                        .orElseThrow(
+                                () -> new NotFoundException(InventoryErrorCode.ROOM_NOT_FOUND));
+
+        cinemaRepository
+                .findByIdForRead(cinemaId)
+                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.CINEMA_NOT_FOUND));
+
+        roomRepository
+                .findByIdForUpdate(roomId)
+                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.ROOM_NOT_FOUND));
+
+        return showtimeRepository
+                .findByIdForUpdate(showtimeId)
+                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.SHOWTIME_NOT_FOUND));
     }
 }

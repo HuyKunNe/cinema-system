@@ -101,7 +101,8 @@ cinema:
       retry:
         interval: ${INVENTORY_KAFKA_RETRY_INTERVAL:1s}
         maximum-retries: ${INVENTORY_KAFKA_MAXIMUM_RETRIES:3}
-
+    movie-service:
+      base-url: ${MOVIE_SERVICE_BASE_URL:http://localhost:8081}
   outbox:
     enabled: ${INVENTORY_OUTBOX_ENABLED:true}
     producer: inventory-service

@@ -1,16 +1,14 @@
 package com.cinema.inventory.entity;
 
-import java.time.OffsetDateTime;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
+import com.cinema.inventory.enums.ContentFormat;
+import com.cinema.inventory.enums.ExperienceType;
 import com.cinema.inventory.enums.RoomLayoutStatus;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
+import com.cinema.inventory.service.pricing.PricingPolicyPeriod;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -21,6 +19,13 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Table(name = "showtimes")
@@ -46,6 +51,30 @@ public class Showtime extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private ShowtimeStatus status = ShowtimeStatus.SCHEDULED;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pricing_policy_id", updatable = false)
+    private CinemaPricingPolicy pricingPolicy;
+
+    @Column(name = "pricing_policy_version", updatable = false)
+    private Long pricingPolicyVersion;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "experience_type", length = 30, updatable = false)
+    private ExperienceType experienceType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "content_format", length = 10, updatable = false)
+    private ContentFormat contentFormat;
+
+    @Column(name = "official_release_date", updatable = false)
+    private LocalDate officialReleaseDate;
+
+    @Column(name = "movie_version", updatable = false)
+    private Long movieVersion;
+
+    @Column(name = "room_layout_version", updatable = false)
+    private Long roomLayoutVersion;
 
     @OneToMany(mappedBy = "showtime", fetch = FetchType.LAZY)
     private Set<ShowSeat> showSeats = new HashSet<>();
@@ -89,11 +118,103 @@ public class Showtime extends BaseEntity {
         this.roomLayout = roomLayout;
     }
 
+    public static Showtime withPricingPolicy(
+            UUID movieId,
+            Room room,
+            OffsetDateTime startsAt,
+            OffsetDateTime endsAt,
+            RoomLayout layout,
+            CinemaPricingPolicy policy,
+            ExperienceType experienceType,
+            ContentFormat contentFormat,
+            LocalDate officialReleaseDate,
+            Long movieVersion) {
+
+        if (movieId == null
+                || room == null
+                || layout == null
+                || policy == null
+                || experienceType == null
+                || contentFormat == null
+                || officialReleaseDate == null
+                || movieVersion == null
+                || movieVersion < 0) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_POLICY_BINDING_INVALID);
+        }
+
+        policy.requirePublishedConfiguration();
+
+        if (!room.getCinema().getId().equals(policy.getCinema().getId())
+                || !PricingPolicyPeriod.from(policy).contains(startsAt.toInstant())) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_POLICY_BINDING_INVALID);
+        }
+
+        Showtime showtime = new Showtime(movieId, room, startsAt, endsAt, layout);
+
+        showtime.pricingPolicy = policy;
+        showtime.pricingPolicyVersion = policy.getPolicyVersion();
+        showtime.experienceType = experienceType;
+        showtime.contentFormat = contentFormat;
+        showtime.officialReleaseDate = officialReleaseDate;
+        showtime.movieVersion = movieVersion;
+        showtime.roomLayoutVersion = layout.getLayoutVersion();
+
+        return showtime;
+    }
+
+    public boolean usesPolicyPricing() {
+        return pricingPolicy != null;
+    }
+
+    public CinemaPricingPolicy getPricingPolicy() {
+        return pricingPolicy;
+    }
+
+    public Long getPricingPolicyVersion() {
+        return pricingPolicyVersion;
+    }
+
+    public ExperienceType getExperienceType() {
+        return experienceType;
+    }
+
+    public ContentFormat getContentFormat() {
+        return contentFormat;
+    }
+
+    public LocalDate getOfficialReleaseDate() {
+        return officialReleaseDate;
+    }
+
+    public Long getMovieVersion() {
+        return movieVersion;
+    }
+
+    public Long getRoomLayoutVersion() {
+        return roomLayoutVersion;
+    }
+
+    public Boolean getAdvanceScreening() {
+        if (!usesPolicyPricing()) {
+            return null;
+        }
+
+        LocalDate localDate =
+                startsAt.toInstant().atZone(ZoneId.of(pricingPolicy.getTimeZone())).toLocalDate();
+
+        return localDate.isBefore(officialReleaseDate);
+    }
+
     public UUID getMovieId() {
         return movieId;
     }
 
     public void setMovieId(UUID movieId) {
+
+        if (usesPolicyPricing() && !java.util.Objects.equals(this.movieId, movieId)) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_EDITABLE);
+        }
+
         this.movieId = movieId;
     }
 
@@ -106,6 +227,9 @@ public class Showtime extends BaseEntity {
     }
 
     void assignRoom(Room room) {
+        if (usesPolicyPricing() && (room == null || !this.room.getId().equals(room.getId()))) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_EDITABLE);
+        }
         this.room = room;
     }
 
@@ -129,12 +253,25 @@ public class Showtime extends BaseEntity {
 
         validateTimeRange(startsAt, endsAt);
 
+        if (usesPolicyPricing()) {
+            requireStatus(ShowtimeStatus.SCHEDULED);
+
+            if (!PricingPolicyPeriod.from(pricingPolicy).contains(startsAt.toInstant())) {
+                throw new ConflictException(InventoryErrorCode.PRICING_POLICY_NOT_EFFECTIVE);
+            }
+        }
+
         this.startsAt = startsAt;
         this.endsAt = endsAt;
     }
 
     public void openForBooking() {
         requireStatus(ShowtimeStatus.SCHEDULED);
+
+        if (usesPolicyPricing()) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_POLICY_BOOKING_NOT_READY);
+        }
+
         this.status = ShowtimeStatus.OPEN_FOR_BOOKING;
     }
 

@@ -275,6 +275,72 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_ROOM_SCREENING_VERSION_CONFLICT",
                     "The room has changed; reload its current version");
 
+    public static final InventoryErrorCode SHOWTIME_MOVIE_NOT_FOUND =
+            new InventoryErrorCode(
+                    ErrorCategory.RESOURCE,
+                    "INVENTORY_SHOWTIME_MOVIE_NOT_FOUND",
+                    "Movie not found");
+
+    public static final InventoryErrorCode SHOWTIME_MOVIE_UNAVAILABLE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_MOVIE_UNAVAILABLE",
+                    "Movie screening information is temporarily unavailable");
+
+    public static final InventoryErrorCode SHOWTIME_MOVIE_RELEASE_DATE_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_MOVIE_RELEASE_DATE_REQUIRED",
+                    "Configure the official movie release date before scheduling");
+
+    public static final InventoryErrorCode SHOWTIME_MOVIE_NOT_SCHEDULABLE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_MOVIE_NOT_SCHEDULABLE",
+                    "The movie is not available for scheduling");
+
+    public static final InventoryErrorCode SHOWTIME_FORMAT_NOT_SUPPORTED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_FORMAT_NOT_SUPPORTED",
+                    "The selected screening format is not supported by both room and movie");
+
+    public static final InventoryErrorCode SHOWTIME_PUBLISHED_LAYOUT_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_PUBLISHED_LAYOUT_REQUIRED",
+                    "Publish a room layout before scheduling");
+
+    public static final InventoryErrorCode SHOWTIME_POLICY_BINDING_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_POLICY_BINDING_INVALID",
+                    "Showtime pricing configuration is incomplete or inconsistent");
+
+    public static final InventoryErrorCode SHOWTIME_FARE_NOT_AVAILABLE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_FARE_NOT_AVAILABLE",
+                    "The policy must provide one regular fare for every layout seat type");
+
+    public static final InventoryErrorCode SHOWTIME_MOVIE_RELEASE_CHANGED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_MOVIE_RELEASE_CHANGED",
+                    "The official movie release date has changed; create a new showtime");
+
+    public static final InventoryErrorCode SHOWTIME_POLICY_BOOKING_NOT_READY =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_POLICY_BOOKING_NOT_READY",
+                    "Sales for policy-priced showtimes require the booking quote flow");
+
+    public static final InventoryErrorCode SHOWTIME_POLICY_PRICE_NOT_ALLOWED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_POLICY_PRICE_NOT_ALLOWED",
+                    "Policy-priced show seats must not store a fixed ticket price");
+
     public static final InventoryErrorCode ROOM_NOT_FOUND =
             new InventoryErrorCode(
                     ErrorCategory.RESOURCE, "INVENTORY_ROOM_NOT_FOUND", "Room not found");

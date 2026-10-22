@@ -10,6 +10,7 @@ import com.cinema.inventory.mapper.RoomLayoutMapper;
 import com.cinema.inventory.repository.RoomLayoutElementRepository;
 import com.cinema.inventory.repository.RoomLayoutRepository;
 import com.cinema.inventory.repository.RoomLayoutSeatRepository;
+import com.cinema.inventory.repository.RoomRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ public class RoomLayoutPublicationService {
     private final RoomLayoutRepository layoutRepository;
     private final RoomLayoutSeatRepository seatRepository;
     private final RoomLayoutElementRepository elementRepository;
+    private final RoomRepository roomRepository;
     private final RoomLayoutPublicationValidator validator;
     private final RoomLayoutMapper mapper;
     private final Clock clock;
@@ -33,6 +35,7 @@ public class RoomLayoutPublicationService {
             RoomLayoutRepository layoutRepository,
             RoomLayoutSeatRepository seatRepository,
             RoomLayoutElementRepository elementRepository,
+            RoomRepository roomRepository,
             RoomLayoutPublicationValidator validator,
             RoomLayoutMapper mapper,
             Clock clock,
@@ -41,6 +44,7 @@ public class RoomLayoutPublicationService {
         this.layoutRepository = layoutRepository;
         this.seatRepository = seatRepository;
         this.elementRepository = elementRepository;
+        this.roomRepository = roomRepository;
         this.validator = validator;
         this.mapper = mapper;
         this.clock = clock;
@@ -49,6 +53,18 @@ public class RoomLayoutPublicationService {
 
     @Transactional
     public RoomLayoutResponse publish(UUID layoutId, PublishRoomLayoutRequest request) {
+
+        UUID roomId =
+                layoutRepository
+                        .findRoomIdByLayoutId(layoutId)
+                        .orElseThrow(
+                                () ->
+                                        new NotFoundException(
+                                                InventoryErrorCode.ROOM_LAYOUT_NOT_FOUND));
+
+        roomRepository
+                .findByIdForUpdate(roomId)
+                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.ROOM_NOT_FOUND));
 
         RoomLayout layout =
                 layoutRepository

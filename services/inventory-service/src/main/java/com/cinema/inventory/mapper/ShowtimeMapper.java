@@ -16,6 +16,7 @@ public interface ShowtimeMapper {
     @Mapping(target = "cinemaId", source = "room.cinema.id")
     @Mapping(target = "cinemaName", source = "room.cinema.name")
     @Mapping(target = "roomLayoutId", source = "roomLayout.id")
+    @Mapping(target = "pricingPolicyId", source = "pricingPolicy.id")
     ShowtimeResponse toResponse(Showtime showtime);
 
     List<ShowtimeResponse> toResponses(List<Showtime> showtimes);

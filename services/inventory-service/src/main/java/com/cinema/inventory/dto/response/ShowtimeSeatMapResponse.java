@@ -1,16 +1,16 @@
 package com.cinema.inventory.dto.response;
 
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.UUID;
-
 import com.cinema.inventory.enums.RoomLayoutElementKind;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.ShowSeatStatus;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
 
 @Schema(
         name = "ShowtimeSeatMapResponse",
@@ -39,13 +39,9 @@ public record ShowtimeSeatMapResponse(
         UUID layoutId,
         long layoutVersion,
         OffsetDateTime serverTime,
-        @Schema(
-                        nullable = true,
-                        description = "Legacy canvas width; null for matrix layouts.")
+        @Schema(nullable = true, description = "Legacy canvas width; null for matrix layouts.")
                 BigDecimal canvasWidth,
-        @Schema(
-                        nullable = true,
-                        description = "Legacy canvas height; null for matrix layouts.")
+        @Schema(nullable = true, description = "Legacy canvas height; null for matrix layouts.")
                 BigDecimal canvasHeight,
         List<ShowtimeSeatMapElementResponse> elements,
         List<ShowtimeSeatMapSeatResponse> seats,
@@ -59,9 +55,7 @@ public record ShowtimeSeatMapResponse(
     @Schema(
             name = "ShowtimeSeatMapMatrixResponse",
             requiredProperties = {"rowCount", "columnCount"})
-    public record ShowtimeSeatMapMatrixResponse(
-            int rowCount,
-            int columnCount) {}
+    public record ShowtimeSeatMapMatrixResponse(int rowCount, int columnCount) {}
 
     @Schema(
             name = "ShowtimeSeatMapSeatResponse",
@@ -92,53 +86,41 @@ public record ShowtimeSeatMapResponse(
     @JsonInclude(JsonInclude.Include.ALWAYS)
     public record ShowtimeSeatMapSeatResponse(
             UUID seatId,
-            @Schema(nullable = true)
-                    UUID showSeatId,
+            @Schema(nullable = true) UUID showSeatId,
             String seatNumber,
             String rowLabel,
             SeatType seatType,
             int capacity,
-            @Schema(
-                            nullable = true,
-                            description = "Legacy geometry; null for matrix layouts.")
+            @Schema(nullable = true, description = "Legacy geometry; null for matrix layouts.")
                     BigDecimal x,
-            @Schema(
-                            nullable = true,
-                            description = "Legacy geometry; null for matrix layouts.")
+            @Schema(nullable = true, description = "Legacy geometry; null for matrix layouts.")
                     BigDecimal y,
-            @Schema(
-                            nullable = true,
-                            description = "Legacy geometry; null for matrix layouts.")
+            @Schema(nullable = true, description = "Legacy geometry; null for matrix layouts.")
                     BigDecimal width,
-            @Schema(
-                            nullable = true,
-                            description = "Legacy geometry; null for matrix layouts.")
+            @Schema(nullable = true, description = "Legacy geometry; null for matrix layouts.")
                     BigDecimal height,
-            @Schema(
-                            nullable = true,
-                            description = "Legacy geometry; null for matrix layouts.")
+            @Schema(nullable = true, description = "Legacy geometry; null for matrix layouts.")
                     BigDecimal rotationDegrees,
             @Schema(
                             nullable = true,
                             description =
-                                    "Price from ShowSeat; null when ShowSeat is missing.")
+                                    "Legacy ShowSeat price. Null for policy-priced showtimes "
+                                            + "or when ShowSeat is missing. "
+                                            + "Use the booking quote flow for payable amounts.")
                     BigDecimal price,
             String currency,
             @Schema(
                             nullable = true,
-                            description =
-                                    "Stored ShowSeat status; null when ShowSeat is missing.")
+                            description = "Stored ShowSeat status; null when ShowSeat is missing.")
                     ShowSeatStatus status,
             boolean selectable,
             @Schema(
                             nullable = true,
-                            description =
-                                    "Zero-based matrix row; null for legacy layouts.")
+                            description = "Zero-based matrix row; null for legacy layouts.")
                     Integer rowIndex,
             @Schema(
                             nullable = true,
-                            description =
-                                    "Zero-based starting column; null for legacy layouts.")
+                            description = "Zero-based starting column; null for legacy layouts.")
                     Integer columnIndex,
             @Schema(
                             nullable = true,
@@ -155,22 +137,13 @@ public record ShowtimeSeatMapResponse(
 
     @Schema(
             name = "ShowtimeSeatMapElementResponse",
-            requiredProperties = {
-                "id",
-                "kind",
-                "x",
-                "y",
-                "width",
-                "height",
-                "rotationDegrees"
-            })
+            requiredProperties = {"id", "kind", "x", "y", "width", "height", "rotationDegrees"})
     public record ShowtimeSeatMapElementResponse(
             UUID id,
             RoomLayoutElementKind kind,
             @Schema(
                             requiredMode = Schema.RequiredMode.NOT_REQUIRED,
-                            description =
-                                    "Omitted when the layout element has no label.")
+                            description = "Omitted when the layout element has no label.")
                     String label,
             BigDecimal x,
             BigDecimal y,
