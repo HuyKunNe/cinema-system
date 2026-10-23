@@ -116,18 +116,6 @@ public class ShowtimeLayoutService {
         return getLegacySnapshots(layout, roomId);
     }
 
-    @Transactional
-    public RoomLayout resolveLatestPublished(UUID roomId) {
-        List<RoomLayout> layouts =
-                layoutRepository.findPublishedCandidatesForRead(roomId, RoomLayoutStatus.PUBLISHED);
-
-        if (layouts.isEmpty()) {
-            throw new ConflictException(InventoryErrorCode.SHOWTIME_PUBLISHED_LAYOUT_REQUIRED);
-        }
-
-        return layouts.getFirst();
-    }
-
     private List<LayoutSeatSnapshot> getMatrixSnapshots(RoomLayout layout, UUID roomId) {
 
         List<RoomLayoutMatrixCell> cells =

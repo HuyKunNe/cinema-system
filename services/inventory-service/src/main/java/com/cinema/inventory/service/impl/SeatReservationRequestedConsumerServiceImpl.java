@@ -1,6 +1,5 @@
 package com.cinema.inventory.service.impl;
 
-import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.common.outbox.model.OutboxEventMessage;
 import com.cinema.common.outbox.service.OutboxService;
@@ -9,7 +8,6 @@ import com.cinema.inventory.entity.ShowSeat;
 import com.cinema.inventory.enums.ShowSeatStatus;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.event.InventoryEventContract;
-import com.cinema.inventory.event.PolicySeatReservedOutboxFactory;
 import com.cinema.inventory.event.SeatReservationRejectedOutboxFactory;
 import com.cinema.inventory.event.SeatReservationRejectionReason;
 import com.cinema.inventory.event.SeatReservedOutboxFactory;
@@ -17,13 +15,10 @@ import com.cinema.inventory.event.payload.RequestedSeatPayload;
 import com.cinema.inventory.event.payload.SeatReservationRequestedPayload;
 import com.cinema.inventory.event.serialization.SeatReservationRequestedPayloadReader;
 import com.cinema.inventory.event.validation.SeatReservationRequestedMessageValidator;
-import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.repository.ShowSeatRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ProcessedEventRegistrationService;
 import com.cinema.inventory.service.SeatReservationRequestedConsumerService;
-import com.cinema.inventory.service.pricing.QuoteReservationRejectedException;
-import com.cinema.inventory.service.pricing.QuoteReservationService;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,10 +64,6 @@ public class SeatReservationRequestedConsumerServiceImpl
 
     private final OutboxService outboxService;
 
-    private final QuoteReservationService quoteReservationService;
-
-    private final PolicySeatReservedOutboxFactory policySeatReservedOutboxFactory;
-
     private final Clock clock;
 
     public SeatReservationRequestedConsumerServiceImpl(
@@ -84,8 +75,6 @@ public class SeatReservationRequestedConsumerServiceImpl
             SeatReservedOutboxFactory seatReservedOutboxFactory,
             SeatReservationRejectedOutboxFactory seatReservationRejectedOutboxFactory,
             OutboxService outboxService,
-            QuoteReservationService quoteReservationService,
-            PolicySeatReservedOutboxFactory policySeatReservedOutboxFactory,
             Clock clock) {
 
         this.messageValidator = messageValidator;
@@ -96,8 +85,6 @@ public class SeatReservationRequestedConsumerServiceImpl
         this.seatReservedOutboxFactory = seatReservedOutboxFactory;
         this.seatReservationRejectedOutboxFactory = seatReservationRejectedOutboxFactory;
         this.outboxService = outboxService;
-        this.quoteReservationService = quoteReservationService;
-        this.policySeatReservedOutboxFactory = policySeatReservedOutboxFactory;
         this.clock = clock;
     }
 
@@ -110,15 +97,6 @@ public class SeatReservationRequestedConsumerServiceImpl
         SeatReservationRequestedPayload payload = payloadReader.read(message);
 
         validateTrustedIdentifiers(message, payload);
-
-        boolean policyRequest =
-                InventoryEventContract.SEAT_RESERVATION_REQUESTED_POLICY_VERSION.equals(
-                        message.eventVersion());
-
-        if (policyRequest != (payload.quoteId() != null)
-                || (payload.quoteId() != null && payload.quoteId().version() != 7)) {
-            throw new ValidationException(InventoryErrorCode.EVENT_PAYLOAD_INVALID);
-        }
 
         boolean registered =
                 processedEventRegistrationService.register(
@@ -147,23 +125,9 @@ public class SeatReservationRequestedConsumerServiceImpl
 
         List<String> seatNumbers = validation.normalizedSeatNumbers();
 
-        if (policyRequest) {
-            return reserveFromQuote(payload, seatNumbers, message);
-        }
-
         List<ShowSeat> showSeats =
                 showSeatRepository.findAllByShowtimeIdAndSeatNumbersForUpdate(
                         payload.showtimeId(), seatNumbers);
-
-        if (showSeats.stream().anyMatch(seat -> seat.getShowtime().usesPolicyPricing())) {
-            return reject(
-                    payload,
-                    SeatReservationRejectionReason.INVALID_REQUEST,
-                    "Policy-priced showtimes require a pricing quote",
-                    seatNumbers,
-                    OffsetDateTime.now(clock),
-                    message);
-        }
 
         OffsetDateTime now = OffsetDateTime.now(clock);
 
@@ -368,63 +332,6 @@ public class SeatReservationRequestedConsumerServiceImpl
         outboxService.save(outboxEvent);
 
         return Result.rejected(outboxEvent.getId());
-    }
-
-    private Result reserveFromQuote(
-            SeatReservationRequestedPayload payload,
-            List<String> seatNumbers,
-            OutboxEventMessage message) {
-
-        QuoteReservationService.Reservation reservation;
-
-        try {
-            reservation =
-                    quoteReservationService.reserve(
-                            payload.userId(),
-                            payload.bookingId(),
-                            payload.quoteId(),
-                            payload.showtimeId(),
-                            seatNumbers,
-                            payload.holdExpiresAt());
-        } catch (QuoteReservationRejectedException exception) {
-            String code = exception.getErrorCode().code();
-
-            SeatReservationRejectionReason reason =
-                    switch (code) {
-                        case "INVENTORY_QUOTE_EXPIRED", "INVENTORY_INVALID_HOLD_EXPIRATION" ->
-                                SeatReservationRejectionReason.RESERVATION_EXPIRED;
-
-                        case "INVENTORY_QUOTE_SEAT_UNAVAILABLE" ->
-                                SeatReservationRejectionReason.SEAT_UNAVAILABLE;
-
-                        default -> SeatReservationRejectionReason.INVALID_REQUEST;
-                    };
-
-            return reject(
-                    payload,
-                    reason,
-                    exception.getErrorCode().message(),
-                    seatNumbers,
-                    OffsetDateTime.now(clock),
-                    message);
-        }
-
-        if (reservation.replayed()) {
-            // The original transaction already persisted its outcome outbox.
-            // Never recreate a hold or emit a second success event.
-            return Result.alreadyProcessed();
-        }
-
-        OutboxEventEntity event =
-                policySeatReservedOutboxFactory.create(
-                        payload.bookingId(),
-                        reservation,
-                        message.correlationId(),
-                        message.eventId());
-
-        outboxService.save(event);
-
-        return Result.reserved(event.getId());
     }
 
     private List<String> requestedSeatNumbers(SeatReservationRequestedPayload payload) {

@@ -27,8 +27,6 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     boolean existsByUserIdAndClientRequestId(UUID userId, String clientRequestId);
 
-    boolean existsByPricingQuoteId(UUID pricingQuoteId);
-
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query(
             """

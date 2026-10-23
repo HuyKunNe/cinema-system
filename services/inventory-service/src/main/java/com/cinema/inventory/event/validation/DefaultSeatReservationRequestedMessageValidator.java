@@ -34,15 +34,9 @@ public class DefaultSeatReservationRequestedMessageValidator
             throw new ValidationException(InventoryErrorCode.EVENT_TYPE_INVALID);
         }
 
-        boolean legacyVersion =
-                InventoryEventContract.SEAT_RESERVATION_REQUESTED_VERSION.equals(
-                        message.eventVersion());
+        if (!InventoryEventContract.SEAT_RESERVATION_REQUESTED_VERSION.equals(
+                message.eventVersion())) {
 
-        boolean policyVersion =
-                InventoryEventContract.SEAT_RESERVATION_REQUESTED_POLICY_VERSION.equals(
-                        message.eventVersion());
-
-        if (!legacyVersion && !policyVersion) {
             throw new ValidationException(InventoryErrorCode.EVENT_VERSION_INVALID);
         }
 

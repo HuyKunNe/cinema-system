@@ -15,7 +15,6 @@ import static org.mockito.Mockito.when;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
-import com.cinema.inventory.client.MovieScreeningClient;
 import com.cinema.inventory.config.BookableShowtimeProperties;
 import com.cinema.inventory.dto.request.CreateShowtimeRequest;
 import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
@@ -23,18 +22,12 @@ import com.cinema.inventory.dto.response.ShowtimeResponse;
 import com.cinema.inventory.entity.Cinema;
 import com.cinema.inventory.entity.Room;
 import com.cinema.inventory.entity.Showtime;
-import com.cinema.inventory.enums.ContentFormat;
-import com.cinema.inventory.enums.ExperienceType;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.mapper.ShowtimeMapper;
-import com.cinema.inventory.repository.CinemaRepository;
 import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
-import com.cinema.inventory.service.PolicyShowtimeOpeningService;
 import com.cinema.inventory.service.ShowSeatGenerationService;
 import com.cinema.inventory.service.ShowtimeLayoutService;
-import com.cinema.inventory.service.ShowtimePreparationValidator;
-import com.cinema.inventory.service.pricing.PublishedCinemaPricingPolicyResolver;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -76,16 +69,6 @@ class ShowtimeServiceImplTest {
 
     @Mock private ShowtimeLayoutService showtimeLayoutService;
 
-    @Mock private CinemaRepository cinemaRepository;
-
-    @Mock private MovieScreeningClient movieClient;
-
-    @Mock private PublishedCinemaPricingPolicyResolver policyResolver;
-
-    @Mock private ShowtimePreparationValidator preparationValidator;
-
-    @Mock private PolicyShowtimeOpeningService policyOpeningService;
-
     private ShowtimeServiceImpl showtimeService;
 
     private static final BigDecimal BASE_PRICE = new BigDecimal("100000.00");
@@ -100,12 +83,7 @@ class ShowtimeServiceImplTest {
                         showSeatGenerationService,
                         Clock.fixed(STARTS_AT.minusDays(1).toInstant(), STARTS_AT.getOffset()),
                         new BookableShowtimeProperties(),
-                        showtimeLayoutService,
-                        policyOpeningService,
-                        cinemaRepository,
-                        movieClient,
-                        policyResolver,
-                        preparationValidator);
+                        showtimeLayoutService);
     }
 
     @Test
@@ -264,7 +242,7 @@ class ShowtimeServiceImplTest {
 
         ShowtimeResponse expectedResponse = response(STARTS_AT, ENDS_AT, ShowtimeStatus.SCHEDULED);
 
-        prepareMutationLocks(showtime);
+        when(showtimeRepository.findById(SHOWTIME_ID)).thenReturn(Optional.of(showtime));
 
         when(showtimeMapper.toResponse(showtime)).thenReturn(expectedResponse);
 
@@ -272,7 +250,7 @@ class ShowtimeServiceImplTest {
 
         assertThat(result).isSameAs(expectedResponse);
 
-        verify(showtimeRepository).findByIdForUpdate(SHOWTIME_ID);
+        verify(showtimeRepository).findById(SHOWTIME_ID);
 
         verify(showtimeMapper).toResponse(showtime);
     }
@@ -284,7 +262,7 @@ class ShowtimeServiceImplTest {
         assertThatThrownBy(() -> showtimeService.getById(SHOWTIME_ID))
                 .isInstanceOf(NotFoundException.class);
 
-        verify(showtimeRepository).findByIdForUpdate(SHOWTIME_ID);
+        verify(showtimeRepository).findById(SHOWTIME_ID);
 
         verifyNoInteractions(showtimeMapper);
     }
@@ -409,7 +387,7 @@ class ShowtimeServiceImplTest {
         ShowtimeResponse expectedResponse =
                 response(newStartsAt, newEndsAt, ShowtimeStatus.SCHEDULED);
 
-        prepareMutationLocks(showtime);
+        when(showtimeRepository.findById(SHOWTIME_ID)).thenReturn(Optional.of(showtime));
 
         when(showtimeRepository.existsOverlappingShowtimeExcludingId(
                         eq(ROOM_ID),
@@ -431,7 +409,7 @@ class ShowtimeServiceImplTest {
 
         assertThat(result).isSameAs(expectedResponse);
 
-        verify(showtimeRepository).findByIdForUpdate(SHOWTIME_ID);
+        verify(showtimeRepository).findById(SHOWTIME_ID);
 
         verify(showtimeRepository)
                 .existsOverlappingShowtimeExcludingId(
@@ -456,7 +434,7 @@ class ShowtimeServiceImplTest {
         assertThatThrownBy(() -> showtimeService.update(SHOWTIME_ID, request))
                 .isInstanceOf(NotFoundException.class);
 
-        verify(showtimeRepository).findByIdForUpdate(SHOWTIME_ID);
+        verify(showtimeRepository).findById(SHOWTIME_ID);
 
         verify(showtimeRepository, never())
                 .existsOverlappingShowtimeExcludingId(any(), any(), any(), any(), anyCollection());
@@ -471,7 +449,7 @@ class ShowtimeServiceImplTest {
         UpdateShowtimeRequest request =
                 new UpdateShowtimeRequest(STARTS_AT, STARTS_AT, ShowtimeStatus.SCHEDULED);
 
-        prepareMutationLocks(showtime);
+        when(showtimeRepository.findById(SHOWTIME_ID)).thenReturn(Optional.of(showtime));
 
         assertThatThrownBy(() -> showtimeService.update(SHOWTIME_ID, request))
                 .isInstanceOf(ValidationException.class);
@@ -493,7 +471,7 @@ class ShowtimeServiceImplTest {
         UpdateShowtimeRequest request =
                 new UpdateShowtimeRequest(newStartsAt, newEndsAt, ShowtimeStatus.SCHEDULED);
 
-        prepareMutationLocks(showtime);
+        when(showtimeRepository.findById(SHOWTIME_ID)).thenReturn(Optional.of(showtime));
 
         when(showtimeRepository.existsOverlappingShowtimeExcludingId(
                         eq(ROOM_ID),
@@ -532,7 +510,7 @@ class ShowtimeServiceImplTest {
         ShowtimeResponse expectedResponse =
                 response(STARTS_AT, ENDS_AT, ShowtimeStatus.OPEN_FOR_BOOKING);
 
-        prepareMutationLocks(showtime);
+        when(showtimeRepository.findById(SHOWTIME_ID)).thenReturn(Optional.of(showtime));
 
         when(showtimeMapper.toResponse(showtime)).thenReturn(expectedResponse);
 
@@ -542,7 +520,7 @@ class ShowtimeServiceImplTest {
 
         assertThat(result).isSameAs(expectedResponse);
 
-        verify(showtimeRepository).findByIdForUpdate(SHOWTIME_ID);
+        verify(showtimeRepository).findById(SHOWTIME_ID);
 
         verify(showtimeRepository, never()).save(any(Showtime.class));
 
@@ -557,14 +535,14 @@ class ShowtimeServiceImplTest {
 
         Showtime showtime = new Showtime(MOVIE_ID, room, STARTS_AT, ENDS_AT);
 
-        prepareMutationLocks(showtime);
+        when(showtimeRepository.findById(SHOWTIME_ID)).thenReturn(Optional.of(showtime));
 
         assertThatThrownBy(() -> showtimeService.openForBooking(SHOWTIME_ID))
                 .isInstanceOf(ConflictException.class);
 
         assertThat(showtime.getStatus()).isEqualTo(ShowtimeStatus.SCHEDULED);
 
-        verify(showtimeRepository).findByIdForUpdate(SHOWTIME_ID);
+        verify(showtimeRepository).findById(SHOWTIME_ID);
 
         verify(room).isActive();
 
@@ -576,12 +554,12 @@ class ShowtimeServiceImplTest {
         Showtime showtime = scheduledShowtime();
         showtime.openForBooking();
 
-        prepareMutationLocks(showtime);
+        when(showtimeRepository.findById(SHOWTIME_ID)).thenReturn(Optional.of(showtime));
 
         assertThatThrownBy(() -> showtimeService.openForBooking(SHOWTIME_ID))
                 .isInstanceOf(ConflictException.class);
 
-        verify(showtimeRepository).findByIdForUpdate(SHOWTIME_ID);
+        verify(showtimeRepository).findById(SHOWTIME_ID);
 
         verifyNoInteractions(showtimeMapper);
     }
@@ -593,7 +571,7 @@ class ShowtimeServiceImplTest {
 
         ShowtimeResponse expectedResponse = response(STARTS_AT, ENDS_AT, ShowtimeStatus.CLOSED);
 
-        prepareMutationLocks(showtime);
+        when(showtimeRepository.findById(SHOWTIME_ID)).thenReturn(Optional.of(showtime));
 
         when(showtimeMapper.toResponse(showtime)).thenReturn(expectedResponse);
 
@@ -603,7 +581,7 @@ class ShowtimeServiceImplTest {
 
         assertThat(result).isSameAs(expectedResponse);
 
-        verify(showtimeRepository).findByIdForUpdate(SHOWTIME_ID);
+        verify(showtimeRepository).findById(SHOWTIME_ID);
 
         verify(showtimeMapper).toResponse(showtime);
     }
@@ -612,14 +590,14 @@ class ShowtimeServiceImplTest {
     void closeShouldThrowWhenStatusIsNotOpenForBooking() {
         Showtime showtime = scheduledShowtime();
 
-        prepareMutationLocks(showtime);
+        when(showtimeRepository.findById(SHOWTIME_ID)).thenReturn(Optional.of(showtime));
 
         assertThatThrownBy(() -> showtimeService.close(SHOWTIME_ID))
                 .isInstanceOf(ConflictException.class);
 
         assertThat(showtime.getStatus()).isEqualTo(ShowtimeStatus.SCHEDULED);
 
-        verify(showtimeRepository).findByIdForUpdate(SHOWTIME_ID);
+        verify(showtimeRepository).findById(SHOWTIME_ID);
 
         verifyNoInteractions(showtimeMapper);
     }
@@ -630,7 +608,7 @@ class ShowtimeServiceImplTest {
 
         ShowtimeResponse expectedResponse = response(STARTS_AT, ENDS_AT, ShowtimeStatus.CANCELLED);
 
-        prepareMutationLocks(showtime);
+        when(showtimeRepository.findById(SHOWTIME_ID)).thenReturn(Optional.of(showtime));
 
         when(showtimeMapper.toResponse(showtime)).thenReturn(expectedResponse);
 
@@ -640,7 +618,7 @@ class ShowtimeServiceImplTest {
 
         assertThat(result).isSameAs(expectedResponse);
 
-        verify(showtimeRepository).findByIdForUpdate(SHOWTIME_ID);
+        verify(showtimeRepository).findById(SHOWTIME_ID);
 
         verify(showtimeMapper).toResponse(showtime);
     }
@@ -650,14 +628,14 @@ class ShowtimeServiceImplTest {
         Showtime showtime = closedShowtime();
         showtime.complete();
 
-        prepareMutationLocks(showtime);
+        when(showtimeRepository.findById(SHOWTIME_ID)).thenReturn(Optional.of(showtime));
 
         assertThatThrownBy(() -> showtimeService.cancel(SHOWTIME_ID))
                 .isInstanceOf(ConflictException.class);
 
         assertThat(showtime.getStatus()).isEqualTo(ShowtimeStatus.COMPLETED);
 
-        verify(showtimeRepository).findByIdForUpdate(SHOWTIME_ID);
+        verify(showtimeRepository).findById(SHOWTIME_ID);
 
         verifyNoInteractions(showtimeMapper);
     }
@@ -668,7 +646,7 @@ class ShowtimeServiceImplTest {
 
         ShowtimeResponse expectedResponse = response(STARTS_AT, ENDS_AT, ShowtimeStatus.COMPLETED);
 
-        prepareMutationLocks(showtime);
+        when(showtimeRepository.findById(SHOWTIME_ID)).thenReturn(Optional.of(showtime));
 
         when(showtimeMapper.toResponse(showtime)).thenReturn(expectedResponse);
 
@@ -678,7 +656,7 @@ class ShowtimeServiceImplTest {
 
         assertThat(result).isSameAs(expectedResponse);
 
-        verify(showtimeRepository).findByIdForUpdate(SHOWTIME_ID);
+        verify(showtimeRepository).findById(SHOWTIME_ID);
 
         verify(showtimeMapper).toResponse(showtime);
     }
@@ -687,14 +665,14 @@ class ShowtimeServiceImplTest {
     void completeShouldThrowWhenShowtimeIsNotClosed() {
         Showtime showtime = scheduledShowtime();
 
-        prepareMutationLocks(showtime);
+        when(showtimeRepository.findById(SHOWTIME_ID)).thenReturn(Optional.of(showtime));
 
         assertThatThrownBy(() -> showtimeService.complete(SHOWTIME_ID))
                 .isInstanceOf(ConflictException.class);
 
         assertThat(showtime.getStatus()).isEqualTo(ShowtimeStatus.SCHEDULED);
 
-        verify(showtimeRepository).findByIdForUpdate(SHOWTIME_ID);
+        verify(showtimeRepository).findById(SHOWTIME_ID);
 
         verifyNoInteractions(showtimeMapper);
     }
@@ -706,15 +684,14 @@ class ShowtimeServiceImplTest {
         assertThatThrownBy(() -> showtimeService.cancel(SHOWTIME_ID))
                 .isInstanceOf(NotFoundException.class);
 
-        verify(showtimeRepository).findByIdForUpdate(SHOWTIME_ID);
+        verify(showtimeRepository).findById(SHOWTIME_ID);
 
         verifyNoInteractions(showtimeMapper);
     }
 
     private CreateShowtimeRequest createRequest(OffsetDateTime startsAt, OffsetDateTime endsAt) {
 
-        return new CreateShowtimeRequest(
-                MOVIE_ID, ROOM_ID, startsAt, endsAt, ExperienceType.STANDARD, ContentFormat.TWO_D);
+        return new CreateShowtimeRequest(MOVIE_ID, ROOM_ID, startsAt, endsAt, BASE_PRICE);
     }
 
     private Room availableRoom() {
@@ -745,20 +722,6 @@ class ShowtimeServiceImplTest {
         return showtime;
     }
 
-    private void prepareMutationLocks(Showtime showtime) {
-        when(showtimeRepository.findRoomIdByShowtimeId(SHOWTIME_ID))
-                .thenReturn(Optional.of(ROOM_ID));
-
-        when(roomRepository.findCinemaIdByRoomId(ROOM_ID)).thenReturn(Optional.of(CINEMA_ID));
-
-        when(cinemaRepository.findByIdForRead(CINEMA_ID))
-                .thenReturn(Optional.of(showtime.getRoom().getCinema()));
-
-        when(roomRepository.findByIdForUpdate(ROOM_ID)).thenReturn(Optional.of(showtime.getRoom()));
-
-        when(showtimeRepository.findByIdForUpdate(SHOWTIME_ID)).thenReturn(Optional.of(showtime));
-    }
-
     private ShowtimeResponse response(
             OffsetDateTime startsAt, OffsetDateTime endsAt, ShowtimeStatus status) {
 
@@ -772,17 +735,7 @@ class ShowtimeServiceImplTest {
                 startsAt,
                 endsAt,
                 status,
-                null, // createdAt
-                null, // updatedAt
-                null, // roomLayoutId
-                null, // roomLayoutVersion
-                null, // pricingPolicyId
-                null, // pricingPolicyVersion
-                null, // experienceType
-                null, // contentFormat
-                null, // officialReleaseDate
-                null, // movieVersion
-                null // advanceScreening
-                );
+                null,
+                null);
     }
 }

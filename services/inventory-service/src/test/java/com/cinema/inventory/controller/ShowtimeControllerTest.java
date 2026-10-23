@@ -14,8 +14,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.cinema.inventory.dto.request.CreateShowtimeRequest;
 import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
 import com.cinema.inventory.dto.response.ShowtimeResponse;
-import com.cinema.inventory.enums.ContentFormat;
-import com.cinema.inventory.enums.ExperienceType;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.service.ShowtimeService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -79,13 +77,7 @@ class ShowtimeControllerTest {
         UUID roomId = UUID.randomUUID();
 
         CreateShowtimeRequest request =
-                new CreateShowtimeRequest(
-                        movieId,
-                        roomId,
-                        STARTS_AT,
-                        ENDS_AT,
-                        ExperienceType.STANDARD,
-                        ContentFormat.TWO_D);
+                new CreateShowtimeRequest(movieId, roomId, STARTS_AT, ENDS_AT, BASE_PRICE);
 
         ShowtimeResponse response =
                 response(showtimeId, movieId, roomId, STARTS_AT, ENDS_AT, ShowtimeStatus.SCHEDULED);
@@ -113,12 +105,8 @@ class ShowtimeControllerTest {
 
         CreateShowtimeRequest request =
                 new CreateShowtimeRequest(
-                        UUID.randomUUID(),
-                        UUID.randomUUID(),
-                        ENDS_AT,
-                        STARTS_AT,
-                        ExperienceType.STANDARD,
-                        ContentFormat.TWO_D);
+                        UUID.randomUUID(), UUID.randomUUID(), ENDS_AT, STARTS_AT, BASE_PRICE);
+
         mockMvc.perform(
                         post("/api/v1/showtimes")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -132,13 +120,7 @@ class ShowtimeControllerTest {
     void createShouldReturnBadRequestWhenMovieIdIsNull() throws Exception {
 
         CreateShowtimeRequest request =
-                new CreateShowtimeRequest(
-                        null,
-                        UUID.randomUUID(),
-                        STARTS_AT,
-                        ENDS_AT,
-                        ExperienceType.STANDARD,
-                        ContentFormat.TWO_D);
+                new CreateShowtimeRequest(null, UUID.randomUUID(), STARTS_AT, ENDS_AT, BASE_PRICE);
 
         mockMvc.perform(
                         post("/api/v1/showtimes")
@@ -161,9 +143,7 @@ class ShowtimeControllerTest {
                   "movieId": "%s",
                   "roomId": "%s",
                   "startsAt": "invalid-date",
-                  "endsAt": "2099-01-01T05:00:00Z",
-                  "experienceType": "STANDARD",
-                  "contentFormat": "2D"
+                  "endsAt": "2099-01-01T05:00:00Z"
                 }
                 """
                         .formatted(movieId, roomId);
@@ -443,35 +423,11 @@ class ShowtimeControllerTest {
     }
 
     @Test
-    void createShouldReturnBadRequestWhenExperienceTypeIsNull() throws Exception {
+    void createShouldReturnBadRequestWhenBasePriceIsZero() throws Exception {
+
         CreateShowtimeRequest request =
                 new CreateShowtimeRequest(
-                        UUID.randomUUID(),
-                        UUID.randomUUID(),
-                        STARTS_AT,
-                        ENDS_AT,
-                        null,
-                        ContentFormat.TWO_D);
-
-        mockMvc.perform(
-                        post("/api/v1/showtimes")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-
-        verifyNoInteractions(showtimeService);
-    }
-
-    @Test
-    void createShouldReturnBadRequestWhenContentFormatIsNull() throws Exception {
-        CreateShowtimeRequest request =
-                new CreateShowtimeRequest(
-                        UUID.randomUUID(),
-                        UUID.randomUUID(),
-                        STARTS_AT,
-                        ENDS_AT,
-                        ExperienceType.STANDARD,
-                        null);
+                        UUID.randomUUID(), UUID.randomUUID(), STARTS_AT, ENDS_AT, BigDecimal.ZERO);
 
         mockMvc.perform(
                         post("/api/v1/showtimes")
@@ -501,16 +457,6 @@ class ShowtimeControllerTest {
                 endsAt,
                 status,
                 CREATED_AT,
-                UPDATED_AT,
-                null, // roomLayoutId
-                null, // roomLayoutVersion
-                null, // pricingPolicyId
-                null, // pricingPolicyVersion
-                null, // experienceType
-                null, // contentFormat
-                null, // officialReleaseDate
-                null, // movieVersion
-                null // advanceScreening
-                );
+                UPDATED_AT);
     }
 }

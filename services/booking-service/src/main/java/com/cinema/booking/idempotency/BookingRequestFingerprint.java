@@ -41,18 +41,4 @@ public class BookingRequestFingerprint {
                     BookingErrorCode.REQUEST_FINGERPRINT_GENERATION_FAILED, exception);
         }
     }
-
-    public String generateFromQuote(UUID quoteId) {
-        String canonicalRequest = "BOOKING_FROM_QUOTE_V1|" + quoteId;
-
-        try {
-            MessageDigest digest = MessageDigest.getInstance(ALGORITHM);
-
-            return HexFormat.of()
-                    .formatHex(digest.digest(canonicalRequest.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException exception) {
-            throw new InternalServerException(
-                    BookingErrorCode.REQUEST_FINGERPRINT_GENERATION_FAILED, exception);
-        }
-    }
 }

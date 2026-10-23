@@ -1,14 +1,12 @@
 package com.cinema.inventory.entity;
 
-import com.cinema.common.api.screening.ScreeningFormat;
-import com.cinema.common.exception.exception.ValidationException;
+import java.util.HashSet;
+import java.util.Set;
+
 import com.cinema.common.jpa.entity.BaseEntity;
 import com.cinema.inventory.enums.RoomType;
-import com.cinema.inventory.exception.InventoryErrorCode;
 
-import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -17,9 +15,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-
-import java.util.HashSet;
-import java.util.Set;
 
 @Entity
 @Table(name = "rooms")
@@ -45,15 +40,13 @@ public class Room extends BaseEntity {
     @OneToMany(mappedBy = "room", fetch = FetchType.LAZY)
     private Set<Showtime> showtimes = new HashSet<>();
 
-    @ElementCollection(fetch = FetchType.LAZY)
-    @CollectionTable(name = "room_screening_formats", joinColumns = @JoinColumn(name = "room_id"))
-    @Enumerated(EnumType.STRING)
-    @Column(name = "screening_format", nullable = false, length = 40)
-    private Set<ScreeningFormat> screeningFormats = new HashSet<>();
+    protected Room() {
+    }
 
-    protected Room() {}
-
-    public Room(Cinema cinema, String name, RoomType roomType) {
+    public Room(
+            Cinema cinema,
+            String name,
+            RoomType roomType) {
 
         this.cinema = cinema;
         this.name = name;
@@ -121,20 +114,5 @@ public class Room extends BaseEntity {
 
         showtimes.add(showtime);
         showtime.assignRoom(this);
-    }
-
-    public Set<ScreeningFormat> getScreeningFormats() {
-        return Set.copyOf(screeningFormats);
-    }
-
-    public void replaceScreeningFormats(Set<ScreeningFormat> formats) {
-        if (formats == null || formats.stream().anyMatch(java.util.Objects::isNull)) {
-            throw new ValidationException(InventoryErrorCode.ROOM_SCREENING_FORMATS_INVALID);
-        }
-
-        Set<ScreeningFormat> replacement = new HashSet<>(formats);
-
-        screeningFormats.clear();
-        screeningFormats.addAll(replacement);
     }
 }

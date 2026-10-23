@@ -11,7 +11,7 @@ import org.mapstruct.Mapping;
 
 import java.util.List;
 
-@Mapper(config = MapperConfiguration.class, uses = BookingPricingSnapshotMapper.class)
+@Mapper(config = MapperConfiguration.class)
 public interface BookingMapper {
 
     @Mapping(target = "id", source = "booking.id")
@@ -29,8 +29,6 @@ public interface BookingMapper {
     @Mapping(target = "version", source = "booking.version")
     @Mapping(target = "createdAt", source = "booking.createdAt")
     @Mapping(target = "updatedAt", source = "booking.updatedAt")
-    @Mapping(target = "pricingQuoteId", source = "booking.pricingQuoteId")
-    @Mapping(target = "pricing", source = "booking", qualifiedByName = "bookingPricing")
     BookingResponse toResponse(Booking booking, List<BookingSeat> bookingSeats);
 
     BookingSeatResponse toResponse(BookingSeat bookingSeat);

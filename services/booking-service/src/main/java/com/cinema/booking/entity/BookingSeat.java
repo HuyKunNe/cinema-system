@@ -73,9 +73,6 @@ public class BookingSeat {
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
-    @Column(name = "pricing_snapshot_json", columnDefinition = "LONGTEXT")
-    private String pricingSnapshotJson;
-
     protected BookingSeat() {}
 
     public BookingSeat(UUID bookingId, UUID showtimeId, String seatNumber) {
@@ -123,21 +120,6 @@ public class BookingSeat {
 
     public boolean hasCompletedSnapshot() {
         return inventorySeatId != null && seatType != null && price != null;
-    }
-
-    public String getPricingSnapshotJson() {
-        return pricingSnapshotJson;
-    }
-
-    public void completePricingSnapshot(String snapshotJson) {
-        if (!hasCompletedSnapshot()
-                || pricingSnapshotJson != null
-                || snapshotJson == null
-                || snapshotJson.isBlank()) {
-            throw new ConflictException(BookingErrorCode.RESERVATION_RESULT_MISMATCH);
-        }
-
-        pricingSnapshotJson = snapshotJson;
     }
 
     public void completeSnapshot(UUID inventorySeatId, String seatType, BigDecimal price) {

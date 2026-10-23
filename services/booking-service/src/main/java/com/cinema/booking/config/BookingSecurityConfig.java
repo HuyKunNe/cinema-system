@@ -44,13 +44,6 @@ public class BookingSecurityConfig {
                                         .permitAll()
                                         .requestMatchers("/actuator/health", "/actuator/info")
                                         .permitAll()
-                                        .requestMatchers(HttpMethod.POST, "/api/v1/bookings/quote")
-                                        .hasAuthority("booking:create")
-                                        .requestMatchers(HttpMethod.GET, "/api/v1/bookings/quote/*")
-                                        .hasAuthority("booking:create")
-                                        .requestMatchers(
-                                                HttpMethod.POST, "/api/v1/bookings/from-quote")
-                                        .hasAuthority("booking:create")
                                         .requestMatchers(BOOKING_ENDPOINTS)
                                         .authenticated()
                                         .anyRequest()

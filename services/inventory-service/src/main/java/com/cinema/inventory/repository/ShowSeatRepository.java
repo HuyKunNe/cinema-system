@@ -1,20 +1,20 @@
 package com.cinema.inventory.repository;
 
-import com.cinema.inventory.entity.ShowSeat;
-import com.cinema.inventory.enums.ShowSeatStatus;
-
-import jakarta.persistence.LockModeType;
+import java.time.OffsetDateTime;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.OffsetDateTime;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import com.cinema.inventory.entity.ShowSeat;
+import com.cinema.inventory.enums.ShowSeatStatus;
+
+import jakarta.persistence.LockModeType;
 
 public interface ShowSeatRepository extends JpaRepository<ShowSeat, UUID> {
 
@@ -96,27 +96,4 @@ public interface ShowSeatRepository extends JpaRepository<ShowSeat, UUID> {
             order by showSeat.seatNumber asc
             """)
     List<ShowSeat> findAllForSeatMapByShowtimeId(@Param("showtimeId") UUID showtimeId);
-
-    @Lock(LockModeType.PESSIMISTIC_READ)
-    @Query(
-            """
-            select showSeat
-            from ShowSeat showSeat
-            where showSeat.showtime.id = :showtimeId
-              and showSeat.id in :showSeatIds
-            order by showSeat.id asc
-            """)
-    List<ShowSeat> findAllForQuote(
-            @Param("showtimeId") UUID showtimeId,
-            @Param("showSeatIds") Collection<UUID> showSeatIds);
-
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query(
-            """
-            select showSeat
-            from ShowSeat showSeat
-            where showSeat.showtime.id = :showtimeId
-            order by showSeat.id asc
-            """)
-    List<ShowSeat> findAllForOpening(@Param("showtimeId") UUID showtimeId);
 }

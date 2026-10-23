@@ -1,7 +1,6 @@
 # config run at local
 
 ## Create DB
-
 CREATE DATABASE IF NOT EXISTS cinema_user_db
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
@@ -84,8 +83,6 @@ $env:CINEMA_AUTH_JWK_SET_URI = "http://localhost:8082/oauth2/jwks"
 $env:CINEMA_AUTH_AUDIENCE = "cinema-api"
 $env:KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
 $env:INVENTORY_KAFKA_ENABLED = "true"
-$env:BOOKING_QUOTE_BOOKING_ENABLED = "true"
-$env:INVENTORY_POLICY_BOOKING_ENABLED = "true"
 .\mvnw.cmd -pl services/inventory-service spring-boot:run
 
 ## Booking Service
@@ -100,8 +97,6 @@ $env:CINEMA_AUTH_JWK_SET_URI = "http://localhost:8082/oauth2/jwks"
 $env:CINEMA_AUTH_AUDIENCE = "cinema-api"
 $env:KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
 $env:BOOKING_KAFKA_ENABLED = "true"
-$env:BOOKING_QUOTE_BOOKING_ENABLED = "true"
-$env:INVENTORY_POLICY_BOOKING_ENABLED = "true"
 .\mvnw.cmd -pl services/booking-service spring-boot:run
 
 ## Payment Service
@@ -229,5 +224,3 @@ Không mở lại R28 Notification đang được hoãn.
 7. **Commit message:** đưa một commit message phù hợp cho round đó.
 
 Bắt đầu bằng việc đọc tài liệu và source mới nhất, sau đó hướng dẫn round đầu tiên. Không yêu cầu tôi xác nhận trước nếu tài liệu và code đã đủ để bắt đầu.```
-
-python scripts/consolidate_inventory_migrations.py

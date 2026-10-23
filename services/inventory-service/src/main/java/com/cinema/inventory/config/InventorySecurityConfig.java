@@ -22,10 +22,6 @@ public class InventorySecurityConfig {
         "/api/v1/cinemas/management", "/api/v1/rooms/management", "/api/v1/seats/management"
     };
 
-    private static final String[] PRICING_POLICY_MANAGEMENT_ENDPOINTS = {
-        "/api/v1/cinemas/*/pricing-policies", "/api/v1/cinemas/*/pricing-policies/**"
-    };
-
     private static final String[] PUBLIC_INVENTORY_ENDPOINTS = {
         "/api/v1/cinemas",
         "/api/v1/cinemas/**",
@@ -78,8 +74,6 @@ public class InventorySecurityConfig {
                                         .permitAll()
                                         .requestMatchers("/actuator/health", "/actuator/info")
                                         .permitAll()
-                                        .requestMatchers(PRICING_POLICY_MANAGEMENT_ENDPOINTS)
-                                        .hasAuthority("inventory:manage")
                                         .requestMatchers(
                                                 HttpMethod.GET, INVENTORY_MANAGEMENT_READ_ENDPOINTS)
                                         .hasAuthority("inventory:manage")
@@ -102,16 +96,6 @@ public class InventorySecurityConfig {
                                         .hasAuthority("showtime:manage")
                                         .requestMatchers(INVENTORY_MANAGEMENT_ENDPOINTS)
                                         .hasAuthority("inventory:manage")
-                                        .requestMatchers(HttpMethod.POST, "/api/v1/booking-quotes")
-                                        .hasAuthority("booking:create")
-                                        .requestMatchers(HttpMethod.GET, "/api/v1/booking-quotes/*")
-                                        .hasAuthority("booking:create")
-                                        .requestMatchers(
-                                                HttpMethod.POST, "/api/v1/eligibility-approvals")
-                                        .hasAuthority("inventory:manage")
-                                        .requestMatchers(
-                                                HttpMethod.GET, "/api/v1/eligibility-approvals/*")
-                                        .hasAuthority("booking:create")
                                         .anyRequest()
                                         .denyAll())
                 .exceptionHandling(

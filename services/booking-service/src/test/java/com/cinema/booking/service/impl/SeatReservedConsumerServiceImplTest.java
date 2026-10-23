@@ -12,7 +12,6 @@ import static org.mockito.Mockito.when;
 import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
 import com.cinema.booking.enums.BookingStatus;
-import com.cinema.booking.event.BookingExpiredOutboxFactory;
 import com.cinema.booking.event.PaymentRequestedOutboxFactory;
 import com.cinema.booking.event.payload.ReservedSeatPayload;
 import com.cinema.booking.event.payload.SeatReservedPayload;
@@ -20,7 +19,6 @@ import com.cinema.booking.event.serialization.SeatReservedPayloadReader;
 import com.cinema.booking.event.validation.SeatReservedMessageValidator;
 import com.cinema.booking.repository.BookingRepository;
 import com.cinema.booking.repository.BookingSeatRepository;
-import com.cinema.booking.service.BookingPricingSnapshotService;
 import com.cinema.booking.service.ProcessedEventRegistrationService;
 import com.cinema.booking.service.SeatReservedConsumerService;
 import com.cinema.common.core.id.UuidGenerator;
@@ -74,14 +72,11 @@ class SeatReservedConsumerServiceImplTest {
 
     @Mock private OutboxService outboxService;
 
-    @Mock private BookingPricingSnapshotService pricingSnapshotService;
-
-    @Mock private BookingExpiredOutboxFactory bookingExpiredOutboxFactory;
-
     private SeatReservedConsumerServiceImpl service;
 
     @BeforeEach
     void setUp() {
+
         service =
                 new SeatReservedConsumerServiceImpl(
                         messageValidator,
@@ -90,10 +85,8 @@ class SeatReservedConsumerServiceImplTest {
                         bookingRepository,
                         bookingSeatRepository,
                         paymentRequestedOutboxFactory,
-                        bookingExpiredOutboxFactory,
                         outboxService,
-                        Clock.fixed(REQUESTED_INSTANT, ZoneOffset.UTC),
-                        pricingSnapshotService);
+                        Clock.fixed(REQUESTED_INSTANT, ZoneOffset.UTC));
     }
 
     @Test

@@ -1,5 +1,18 @@
 package com.cinema.inventory.service;
 
+import java.time.Clock;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
@@ -28,19 +41,6 @@ import com.cinema.inventory.repository.RoomLayoutMatrixCellRepository;
 import com.cinema.inventory.repository.RoomLayoutSeatRepository;
 import com.cinema.inventory.repository.ShowSeatRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.Clock;
-import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
 
 @Service
 public class ShowtimeSeatMapService {
@@ -71,51 +71,70 @@ public class ShowtimeSeatMapService {
         this.matrixValidator = matrixValidator;
     }
 
-    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    @Transactional(
+            readOnly = true,
+            isolation = Isolation.REPEATABLE_READ)
     public ShowtimeSeatMapResponse getSeatMap(UUID showtimeId) {
-        Showtime showtime =
-                showtimeRepository
-                        .findByIdForSeatMap(showtimeId)
-                        .orElseThrow(
-                                () -> new NotFoundException(InventoryErrorCode.SHOWTIME_NOT_FOUND));
+        Showtime showtime = showtimeRepository
+                .findByIdForSeatMap(showtimeId)
+                .orElseThrow(() -> new NotFoundException(
+                        InventoryErrorCode.SHOWTIME_NOT_FOUND));
 
         RoomLayout layout = showtime.getRoomLayout();
 
         if (layout == null) {
-            throw new ConflictException(InventoryErrorCode.SHOWTIME_LAYOUT_REQUIRED);
+            throw new ConflictException(
+                    InventoryErrorCode.SHOWTIME_LAYOUT_REQUIRED);
         }
 
         UUID roomId = showtime.getRoom().getId();
 
-        requireConsistent(roomId.equals(layout.getRoom().getId()));
+        requireConsistent(
+                roomId.equals(layout.getRoom().getId()));
 
         if (layout.getStatus() != RoomLayoutStatus.PUBLISHED) {
-            throw new ConflictException(InventoryErrorCode.ROOM_LAYOUT_NOT_PUBLISHED);
+            throw new ConflictException(
+                    InventoryErrorCode.ROOM_LAYOUT_NOT_PUBLISHED);
         }
 
         // A stored layout cannot contain only one matrix dimension.
-        requireConsistent((layout.getRowCount() == null) == (layout.getColumnCount() == null));
+        requireConsistent(
+                (layout.getRowCount() == null)
+                        == (layout.getColumnCount() == null));
 
         OffsetDateTime serverTime = OffsetDateTime.now(clock);
 
-        boolean bookable =
-                showtimeRepository.existsHoldEligibleShowtime(
-                        showtimeId, serverTime, ShowtimeStatus.OPEN_FOR_BOOKING);
+        boolean bookable = showtimeRepository
+                .existsHoldEligibleShowtime(
+                        showtimeId,
+                        serverTime,
+                        ShowtimeStatus.OPEN_FOR_BOOKING);
 
         if (layout.isMatrixLayout()) {
-            return getMatrixSeatMap(showtime, layout, serverTime, bookable);
+            return getMatrixSeatMap(
+                    showtime,
+                    layout,
+                    serverTime,
+                    bookable);
         }
 
-        return getLegacySeatMap(showtime, layout, serverTime, bookable);
+        return getLegacySeatMap(
+                showtime,
+                layout,
+                serverTime,
+                bookable);
     }
 
     private ShowtimeSeatMapResponse getMatrixSeatMap(
-            Showtime showtime, RoomLayout layout, OffsetDateTime serverTime, boolean bookable) {
+            Showtime showtime,
+            RoomLayout layout,
+            OffsetDateTime serverTime,
+            boolean bookable) {
 
         UUID roomId = showtime.getRoom().getId();
 
-        List<RoomLayoutMatrixCell> cells =
-                matrixCellRepository.findAllByLayout_IdOrderByRowIndexAscColumnIndexAsc(
+        List<RoomLayoutMatrixCell> cells = matrixCellRepository
+                .findAllByLayout_IdOrderByRowIndexAscColumnIndexAsc(
                         layout.getId());
 
         requireConsistent(!cells.isEmpty());
@@ -127,22 +146,23 @@ public class ShowtimeSeatMapService {
                     cell.getSeat() != null
                             && cell.getSeat().getId() != null
                             && cell.getSeat().getRoom() != null
-                            && roomId.equals(cell.getSeat().getRoom().getId())
+                            && roomId.equals(
+                                    cell.getSeat().getRoom().getId())
                             && cell.getSeatType() != null);
 
-            inputs.add(
-                    new MatrixSeatInput(
-                            cell.getSeat().getId(),
-                            cell.getRowIndex(),
-                            cell.getColumnIndex(),
-                            cell.getNumber(),
-                            cell.getSeatType()));
+            inputs.add(new MatrixSeatInput(
+                    cell.getSeat().getId(),
+                    cell.getRowIndex(),
+                    cell.getColumnIndex(),
+                    cell.getNumber(),
+                    cell.getSeatType()));
         }
 
         try {
-            matrixValidator.validate(
-                    new RoomLayoutMatrixInput(
-                            layout.getRowCount(), layout.getColumnCount(), inputs));
+            matrixValidator.validate(new RoomLayoutMatrixInput(
+                    layout.getRowCount(),
+                    layout.getColumnCount(),
+                    inputs));
         } catch (ValidationException exception) {
             // Invalid persisted content is a consistency conflict,
             // not invalid input supplied to this GET endpoint.
@@ -152,32 +172,40 @@ public class ShowtimeSeatMapService {
         Map<UUID, SeatSnapshot> snapshots = new HashMap<>();
 
         for (RoomLayoutMatrixCell cell : cells) {
-            String rowLabel = matrixValidator.rowLabel(cell.getRowIndex());
+            String rowLabel = matrixValidator.rowLabel(
+                    cell.getRowIndex());
 
-            SeatSnapshot snapshot =
-                    new SeatSnapshot(rowLabel + cell.getNumber(), rowLabel, cell.getSeatType());
+            SeatSnapshot snapshot = new SeatSnapshot(
+                    rowLabel + cell.getNumber(),
+                    rowLabel,
+                    cell.getSeatType());
 
-            requireConsistent(snapshots.putIfAbsent(cell.getSeat().getId(), snapshot) == null);
+            requireConsistent(
+                    snapshots.putIfAbsent(
+                            cell.getSeat().getId(),
+                            snapshot) == null);
         }
 
-        Map<UUID, ShowSeat> showSeats = readShowSeats(showtime.getId(), roomId, snapshots);
+        Map<UUID, ShowSeat> showSeats = readShowSeats(
+                showtime.getId(),
+                roomId,
+                snapshots);
 
         List<ShowtimeSeatMapSeatResponse> seats = new ArrayList<>();
 
         for (RoomLayoutMatrixCell cell : cells) {
             UUID seatId = cell.getSeat().getId();
 
-            seats.add(
-                    toSeatResponse(
-                            seatId,
-                            snapshots.get(seatId),
-                            null,
-                            cell.getRowIndex(),
-                            cell.getColumnIndex(),
-                            cell.getNumber(),
-                            cell.getSeatType().getMatrixColumnSpan(),
-                            showSeats.get(seatId),
-                            bookable));
+            seats.add(toSeatResponse(
+                    seatId,
+                    snapshots.get(seatId),
+                    null,
+                    cell.getRowIndex(),
+                    cell.getColumnIndex(),
+                    cell.getNumber(),
+                    cell.getSeatType().getMatrixColumnSpan(),
+                    showSeats.get(seatId),
+                    bookable));
         }
 
         return new ShowtimeSeatMapResponse(
@@ -191,26 +219,30 @@ public class ShowtimeSeatMapService {
                 null,
                 List.of(),
                 List.copyOf(seats),
-                new ShowtimeSeatMapMatrixResponse(layout.getRowCount(), layout.getColumnCount()));
+                new ShowtimeSeatMapMatrixResponse(
+                        layout.getRowCount(),
+                        layout.getColumnCount()));
     }
 
     private ShowtimeSeatMapResponse getLegacySeatMap(
-            Showtime showtime, RoomLayout layout, OffsetDateTime serverTime, boolean bookable) {
+            Showtime showtime,
+            RoomLayout layout,
+            OffsetDateTime serverTime,
+            boolean bookable) {
 
         UUID roomId = showtime.getRoom().getId();
 
-        List<RoomLayoutSeat> positions =
-                layoutSeatRepository.findAllForSeatMapByLayoutId(layout.getId());
+        List<RoomLayoutSeat> positions = layoutSeatRepository
+                .findAllForSeatMapByLayoutId(layout.getId());
 
-        List<RoomLayoutElement> elements =
-                layoutElementRepository.findAllByLayout_IdOrderByIdAsc(layout.getId());
+        List<RoomLayoutElement> elements = layoutElementRepository
+                .findAllByLayout_IdOrderByIdAsc(layout.getId());
 
         requireConsistent(
                 !positions.isEmpty()
-                        && elements.stream()
-                                .anyMatch(
-                                        element ->
-                                                element.getKind() == RoomLayoutElementKind.SCREEN));
+                        && elements.stream().anyMatch(
+                                element -> element.getKind()
+                                        == RoomLayoutElementKind.SCREEN));
 
         Map<UUID, SeatSnapshot> snapshots = new HashMap<>();
 
@@ -219,43 +251,50 @@ public class ShowtimeSeatMapService {
                     position.getSeat() != null
                             && position.getSeat().getId() != null
                             && position.getSeat().getRoom() != null
-                            && roomId.equals(position.getSeat().getRoom().getId())
+                            && roomId.equals(
+                                    position.getSeat().getRoom().getId())
                             && position.getGeometry() != null
                             && position.getSeatTypeSnapshot() != null
                             && hasText(position.getSeatNumberSnapshot())
                             && hasText(position.getRowLabelSnapshot()));
 
-            SeatSnapshot snapshot =
-                    new SeatSnapshot(
-                            position.getSeatNumberSnapshot(),
-                            position.getRowLabelSnapshot(),
-                            position.getSeatTypeSnapshot());
+            SeatSnapshot snapshot = new SeatSnapshot(
+                    position.getSeatNumberSnapshot(),
+                    position.getRowLabelSnapshot(),
+                    position.getSeatTypeSnapshot());
 
-            requireConsistent(snapshots.putIfAbsent(position.getSeat().getId(), snapshot) == null);
+            requireConsistent(
+                    snapshots.putIfAbsent(
+                            position.getSeat().getId(),
+                            snapshot) == null);
         }
 
-        Map<UUID, ShowSeat> showSeats = readShowSeats(showtime.getId(), roomId, snapshots);
+        Map<UUID, ShowSeat> showSeats = readShowSeats(
+                showtime.getId(),
+                roomId,
+                snapshots);
 
         List<ShowtimeSeatMapSeatResponse> seats = new ArrayList<>();
 
         for (RoomLayoutSeat position : positions) {
             UUID seatId = position.getSeat().getId();
 
-            seats.add(
-                    toSeatResponse(
-                            seatId,
-                            snapshots.get(seatId),
-                            position.getGeometry(),
-                            null,
-                            null,
-                            null,
-                            null,
-                            showSeats.get(seatId),
-                            bookable));
+            seats.add(toSeatResponse(
+                    seatId,
+                    snapshots.get(seatId),
+                    position.getGeometry(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    showSeats.get(seatId),
+                    bookable));
         }
 
         List<ShowtimeSeatMapElementResponse> elementResponses =
-                elements.stream().map(this::toElementResponse).toList();
+                elements.stream()
+                        .map(this::toElementResponse)
+                        .toList();
 
         return new ShowtimeSeatMapResponse(
                 showtime.getId(),
@@ -272,11 +311,14 @@ public class ShowtimeSeatMapService {
     }
 
     private Map<UUID, ShowSeat> readShowSeats(
-            UUID showtimeId, UUID roomId, Map<UUID, SeatSnapshot> snapshots) {
+            UUID showtimeId,
+            UUID roomId,
+            Map<UUID, SeatSnapshot> snapshots) {
 
         Map<UUID, ShowSeat> result = new HashMap<>();
 
-        for (ShowSeat showSeat : showSeatRepository.findAllForSeatMapByShowtimeId(showtimeId)) {
+        for (ShowSeat showSeat : showSeatRepository
+                .findAllForSeatMapByShowtimeId(showtimeId)) {
 
             requireConsistent(
                     showSeat.getSeat() != null
@@ -288,16 +330,19 @@ public class ShowtimeSeatMapService {
 
             requireConsistent(
                     snapshot != null
-                            && roomId.equals(showSeat.getSeat().getRoom().getId())
-                            && Objects.equals(showSeat.getSeatNumber(), snapshot.seatNumber())
-                            && showSeat.getSeatType() == snapshot.seatType()
-                            && (showSeat.getShowtime().usesPolicyPricing()
-                                    ? showSeat.getPrice() == null
-                                    : showSeat.getPrice() != null
-                                            && showSeat.getPrice().signum() >= 0)
+                            && roomId.equals(
+                                    showSeat.getSeat().getRoom().getId())
+                            && Objects.equals(
+                                    showSeat.getSeatNumber(),
+                                    snapshot.seatNumber())
+                            && showSeat.getSeatType()
+                                    == snapshot.seatType()
+                            && showSeat.getPrice() != null
+                            && showSeat.getPrice().signum() >= 0
                             && showSeat.getStatus() != null);
 
-            requireConsistent(result.putIfAbsent(seatId, showSeat) == null);
+            requireConsistent(
+                    result.putIfAbsent(seatId, showSeat) == null);
         }
 
         return result;
@@ -315,7 +360,10 @@ public class ShowtimeSeatMapService {
             boolean bookable) {
 
         boolean selectable =
-                bookable && showSeat != null && showSeat.getStatus() == ShowSeatStatus.AVAILABLE;
+                bookable
+                        && showSeat != null
+                        && showSeat.getStatus()
+                                == ShowSeatStatus.AVAILABLE;
 
         return new ShowtimeSeatMapSeatResponse(
                 seatId,
@@ -328,7 +376,9 @@ public class ShowtimeSeatMapService {
                 geometry == null ? null : geometry.getY(),
                 geometry == null ? null : geometry.getWidth(),
                 geometry == null ? null : geometry.getHeight(),
-                geometry == null ? null : geometry.getRotationDegrees(),
+                geometry == null
+                        ? null
+                        : geometry.getRotationDegrees(),
                 showSeat == null ? null : showSeat.getPrice(),
                 InventoryEventContract.CURRENCY_VND,
                 showSeat == null ? null : showSeat.getStatus(),
@@ -339,9 +389,12 @@ public class ShowtimeSeatMapService {
                 columnSpan);
     }
 
-    private ShowtimeSeatMapElementResponse toElementResponse(RoomLayoutElement element) {
+    private ShowtimeSeatMapElementResponse toElementResponse(
+            RoomLayoutElement element) {
 
-        requireConsistent(element.getKind() != null && element.getGeometry() != null);
+        requireConsistent(
+                element.getKind() != null
+                        && element.getGeometry() != null);
 
         RoomLayoutGeometry geometry = element.getGeometry();
 
@@ -367,8 +420,12 @@ public class ShowtimeSeatMapService {
     }
 
     private static ConflictException inconsistent() {
-        return new ConflictException(InventoryErrorCode.SEAT_MAP_DATA_INCONSISTENT);
+        return new ConflictException(
+                InventoryErrorCode.SEAT_MAP_DATA_INCONSISTENT);
     }
 
-    private record SeatSnapshot(String seatNumber, String rowLabel, SeatType seatType) {}
+    private record SeatSnapshot(
+            String seatNumber,
+            String rowLabel,
+            SeatType seatType) {}
 }

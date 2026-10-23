@@ -18,14 +18,8 @@ public class DefaultSeatReservedMessageValidator implements SeatReservedMessageV
     @Override
     public void validate(String partitionKey, OutboxEventMessage message) {
 
-        boolean legacyVersion =
-                BookingEventContract.SEAT_RESERVED_VERSION.equals(message.eventVersion());
-
-        boolean policyVersion =
-                BookingEventContract.SEAT_RESERVED_POLICY_VERSION.equals(message.eventVersion());
-
-        if (!legacyVersion && !policyVersion) {
-            throw new ValidationException(BookingErrorCode.EVENT_VERSION_INVALID);
+        if (message == null) {
+            throw new ValidationException(BookingErrorCode.EVENT_MESSAGE_INVALID);
         }
 
         requireUuidV7(

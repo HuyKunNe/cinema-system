@@ -3,7 +3,6 @@ package com.cinema.booking.service.impl;
 import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
 import com.cinema.booking.event.BookingEventContract;
-import com.cinema.booking.event.BookingExpiredOutboxFactory;
 import com.cinema.booking.event.PaymentRequestedOutboxFactory;
 import com.cinema.booking.event.payload.ReservedSeatPayload;
 import com.cinema.booking.event.payload.SeatReservedPayload;
@@ -12,7 +11,6 @@ import com.cinema.booking.event.validation.SeatReservedMessageValidator;
 import com.cinema.booking.exception.BookingErrorCode;
 import com.cinema.booking.repository.BookingRepository;
 import com.cinema.booking.repository.BookingSeatRepository;
-import com.cinema.booking.service.BookingPricingSnapshotService;
 import com.cinema.booking.service.ProcessedEventRegistrationService;
 import com.cinema.booking.service.SeatReservedConsumerService;
 import com.cinema.common.exception.exception.ConflictException;
@@ -55,10 +53,6 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
 
     private final OutboxService outboxService;
 
-    private final BookingPricingSnapshotService pricingSnapshotService;
-
-    private final BookingExpiredOutboxFactory bookingExpiredOutboxFactory;
-
     private final Clock clock;
 
     public SeatReservedConsumerServiceImpl(
@@ -68,10 +62,8 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
             BookingRepository bookingRepository,
             BookingSeatRepository bookingSeatRepository,
             PaymentRequestedOutboxFactory paymentRequestedOutboxFactory,
-            BookingExpiredOutboxFactory bookingExpiredOutboxFactory,
             OutboxService outboxService,
-            @Qualifier("systemClock") Clock clock,
-            BookingPricingSnapshotService pricingSnapshotService) {
+            @Qualifier("systemClock") Clock clock) {
 
         this.messageValidator = messageValidator;
         this.payloadReader = payloadReader;
@@ -81,8 +73,6 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
         this.paymentRequestedOutboxFactory = paymentRequestedOutboxFactory;
         this.outboxService = outboxService;
         this.clock = clock;
-        this.pricingSnapshotService = pricingSnapshotService;
-        this.bookingExpiredOutboxFactory = bookingExpiredOutboxFactory;
     }
 
     @Override
@@ -94,13 +84,6 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
         SeatReservedPayload payload = payloadReader.read(message);
 
         validatePayloadIdentifiers(message, payload);
-
-        boolean policyEvent =
-                BookingEventContract.SEAT_RESERVED_POLICY_VERSION.equals(message.eventVersion());
-
-        if (policyEvent != (payload.pricingQuote() != null)) {
-            throw new ValidationException(BookingErrorCode.EVENT_PAYLOAD_INVALID);
-        }
 
         boolean registered =
                 processedEventRegistrationService.register(
@@ -132,10 +115,6 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
 
         validateTotal(payload.totalAmount(), calculatedTotal);
 
-        if (policyEvent) {
-            pricingSnapshotService.apply(booking, bookingSeats, payload);
-        }
-
         booking.reserve(payload.totalAmount(), payload.currency());
 
         bookingSeatRepository.saveAll(bookingSeats);
@@ -144,14 +123,6 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
 
         OffsetDateTime requestedAt = OffsetDateTime.now(clock);
 
-        if (!savedBooking.getExpiresAt().isAfter(requestedAt)) {
-            savedBooking.expire(requestedAt);
-
-            outboxService.save(bookingExpiredOutboxFactory.create(savedBooking, requestedAt));
-
-            return Result.expired();
-        }
-        
         OutboxEventEntity paymentRequestedEvent =
                 paymentRequestedOutboxFactory.create(savedBooking, message, requestedAt);
 
@@ -194,24 +165,12 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
     private void validateBookingMatch(Booking booking, SeatReservedPayload payload) {
 
         if (!booking.getShowtimeId().equals(payload.showtimeId())) {
+
             throw mismatch();
         }
 
-        if (payload.pricingQuote() == null) {
-            // Legacy events cannot complete a policy-based booking.
-            if (booking.getPricingQuoteId() != null
-                    || !booking.getExpiresAt()
-                            .toInstant()
-                            .equals(payload.holdExpiresAt().toInstant())) {
-                throw mismatch();
-            }
+        if (!booking.getExpiresAt().equals(payload.holdExpiresAt())) {
 
-            return;
-        }
-
-        if (booking.getPricingQuoteId() == null
-                || !booking.getPricingQuoteId().equals(payload.pricingQuote().quoteId())
-                || payload.holdExpiresAt().isAfter(booking.getExpiresAt())) {
             throw mismatch();
         }
     }

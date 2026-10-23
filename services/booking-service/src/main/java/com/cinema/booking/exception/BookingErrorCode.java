@@ -308,48 +308,6 @@ public final class BookingErrorCode implements ErrorCode {
                     "BOOKING_NOT_PAYMENT_FAILED",
                     "Booking is not payment failed");
 
-    public static final BookingErrorCode QUOTE_SERVICE_UNAVAILABLE =
-            new BookingErrorCode(
-                    ErrorCategory.SYSTEM,
-                    "BOOKING_QUOTE_SERVICE_UNAVAILABLE",
-                    "Pricing service is temporarily unavailable");
-
-    public static final BookingErrorCode QUOTE_AUTHENTICATION_REQUIRED =
-            new BookingErrorCode(
-                    ErrorCategory.SECURITY,
-                    "BOOKING_QUOTE_AUTHENTICATION_REQUIRED",
-                    "Authentication is required to obtain a quote");
-
-    public static final BookingErrorCode QUOTE_ACCESS_DENIED =
-            new BookingErrorCode(
-                    ErrorCategory.SECURITY,
-                    "BOOKING_QUOTE_ACCESS_DENIED",
-                    "Quote access is denied");
-
-    public static final BookingErrorCode QUOTE_BOOKING_NOT_READY =
-            new BookingErrorCode(
-                    ErrorCategory.BUSINESS,
-                    "BOOKING_QUOTE_BOOKING_NOT_READY",
-                    "Booking from a pricing quote is not enabled");
-
-    public static final BookingErrorCode QUOTE_NOT_BOOKABLE =
-            new BookingErrorCode(
-                    ErrorCategory.BUSINESS,
-                    "BOOKING_QUOTE_NOT_BOOKABLE",
-                    "Quote is expired or was issued before the showtime opened for sale");
-
-    public static final BookingErrorCode QUOTE_ALREADY_USED =
-            new BookingErrorCode(
-                    ErrorCategory.BUSINESS,
-                    "BOOKING_QUOTE_ALREADY_USED",
-                    "Quote has already been assigned to a booking");
-
-    public static final BookingErrorCode PRICING_SNAPSHOT_INVALID =
-            new BookingErrorCode(
-                    ErrorCategory.SYSTEM,
-                    "BOOKING_PRICING_SNAPSHOT_INVALID",
-                    "Stored booking pricing snapshot is invalid");
-
     private final ErrorCategory category;
 
     private final String code;
