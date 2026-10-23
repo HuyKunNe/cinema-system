@@ -1,18 +1,24 @@
 package com.cinema.inventory.entity;
 
+import java.text.Normalizer;
+import java.time.ZoneId;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
+
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
 import com.cinema.inventory.exception.InventoryErrorCode;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-
-import java.time.ZoneId;
-import java.util.HashSet;
-import java.util.Set;
 
 @Entity
 @Table(name = "cinemas")
@@ -46,6 +52,11 @@ public class Cinema extends BaseEntity {
 
     @Column(name = "active", nullable = false)
     private boolean active = true;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "cinema_amenities", joinColumns = @JoinColumn(name = "cinema_id"))
+    @Column(name = "amenity", nullable = false, length = 100)
+    private Set<String> amenities = new HashSet<>();
 
     @OneToMany(mappedBy = "cinema", fetch = FetchType.LAZY)
     private Set<Room> rooms = new HashSet<>();
@@ -160,6 +171,49 @@ public class Cinema extends BaseEntity {
 
     public boolean isActive() {
         return active;
+    }
+
+    public Set<String> getAmenities() {
+        return Set.copyOf(amenities);
+    }
+
+    public void replaceAmenities(Collection<String> values) {
+        if (values == null || values.size() > 30) {
+            throw invalidAmenities();
+        }
+
+        Set<String> normalizedAmenities = new HashSet<>();
+        Set<String> normalizedKeys = new HashSet<>();
+
+        for (String value : values) {
+            if (value == null) {
+                throw invalidAmenities();
+            }
+
+            String normalized =
+                    Normalizer.normalize(
+                            value.replaceAll("(?U)\\s+", " ").trim(), Normalizer.Form.NFC);
+
+            if (normalized.isEmpty()
+                    || normalized.length() > 100
+                    || !normalizedKeys.add(normalized.toLowerCase(Locale.ROOT))) {
+
+                throw invalidAmenities();
+            }
+
+            normalizedAmenities.add(normalized);
+        }
+
+        if (amenities.equals(normalizedAmenities)) {
+            return;
+        }
+
+        amenities.clear();
+        amenities.addAll(normalizedAmenities);
+    }
+
+    private static ValidationException invalidAmenities() {
+        return new ValidationException(InventoryErrorCode.CINEMA_AMENITIES_INVALID);
     }
 
     public void activate() {

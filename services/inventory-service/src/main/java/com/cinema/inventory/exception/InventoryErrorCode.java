@@ -508,6 +508,18 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_ROOM_VERSION_CONFLICT",
                     "Room has changed; reload before saving");
 
+    public static final InventoryErrorCode CINEMA_AMENITIES_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_CINEMA_AMENITIES_INVALID",
+                    "Cinema amenities are invalid");
+
+    public static final InventoryErrorCode CINEMA_VERSION_CONFLICT =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_CINEMA_VERSION_CONFLICT",
+                    "Cinema has changed; reload before saving");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;
