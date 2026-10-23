@@ -344,6 +344,12 @@ public final class BookingErrorCode implements ErrorCode {
                     "BOOKING_QUOTE_ALREADY_USED",
                     "Quote has already been assigned to a booking");
 
+    public static final BookingErrorCode PRICING_SNAPSHOT_INVALID =
+            new BookingErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "BOOKING_PRICING_SNAPSHOT_INVALID",
+                    "Stored booking pricing snapshot is invalid");
+
     private final ErrorCategory category;
 
     private final String code;

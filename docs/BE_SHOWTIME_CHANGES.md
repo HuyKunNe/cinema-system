@@ -469,3 +469,17 @@ feat(pricing): support cinema fare matrices by format and ticket category
 - BOOKING_QUOTE_BOOKING_ENABLED và INVENTORY_POLICY_BOOKING_ENABLED
   mặc định false; bật sau khi triển khai đầy đủ hai service.
 - Các category cần xác minh vẫn yêu cầu verifier thực tế.
+
+## Booking response trả snapshot giá
+
+- BookingResponse bổ sung pricingQuoteId và pricing.
+- pricing chỉ được tạo từ pricing_quote_snapshot_json đã lưu.
+- Không đọc policy hiện hành hoặc tính lại tariff khi xem booking.
+- Booking legacy trả hai field null.
+- Booking từ quote chưa có reservation thành công trả pricing=null.
+- Snapshot tiếp tục được trả sau khi quote hết hạn.
+- Response có policy version, category thực dùng, fare rule,
+  fare unit và giá từng dòng.
+- COUPLE/PER_PAIR là giá cả cặp, không nhân thêm capacity.
+- Không trả eligibility evidence references trong booking response.
+- Không thay đổi giá hoặc snapshot booking lịch sử.
