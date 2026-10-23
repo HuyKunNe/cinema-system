@@ -1,15 +1,23 @@
 package com.cinema.inventory.dto.request;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record UpdateCinemaRequest(
         @NotBlank @Size(max = 150) String name,
-
         @NotBlank @Size(max = 500) String address,
-
         @NotBlank @Size(max = 100) String city,
+        @NotNull Boolean active,
+        @Size(max = 32) String phone,
+        @Email @Size(max = 254) String email,
+        @Size(max = 150) String openingHours,
+        @Size(max = 1000) String directions,
+        @Size(max = 64) String timeZone) {
 
-        @NotNull Boolean active) {
+    public UpdateCinemaRequest(String name, String address, String city, Boolean active) {
+
+        this(name, address, city, active, null, null, null, null, null);
+    }
 }

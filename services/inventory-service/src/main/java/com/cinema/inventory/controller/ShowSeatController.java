@@ -7,6 +7,11 @@ import com.cinema.inventory.dto.response.ShowSeatResponse;
 import com.cinema.inventory.service.ShowSeatService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import jakarta.validation.Valid;
 
@@ -102,6 +107,45 @@ public class ShowSeatController {
         return ResponseEntity.ok(showSeatService.release(showSeatId, request));
     }
 
+    @Operation(
+            operationId = "makeShowSeatUnavailable",
+            summary = "Make an unreserved show seat unavailable",
+            description =
+                    """
+                    Requires inventory:manage.
+
+                    AVAILABLE changes to UNAVAILABLE.
+                    An already UNAVAILABLE seat returns its current state.
+
+                    HELD and BOOKED seats are rejected without changing
+                    reservation ownership or expiration.
+
+                    An expired HELD seat must first be released through
+                    the reservation lifecycle.
+                    """)
+    @SecurityRequirement(
+            name = "oauth2",
+            scopes = {"inventory:manage"})
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "200",
+                description = "Seat is unavailable, including repeated requests",
+                content = @Content(schema = @Schema(implementation = ShowSeatResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid UUID"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Insufficient authority"),
+        @ApiResponse(responseCode = "404", description = "Show seat not found"),
+        @ApiResponse(
+                responseCode = "409",
+                description = "Seat is HELD or BOOKED",
+                content =
+                        @Content(
+                                schema =
+                                        @Schema(
+                                                implementation =
+                                                        com.cinema.common.response.model.ApiResponse
+                                                                .class)))
+    })
     @PutMapping("/{showSeatId}/unavailable")
     public ResponseEntity<ShowSeatResponse> makeUnavailable(
             @PathVariable("showSeatId") UUID showSeatId) {
@@ -109,6 +153,45 @@ public class ShowSeatController {
         return ResponseEntity.ok(showSeatService.makeUnavailable(showSeatId));
     }
 
+    @Operation(
+            operationId = "makeShowSeatAvailable",
+            summary = "Make an unreserved show seat available",
+            description =
+                    """
+                    Requires inventory:manage.
+
+                    UNAVAILABLE changes to AVAILABLE.
+                    An already AVAILABLE seat returns its current state.
+
+                    HELD and BOOKED seats are rejected without changing
+                    reservation ownership or expiration.
+
+                    This operation does not cancel a booking
+                    or release a reservation.
+                    """)
+    @SecurityRequirement(
+            name = "oauth2",
+            scopes = {"inventory:manage"})
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "200",
+                description = "Seat is available, including repeated requests",
+                content = @Content(schema = @Schema(implementation = ShowSeatResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid UUID"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Insufficient authority"),
+        @ApiResponse(responseCode = "404", description = "Show seat not found"),
+        @ApiResponse(
+                responseCode = "409",
+                description = "Seat is HELD or BOOKED",
+                content =
+                        @Content(
+                                schema =
+                                        @Schema(
+                                                implementation =
+                                                        com.cinema.common.response.model.ApiResponse
+                                                                .class)))
+    })
     @PutMapping("/{showSeatId}/available")
     public ResponseEntity<ShowSeatResponse> makeAvailable(
             @PathVariable("showSeatId") UUID showSeatId) {

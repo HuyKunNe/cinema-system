@@ -188,13 +188,35 @@ public class ShowSeat extends BaseEntity {
     }
 
     public void makeUnavailable() {
+        requireAdministrativeAvailabilityChange();
+
+        if (status == ShowSeatStatus.UNAVAILABLE) {
+            return;
+        }
+
         status = ShowSeatStatus.UNAVAILABLE;
         clearHold();
     }
 
     public void makeAvailable() {
+        requireAdministrativeAvailabilityChange();
+
+        if (status == ShowSeatStatus.AVAILABLE) {
+            return;
+        }
+
         status = ShowSeatStatus.AVAILABLE;
         clearHold();
+    }
+
+    private void requireAdministrativeAvailabilityChange() {
+        if (status == ShowSeatStatus.HELD) {
+            throw new ConflictException(InventoryErrorCode.HELD_SHOW_SEAT_CANNOT_BE_CHANGED);
+        }
+
+        if (status == ShowSeatStatus.BOOKED) {
+            throw new ConflictException(InventoryErrorCode.BOOKED_SHOW_SEAT_CANNOT_BE_CHANGED);
+        }
     }
 
     public boolean isHeldBy(UUID bookingId) {

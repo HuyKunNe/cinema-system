@@ -478,6 +478,24 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_SEAT_LAYOUT_METADATA_READ_ONLY",
                     "Edit seat numbers and types in a new layout draft");
 
+    public static final InventoryErrorCode HELD_SHOW_SEAT_CANNOT_BE_CHANGED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_HELD_SHOW_SEAT_CANNOT_BE_CHANGED",
+                    "Held show seat cannot be changed by availability administration");
+
+    public static final InventoryErrorCode CINEMA_TIME_ZONE_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_CINEMA_TIME_ZONE_INVALID",
+                    "Cinema time zone must be a supported named time zone");
+
+    public static final InventoryErrorCode CINEMA_PUBLIC_DETAILS_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_CINEMA_PUBLIC_DETAILS_INVALID",
+                    "Cinema public details are invalid");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

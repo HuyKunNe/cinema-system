@@ -1,8 +1,13 @@
 package com.cinema.inventory.controller;
 
-import java.net.URI;
-import java.util.List;
-import java.util.UUID;
+import com.cinema.inventory.dto.request.CreateCinemaRequest;
+import com.cinema.inventory.dto.request.UpdateCinemaRequest;
+import com.cinema.inventory.dto.response.CinemaResponse;
+import com.cinema.inventory.service.CinemaService;
+
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
+import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,14 +19,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.cinema.inventory.dto.request.CreateCinemaRequest;
-import com.cinema.inventory.dto.request.UpdateCinemaRequest;
-import com.cinema.inventory.dto.response.CinemaResponse;
-import com.cinema.inventory.service.CinemaService;
-
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import jakarta.validation.Valid;
+import java.net.URI;
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/cinemas")
@@ -34,6 +34,9 @@ public class CinemaController {
     }
 
     @PostMapping
+    @SecurityRequirement(
+            name = "oauth2",
+            scopes = {"inventory:manage"})
     public ResponseEntity<CinemaResponse> create(@Valid @RequestBody CreateCinemaRequest request) {
 
         CinemaResponse response = cinemaService.create(request);
@@ -55,16 +58,10 @@ public class CinemaController {
         return ResponseEntity.ok(cinemaService.getActiveCinemas(city));
     }
 
-    @Operation(
-            operationId = "getManagedCinemas",
-            summary = "List cinemas for inventory management",
-            description = "Omit active to include both active and inactive cinemas.",
-            security = {
-                @SecurityRequirement(
-                        name = "oauth2",
-                        scopes = {"inventory:manage"})
-            })
     @GetMapping("/management")
+    @SecurityRequirement(
+            name = "oauth2",
+            scopes = {"inventory:manage"})
     public ResponseEntity<List<CinemaResponse>> getManagedCinemas(
             @RequestParam(name = "city", required = false) String city,
             @RequestParam(name = "active", required = false) Boolean active) {
@@ -73,6 +70,9 @@ public class CinemaController {
     }
 
     @PutMapping("/{cinemaId}")
+    @SecurityRequirement(
+            name = "oauth2",
+            scopes = {"inventory:manage"})
     public ResponseEntity<CinemaResponse> update(
             @PathVariable("cinemaId") UUID cinemaId,
             @Valid @RequestBody UpdateCinemaRequest request) {
