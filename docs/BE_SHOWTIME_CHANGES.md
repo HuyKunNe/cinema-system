@@ -3,6 +3,12 @@
 > Bản thay thế cho đề xuất giá suất chiếu cũ. Repository BE chỉ đọc; hãy tự chép nội dung đã duyệt vào tài liệu tương ứng trong repo `cinema-system`.
 >
 > Ảnh tham khảo nhận diện thương hiệu CGV. Giá dưới đây chỉ mô tả dữ liệu đọc từ ảnh, không mặc định là giá áp dụng cho mọi rạp của dự án. Cần nghiệp vụ xác nhận rạp, chi nhánh, ngày hiệu lực và điều kiện trước khi nhập dữ liệu.
+> Contract hiện hành: [PRICING_API_CONTRACT.md](PRICING_API_CONTRACT.md).
+>
+> Tài liệu này giữ lại lịch sử đề xuất và tiến độ các round.
+> Các ví dụ phụ thu, first-show flag, payload quote cũ và dòng trạng thái
+> “chưa triển khai” phải được đối chiếu với contract hiện hành và source.
+> Không dùng các phần lịch sử đó làm contract tích hợp mới.
 
 ## 1. Mục tiêu và quyết định mô hình
 

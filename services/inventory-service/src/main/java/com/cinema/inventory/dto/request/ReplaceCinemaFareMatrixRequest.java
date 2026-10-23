@@ -1,11 +1,5 @@
 package com.cinema.inventory.dto.request;
 
-import java.io.IOException;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Set;
-
 import com.cinema.inventory.dto.request.ReplaceCinemaPricingPolicyContentRequest.StrictIntegerDeserializer;
 import com.cinema.inventory.dto.request.ReplaceCinemaPricingPolicyContentRequest.StrictLongDeserializer;
 import com.cinema.inventory.enums.AdvanceScreeningCondition;
@@ -19,6 +13,7 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -27,6 +22,12 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+
+import java.io.IOException;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Set;
 
 public record ReplaceCinemaFareMatrixRequest(
         @NotNull @PositiveOrZero @JsonDeserialize(using = StrictLongDeserializer.class)
@@ -38,15 +39,46 @@ public record ReplaceCinemaFareMatrixRequest(
     public record DayGroupInput(
             @NotBlank @Size(max = 64) String code,
             @NotBlank @Size(max = 150) String name,
-            @NotNull @Size(max = 7) Set<@NotNull DayOfWeek> daysOfWeek,
-            @NotNull Boolean includesHolidays) {}
+            @NotNull
+                    @Size(max = 7)
+                    @Schema(
+                            description =
+                                    "Các thứ áp dụng khi ngày chiếu không phải ngày lễ. "
+                                            + "Có thể rỗng nếu includesHolidays=true.")
+                    Set<@NotNull DayOfWeek> daysOfWeek,
+            @NotNull
+                    @Schema(
+                            description =
+                                    "Có áp dụng vào ngày lễ đã khai báo trong policy hay không."
+                                        + " Ngày lễ chỉ xét includesHolidays, bỏ qua thứ trong"
+                                        + " tuần. Để tạo nhóm chỉ dành cho lễ/Tết: daysOfWeek=[] và"
+                                        + " includesHolidays=true.")
+                    Boolean includesHolidays) {}
 
     public record TimeBandInput(
             @NotBlank @Size(max = 64) String code,
             @NotBlank @Size(max = 150) String name,
-            @NotNull @Min(0) @Max(1439) @JsonDeserialize(using = StrictIntegerDeserializer.class)
+            @NotNull
+                    @Min(0)
+                    @Max(1439)
+                    @JsonDeserialize(using = StrictIntegerDeserializer.class)
+                    @Schema(
+                            description =
+                                    "Phút bắt đầu, được bao gồm, theo timezone snapshot của policy."
+                                        + " 17:00 tương ứng 1020.",
+                            example = "1020")
                     Integer fromMinute,
-            @NotNull @Min(1) @Max(1440) @JsonDeserialize(using = StrictIntegerDeserializer.class)
+            @NotNull
+                    @Min(1)
+                    @Max(1440)
+                    @JsonDeserialize(using = StrictIntegerDeserializer.class)
+                    @Schema(
+                            description =
+                                    "Phút kết thúc, không được bao gồm. "
+                                            + "Phải lớn hơn fromMinute. "
+                                            + "1440 biểu diễn hết ngày; không hỗ trợ khung giờ "
+                                            + "đi qua nửa đêm trong một dòng.",
+                            example = "1440")
                     Integer toMinute) {}
 
     public record FareRuleInput(
