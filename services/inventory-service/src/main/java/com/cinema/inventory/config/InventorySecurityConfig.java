@@ -106,6 +106,12 @@ public class InventorySecurityConfig {
                                         .hasAuthority("booking:create")
                                         .requestMatchers(HttpMethod.GET, "/api/v1/booking-quotes/*")
                                         .hasAuthority("booking:create")
+                                        .requestMatchers(
+                                                HttpMethod.POST, "/api/v1/eligibility-approvals")
+                                        .hasAuthority("inventory:manage")
+                                        .requestMatchers(
+                                                HttpMethod.GET, "/api/v1/eligibility-approvals/*")
+                                        .hasAuthority("booking:create")
                                         .anyRequest()
                                         .denyAll())
                 .exceptionHandling(

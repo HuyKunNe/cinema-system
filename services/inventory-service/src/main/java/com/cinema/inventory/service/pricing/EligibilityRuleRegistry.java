@@ -3,6 +3,7 @@ package com.cinema.inventory.service.pricing;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.inventory.exception.InventoryErrorCode;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -13,8 +14,13 @@ import java.util.Map;
 public class EligibilityRuleRegistry {
 
     private final Map<String, EligibilityRule> rules;
+    private final ManualTicketEligibilityService manualEligibilityService;
 
-    public EligibilityRuleRegistry(List<EligibilityRule> configuredRules) {
+    @Autowired
+    public EligibilityRuleRegistry(
+            List<EligibilityRule> configuredRules,
+            ManualTicketEligibilityService manualEligibilityService) {
+
         Map<String, EligibilityRule> indexed = new HashMap<>();
 
         for (EligibilityRule rule : configuredRules) {
@@ -23,22 +29,42 @@ public class EligibilityRuleRegistry {
             if (code == null
                     || !code.matches("[A-Z][A-Z0-9_]{0,63}")
                     || indexed.putIfAbsent(code, rule) != null) {
-                throw new IllegalStateException("Invalid or duplicate eligibility rule code");
+
+                throw new IllegalStateException(
+                        "Invalid or duplicate eligibility rule code");
             }
         }
 
         this.rules = Map.copyOf(indexed);
+        this.manualEligibilityService = manualEligibilityService;
     }
 
-    public EligibilityRule.Decision verify(String code, EligibilityRule.Context context) {
+    public EligibilityRuleRegistry(
+            List<EligibilityRule> configuredRules) {
+
+        this(configuredRules, null);
+    }
+
+    public EligibilityRule.Decision verify(
+            String code,
+            EligibilityRule.Context context) {
 
         EligibilityRule rule = rules.get(code);
+        EligibilityRule.Decision decision;
 
-        if (rule == null || !rule.supportsCapacity(context.capacity())) {
-            throw unavailable();
+        if (rule != null) {
+            if (!rule.supportsCapacity(context.capacity())) {
+                throw unavailable();
+            }
+
+            decision = rule.verify(context);
+        } else {
+            if (manualEligibilityService == null) {
+                throw unavailable();
+            }
+
+            decision = manualEligibilityService.verify(code, context);
         }
-
-        EligibilityRule.Decision decision = rule.verify(context);
 
         if (decision == null) {
             throw unavailable();
@@ -49,7 +75,9 @@ public class EligibilityRuleRegistry {
                         || decision.reference().isBlank()
                         || decision.reference().length() > 200
                         || (decision.validUntil() != null
-                                && !decision.validUntil().isAfter(context.checkedAt())))) {
+                                && !decision.validUntil()
+                                        .isAfter(context.checkedAt())))) {
+
             throw unavailable();
         }
 
@@ -57,6 +85,7 @@ public class EligibilityRuleRegistry {
     }
 
     private static ConflictException unavailable() {
-        return new ConflictException(InventoryErrorCode.QUOTE_ELIGIBILITY_UNAVAILABLE);
+        return new ConflictException(
+                InventoryErrorCode.QUOTE_ELIGIBILITY_UNAVAILABLE);
     }
 }

@@ -126,8 +126,11 @@ public class DraftFareMatrixCoverageService {
 
         context = categoryResolution.context();
 
-        categorySimulationGuard.requireForSimulation(context);
+        var category = categorySimulationGuard.requireForSimulation(context);
+
         PricingSeatType seatType = seatTypeSimulationGuard.requireForSimulation(context);
+
+        CategoryDiscountEligibilityGuard.requireAllowed(category, seatType.getPhysicalSeatType());
         var saleScope = saleScopeResolver.resolve(context);
 
         List<FareRule> rules =

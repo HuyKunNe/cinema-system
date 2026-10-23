@@ -1,18 +1,5 @@
 package com.cinema.inventory.service.pricing;
 
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.inventory.dto.request.ReviewCinemaPricingPolicyRequest;
@@ -33,6 +20,7 @@ import com.cinema.inventory.enums.ExperienceType;
 import com.cinema.inventory.enums.FareSurchargeMode;
 import com.cinema.inventory.enums.FareUnit;
 import com.cinema.inventory.enums.PricingSeatMappingStatus;
+import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.TicketEligibilityMode;
 import com.cinema.inventory.enums.TicketPricingRole;
 import com.cinema.inventory.exception.InventoryErrorCode;
@@ -46,6 +34,19 @@ import com.cinema.inventory.repository.PricingSaleScopeRepository;
 import com.cinema.inventory.repository.PricingSeatTypeRepository;
 import com.cinema.inventory.repository.PricingTicketCategoryRepository;
 import com.cinema.inventory.repository.PricingTimeBandRepository;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class DraftFareMatrixReviewService {
@@ -139,6 +140,7 @@ public class DraftFareMatrixReviewService {
         checkPeriodsAndUnits(policy, fareRules, holidays, report);
         checkTicketCategories(ticketCategories, fareRules, report);
         checkCategoryPricingRules(ticketCategories, fareRules, saleScopes, report);
+        checkCategoryDiscountSeats(ticketCategories, seatTypes, fareRules, saleScopes, report);
         checkFareSurcharges(policy, fareSurcharges, report);
         checkSeatTypes(seatTypes, fareRules, report);
         checkSaleScopes(saleScopes, dayGroups, timeBands, ticketCategories, seatTypes, report);
@@ -327,6 +329,16 @@ public class DraftFareMatrixReviewService {
 
         for (PricingTicketCategory category : ticketCategories) {
             categoriesByCode.put(category.getCode(), category);
+
+            if (category.getPricingRole() == TicketPricingRole.CATEGORY_DISCOUNT
+                    && category.getEligibilityMode() != TicketEligibilityMode.RULE_REQUIRED) {
+
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "CATEGORY_DISCOUNT_REQUIRES_ELIGIBILITY",
+                        "Category discounts require verified attendee eligibility.",
+                        category.getId());
+            }
 
             if (category.getEligibilityMode() == TicketEligibilityMode.UNCONFIRMED) {
                 report.add(
@@ -635,6 +647,57 @@ public class DraftFareMatrixReviewService {
                         "TIME_BAND_UNUSED",
                         "The time band is not referenced by any fare rule.",
                         timeBand.getId());
+            }
+        }
+    }
+
+    private void checkCategoryDiscountSeats(
+            List<PricingTicketCategory> ticketCategories,
+            List<PricingSeatType> seatTypes,
+            List<FareRule> fareRules,
+            List<PricingSaleScope> saleScopes,
+            IssueCollector report) {
+
+        Set<String> discountCodes =
+                ticketCategories.stream()
+                        .filter(
+                                category ->
+                                        category.getPricingRole()
+                                                == TicketPricingRole.CATEGORY_DISCOUNT)
+                        .map(PricingTicketCategory::getCode)
+                        .collect(Collectors.toSet());
+
+        Set<String> coupleCodes =
+                seatTypes.stream()
+                        .filter(
+                                type ->
+                                        type.getMappingStatus()
+                                                == PricingSeatMappingStatus.CONFIRMED)
+                        .filter(type -> type.getPhysicalSeatType() == SeatType.COUPLE)
+                        .map(PricingSeatType::getCode)
+                        .collect(Collectors.toSet());
+
+        for (FareRule fare : fareRules) {
+            if (discountCodes.contains(fare.getTicketCategoryCode())
+                    && coupleCodes.contains(fare.getSeatTypeCode())) {
+
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "CATEGORY_DISCOUNT_COUPLE_NOT_ALLOWED",
+                        "Category discounts cannot be configured for COUPLE seats.",
+                        fare.getId());
+            }
+        }
+
+        for (PricingSaleScope scope : saleScopes) {
+            if (discountCodes.contains(scope.getTicketCategoryCode())
+                    && coupleCodes.contains(scope.getSeatTypeCode())) {
+
+                report.add(
+                        MatrixReviewSeverity.ERROR,
+                        "CATEGORY_DISCOUNT_COUPLE_NOT_ALLOWED",
+                        "Category discount sale scopes cannot include COUPLE seats.",
+                        scope.getId());
             }
         }
     }

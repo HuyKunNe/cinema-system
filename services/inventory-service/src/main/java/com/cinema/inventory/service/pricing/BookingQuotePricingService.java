@@ -226,6 +226,7 @@ public class BookingQuotePricingService {
                             policy,
                             seats.get(item.showSeatId()),
                             item.ticketCategoryCode(),
+                            item.eligibilityApprovalId(),
                             localStartsAt,
                             holiday,
                             now,
@@ -295,6 +296,7 @@ public class BookingQuotePricingService {
             CinemaPricingPolicy policy,
             ShowSeat seat,
             String requestedCategory,
+            UUID eligibilityApprovalId,
             OffsetDateTime localStartsAt,
             boolean holiday,
             OffsetDateTime now,
@@ -348,6 +350,8 @@ public class BookingQuotePricingService {
                     InventoryErrorCode.PRICING_TICKET_CATEGORY_ELIGIBILITY_UNCONFIRMED);
         }
 
+        CategoryDiscountEligibilityGuard.requireAllowed(category, seat.getSeatType());
+
         if (!scopeResolver.resolve(initialContext).allowsMinute(initialContext.minuteOfDay())) {
             throw new ConflictException(InventoryErrorCode.PRICING_SCENARIO_NOT_FOR_SALE);
         }
@@ -370,7 +374,9 @@ public class BookingQuotePricingService {
                         seat.getId(),
                         seat.getSeatType().getCapacity(),
                         localStartsAt,
-                        now);
+                        now,
+                        eligibilityApprovalId,
+                        category.getCode());
 
         // Category eligibility is mandatory before selecting a fare.
         if (category.getEligibilityMode() == TicketEligibilityMode.RULE_REQUIRED) {

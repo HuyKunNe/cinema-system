@@ -19,7 +19,21 @@ public interface EligibilityRule {
             UUID showSeatId,
             int capacity,
             OffsetDateTime localStartsAt,
-            OffsetDateTime checkedAt) {}
+            OffsetDateTime checkedAt,
+            UUID eligibilityApprovalId,
+            String ticketCategoryCode) {
+
+        public Context(
+                UUID userId,
+                UUID showtimeId,
+                UUID showSeatId,
+                int capacity,
+                OffsetDateTime localStartsAt,
+                OffsetDateTime checkedAt) {
+
+            this(userId, showtimeId, showSeatId, capacity, localStartsAt, checkedAt, null, null);
+        }
+    }
 
     record Decision(boolean eligible, String reference, OffsetDateTime validUntil) {}
 }

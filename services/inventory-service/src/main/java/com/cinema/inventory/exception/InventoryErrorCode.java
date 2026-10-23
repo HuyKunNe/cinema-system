@@ -886,6 +886,24 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_QUOTE_STALE",
                     "Showtime has changed; request a new pricing quote");
 
+    public static final InventoryErrorCode ELIGIBILITY_APPROVAL_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_ELIGIBILITY_APPROVAL_INVALID",
+                    "Eligibility approval data is invalid");
+
+    public static final InventoryErrorCode ELIGIBILITY_APPROVAL_NOT_FOUND =
+            new InventoryErrorCode(
+                    ErrorCategory.RESOURCE,
+                    "INVENTORY_ELIGIBILITY_APPROVAL_NOT_FOUND",
+                    "Eligibility approval not found");
+
+    public static final InventoryErrorCode CATEGORY_DISCOUNT_COUPLE_NOT_ALLOWED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_CATEGORY_DISCOUNT_COUPLE_NOT_ALLOWED",
+                    "Category discounts are not available for COUPLE seats");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;
