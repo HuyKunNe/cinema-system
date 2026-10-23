@@ -1,5 +1,20 @@
 package com.cinema.movie.service.impl;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.cinema.common.api.mapper.PageResponseMapper;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
@@ -20,21 +35,6 @@ import com.cinema.movie.repository.GenreRepository;
 import com.cinema.movie.repository.MovieRepository;
 import com.cinema.movie.service.MovieCatalogMovieIdFilter;
 import com.cinema.movie.service.MovieService;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -217,7 +217,14 @@ public class MovieServiceImpl implements MovieService {
     @Override
     @Transactional
     public void delete(UUID id) {
-        Movie movie = findMovie(id);
+        Movie movie =
+                movieRepository
+                        .findByIdForUpdate(id)
+                        .orElseThrow(() -> new NotFoundException(MovieErrorCode.MOVIE_NOT_FOUND));
+
+        if (movieRepository.existsScreeningVersions(id)) {
+            throw new ConflictException(MovieErrorCode.MOVIE_HAS_SCREENING_VERSIONS);
+        }
 
         movieRepository.delete(movie);
     }

@@ -1,7 +1,5 @@
 package com.cinema.inventory.enums;
 
-public package com.cinema.inventory.enums;
-
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -30,9 +28,6 @@ public enum ContentFormat {
             }
         }
 
-        throw new ValidationException(
-                InventoryErrorCode.ROOM_CONTENT_FORMATS_INVALID);
+        throw new ValidationException(InventoryErrorCode.ROOM_CONTENT_FORMATS_INVALID);
     }
-} {
-
 }

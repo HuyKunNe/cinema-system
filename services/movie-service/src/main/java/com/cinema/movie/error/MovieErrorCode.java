@@ -49,6 +49,26 @@ public enum MovieErrorCode implements ErrorCode {
             "Catalog page or size is outside the supported range",
             ErrorCategory.VALIDATION),
 
+    INVALID_SCREENING_VERSION(
+            "INVALID_MOVIE_SCREENING_VERSION",
+            "Movie screening version data is invalid",
+            ErrorCategory.VALIDATION),
+
+    SCREENING_VERSION_NOT_FOUND(
+            "MOVIE_SCREENING_VERSION_NOT_FOUND",
+            "Movie screening version not found",
+            ErrorCategory.RESOURCE),
+
+    SCREENING_VERSION_CONFLICT(
+            "MOVIE_SCREENING_VERSION_CONFLICT",
+            "Movie screening version has changed; reload before saving",
+            ErrorCategory.BUSINESS),
+
+    MOVIE_HAS_SCREENING_VERSIONS(
+            "MOVIE_HAS_SCREENING_VERSIONS",
+            "Movie has screening versions and cannot be deleted",
+            ErrorCategory.BUSINESS),
+
     INVALID_CATALOG_MOVIE_IDS(
             "INVALID_CATALOG_MOVIE_IDS",
             "Catalog movie ID filter contains null IDs or exceeds the supported limit",
