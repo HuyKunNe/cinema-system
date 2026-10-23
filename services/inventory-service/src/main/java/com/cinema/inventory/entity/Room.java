@@ -1,12 +1,14 @@
 package com.cinema.inventory.entity;
 
-import java.util.HashSet;
-import java.util.Set;
-
+import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
+import com.cinema.inventory.enums.ContentFormat;
 import com.cinema.inventory.enums.RoomType;
+import com.cinema.inventory.exception.InventoryErrorCode;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -15,6 +17,10 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 
 @Entity
 @Table(name = "rooms")
@@ -34,19 +40,23 @@ public class Room extends BaseEntity {
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "room_supported_content_formats",
+            joinColumns = @JoinColumn(name = "room_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "content_format", nullable = false, length = 20)
+    private Set<ContentFormat> supportedContentFormats = new HashSet<>();
+
     @OneToMany(mappedBy = "room", fetch = FetchType.LAZY)
     private Set<Seat> seats = new HashSet<>();
 
     @OneToMany(mappedBy = "room", fetch = FetchType.LAZY)
     private Set<Showtime> showtimes = new HashSet<>();
 
-    protected Room() {
-    }
+    protected Room() {}
 
-    public Room(
-            Cinema cinema,
-            String name,
-            RoomType roomType) {
+    public Room(Cinema cinema, String name, RoomType roomType) {
 
         this.cinema = cinema;
         this.name = name;
@@ -114,5 +124,23 @@ public class Room extends BaseEntity {
 
         showtimes.add(showtime);
         showtime.assignRoom(this);
+    }
+
+    public Set<ContentFormat> getSupportedContentFormats() {
+        return Set.copyOf(supportedContentFormats);
+    }
+
+    public void replaceSupportedContentFormats(Set<ContentFormat> formats) {
+        if (formats == null || formats.stream().anyMatch(Objects::isNull)) {
+
+            throw new ValidationException(InventoryErrorCode.ROOM_CONTENT_FORMATS_INVALID);
+        }
+
+        if (supportedContentFormats.equals(formats)) {
+            return;
+        }
+
+        supportedContentFormats.clear();
+        supportedContentFormats.addAll(formats);
     }
 }

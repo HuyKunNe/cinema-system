@@ -496,6 +496,18 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_CINEMA_PUBLIC_DETAILS_INVALID",
                     "Cinema public details are invalid");
 
+    public static final InventoryErrorCode ROOM_CONTENT_FORMATS_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_ROOM_CONTENT_FORMATS_INVALID",
+                    "Room content formats are invalid");
+
+    public static final InventoryErrorCode ROOM_VERSION_CONFLICT =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_ROOM_VERSION_CONFLICT",
+                    "Room has changed; reload before saving");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;
