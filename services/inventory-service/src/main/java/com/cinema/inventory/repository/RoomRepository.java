@@ -4,6 +4,7 @@ import com.cinema.inventory.entity.Room;
 
 import jakarta.persistence.LockModeType;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -15,19 +16,37 @@ import java.util.UUID;
 
 public interface RoomRepository extends JpaRepository<Room, UUID> {
 
+    @Override
+    @EntityGraph(attributePaths = "supportedContentFormats")
+    Optional<Room> findById(UUID id);
+
+    @EntityGraph(attributePaths = "supportedContentFormats")
     List<Room> findAllByCinema_IdOrderByNameAsc(UUID cinemaId);
 
-    List<Room> findAllByCinema_IdAndActiveTrueOrderByNameAsc(UUID cinemaId);
+    @EntityGraph(attributePaths = "supportedContentFormats")
+    List<Room> findAllByCinema_IdAndActiveTrueOrderByNameAsc(
+            UUID cinemaId);
 
-    boolean existsByCinema_IdAndNameIgnoreCase(UUID cinemaId, String name);
+    boolean existsByCinema_IdAndNameIgnoreCase(
+            UUID cinemaId,
+            String name);
 
-    boolean existsByCinema_IdAndNameIgnoreCaseAndIdNot(UUID cinemaId, String name, UUID id);
+    boolean existsByCinema_IdAndNameIgnoreCaseAndIdNot(
+            UUID cinemaId,
+            String name,
+            UUID id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select room from Room room where room.id = :roomId")
-    Optional<Room> findByIdForUpdate(@Param("roomId") UUID roomId);
+    Optional<Room> findByIdForUpdate(
+            @Param("roomId") UUID roomId);
 
-    List<Room> findAllByCinema_IdOrderByNameAscIdAsc(UUID cinemaId);
+    @EntityGraph(attributePaths = "supportedContentFormats")
+    List<Room> findAllByCinema_IdOrderByNameAscIdAsc(
+            UUID cinemaId);
 
-    List<Room> findAllByCinema_IdAndActiveOrderByNameAscIdAsc(UUID cinemaId, boolean active);
+    @EntityGraph(attributePaths = "supportedContentFormats")
+    List<Room> findAllByCinema_IdAndActiveOrderByNameAscIdAsc(
+            UUID cinemaId,
+            boolean active);
 }

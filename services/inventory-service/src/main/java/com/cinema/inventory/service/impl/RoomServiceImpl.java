@@ -1,5 +1,11 @@
 package com.cinema.inventory.service.impl;
 
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.inventory.dto.request.CreateRoomRequest;
@@ -12,12 +18,6 @@ import com.cinema.inventory.mapper.RoomMapper;
 import com.cinema.inventory.repository.CinemaRepository;
 import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.service.RoomService;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.UUID;
 
 @Service
 public class RoomServiceImpl implements RoomService {
@@ -53,7 +53,7 @@ public class RoomServiceImpl implements RoomService {
 
         Room room = new Room(cinema, normalizedName, request.roomType());
 
-        Room savedRoom = roomRepository.save(room);
+        Room savedRoom = roomRepository.saveAndFlush(room);
 
         return roomMapper.toResponse(savedRoom);
     }
@@ -108,6 +108,8 @@ public class RoomServiceImpl implements RoomService {
         } else {
             room.deactivate();
         }
+
+        roomRepository.flush();
 
         return roomMapper.toResponse(room);
     }

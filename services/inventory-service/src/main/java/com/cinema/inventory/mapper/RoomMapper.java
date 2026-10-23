@@ -11,9 +11,10 @@ import com.cinema.inventory.entity.Room;
 @Mapper(config = InventoryMapperConfig.class)
 public interface RoomMapper {
 
+    @Mapping(target = "cinemaId", source = "cinema.id")
     @Mapping(
-            target = "cinemaId",
-            source = "cinema.id")
+            target = "contentFormats",
+            expression = "java(room.getSupportedContentFormats().stream().sorted().toList())")
     RoomResponse toResponse(Room room);
 
     List<RoomResponse> toResponses(List<Room> rooms);

@@ -5,7 +5,6 @@ import com.cinema.inventory.dto.request.UpdateRoomRequest;
 import com.cinema.inventory.dto.response.RoomResponse;
 import com.cinema.inventory.service.RoomService;
 
-import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import jakarta.validation.Valid;
@@ -57,16 +56,10 @@ public class RoomController {
         return ResponseEntity.ok(roomService.getActiveRooms(cinemaId));
     }
 
-    @Operation(
-            operationId = "getManagedRooms",
-            summary = "List rooms for inventory management",
-            description = "Omit active to include both active and inactive rooms.",
-            security = {
-                @SecurityRequirement(
-                        name = "oauth2",
-                        scopes = {"inventory:manage"})
-            })
     @GetMapping("/management")
+    @SecurityRequirement(
+            name = "oauth2",
+            scopes = {"inventory:manage"})
     public ResponseEntity<List<RoomResponse>> getManagedRooms(
             @RequestParam("cinemaId") UUID cinemaId,
             @RequestParam(name = "active", required = false) Boolean active) {
