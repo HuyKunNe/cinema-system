@@ -656,6 +656,30 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PRICING_POLICY_DATA_INCONSISTENT",
                     "Pricing policy data is inconsistent");
 
+    public static final InventoryErrorCode INVALID_FARE_MATRIX =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_INVALID_FARE_MATRIX",
+                    "Fare matrix is invalid");
+
+    public static final InventoryErrorCode PREMIUM_CATEGORY_FARE_CONFLICT =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_PREMIUM_CATEGORY_FARE_CONFLICT",
+                    "Premium fares must not differ by ticket category");
+
+    public static final InventoryErrorCode COUPLE_FIXED_FARE_CONFLICT =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_COUPLE_FIXED_FARE_CONFLICT",
+                    "Non-holiday couple fares must remain fixed within each experience and format");
+
+    public static final InventoryErrorCode PRICING_MATRIX_DAY_GROUP_LOCKED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_MATRIX_DAY_GROUP_LOCKED",
+                    "Clear the draft fare matrix before changing its day group");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;
