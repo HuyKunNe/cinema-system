@@ -24,7 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.Set;
 
 @Service
@@ -57,8 +59,7 @@ public class ShowtimeCreationService {
         this.movieCatalogClient = movieCatalogClient;
         this.clock = clock;
         this.transactions = new TransactionTemplate(transactionManager);
-        this.transactions.setIsolationLevel(
-                TransactionDefinition.ISOLATION_READ_COMMITTED);
+        this.transactions.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
 
     @Transactional(propagation = Propagation.NEVER)
@@ -66,13 +67,11 @@ public class ShowtimeCreationService {
         if (request == null
                 || request.movieId() == null
                 || request.movieScreeningVersionId() == null) {
-            throw new ValidationException(
-                    InventoryErrorCode.SCREENING_VERSION_REQUIRED);
+            throw new ValidationException(InventoryErrorCode.SCREENING_VERSION_REQUIRED);
         }
 
         if (request.roomId() == null) {
-            throw new ValidationException(
-                    InventoryErrorCode.SHOWTIME_ROOM_REQUIRED);
+            throw new ValidationException(InventoryErrorCode.SHOWTIME_ROOM_REQUIRED);
         }
 
         validateTimes(request.startsAt(), request.endsAt());
@@ -94,19 +93,20 @@ public class ShowtimeCreationService {
         scheduling.validateDuration(request.startsAt(), request.endsAt());
 
         return transactions.execute(
-                status -> persist(request, screeningVersion, scheduling));
+                status -> persist(request, screeningVersion, scheduling, movie.releaseDate()));
     }
 
     private ShowtimeResponse persist(
             CreateShowtimeRequest request,
             ShowtimeScreeningVersion screeningVersion,
-            ShowtimeScheduling scheduling) {
+            ShowtimeScheduling scheduling,
+            LocalDate releaseDate) {
 
         Room room =
-                roomRepository.findByIdForUpdate(request.roomId())
+                roomRepository
+                        .findByIdForUpdate(request.roomId())
                         .orElseThrow(
-                                () -> new NotFoundException(
-                                        InventoryErrorCode.ROOM_NOT_FOUND));
+                                () -> new NotFoundException(InventoryErrorCode.ROOM_NOT_FOUND));
 
         validateTimes(request.startsAt(), request.endsAt());
 
@@ -118,21 +118,19 @@ public class ShowtimeCreationService {
             throw new ConflictException(InventoryErrorCode.CINEMA_INACTIVE);
         }
 
+        validateReleaseDate(request.startsAt(), room.getCinema().getTimeZone(), releaseDate);
+
         var formats = room.getSupportedContentFormats();
 
         if (formats.isEmpty()) {
-            throw new ConflictException(
-                    InventoryErrorCode.ROOM_CONTENT_FORMATS_NOT_CONFIGURED);
+            throw new ConflictException(InventoryErrorCode.ROOM_CONTENT_FORMATS_NOT_CONFIGURED);
         }
 
         if (!formats.contains(screeningVersion.getContentFormat())) {
-            throw new ConflictException(
-                    InventoryErrorCode.SHOWTIME_FORMAT_NOT_SUPPORTED);
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_FORMAT_NOT_SUPPORTED);
         }
 
-        var layout =
-                layoutService.resolveForNewShowtime(
-                        room.getId(), request.roomLayoutId());
+        var layout = layoutService.resolveForNewShowtime(room.getId(), request.roomLayoutId());
 
         boolean conflict =
                 showtimeRepository.existsSchedulingConflict(
@@ -163,22 +161,40 @@ public class ShowtimeCreationService {
         return mapper.toResponse(saved);
     }
 
-    private void validateTimes(
-            OffsetDateTime startsAt, OffsetDateTime endsAt) {
+    private void validateTimes(OffsetDateTime startsAt, OffsetDateTime endsAt) {
 
         if (startsAt == null || endsAt == null) {
-            throw new ValidationException(
-                    InventoryErrorCode.SHOWTIME_PERIOD_REQUIRED);
+            throw new ValidationException(InventoryErrorCode.SHOWTIME_PERIOD_REQUIRED);
         }
 
         if (!endsAt.isAfter(startsAt)) {
-            throw new ValidationException(
-                    InventoryErrorCode.INVALID_SHOWTIME_PERIOD);
+            throw new ValidationException(InventoryErrorCode.INVALID_SHOWTIME_PERIOD);
         }
 
         if (!startsAt.isAfter(OffsetDateTime.now(clock))) {
-            throw new ValidationException(
-                    InventoryErrorCode.SHOWTIME_START_NOT_FUTURE);
+            throw new ValidationException(InventoryErrorCode.SHOWTIME_START_NOT_FUTURE);
+        }
+    }
+
+    private void validateReleaseDate(
+            OffsetDateTime startsAt, String configuredTimeZone, LocalDate releaseDate) {
+
+        if (releaseDate == null) {
+            return;
+        }
+
+        String zoneName = configuredTimeZone == null ? "Asia/Ho_Chi_Minh" : configuredTimeZone;
+
+        if (!ZoneId.getAvailableZoneIds().contains(zoneName)) {
+            throw new ValidationException(InventoryErrorCode.CINEMA_TIME_ZONE_INVALID);
+        }
+
+        ZoneId cinemaZone = ZoneId.of(zoneName);
+
+        LocalDate screeningDate = startsAt.atZoneSameInstant(cinemaZone).toLocalDate();
+
+        if (screeningDate.isBefore(releaseDate)) {
+            throw new ValidationException(InventoryErrorCode.SHOWTIME_BEFORE_RELEASE_DATE);
         }
     }
 }

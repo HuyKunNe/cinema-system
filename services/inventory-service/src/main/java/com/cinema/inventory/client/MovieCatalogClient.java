@@ -1,14 +1,8 @@
 package com.cinema.inventory.client;
 
-import com.cinema.common.exception.exception.ConflictException;
-import com.cinema.common.exception.exception.NotFoundException;
-import com.cinema.common.exception.exception.ValidationException;
-import com.cinema.inventory.entity.ShowtimeScreeningVersion;
-import com.cinema.inventory.enums.ContentFormat;
-import com.cinema.inventory.enums.PresentationType;
-import com.cinema.inventory.exception.InventoryErrorCode;
-import com.cinema.inventory.exception.MovieCatalogUnavailableException;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.time.LocalDate;
+import java.util.Set;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
@@ -21,8 +15,15 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
-import java.util.Set;
-import java.util.UUID;
+import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.NotFoundException;
+import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.inventory.entity.ShowtimeScreeningVersion;
+import com.cinema.inventory.enums.ContentFormat;
+import com.cinema.inventory.enums.PresentationType;
+import com.cinema.inventory.exception.InventoryErrorCode;
+import com.cinema.inventory.exception.MovieCatalogUnavailableException;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Component
 public class MovieCatalogClient {
@@ -67,14 +68,12 @@ public class MovieCatalogClient {
             throw new MovieCatalogUnavailableException();
         }
 
-        if ("ENDED".equals(response.status())
-                || "INACTIVE".equals(response.status())) {
-            throw new ConflictException(
-                    InventoryErrorCode.MOVIE_NOT_SCHEDULABLE);
+        if ("ENDED".equals(response.status()) || "INACTIVE".equals(response.status())) {
+            throw new ConflictException(InventoryErrorCode.MOVIE_NOT_SCHEDULABLE);
         }
 
         return new MovieSchedulingDetails(
-                response.durationMinutes(), response.version());
+                response.durationMinutes(), response.version(), response.releaseDate());
     }
 
     public ShowtimeScreeningVersion getActiveVersion(UUID movieId, UUID versionId) {
@@ -95,8 +94,7 @@ public class MovieCatalogClient {
         }
 
         if (!response.active()) {
-            throw new ConflictException(
-                    InventoryErrorCode.SCREENING_VERSION_INACTIVE);
+            throw new ConflictException(InventoryErrorCode.SCREENING_VERSION_INACTIVE);
         }
 
         try {
@@ -122,8 +120,7 @@ public class MovieCatalogClient {
         try {
             var authorizedClient =
                     authorizedClientManager.authorize(
-                            OAuth2AuthorizeRequest
-                                    .withClientRegistrationId(REGISTRATION_ID)
+                            OAuth2AuthorizeRequest.withClientRegistrationId(REGISTRATION_ID)
                                     .principal(SERVICE_PRINCIPAL)
                                     .build());
 
@@ -131,7 +128,8 @@ public class MovieCatalogClient {
                 throw new MovieCatalogUnavailableException();
             }
 
-            return restClient.get()
+            return restClient
+                    .get()
                     .uri(path, uriVariables)
                     .accept(MediaType.APPLICATION_JSON)
                     .headers(
@@ -147,8 +145,7 @@ public class MovieCatalogClient {
             }
 
             if (exception.getStatusCode().value() == 401) {
-                authorizedClientService.removeAuthorizedClient(
-                        REGISTRATION_ID, SERVICE_PRINCIPAL);
+                authorizedClientService.removeAuthorizedClient(REGISTRATION_ID, SERVICE_PRINCIPAL);
             }
 
             throw new MovieCatalogUnavailableException();
@@ -159,15 +156,17 @@ public class MovieCatalogClient {
     }
 
     public record MovieSchedulingDetails(
-            Integer durationMinutes,
-            Long version) {}
+            Integer durationMinutes, Long version, LocalDate releaseDate) {
+
+        public MovieSchedulingDetails(Integer durationMinutes, Long version) {
+
+            this(durationMinutes, version, null);
+        }
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record RemoteMovie(
-            UUID id,
-            Integer durationMinutes,
-            String status,
-            Long version) {}
+            UUID id, Integer durationMinutes, String status, Long version, LocalDate releaseDate) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record RemoteScreeningVersion(

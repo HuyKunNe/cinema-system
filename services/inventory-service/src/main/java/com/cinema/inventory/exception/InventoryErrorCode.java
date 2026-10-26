@@ -744,6 +744,13 @@ public final class InventoryErrorCode implements ErrorCode {
                     "Cinema cannot be deactivated while open-for-booking "
                             + "showtimes exist today or later in the cinema time zone");
 
+    public static final InventoryErrorCode SHOWTIME_BEFORE_RELEASE_DATE =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_SHOWTIME_BEFORE_RELEASE_DATE",
+                    "Showtime date must not precede the movie release date "
+                            + "in the cinema time zone");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

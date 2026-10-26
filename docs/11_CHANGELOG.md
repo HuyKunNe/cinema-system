@@ -47,6 +47,27 @@ Current status:
 
 ## 2026-10-26
 
+### Showtime Creation Release-Date Validation
+
+#### Changed
+
+- Read releaseDate from the existing Movie Service response.
+- Reject new showtimes before the release date in the cinema time zone.
+- Accept showtimes on the release date.
+- Preserve movies with no configured release date.
+- Use Asia/Ho_Chi_Minh for legacy null cinema time zones.
+
+#### Scope
+
+- Applies to POST showtime creation.
+- Rescheduling release-date validation remains pending.
+- No public DTO or database migration changes.
+
+#### Verification status
+
+- Tests and build were not run.
+- Manual API and time-zone boundary verification is pending.
+
 ### Cinema Deactivation Protection
 
 #### Changed
