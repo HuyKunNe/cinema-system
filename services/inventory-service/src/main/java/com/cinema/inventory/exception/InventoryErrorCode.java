@@ -751,6 +751,19 @@ public final class InventoryErrorCode implements ErrorCode {
                     "Showtime date must not precede the movie release date "
                             + "in the cinema time zone");
 
+    public static final InventoryErrorCode PRICING_CINEMA_SCOPE_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_PRICING_CINEMA_SCOPE_INVALID",
+                    "Select one or more distinct cinemas; "
+                            + "the creation context must be included when creating a policy");
+
+    public static final InventoryErrorCode PRICING_FINGERPRINT_UNAVAILABLE =
+            new InventoryErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "INVENTORY_PRICING_FINGERPRINT_UNAVAILABLE",
+                    "Pricing request fingerprint could not be calculated");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

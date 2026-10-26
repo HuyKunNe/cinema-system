@@ -1,22 +1,5 @@
 package com.cinema.inventory.service;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
@@ -43,6 +26,23 @@ import com.cinema.inventory.repository.CinemaPricingPolicyRepository;
 import com.cinema.inventory.repository.CinemaPricingPolicyVersionRepository;
 import com.cinema.inventory.repository.CinemaRepository;
 import com.cinema.inventory.repository.FareMatrixCellRepository;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 @Service
 public class FareMatrixService {
@@ -79,7 +79,7 @@ public class FareMatrixService {
     private FareMatrixResponse loadMatrix(UUID cinemaId, UUID policyId, UUID versionId) {
 
         requireCinema(cinemaId);
-        requirePolicy(cinemaId, policyId);
+        requirePolicy(policyId);
 
         CinemaPricingPolicyVersion revision =
                 versionRepository
@@ -99,11 +99,12 @@ public class FareMatrixService {
 
         Definition definition = normalize(request);
 
-        cinemaRepository
-                .findByIdForUpdate(cinemaId)
-                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.CINEMA_NOT_FOUND));
+        requireCinema(cinemaId);
 
-        requirePolicy(cinemaId, policyId);
+        policyRepository
+                .findByIdForUpdate(policyId)
+                .orElseThrow(
+                        () -> new NotFoundException(InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
 
         CinemaPricingPolicyVersion revision =
                 versionRepository
@@ -113,6 +114,10 @@ public class FareMatrixService {
                                         new NotFoundException(
                                                 InventoryErrorCode
                                                         .PRICING_POLICY_VERSION_NOT_FOUND));
+
+        if (!revision.appliesTo(cinemaId)) {
+            throw new NotFoundException(InventoryErrorCode.PRICING_POLICY_VERSION_NOT_FOUND);
+        }
 
         if (!request.expectedVersion().equals(revision.getVersion())) {
             throw new ConflictException(InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
@@ -369,11 +374,10 @@ public class FareMatrixService {
         }
     }
 
-    private void requirePolicy(UUID cinemaId, UUID policyId) {
-        policyRepository
-                .findByIdAndCinema_Id(policyId, cinemaId)
-                .orElseThrow(
-                        () -> new NotFoundException(InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
+    private void requirePolicy(UUID policyId) {
+        if (!policyRepository.existsById(policyId)) {
+            throw new NotFoundException(InventoryErrorCode.PRICING_POLICY_NOT_FOUND);
+        }
     }
 
     private static ValidationException invalid() {

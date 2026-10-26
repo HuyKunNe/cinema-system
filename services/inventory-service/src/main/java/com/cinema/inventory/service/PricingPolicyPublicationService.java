@@ -67,15 +67,16 @@ public class PricingPolicyPublicationService {
             String actorSubject) {
 
         if (request == null || request.expectedVersion() == null || request.expectedVersion() < 0) {
+
             throw new ValidationException(InventoryErrorCode.INVALID_PRICING_POLICY);
         }
 
-        cinemaRepository
-                .findByIdForUpdate(cinemaId)
-                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.CINEMA_NOT_FOUND));
+        if (!cinemaRepository.existsById(cinemaId)) {
+            throw new NotFoundException(InventoryErrorCode.CINEMA_NOT_FOUND);
+        }
 
         policyRepository
-                .findByIdAndCinema_Id(policyId, cinemaId)
+                .findByIdForUpdate(policyId)
                 .orElseThrow(
                         () -> new NotFoundException(InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
 
@@ -88,8 +89,12 @@ public class PricingPolicyPublicationService {
                                                 InventoryErrorCode
                                                         .PRICING_POLICY_VERSION_NOT_FOUND));
 
-        // A retry must not replace the original publication attribution.
+        if (!revision.appliesTo(cinemaId)) {
+            throw new NotFoundException(InventoryErrorCode.PRICING_POLICY_VERSION_NOT_FOUND);
+        }
+
         if (revision.getStatus() == PricingPolicyVersionStatus.PUBLISHED) {
+
             return mapper.toResponse(revision);
         }
 

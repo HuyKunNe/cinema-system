@@ -47,6 +47,35 @@ Current status:
 
 ## 2026-10-26
 
+### Versioned Pricing Cinema Scopes
+
+#### Changed
+
+- Store one or more applicable cinemas on each pricing policy version.
+- Restrict version reads and mutations by version applicability.
+- Make cinema scopes immutable after publication.
+- Serialize draft metadata, matrix and publication mutations
+  through policy then version locks.
+- Include the initial cinema scope in create-request idempotency.
+- Retain creation cinema only as creation context and provenance.
+
+#### Migration
+
+- V16 backfills each existing version to its original single cinema.
+- Existing policy/version IDs, prices and publication metadata are retained.
+
+#### API compatibility
+
+- Create and draft replacement require cinemaIds.
+- Version responses expose cinemaIds instead of cinemaId.
+- Existing route paths and inventory:manage permission are retained.
+
+#### Verification status
+
+- Added domain scope regression cases.
+- Tests and build were not run.
+- Migration, API and concurrency verification is pending.
+
 ### Showtime Creation Release-Date Validation
 
 #### Changed

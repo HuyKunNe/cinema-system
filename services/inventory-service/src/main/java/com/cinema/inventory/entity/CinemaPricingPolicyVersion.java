@@ -1,5 +1,13 @@
 package com.cinema.inventory.entity;
 
+import java.text.Normalizer;
+import java.time.OffsetDateTime;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
@@ -17,14 +25,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-
-import java.text.Normalizer;
-import java.time.OffsetDateTime;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
 
 @Entity
 @Table(name = "cinema_pricing_policy_versions")
@@ -53,6 +57,16 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
 
     @Column(name = "fare_matrix_revision", nullable = false)
     private long fareMatrixRevision = 0;
+
+    @Column(name = "cinema_scope_revision", nullable = false)
+    private long cinemaScopeRevision = 0;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "pricing_policy_version_cinemas",
+            joinColumns = @JoinColumn(name = "policy_version_id"),
+            inverseJoinColumns = @JoinColumn(name = "cinema_id"))
+    private Set<Cinema> cinemas = new HashSet<>();
 
     @Column(name = "published_at")
     private OffsetDateTime publishedAt;
@@ -85,14 +99,19 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
     protected CinemaPricingPolicyVersion() {}
 
     public CinemaPricingPolicyVersion(
-            CinemaPricingPolicy policy, long revision, Metadata metadata) {
+            CinemaPricingPolicy policy, long revision, Metadata metadata, Set<Cinema> cinemas) {
 
         if (policy == null || policy.getId() == null || revision < 1 || metadata == null) {
+
             throw invalid();
         }
 
+        validateCinemas(cinemas);
+
         this.policy = policy;
         this.revision = revision;
+        this.cinemas.addAll(cinemas);
+
         apply(metadata);
     }
 
@@ -140,6 +159,45 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
         fareSeatTypes.addAll(seatTypes);
 
         fareMatrixRevision++;
+    }
+
+    public Set<UUID> getCinemaIds() {
+        return cinemas.stream().map(Cinema::getId).collect(Collectors.toUnmodifiableSet());
+    }
+
+    public boolean appliesTo(UUID cinemaId) {
+        return getCinemaIds().contains(cinemaId);
+    }
+
+    public void replaceDraftCinemas(Set<Cinema> requestedCinemas) {
+        requireDraft();
+        validateCinemas(requestedCinemas);
+
+        Set<UUID> requestedIds =
+                requestedCinemas.stream().map(Cinema::getId).collect(Collectors.toSet());
+
+        if (getCinemaIds().equals(requestedIds)) {
+            return;
+        }
+
+        cinemas.clear();
+        cinemas.addAll(requestedCinemas);
+        cinemaScopeRevision++;
+    }
+
+    private static void validateCinemas(Set<Cinema> values) {
+        if (values == null
+                || values.isEmpty()
+                || values.stream().anyMatch(cinema -> cinema == null || cinema.getId() == null)) {
+
+            throw new ValidationException(InventoryErrorCode.PRICING_CINEMA_SCOPE_INVALID);
+        }
+
+        long distinctIds = values.stream().map(Cinema::getId).distinct().count();
+
+        if (distinctIds != values.size()) {
+            throw new ValidationException(InventoryErrorCode.PRICING_CINEMA_SCOPE_INVALID);
+        }
     }
 
     public Set<FareMatrixScope> getFareScopes() {

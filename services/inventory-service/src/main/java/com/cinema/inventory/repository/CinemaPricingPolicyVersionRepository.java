@@ -17,37 +17,60 @@ import java.util.UUID;
 public interface CinemaPricingPolicyVersionRepository
         extends JpaRepository<CinemaPricingPolicyVersion, UUID> {
 
-    @EntityGraph(attributePaths = {"policy", "policy.cinema"})
+    @EntityGraph(attributePaths = {"policy", "cinemas"})
     Optional<CinemaPricingPolicyVersion> findByPolicy_IdAndRevision(UUID policyId, long revision);
-
-    @EntityGraph(attributePaths = {"policy", "policy.cinema"})
-    List<CinemaPricingPolicyVersion> findAllByPolicy_IdOrderByRevisionDesc(UUID policyId);
 
     @Query(
             """
-            select revision
+            select distinct revision
             from CinemaPricingPolicyVersion revision
             join fetch revision.policy policy
-            join fetch policy.cinema cinema
-            where cinema.id = :cinemaId
-              and revision.revision = (
-                  select max(candidate.revision)
-                  from CinemaPricingPolicyVersion candidate
-                  where candidate.policy.id = policy.id
-              )
+            join fetch revision.cinemas
+            where revision.revision = (
+                select max(candidate.revision)
+                from CinemaPricingPolicyVersion candidate
+                join candidate.cinemas applicable
+                where candidate.policy.id = policy.id
+                  and applicable.id = :cinemaId
+            )
             order by revision.name asc, policy.id asc
             """)
     List<CinemaPricingPolicyVersion> findLatestForCinema(@Param("cinemaId") UUID cinemaId);
 
     @Query(
             """
-            select revision
+            select distinct revision
             from CinemaPricingPolicyVersion revision
             join fetch revision.policy policy
-            join fetch policy.cinema cinema
+            join fetch revision.cinemas
+            where policy.id = :policyId
+              and exists (
+                  select candidate.id
+                  from CinemaPricingPolicyVersion candidate
+                  join candidate.cinemas applicable
+                  where candidate.id = revision.id
+                    and applicable.id = :cinemaId
+              )
+            order by revision.revision desc
+            """)
+    List<CinemaPricingPolicyVersion> findAllForCinema(
+            @Param("cinemaId") UUID cinemaId, @Param("policyId") UUID policyId);
+
+    @Query(
+            """
+            select distinct revision
+            from CinemaPricingPolicyVersion revision
+            join fetch revision.policy policy
+            join fetch revision.cinemas
             where revision.id = :versionId
               and policy.id = :policyId
-              and cinema.id = :cinemaId
+              and exists (
+                  select candidate.id
+                  from CinemaPricingPolicyVersion candidate
+                  join candidate.cinemas applicable
+                  where candidate.id = revision.id
+                    and applicable.id = :cinemaId
+              )
             """)
     Optional<CinemaPricingPolicyVersion> findForRead(
             @Param("cinemaId") UUID cinemaId,
