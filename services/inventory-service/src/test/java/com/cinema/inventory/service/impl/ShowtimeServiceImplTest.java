@@ -24,6 +24,7 @@ import com.cinema.inventory.entity.Room;
 import com.cinema.inventory.entity.Showtime;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.mapper.ShowtimeMapper;
+import com.cinema.inventory.repository.CinemaRepository;
 import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ShowSeatGenerationService;
@@ -64,6 +65,8 @@ class ShowtimeServiceImplTest {
 
     @Mock private RoomRepository roomRepository;
 
+    @Mock private CinemaRepository cinemaRepository;
+
     @Mock private ShowtimeMapper showtimeMapper;
 
     @Mock private ShowSeatGenerationService showSeatGenerationService;
@@ -85,7 +88,8 @@ class ShowtimeServiceImplTest {
                         showtimeMapper,
                         Clock.fixed(STARTS_AT.minusDays(1).toInstant(), STARTS_AT.getOffset()),
                         new BookableShowtimeProperties(),
-                        showtimeCreationService);
+                        showtimeCreationService,
+                        cinemaRepository);
     }
 
     @Test
@@ -522,17 +526,23 @@ class ShowtimeServiceImplTest {
 
         when(showtimeMapper.toResponse(showtime)).thenReturn(expectedResponse);
 
+        when(cinemaRepository.findByIdForUpdate(CINEMA_ID))
+                .thenReturn(Optional.of(showtime.getRoom().getCinema()));
+
         ShowtimeResponse result = showtimeService.openForBooking(SHOWTIME_ID);
 
         assertThat(showtime.getStatus()).isEqualTo(ShowtimeStatus.OPEN_FOR_BOOKING);
 
         assertThat(result).isSameAs(expectedResponse);
 
-        var order = org.mockito.Mockito.inOrder(showtimeRepository, roomRepository);
+        var order =
+                org.mockito.Mockito.inOrder(showtimeRepository, roomRepository, cinemaRepository);
 
         order.verify(showtimeRepository).findRoomIdForScheduleChange(SHOWTIME_ID);
 
         order.verify(roomRepository).findByIdForUpdate(ROOM_ID);
+
+        order.verify(cinemaRepository).findByIdForUpdate(CINEMA_ID);
 
         order.verify(showtimeRepository).findByIdForUpdate(SHOWTIME_ID);
 
@@ -541,7 +551,12 @@ class ShowtimeServiceImplTest {
 
     @Test
     void openForBookingShouldThrowWhenRoomIsInactive() {
+        Cinema cinema = mock(Cinema.class);
         Room room = mock(Room.class);
+
+        when(cinema.getId()).thenReturn(CINEMA_ID);
+        when(room.getCinema()).thenReturn(cinema);
+        when(room.isActive()).thenReturn(false);
 
         when(room.isActive()).thenReturn(false);
 
@@ -553,6 +568,9 @@ class ShowtimeServiceImplTest {
         when(roomRepository.findByIdForUpdate(ROOM_ID)).thenReturn(Optional.of(room));
 
         when(showtimeRepository.findByIdForUpdate(SHOWTIME_ID)).thenReturn(Optional.of(showtime));
+
+        when(cinemaRepository.findByIdForUpdate(CINEMA_ID))
+                .thenReturn(Optional.of(showtime.getRoom().getCinema()));
 
         assertThatThrownBy(() -> showtimeService.openForBooking(SHOWTIME_ID))
                 .isInstanceOf(ConflictException.class);
@@ -575,6 +593,9 @@ class ShowtimeServiceImplTest {
         when(roomRepository.findByIdForUpdate(ROOM_ID)).thenReturn(Optional.of(showtime.getRoom()));
 
         when(showtimeRepository.findByIdForUpdate(SHOWTIME_ID)).thenReturn(Optional.of(showtime));
+
+        when(cinemaRepository.findByIdForUpdate(CINEMA_ID))
+                .thenReturn(Optional.of(showtime.getRoom().getCinema()));
 
         assertThatThrownBy(() -> showtimeService.openForBooking(SHOWTIME_ID))
                 .isInstanceOf(ConflictException.class);
@@ -716,6 +737,7 @@ class ShowtimeServiceImplTest {
     private Room availableRoom() {
         Cinema cinema = mock(Cinema.class);
         Room room = mock(Room.class);
+        lenient().when(cinema.getId()).thenReturn(CINEMA_ID);
 
         lenient().when(room.getId()).thenReturn(ROOM_ID);
 

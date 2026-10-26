@@ -737,6 +737,13 @@ public final class InventoryErrorCode implements ErrorCode {
                     "Couple fares must not differ by ticket category "
                             + "within the same experience, format and time band");
 
+    public static final InventoryErrorCode CINEMA_DEACTIVATION_BLOCKED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_CINEMA_DEACTIVATION_BLOCKED",
+                    "Cinema cannot be deactivated while open-for-booking "
+                            + "showtimes exist today or later in the cinema time zone");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

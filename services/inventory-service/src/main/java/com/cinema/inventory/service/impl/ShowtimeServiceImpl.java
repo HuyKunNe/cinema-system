@@ -1,27 +1,5 @@
 package com.cinema.inventory.service.impl;
 
-import com.cinema.common.exception.exception.ConflictException;
-import com.cinema.common.exception.exception.NotFoundException;
-import com.cinema.common.exception.exception.ValidationException;
-import com.cinema.inventory.config.BookableShowtimeProperties;
-import com.cinema.inventory.dto.request.CreateShowtimeRequest;
-import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
-import com.cinema.inventory.dto.response.ShowtimeResponse;
-import com.cinema.inventory.entity.Room;
-import com.cinema.inventory.entity.Showtime;
-import com.cinema.inventory.entity.ShowtimeScheduling;
-import com.cinema.inventory.enums.ShowtimeStatus;
-import com.cinema.inventory.exception.InventoryErrorCode;
-import com.cinema.inventory.mapper.ShowtimeMapper;
-import com.cinema.inventory.repository.RoomRepository;
-import com.cinema.inventory.repository.ShowtimeRepository;
-import com.cinema.inventory.service.ShowtimeCreationService;
-import com.cinema.inventory.service.ShowtimeService;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -30,6 +8,30 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.NotFoundException;
+import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.inventory.config.BookableShowtimeProperties;
+import com.cinema.inventory.dto.request.CreateShowtimeRequest;
+import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
+import com.cinema.inventory.dto.response.ShowtimeResponse;
+import com.cinema.inventory.entity.Cinema;
+import com.cinema.inventory.entity.Room;
+import com.cinema.inventory.entity.Showtime;
+import com.cinema.inventory.entity.ShowtimeScheduling;
+import com.cinema.inventory.enums.ShowtimeStatus;
+import com.cinema.inventory.exception.InventoryErrorCode;
+import com.cinema.inventory.mapper.ShowtimeMapper;
+import com.cinema.inventory.repository.CinemaRepository;
+import com.cinema.inventory.repository.RoomRepository;
+import com.cinema.inventory.repository.ShowtimeRepository;
+import com.cinema.inventory.service.ShowtimeCreationService;
+import com.cinema.inventory.service.ShowtimeService;
+
 @Service
 public class ShowtimeServiceImpl implements ShowtimeService {
 
@@ -37,6 +39,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
             EnumSet.of(ShowtimeStatus.CANCELLED);
 
     private final ShowtimeRepository showtimeRepository;
+    private final CinemaRepository cinemaRepository;
     private final RoomRepository roomRepository;
     private final ShowtimeMapper showtimeMapper;
     private final Clock clock;
@@ -49,7 +52,8 @@ public class ShowtimeServiceImpl implements ShowtimeService {
             ShowtimeMapper showtimeMapper,
             Clock clock,
             BookableShowtimeProperties bookableShowtimeProperties,
-            ShowtimeCreationService showtimeCreationService) {
+            ShowtimeCreationService showtimeCreationService,
+            CinemaRepository cinemaRepository) {
 
         this.showtimeRepository = showtimeRepository;
         this.roomRepository = roomRepository;
@@ -57,6 +61,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         this.clock = clock;
         this.bookableShowtimeProperties = bookableShowtimeProperties;
         this.showtimeCreationService = showtimeCreationService;
+        this.cinemaRepository = cinemaRepository;
     }
 
     @Override
@@ -200,9 +205,15 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                         .orElseThrow(
                                 () -> new NotFoundException(InventoryErrorCode.ROOM_NOT_FOUND));
 
+        Cinema cinema =
+                cinemaRepository
+                        .findByIdForUpdate(room.getCinema().getId())
+                        .orElseThrow(
+                                () -> new NotFoundException(InventoryErrorCode.CINEMA_NOT_FOUND));
+
         Showtime showtime = findShowtimeForUpdate(showtimeId);
 
-        validateRoomAvailable(room);
+        validateRoomAvailable(room, cinema);
 
         if (!showtime.getStartsAt().isAfter(OffsetDateTime.now(clock))) {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_EDITABLE);
@@ -261,11 +272,16 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     }
 
     private void validateRoomAvailable(Room room) {
+        validateRoomAvailable(room, room.getCinema());
+    }
+
+    private void validateRoomAvailable(Room room, Cinema cinema) {
+
         if (!room.isActive()) {
             throw new ConflictException(InventoryErrorCode.ROOM_INACTIVE);
         }
 
-        if (!room.getCinema().isActive()) {
+        if (!cinema.isActive()) {
             throw new ConflictException(InventoryErrorCode.CINEMA_INACTIVE);
         }
     }

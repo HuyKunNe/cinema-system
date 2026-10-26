@@ -8,6 +8,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,120 +23,98 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.inventory.dto.request.CreateCinemaRequest;
 import com.cinema.inventory.dto.request.UpdateCinemaRequest;
 import com.cinema.inventory.dto.response.CinemaResponse;
 import com.cinema.inventory.entity.Cinema;
+import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.mapper.CinemaMapper;
 import com.cinema.inventory.repository.CinemaRepository;
 
 @ExtendWith(MockitoExtension.class)
 class CinemaServiceImplTest {
 
-    private static final UUID CINEMA_ID = UUID.fromString(
-            "019102b2-7c00-7000-8000-000000000001");
+    private static final UUID CINEMA_ID = UUID.fromString("019102b2-7c00-7000-8000-000000000001");
 
-    @Mock
-    private CinemaRepository cinemaRepository;
+    private static final Clock TEST_CLOCK =
+            Clock.fixed(Instant.parse("2026-10-25T18:30:00Z"), ZoneOffset.UTC);
 
-    @Mock
-    private CinemaMapper cinemaMapper;
+    @Mock private CinemaRepository cinemaRepository;
+
+    @Mock private CinemaMapper cinemaMapper;
 
     private CinemaServiceImpl cinemaService;
 
     @BeforeEach
     void setUp() {
-        cinemaService = new CinemaServiceImpl(
-                cinemaRepository,
-                cinemaMapper);
+        cinemaService = new CinemaServiceImpl(cinemaRepository, cinemaMapper, TEST_CLOCK);
     }
 
     @Test
     void createShouldNormalizeSaveAndReturnResponse() {
-        CreateCinemaRequest request = new CreateCinemaRequest(
-                "  CGV Vincom  ",
-                "  72 Le Thanh Ton  ",
-                "  Ho Chi Minh  ");
+        CreateCinemaRequest request =
+                new CreateCinemaRequest("  CGV Vincom  ", "  72 Le Thanh Ton  ", "  Ho Chi Minh  ");
 
-        CinemaResponse expectedResponse = response(
-                "CGV Vincom",
-                "72 Le Thanh Ton",
-                "Ho Chi Minh",
-                true);
+        CinemaResponse expectedResponse =
+                response("CGV Vincom", "72 Le Thanh Ton", "Ho Chi Minh", true);
 
         when(cinemaRepository.save(any(Cinema.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        when(cinemaMapper.toResponse(any(Cinema.class)))
-                .thenReturn(expectedResponse);
+        when(cinemaMapper.toResponse(any(Cinema.class))).thenReturn(expectedResponse);
 
         CinemaResponse result = cinemaService.create(request);
 
         ArgumentCaptor<Cinema> cinemaCaptor = ArgumentCaptor.forClass(Cinema.class);
 
-        verify(cinemaRepository)
-                .save(cinemaCaptor.capture());
+        verify(cinemaRepository).save(cinemaCaptor.capture());
 
         Cinema savedCinema = cinemaCaptor.getValue();
 
-        assertThat(savedCinema.getName())
-                .isEqualTo("CGV Vincom");
+        assertThat(savedCinema.getName()).isEqualTo("CGV Vincom");
 
-        assertThat(savedCinema.getAddress())
-                .isEqualTo("72 Le Thanh Ton");
+        assertThat(savedCinema.getAddress()).isEqualTo("72 Le Thanh Ton");
 
-        assertThat(savedCinema.getCity())
-                .isEqualTo("Ho Chi Minh");
+        assertThat(savedCinema.getCity()).isEqualTo("Ho Chi Minh");
 
-        assertThat(savedCinema.isActive())
-                .isTrue();
+        assertThat(savedCinema.isActive()).isTrue();
 
-        verify(cinemaMapper)
-                .toResponse(savedCinema);
+        verify(cinemaMapper).toResponse(savedCinema);
 
-        assertThat(result)
-                .isSameAs(expectedResponse);
+        assertThat(result).isSameAs(expectedResponse);
     }
 
     @Test
     void getByIdShouldReturnMappedCinema() {
         Cinema cinema = cinema();
-        CinemaResponse expectedResponse = response(
-                cinema.getName(),
-                cinema.getAddress(),
-                cinema.getCity(),
-                cinema.isActive());
+        CinemaResponse expectedResponse =
+                response(
+                        cinema.getName(), cinema.getAddress(), cinema.getCity(), cinema.isActive());
 
-        when(cinemaRepository.findById(CINEMA_ID))
-                .thenReturn(Optional.of(cinema));
+        when(cinemaRepository.findById(CINEMA_ID)).thenReturn(Optional.of(cinema));
 
-        when(cinemaMapper.toResponse(cinema))
-                .thenReturn(expectedResponse);
+        when(cinemaMapper.toResponse(cinema)).thenReturn(expectedResponse);
 
         CinemaResponse result = cinemaService.getById(CINEMA_ID);
 
-        assertThat(result)
-                .isSameAs(expectedResponse);
+        assertThat(result).isSameAs(expectedResponse);
 
-        verify(cinemaRepository)
-                .findById(CINEMA_ID);
+        verify(cinemaRepository).findById(CINEMA_ID);
 
-        verify(cinemaMapper)
-                .toResponse(cinema);
+        verify(cinemaMapper).toResponse(cinema);
     }
 
     @Test
     void getByIdShouldThrowWhenCinemaDoesNotExist() {
-        when(cinemaRepository.findById(CINEMA_ID))
-                .thenReturn(Optional.empty());
+        when(cinemaRepository.findById(CINEMA_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> cinemaService.getById(CINEMA_ID))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("Cinema not found");
 
-        verify(cinemaRepository)
-                .findById(CINEMA_ID);
+        verify(cinemaRepository).findById(CINEMA_ID);
 
         verifyNoInteractions(cinemaMapper);
     }
@@ -143,32 +125,21 @@ class CinemaServiceImplTest {
 
         List<Cinema> cinemas = List.of(cinema);
 
-        List<CinemaResponse> expectedResponses = List.of(response(
-                cinema.getName(),
-                cinema.getAddress(),
-                cinema.getCity(),
-                true));
+        List<CinemaResponse> expectedResponses =
+                List.of(response(cinema.getName(), cinema.getAddress(), cinema.getCity(), true));
 
-        when(cinemaRepository
-                .findAllByCityIgnoreCaseAndActiveTrueOrderByNameAsc(
-                        "Ho Chi Minh"))
+        when(cinemaRepository.findAllByCityIgnoreCaseAndActiveTrueOrderByNameAsc("Ho Chi Minh"))
                 .thenReturn(cinemas);
 
-        when(cinemaMapper.toResponses(cinemas))
-                .thenReturn(expectedResponses);
+        when(cinemaMapper.toResponses(cinemas)).thenReturn(expectedResponses);
 
-        List<CinemaResponse> result = cinemaService.getActiveCinemas(
-                "  Ho Chi Minh  ");
+        List<CinemaResponse> result = cinemaService.getActiveCinemas("  Ho Chi Minh  ");
 
-        assertThat(result)
-                .isSameAs(expectedResponses);
+        assertThat(result).isSameAs(expectedResponses);
 
-        verify(cinemaRepository)
-                .findAllByCityIgnoreCaseAndActiveTrueOrderByNameAsc(
-                        "Ho Chi Minh");
+        verify(cinemaRepository).findAllByCityIgnoreCaseAndActiveTrueOrderByNameAsc("Ho Chi Minh");
 
-        verify(cinemaRepository, never())
-                .findAllByActiveTrueOrderByNameAsc();
+        verify(cinemaRepository, never()).findAllByActiveTrueOrderByNameAsc();
     }
 
     @Test
@@ -177,148 +148,122 @@ class CinemaServiceImplTest {
 
         List<Cinema> cinemas = List.of(cinema);
 
-        List<CinemaResponse> expectedResponses = List.of(response(
-                cinema.getName(),
-                cinema.getAddress(),
-                cinema.getCity(),
-                true));
+        List<CinemaResponse> expectedResponses =
+                List.of(response(cinema.getName(), cinema.getAddress(), cinema.getCity(), true));
 
-        when(cinemaRepository
-                .findAllByActiveTrueOrderByNameAsc())
-                .thenReturn(cinemas);
+        when(cinemaRepository.findAllByActiveTrueOrderByNameAsc()).thenReturn(cinemas);
 
-        when(cinemaMapper.toResponses(cinemas))
-                .thenReturn(expectedResponses);
+        when(cinemaMapper.toResponses(cinemas)).thenReturn(expectedResponses);
 
         List<CinemaResponse> result = cinemaService.getActiveCinemas(null);
 
-        assertThat(result)
-                .isSameAs(expectedResponses);
+        assertThat(result).isSameAs(expectedResponses);
 
-        verify(cinemaRepository)
-                .findAllByActiveTrueOrderByNameAsc();
+        verify(cinemaRepository).findAllByActiveTrueOrderByNameAsc();
 
-        verify(cinemaRepository, never())
-                .findAllByCityIgnoreCaseAndActiveTrueOrderByNameAsc(
-                        any());
+        verify(cinemaRepository, never()).findAllByCityIgnoreCaseAndActiveTrueOrderByNameAsc(any());
     }
 
     @Test
     void getActiveCinemasShouldReturnAllWhenCityIsBlank() {
-        when(cinemaRepository
-                .findAllByActiveTrueOrderByNameAsc())
-                .thenReturn(List.of());
+        when(cinemaRepository.findAllByActiveTrueOrderByNameAsc()).thenReturn(List.of());
 
-        when(cinemaMapper.toResponses(List.of()))
-                .thenReturn(List.of());
+        when(cinemaMapper.toResponses(List.of())).thenReturn(List.of());
 
         List<CinemaResponse> result = cinemaService.getActiveCinemas("   ");
 
-        assertThat(result)
-                .isEmpty();
+        assertThat(result).isEmpty();
 
-        verify(cinemaRepository)
-                .findAllByActiveTrueOrderByNameAsc();
+        verify(cinemaRepository).findAllByActiveTrueOrderByNameAsc();
 
-        verify(cinemaRepository, never())
-                .findAllByCityIgnoreCaseAndActiveTrueOrderByNameAsc(
-                        any());
+        verify(cinemaRepository, never()).findAllByCityIgnoreCaseAndActiveTrueOrderByNameAsc(any());
     }
 
     @Test
     void updateShouldNormalizeAndUpdateCinema() {
         Cinema cinema = cinema();
 
-        UpdateCinemaRequest request = new UpdateCinemaRequest(
-                "  CGV Landmark 81  ",
-                "  720A Dien Bien Phu  ",
-                "  Ho Chi Minh  ",
-                false);
+        UpdateCinemaRequest request =
+                new UpdateCinemaRequest(
+                        "  CGV Landmark 81  ", "  720A Dien Bien Phu  ", "  Ho Chi Minh  ", false);
 
-        CinemaResponse expectedResponse = response(
-                "CGV Landmark 81",
-                "720A Dien Bien Phu",
-                "Ho Chi Minh",
-                false);
+        CinemaResponse expectedResponse =
+                response("CGV Landmark 81", "720A Dien Bien Phu", "Ho Chi Minh", false);
 
-        when(cinemaRepository.findById(CINEMA_ID))
-                .thenReturn(Optional.of(cinema));
+        when(cinemaRepository.findByIdForUpdate(CINEMA_ID)).thenReturn(Optional.of(cinema));
 
-        when(cinemaMapper.toResponse(cinema))
-                .thenReturn(expectedResponse);
+        when(cinemaMapper.toResponse(cinema)).thenReturn(expectedResponse);
 
-        CinemaResponse result = cinemaService.update(
-                CINEMA_ID,
-                request);
+        CinemaResponse result = cinemaService.update(CINEMA_ID, request);
 
-        assertThat(cinema.getName())
-                .isEqualTo("CGV Landmark 81");
+        assertThat(cinema.getName()).isEqualTo("CGV Landmark 81");
 
-        assertThat(cinema.getAddress())
-                .isEqualTo("720A Dien Bien Phu");
+        assertThat(cinema.getAddress()).isEqualTo("720A Dien Bien Phu");
 
-        assertThat(cinema.getCity())
-                .isEqualTo("Ho Chi Minh");
+        assertThat(cinema.getCity()).isEqualTo("Ho Chi Minh");
 
-        assertThat(cinema.isActive())
-                .isFalse();
+        assertThat(cinema.isActive()).isFalse();
 
-        assertThat(result)
-                .isSameAs(expectedResponse);
+        assertThat(result).isSameAs(expectedResponse);
 
-        verify(cinemaRepository)
-                .findById(CINEMA_ID);
+        verify(cinemaRepository).findByIdForUpdate(CINEMA_ID);
 
-        verify(cinemaRepository, never())
-                .save(any(Cinema.class));
+        verify(cinemaRepository, never()).save(any(Cinema.class));
 
-        verify(cinemaMapper)
-                .toResponse(cinema);
+        verify(cinemaMapper).toResponse(cinema);
     }
 
     @Test
     void updateShouldThrowWhenCinemaDoesNotExist() {
-        UpdateCinemaRequest request = new UpdateCinemaRequest(
-                "CGV Landmark 81",
-                "720A Dien Bien Phu",
-                "Ho Chi Minh",
-                true);
+        UpdateCinemaRequest request =
+                new UpdateCinemaRequest(
+                        "CGV Landmark 81", "720A Dien Bien Phu", "Ho Chi Minh", true);
 
-        when(cinemaRepository.findById(CINEMA_ID))
-                .thenReturn(Optional.empty());
+        when(cinemaRepository.findByIdForUpdate(CINEMA_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> cinemaService.update(
-                CINEMA_ID,
-                request))
+        assertThatThrownBy(() -> cinemaService.update(CINEMA_ID, request))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("Cinema not found");
 
-        verify(cinemaRepository)
-                .findById(CINEMA_ID);
+        verify(cinemaRepository).findByIdForUpdate(CINEMA_ID);
 
         verifyNoInteractions(cinemaMapper);
     }
 
-    private Cinema cinema() {
-        return new Cinema(
-                "CGV Vincom",
-                "72 Le Thanh Ton",
-                "Ho Chi Minh");
+    @Test
+    void updateShouldRejectDeactivationWhenCinemaHasOpenShowtimes() {
+        Cinema cinema = cinema();
+
+        when(cinemaRepository.findByIdForUpdate(CINEMA_ID)).thenReturn(Optional.of(cinema));
+
+        OffsetDateTime expectedDayStart = OffsetDateTime.parse("2026-10-26T00:00:00+07:00");
+
+        when(cinemaRepository.existsShowtimeWithStatusStartingAtOrAfter(
+                        CINEMA_ID, ShowtimeStatus.OPEN_FOR_BOOKING, expectedDayStart))
+                .thenReturn(true);
+
+        UpdateCinemaRequest request =
+                new UpdateCinemaRequest("Changed name", "Changed address", "Changed city", false);
+
+        assertThatThrownBy(() -> cinemaService.update(CINEMA_ID, request))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("Cinema cannot be deactivated");
+
+        assertThat(cinema.isActive()).isTrue();
+        assertThat(cinema.getName()).isEqualTo("CGV Vincom");
+        assertThat(cinema.getAddress()).isEqualTo("72 Le Thanh Ton");
+        assertThat(cinema.getCity()).isEqualTo("Ho Chi Minh");
+
+        verify(cinemaRepository, never()).flush();
+        verifyNoInteractions(cinemaMapper);
     }
 
-    private CinemaResponse response(
-            String name,
-            String address,
-            String city,
-            boolean active) {
+    private Cinema cinema() {
+        return new Cinema("CGV Vincom", "72 Le Thanh Ton", "Ho Chi Minh");
+    }
 
-        return new CinemaResponse(
-                CINEMA_ID,
-                name,
-                address,
-                city,
-                active,
-                null,
-                null);
+    private CinemaResponse response(String name, String address, String city, boolean active) {
+
+        return new CinemaResponse(CINEMA_ID, name, address, city, active, null, null);
     }
 }

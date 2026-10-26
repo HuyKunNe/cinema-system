@@ -47,6 +47,23 @@ Current status:
 
 ## 2026-10-26
 
+### Cinema Deactivation Protection
+
+#### Changed
+
+- Reject inactive cinema updates when any owned room has
+  open-for-booking showtimes today or later in the cinema time zone.
+- Use the effective requested time zone when it is being updated.
+- Lock the cinema during updates and showtime opening.
+- Preserve the opening lock order: room, cinema, showtime.
+
+#### Verification status
+
+- Updated affected unit-test constructors, mocks and lock-order checks.
+- Added a cinema-local date boundary rejection case.
+- Tests and build were not run.
+- Manual API and concurrency verification is pending.
+
 ### Holiday Couple Fare Validation
 
 #### Fixed
