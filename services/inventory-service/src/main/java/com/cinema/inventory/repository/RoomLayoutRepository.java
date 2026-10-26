@@ -1,5 +1,6 @@
 package com.cinema.inventory.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -18,17 +19,12 @@ public interface RoomLayoutRepository extends JpaRepository<RoomLayout, UUID> {
 
     List<RoomLayout> findAllByRoom_IdOrderByLayoutVersionDesc(UUID roomId);
 
-    Optional<RoomLayout> findByIdAndRoom_Id(
-            UUID layoutId,
-            UUID roomId);
+    Optional<RoomLayout> findByIdAndRoom_Id(UUID layoutId, UUID roomId);
 
     Optional<RoomLayout> findFirstByRoom_IdAndStatusOrderByLayoutVersionDesc(
-            UUID roomId,
-            RoomLayoutStatus status);
+            UUID roomId, RoomLayoutStatus status);
 
-    boolean existsByRoom_IdAndLayoutVersion(
-            UUID roomId,
-            long layoutVersion);
+    boolean existsByRoom_IdAndLayoutVersion(UUID roomId, long layoutVersion);
 
     @Query(
             """
@@ -40,8 +36,7 @@ public interface RoomLayoutRepository extends JpaRepository<RoomLayout, UUID> {
               and layout.columnCount is not null
             """)
     boolean existsMatrixByRoomAndStatus(
-            @Param("roomId") UUID roomId,
-            @Param("status") RoomLayoutStatus status);
+            @Param("roomId") UUID roomId, @Param("status") RoomLayoutStatus status);
 
     @Query(
             """
@@ -49,16 +44,30 @@ public interface RoomLayoutRepository extends JpaRepository<RoomLayout, UUID> {
             from RoomLayout layout
             where layout.room.id = :roomId
             """)
-    long findMaximumLayoutVersionByRoomId(
-            @Param("roomId") UUID roomId);
+    long findMaximumLayoutVersionByRoomId(@Param("roomId") UUID roomId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select layout from RoomLayout layout where layout.id = :layoutId")
-    Optional<RoomLayout> findByIdForUpdate(
-            @Param("layoutId") UUID layoutId);
+    Optional<RoomLayout> findByIdForUpdate(@Param("layoutId") UUID layoutId);
 
     @Lock(LockModeType.PESSIMISTIC_READ)
     @Query("select layout from RoomLayout layout where layout.id = :layoutId")
-    Optional<RoomLayout> findByIdForRead(
-            @Param("layoutId") UUID layoutId);
+    Optional<RoomLayout> findByIdForRead(@Param("layoutId") UUID layoutId);
+
+    @Query(
+            """
+            select layout
+            from RoomLayout layout
+            where layout.room.id in :roomIds
+              and layout.status = :status
+              and layout.layoutVersion = (
+                  select max(candidate.layoutVersion)
+                  from RoomLayout candidate
+                  where candidate.room.id = layout.room.id
+                    and candidate.status = :status
+              )
+            order by layout.room.id
+            """)
+    List<RoomLayout> findLatestPublishedForRooms(
+            @Param("roomIds") Collection<UUID> roomIds, @Param("status") RoomLayoutStatus status);
 }

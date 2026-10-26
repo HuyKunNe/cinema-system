@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,4 +24,17 @@ public interface RoomLayoutMatrixCellRepository extends JpaRepository<RoomLayout
             where cell.layout.id = :layoutId
             """)
     void deleteAllForLayout(@Param("layoutId") UUID layoutId);
+
+    @Query(
+            """
+            select cell
+            from RoomLayoutMatrixCell cell
+            join fetch cell.layout layout
+            left join fetch cell.seat seat
+            left join fetch seat.room
+            where layout.id in :layoutIds
+            order by layout.id, cell.rowIndex, cell.columnIndex
+            """)
+    List<RoomLayoutMatrixCell> findAllForCapacityByLayoutIds(
+            @Param("layoutIds") Collection<UUID> layoutIds);
 }

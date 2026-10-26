@@ -18,7 +18,10 @@ import com.cinema.common.security.web.reactive.CinemaServerAuthenticationEntryPo
 public class GatewaySecurityConfiguration {
 
     private static final String[] INVENTORY_MANAGEMENT_READ_ENDPOINTS = {
-        "/api/v1/cinemas/management", "/api/v1/rooms/management", "/api/v1/seats/management"
+        "/api/v1/cinemas/management",
+        "/api/v1/cinemas/*/room-capacities",
+        "/api/v1/rooms/management",
+        "/api/v1/seats/management"
     };
 
     private static final String[] PUBLIC_CATALOG_ENDPOINTS = {

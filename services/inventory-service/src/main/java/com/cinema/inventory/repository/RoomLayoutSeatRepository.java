@@ -1,5 +1,6 @@
 package com.cinema.inventory.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,4 +46,17 @@ public interface RoomLayoutSeatRepository extends JpaRepository<RoomLayoutSeat, 
     List<RoomLayoutSeat> findAllForSeatMapByLayoutId(@Param("layoutId") UUID layoutId);
 
     boolean existsByLayout_Id(UUID layoutId);
+
+    @Query(
+            """
+            select position
+            from RoomLayoutSeat position
+            join fetch position.layout layout
+            left join fetch position.seat seat
+            left join fetch seat.room
+            where layout.id in :layoutIds
+            order by layout.id, position.seatNumberSnapshot
+            """)
+    List<RoomLayoutSeat> findAllForCapacityByLayoutIds(
+            @Param("layoutIds") Collection<UUID> layoutIds);
 }
