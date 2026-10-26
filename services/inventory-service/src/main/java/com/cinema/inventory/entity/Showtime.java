@@ -1,10 +1,5 @@
 package com.cinema.inventory.entity;
 
-import java.time.OffsetDateTime;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
@@ -13,6 +8,7 @@ import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -22,12 +18,20 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
+import java.time.OffsetDateTime;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+
 @Entity
 @Table(name = "showtimes")
 public class Showtime extends BaseEntity {
 
     @Column(name = "movie_id", nullable = false, columnDefinition = "BINARY(16)")
     private UUID movieId;
+
+    @Embedded private ShowtimeScreeningVersion screeningVersion;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "room_id", nullable = false)
@@ -89,11 +93,36 @@ public class Showtime extends BaseEntity {
         this.roomLayout = roomLayout;
     }
 
+    public Showtime(
+            UUID movieId,
+            Room room,
+            OffsetDateTime startsAt,
+            OffsetDateTime endsAt,
+            RoomLayout roomLayout,
+            ShowtimeScreeningVersion screeningVersion) {
+
+        this(movieId, room, startsAt, endsAt, roomLayout);
+
+        if (screeningVersion == null) {
+            throw new ValidationException(InventoryErrorCode.SCREENING_VERSION_REQUIRED);
+        }
+
+        this.screeningVersion = screeningVersion;
+    }
+
+    public ShowtimeScreeningVersion getScreeningVersion() {
+        return screeningVersion;
+    }
+
     public UUID getMovieId() {
         return movieId;
     }
 
     public void setMovieId(UUID movieId) {
+        if (screeningVersion != null && !Objects.equals(this.movieId, movieId)) {
+            throw new ConflictException(InventoryErrorCode.SCREENING_VERSION_IMMUTABLE);
+        }
+
         this.movieId = movieId;
     }
 

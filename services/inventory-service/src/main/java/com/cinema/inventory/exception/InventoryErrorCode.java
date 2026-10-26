@@ -520,6 +520,54 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_CINEMA_VERSION_CONFLICT",
                     "Cinema has changed; reload before saving");
 
+    public static final InventoryErrorCode SCREENING_VERSION_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_SCREENING_VERSION_REQUIRED",
+                    "Movie screening version is required");
+
+    public static final InventoryErrorCode SCREENING_VERSION_NOT_FOUND =
+            new InventoryErrorCode(
+                    ErrorCategory.RESOURCE,
+                    "INVENTORY_SCREENING_VERSION_NOT_FOUND",
+                    "Screening version was not found for the selected movie");
+
+    public static final InventoryErrorCode SCREENING_VERSION_INACTIVE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SCREENING_VERSION_INACTIVE",
+                    "Screening version is inactive");
+
+    public static final InventoryErrorCode SCREENING_VERSION_SNAPSHOT_INVALID =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_SCREENING_VERSION_SNAPSHOT_INVALID",
+                    "Screening version snapshot is invalid");
+
+    public static final InventoryErrorCode SCREENING_VERSION_IMMUTABLE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SCREENING_VERSION_IMMUTABLE",
+                    "Movie cannot be changed after a screening version is pinned");
+
+    public static final InventoryErrorCode ROOM_CONTENT_FORMATS_NOT_CONFIGURED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_ROOM_CONTENT_FORMATS_NOT_CONFIGURED",
+                    "Configure room content formats before creating a showtime");
+
+    public static final InventoryErrorCode SHOWTIME_FORMAT_NOT_SUPPORTED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_FORMAT_NOT_SUPPORTED",
+                    "Room does not support the selected screening version format");
+
+    public static final InventoryErrorCode MOVIE_CATALOG_UNAVAILABLE =
+            new InventoryErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "INVENTORY_MOVIE_CATALOG_UNAVAILABLE",
+                    "Movie screening version could not be verified");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

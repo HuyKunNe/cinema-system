@@ -1,9 +1,5 @@
 package com.cinema.inventory.dto.request;
 
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
-import java.util.UUID;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -13,6 +9,10 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotNull;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.UUID;
 
 public record CreateShowtimeRequest(
         @NotNull UUID movieId,
@@ -28,10 +28,25 @@ public record CreateShowtimeRequest(
                         nullable = true,
                         description =
                                 "Published layout belonging to roomId. "
-                                        + "Required when the room has a published matrix layout. "
-                                        + "Otherwise omission retains legacy catalog generation. "
-                                        + "The server does not automatically select a layout.")
-                UUID roomLayoutId) {
+                                        + "Required when the room has a published matrix layout.")
+                UUID roomLayoutId,
+        @NotNull
+                @Schema(
+                        description =
+                                "Active screening version belonging to movieId. "
+                                        + "Its content format must be supported by the room.")
+                UUID movieScreeningVersionId) {
+
+    public CreateShowtimeRequest(
+            UUID movieId,
+            UUID roomId,
+            OffsetDateTime startsAt,
+            OffsetDateTime endsAt,
+            BigDecimal basePrice,
+            UUID roomLayoutId) {
+
+        this(movieId, roomId, startsAt, endsAt, basePrice, roomLayoutId, null);
+    }
 
     public CreateShowtimeRequest(
             UUID movieId,
@@ -40,13 +55,7 @@ public record CreateShowtimeRequest(
             OffsetDateTime endsAt,
             BigDecimal basePrice) {
 
-        this(
-                movieId,
-                roomId,
-                startsAt,
-                endsAt,
-                basePrice,
-                null);
+        this(movieId, roomId, startsAt, endsAt, basePrice, null, null);
     }
 
     @JsonIgnore

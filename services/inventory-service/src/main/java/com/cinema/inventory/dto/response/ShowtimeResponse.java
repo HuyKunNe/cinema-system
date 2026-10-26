@@ -1,6 +1,7 @@
 package com.cinema.inventory.dto.response;
 
 import com.cinema.inventory.enums.ShowtimeStatus;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -22,7 +23,14 @@ public record ShowtimeResponse(
         @Schema(
                         nullable = true,
                         description = "Published layout pinned when the showtime was created.")
-                UUID roomLayoutId) {
+                UUID roomLayoutId,
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+                @Schema(
+                        nullable = true,
+                        description =
+                                "Screening version snapshot pinned at creation. "
+                                        + "Null for legacy showtimes.")
+                ShowtimeScreeningVersionResponse screeningVersion) {
 
     public ShowtimeResponse(
             UUID id,
@@ -49,6 +57,37 @@ public record ShowtimeResponse(
                 status,
                 createdAt,
                 updatedAt,
+                null,
+                null);
+    }
+
+    public ShowtimeResponse(
+            UUID id,
+            UUID movieId,
+            UUID roomId,
+            String roomName,
+            UUID cinemaId,
+            String cinemaName,
+            OffsetDateTime startsAt,
+            OffsetDateTime endsAt,
+            ShowtimeStatus status,
+            OffsetDateTime createdAt,
+            OffsetDateTime updatedAt,
+            UUID roomLayoutId) {
+
+        this(
+                id,
+                movieId,
+                roomId,
+                roomName,
+                cinemaId,
+                cinemaName,
+                startsAt,
+                endsAt,
+                status,
+                createdAt,
+                updatedAt,
+                roomLayoutId,
                 null);
     }
 }

@@ -8,15 +8,13 @@ import com.cinema.inventory.dto.request.CreateShowtimeRequest;
 import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
 import com.cinema.inventory.dto.response.ShowtimeResponse;
 import com.cinema.inventory.entity.Room;
-import com.cinema.inventory.entity.RoomLayout;
 import com.cinema.inventory.entity.Showtime;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.ShowtimeMapper;
 import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
-import com.cinema.inventory.service.ShowSeatGenerationService;
-import com.cinema.inventory.service.ShowtimeLayoutService;
+import com.cinema.inventory.service.ShowtimeCreationService;
 import com.cinema.inventory.service.ShowtimeService;
 
 import org.springframework.stereotype.Service;
@@ -39,49 +37,29 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     private final ShowtimeRepository showtimeRepository;
     private final RoomRepository roomRepository;
     private final ShowtimeMapper showtimeMapper;
-    private final ShowSeatGenerationService showSeatGenerationService;
     private final Clock clock;
     private final BookableShowtimeProperties bookableShowtimeProperties;
-    private final ShowtimeLayoutService showtimeLayoutService;
+    private final ShowtimeCreationService showtimeCreationService;
 
     public ShowtimeServiceImpl(
             ShowtimeRepository showtimeRepository,
             RoomRepository roomRepository,
             ShowtimeMapper showtimeMapper,
-            ShowSeatGenerationService showSeatGenerationService,
             Clock clock,
             BookableShowtimeProperties bookableShowtimeProperties,
-            ShowtimeLayoutService showtimeLayoutService) {
+            ShowtimeCreationService showtimeCreationService) {
 
         this.showtimeRepository = showtimeRepository;
         this.roomRepository = roomRepository;
         this.showtimeMapper = showtimeMapper;
-        this.showSeatGenerationService = showSeatGenerationService;
         this.clock = clock;
         this.bookableShowtimeProperties = bookableShowtimeProperties;
-        this.showtimeLayoutService = showtimeLayoutService;
+        this.showtimeCreationService = showtimeCreationService;
     }
 
     @Override
-    @Transactional
     public ShowtimeResponse create(CreateShowtimeRequest request) {
-        Room room = findRoom(request.roomId());
-
-        validateRoomAvailable(room);
-
-        RoomLayout layout =
-                showtimeLayoutService.resolveForNewShowtime(room.getId(), request.roomLayoutId());
-
-        validateNoOverlap(room.getId(), request.startsAt(), request.endsAt());
-
-        Showtime showtime =
-                new Showtime(request.movieId(), room, request.startsAt(), request.endsAt(), layout);
-
-        Showtime savedShowtime = showtimeRepository.save(showtime);
-
-        showSeatGenerationService.generate(savedShowtime, request.basePrice());
-
-        return showtimeMapper.toResponse(savedShowtime);
+        return showtimeCreationService.create(request);
     }
 
     @Override
@@ -216,19 +194,6 @@ public class ShowtimeServiceImpl implements ShowtimeService {
 
         if (!room.getCinema().isActive()) {
             throw new ConflictException(InventoryErrorCode.CINEMA_INACTIVE);
-        }
-    }
-
-    private void validateNoOverlap(UUID roomId, OffsetDateTime startsAt, OffsetDateTime endsAt) {
-
-        validateTimeRange(startsAt, endsAt);
-
-        boolean overlapping =
-                showtimeRepository.existsOverlappingShowtime(
-                        roomId, startsAt, endsAt, NON_BLOCKING_STATUSES);
-
-        if (overlapping) {
-            throw new ConflictException(InventoryErrorCode.SHOWTIME_OVERLAP);
         }
     }
 

@@ -42,6 +42,22 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+  security:
+    oauth2:
+      client:
+        registration:
+          movie-catalog:
+            provider: cinema
+            client-id: ${INVENTORY_MOVIE_CLIENT_ID:inventory-movie-catalog}
+            client-secret: ${INVENTORY_MOVIE_CLIENT_SECRET}
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: client_credentials
+            scope:
+              - movie:catalog:read
+        provider:
+          cinema:
+            token-uri: ${INVENTORY_MOVIE_TOKEN_URI:http://localhost:8082/oauth2/token}
 springdoc:
   api-docs:
     enabled: true
@@ -101,6 +117,11 @@ cinema:
       retry:
         interval: ${INVENTORY_KAFKA_RETRY_INTERVAL:1s}
         maximum-retries: ${INVENTORY_KAFKA_MAXIMUM_RETRIES:3}
+
+    movie-catalog:
+      base-url: ${INVENTORY_MOVIE_BASE_URL:http://localhost:8081}
+      connect-timeout: ${INVENTORY_MOVIE_CONNECT_TIMEOUT:2s}
+      read-timeout: ${INVENTORY_MOVIE_READ_TIMEOUT:3s}
 
   outbox:
     enabled: ${INVENTORY_OUTBOX_ENABLED:true}
