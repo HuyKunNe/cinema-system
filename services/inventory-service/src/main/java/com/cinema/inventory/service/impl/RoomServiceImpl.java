@@ -20,6 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -31,15 +34,18 @@ public class RoomServiceImpl implements RoomService {
     private final RoomRepository roomRepository;
     private final CinemaRepository cinemaRepository;
     private final RoomMapper roomMapper;
+    private final Clock clock;
 
     public RoomServiceImpl(
             RoomRepository roomRepository,
             CinemaRepository cinemaRepository,
-            RoomMapper roomMapper) {
+            RoomMapper roomMapper,
+            Clock clock) {
 
         this.roomRepository = roomRepository;
         this.cinemaRepository = cinemaRepository;
         this.roomMapper = roomMapper;
+        this.clock = clock;
     }
 
     @Override
@@ -131,6 +137,13 @@ public class RoomServiceImpl implements RoomService {
             throw new ConflictException(InventoryErrorCode.ROOM_TYPE_CHANGE_BLOCKED);
         }
 
+        if (!request.active()
+                && roomRepository.existsShowtimeWithStatusStartingAtOrAfter(
+                        roomId, ShowtimeStatus.OPEN_FOR_BOOKING, startOfTodayAtCinema(room))) {
+
+            throw new ConflictException(InventoryErrorCode.ROOM_DEACTIVATION_BLOCKED);
+        }
+
         room.setName(normalizedName);
         room.setRoomType(request.roomType());
 
@@ -176,6 +189,24 @@ public class RoomServiceImpl implements RoomService {
         }
 
         return formats;
+    }
+
+    private OffsetDateTime startOfTodayAtCinema(Room room) {
+        String configuredZone = room.getCinema().getTimeZone();
+
+        String zoneName = configuredZone == null ? "Asia/Ho_Chi_Minh" : configuredZone;
+
+        if (!ZoneId.getAvailableZoneIds().contains(zoneName)) {
+            throw new ValidationException(InventoryErrorCode.CINEMA_TIME_ZONE_INVALID);
+        }
+
+        ZoneId cinemaZone = ZoneId.of(zoneName);
+
+        return clock.instant()
+                .atZone(cinemaZone)
+                .toLocalDate()
+                .atStartOfDay(cinemaZone)
+                .toOffsetDateTime();
     }
 
     private String normalize(String value) {

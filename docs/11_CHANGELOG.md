@@ -47,6 +47,23 @@ Current status:
 
 ## 2026-10-26
 
+### Room Deactivation Protection
+
+#### Changed
+
+- Reject inactive room updates when open-for-booking showtimes
+  exist on the current cinema-local date or a later date.
+- Calculate the date boundary using the shared server Clock.
+- Use Asia/Ho_Chi_Minh for legacy null cinema time zones.
+- Lock the room before the showtime when opening booking.
+
+#### Verification status
+
+- Updated affected unit-test setup and opening cases.
+- Added a cinema-local date boundary rejection case.
+- Tests and build were not run.
+- Manual API and concurrency verification is pending.
+
 ### Room Configuration Protection
 
 #### Changed

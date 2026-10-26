@@ -28,6 +28,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -39,6 +43,9 @@ class RoomServiceImplTest {
 
     private static final UUID ROOM_ID = UUID.fromString("019102b2-7c00-7000-8000-000000000002");
 
+    private static final Clock TEST_CLOCK =
+            Clock.fixed(Instant.parse("2026-10-25T18:30:00Z"), ZoneOffset.UTC);
+
     @Mock private RoomRepository roomRepository;
 
     @Mock private CinemaRepository cinemaRepository;
@@ -49,7 +56,7 @@ class RoomServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        roomService = new RoomServiceImpl(roomRepository, cinemaRepository, roomMapper);
+        roomService = new RoomServiceImpl(roomRepository, cinemaRepository, roomMapper, TEST_CLOCK);
     }
 
     @Test
@@ -351,6 +358,39 @@ class RoomServiceImplTest {
 
         verify(roomRepository, never()).flush();
 
+        verifyNoInteractions(roomMapper);
+    }
+
+    @Test
+    void updateShouldRejectDeactivationUsingCinemaLocalDay() {
+        Cinema cinema = org.mockito.Mockito.mock(Cinema.class);
+
+        when(cinema.getId()).thenReturn(CINEMA_ID);
+        when(cinema.getTimeZone()).thenReturn("Asia/Ho_Chi_Minh");
+
+        Room room = new Room(cinema, "Room 01", RoomType.STANDARD);
+
+        when(roomRepository.findByIdForUpdate(ROOM_ID)).thenReturn(Optional.of(room));
+
+        OffsetDateTime expectedDayStart = OffsetDateTime.parse("2026-10-26T00:00:00+07:00");
+
+        when(roomRepository.existsShowtimeWithStatusStartingAtOrAfter(
+                        ROOM_ID, ShowtimeStatus.OPEN_FOR_BOOKING, expectedDayStart))
+                .thenReturn(true);
+
+        UpdateRoomRequest request = new UpdateRoomRequest("Changed name", RoomType.STANDARD, false);
+
+        assertThatThrownBy(() -> roomService.update(ROOM_ID, request))
+                .isInstanceOf(ConflictException.class);
+
+        assertThat(room.isActive()).isTrue();
+        assertThat(room.getName()).isEqualTo("Room 01");
+
+        verify(roomRepository)
+                .existsShowtimeWithStatusStartingAtOrAfter(
+                        ROOM_ID, ShowtimeStatus.OPEN_FOR_BOOKING, expectedDayStart);
+
+        verify(roomRepository, never()).flush();
         verifyNoInteractions(roomMapper);
     }
 

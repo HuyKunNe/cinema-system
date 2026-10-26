@@ -1,17 +1,5 @@
 package com.cinema.inventory.service.impl;
 
-import java.time.Clock;
-import java.time.Duration;
-import java.time.OffsetDateTime;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
@@ -29,6 +17,18 @@ import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ShowtimeCreationService;
 import com.cinema.inventory.service.ShowtimeService;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Clock;
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 @Service
 public class ShowtimeServiceImpl implements ShowtimeService {
@@ -185,17 +185,31 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public ShowtimeResponse openForBooking(UUID showtimeId) {
+
+        UUID roomId =
+                showtimeRepository
+                        .findRoomIdForScheduleChange(showtimeId)
+                        .orElseThrow(
+                                () -> new NotFoundException(InventoryErrorCode.SHOWTIME_NOT_FOUND));
+
+        Room room =
+                roomRepository
+                        .findByIdForUpdate(roomId)
+                        .orElseThrow(
+                                () -> new NotFoundException(InventoryErrorCode.ROOM_NOT_FOUND));
+
         Showtime showtime = findShowtimeForUpdate(showtimeId);
 
-        validateRoomAvailable(showtime.getRoom());
+        validateRoomAvailable(room);
 
         if (!showtime.getStartsAt().isAfter(OffsetDateTime.now(clock))) {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_EDITABLE);
         }
 
         showtime.openForBooking();
+
         return flushAndMap(showtime);
     }
 

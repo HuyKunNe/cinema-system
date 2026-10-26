@@ -723,6 +723,13 @@ public final class InventoryErrorCode implements ErrorCode {
                     "Existing room content formats cannot be removed "
                             + "while non-cancelled showtimes exist");
 
+    public static final InventoryErrorCode ROOM_DEACTIVATION_BLOCKED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_ROOM_DEACTIVATION_BLOCKED",
+                    "Room cannot be deactivated while open-for-booking "
+                            + "showtimes exist today or later in the cinema time zone");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

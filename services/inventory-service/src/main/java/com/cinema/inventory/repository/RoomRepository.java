@@ -1,5 +1,7 @@
 package com.cinema.inventory.repository;
 
+import java.time.OffsetDateTime;
+
 import com.cinema.inventory.entity.Room;
 import com.cinema.inventory.enums.ShowtimeStatus;
 
@@ -51,4 +53,18 @@ public interface RoomRepository extends JpaRepository<Room, UUID> {
             """)
     boolean existsShowtimesWithStatusNot(
             @Param("roomId") UUID roomId, @Param("excludedStatus") ShowtimeStatus excludedStatus);
+
+    @Query(
+            """
+            select case when count(showtime) > 0 then true else false end
+            from Room room
+            join room.showtimes showtime
+            where room.id = :roomId
+              and showtime.status = :status
+              and showtime.startsAt >= :from
+            """)
+    boolean existsShowtimeWithStatusStartingAtOrAfter(
+            @Param("roomId") UUID roomId,
+            @Param("status") ShowtimeStatus status,
+            @Param("from") OffsetDateTime from);
 }
