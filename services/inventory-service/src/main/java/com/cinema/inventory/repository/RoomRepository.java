@@ -1,6 +1,7 @@
 package com.cinema.inventory.repository;
 
 import com.cinema.inventory.entity.Room;
+import com.cinema.inventory.enums.ShowtimeStatus;
 
 import jakarta.persistence.LockModeType;
 
@@ -24,29 +25,30 @@ public interface RoomRepository extends JpaRepository<Room, UUID> {
     List<Room> findAllByCinema_IdOrderByNameAsc(UUID cinemaId);
 
     @EntityGraph(attributePaths = "supportedContentFormats")
-    List<Room> findAllByCinema_IdAndActiveTrueOrderByNameAsc(
-            UUID cinemaId);
+    List<Room> findAllByCinema_IdAndActiveTrueOrderByNameAsc(UUID cinemaId);
 
-    boolean existsByCinema_IdAndNameIgnoreCase(
-            UUID cinemaId,
-            String name);
+    boolean existsByCinema_IdAndNameIgnoreCase(UUID cinemaId, String name);
 
-    boolean existsByCinema_IdAndNameIgnoreCaseAndIdNot(
-            UUID cinemaId,
-            String name,
-            UUID id);
+    boolean existsByCinema_IdAndNameIgnoreCaseAndIdNot(UUID cinemaId, String name, UUID id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select room from Room room where room.id = :roomId")
-    Optional<Room> findByIdForUpdate(
-            @Param("roomId") UUID roomId);
+    Optional<Room> findByIdForUpdate(@Param("roomId") UUID roomId);
 
     @EntityGraph(attributePaths = "supportedContentFormats")
-    List<Room> findAllByCinema_IdOrderByNameAscIdAsc(
-            UUID cinemaId);
+    List<Room> findAllByCinema_IdOrderByNameAscIdAsc(UUID cinemaId);
 
     @EntityGraph(attributePaths = "supportedContentFormats")
-    List<Room> findAllByCinema_IdAndActiveOrderByNameAscIdAsc(
-            UUID cinemaId,
-            boolean active);
+    List<Room> findAllByCinema_IdAndActiveOrderByNameAscIdAsc(UUID cinemaId, boolean active);
+
+    @Query(
+            """
+            select case when count(showtime) > 0 then true else false end
+            from Room room
+            join room.showtimes showtime
+            where room.id = :roomId
+              and showtime.status <> :excludedStatus
+            """)
+    boolean existsShowtimesWithStatusNot(
+            @Param("roomId") UUID roomId, @Param("excludedStatus") ShowtimeStatus excludedStatus);
 }

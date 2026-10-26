@@ -710,6 +710,19 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PRICING_POLICY_NOT_PUBLISHABLE",
                     "Pricing policy version is not publishable; validate the stored fare matrix");
 
+    public static final InventoryErrorCode ROOM_TYPE_CHANGE_BLOCKED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_ROOM_TYPE_CHANGE_BLOCKED",
+                    "Room type cannot change while non-cancelled showtimes exist");
+
+    public static final InventoryErrorCode ROOM_FORMAT_REMOVAL_BLOCKED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_ROOM_FORMAT_REMOVAL_BLOCKED",
+                    "Existing room content formats cannot be removed "
+                            + "while non-cancelled showtimes exist");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

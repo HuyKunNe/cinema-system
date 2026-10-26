@@ -7,6 +7,7 @@ import com.cinema.inventory.dto.request.ReplaceRoomContentFormatsRequest;
 import com.cinema.inventory.dto.response.RoomContentFormatsResponse;
 import com.cinema.inventory.entity.Room;
 import com.cinema.inventory.enums.ContentFormat;
+import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.RoomContentFormatsMapper;
 import com.cinema.inventory.repository.RoomRepository;
@@ -43,7 +44,7 @@ public class RoomContentFormatsService {
         return mapper.toResponse(room);
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public RoomContentFormatsResponse replace(
             UUID roomId, ReplaceRoomContentFormatsRequest request) {
 
@@ -57,6 +58,14 @@ public class RoomContentFormatsService {
 
         if (!request.expectedVersion().equals(room.getVersion())) {
             throw new ConflictException(InventoryErrorCode.ROOM_VERSION_CONFLICT);
+        }
+
+        boolean removingExistingFormats = !formats.containsAll(room.getSupportedContentFormats());
+
+        if (removingExistingFormats
+                && roomRepository.existsShowtimesWithStatusNot(roomId, ShowtimeStatus.CANCELLED)) {
+
+            throw new ConflictException(InventoryErrorCode.ROOM_FORMAT_REMOVAL_BLOCKED);
         }
 
         room.replaceSupportedContentFormats(formats);

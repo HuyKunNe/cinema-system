@@ -47,6 +47,23 @@ Current status:
 
 ## 2026-10-26
 
+### Room Configuration Protection
+
+#### Changed
+
+- Reject room-type changes while non-cancelled showtimes exist.
+- Reject removal of existing room content formats while
+  non-cancelled showtimes exist.
+- Allow adding content formats and retaining the current configuration.
+- Serialize configuration changes with showtime creation using the room lock.
+- Apply READ_COMMITTED to room configuration mutations.
+
+#### Verification status
+
+- Room update unit-test mocks and a rejection case were updated.
+- Tests and build were not run.
+- Manual API and concurrency verification is pending.
+
 ### Room Creation With Initial Configuration
 
 #### Changed
