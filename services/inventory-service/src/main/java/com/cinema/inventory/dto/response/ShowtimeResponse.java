@@ -30,7 +30,13 @@ public record ShowtimeResponse(
                         description =
                                 "Screening version snapshot pinned at creation. "
                                         + "Null for legacy showtimes.")
-                ShowtimeScreeningVersionResponse screeningVersion) {
+                ShowtimeScreeningVersionResponse screeningVersion,
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+                @Schema(
+                        nullable = true,
+                        description = "Pinned scheduling details. Null for legacy showtimes.")
+                ShowtimeSchedulingResponse scheduling,
+        Long version) {
 
     public ShowtimeResponse(
             UUID id,
@@ -88,6 +94,39 @@ public record ShowtimeResponse(
                 createdAt,
                 updatedAt,
                 roomLayoutId,
+                null);
+    }
+
+    public ShowtimeResponse(
+            UUID id,
+            UUID movieId,
+            UUID roomId,
+            String roomName,
+            UUID cinemaId,
+            String cinemaName,
+            OffsetDateTime startsAt,
+            OffsetDateTime endsAt,
+            ShowtimeStatus status,
+            OffsetDateTime createdAt,
+            OffsetDateTime updatedAt,
+            UUID roomLayoutId,
+            ShowtimeScreeningVersionResponse screeningVersion) {
+
+        this(
+                id,
+                movieId,
+                roomId,
+                roomName,
+                cinemaId,
+                cinemaName,
+                startsAt,
+                endsAt,
+                status,
+                createdAt,
+                updatedAt,
+                roomLayoutId,
+                screeningVersion,
+                null,
                 null);
     }
 }

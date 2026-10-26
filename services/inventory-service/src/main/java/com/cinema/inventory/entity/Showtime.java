@@ -33,6 +33,8 @@ public class Showtime extends BaseEntity {
 
     @Embedded private ShowtimeScreeningVersion screeningVersion;
 
+    @Embedded private ShowtimeScheduling scheduling;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "room_id", nullable = false)
     private Room room;
@@ -110,6 +112,29 @@ public class Showtime extends BaseEntity {
         this.screeningVersion = screeningVersion;
     }
 
+    public Showtime(
+            UUID movieId,
+            Room room,
+            OffsetDateTime startsAt,
+            OffsetDateTime endsAt,
+            RoomLayout roomLayout,
+            ShowtimeScreeningVersion screeningVersion,
+            ShowtimeScheduling scheduling) {
+
+        this(movieId, room, startsAt, endsAt, roomLayout, screeningVersion);
+
+        if (scheduling == null) {
+            throw new ValidationException(InventoryErrorCode.SHOWTIME_SCHEDULING_REQUIRED);
+        }
+
+        scheduling.validateDuration(startsAt, endsAt);
+        this.scheduling = scheduling;
+    }
+
+    public ShowtimeScheduling getScheduling() {
+        return scheduling;
+    }
+
     public ShowtimeScreeningVersion getScreeningVersion() {
         return screeningVersion;
     }
@@ -156,10 +181,35 @@ public class Showtime extends BaseEntity {
 
     public void changeSchedule(OffsetDateTime startsAt, OffsetDateTime endsAt) {
 
+        if (scheduling == null) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_SCHEDULING_REQUIRED);
+        }
+
+        changeSchedule(startsAt, endsAt, scheduling.getBreakMinutes());
+    }
+
+    public void changeSchedule(
+            OffsetDateTime startsAt, OffsetDateTime endsAt, Integer breakMinutes) {
+
+        requireStatus(ShowtimeStatus.SCHEDULED);
         validateTimeRange(startsAt, endsAt);
+
+        if (scheduling == null) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_SCHEDULING_REQUIRED);
+        }
+
+        scheduling.validateDuration(startsAt, endsAt);
+        ShowtimeScheduling.validateBreak(breakMinutes);
+
+        if (this.startsAt.isEqual(startsAt)
+                && this.endsAt.isEqual(endsAt)
+                && scheduling.getBreakMinutes().equals(breakMinutes)) {
+            return;
+        }
 
         this.startsAt = startsAt;
         this.endsAt = endsAt;
+        this.scheduling = scheduling.rescheduled(endsAt, breakMinutes);
     }
 
     public void openForBooking() {

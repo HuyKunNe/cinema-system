@@ -1,20 +1,5 @@
 package com.cinema.common.api.advice;
 
-import com.cinema.common.api.mapper.ValidationErrorMapper;
-import com.cinema.common.exception.code.ErrorCategory;
-import com.cinema.common.exception.exception.BusinessException;
-import com.cinema.common.exception.exception.ConflictException;
-import com.cinema.common.exception.exception.ForbiddenException;
-import com.cinema.common.exception.exception.InternalServerException;
-import com.cinema.common.exception.exception.NotFoundException;
-import com.cinema.common.exception.exception.ResourceLockedException;
-import com.cinema.common.exception.exception.UnauthorizedException;
-import com.cinema.common.response.factory.ResponseFactory;
-import com.cinema.common.response.model.ApiResponse;
-import com.cinema.common.response.model.ErrorBody;
-
-import jakarta.validation.ConstraintViolationException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -26,6 +11,22 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import com.cinema.common.api.mapper.ValidationErrorMapper;
+import com.cinema.common.exception.code.ErrorCategory;
+import com.cinema.common.exception.exception.BusinessException;
+import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.ForbiddenException;
+import com.cinema.common.exception.exception.InternalServerException;
+import com.cinema.common.exception.exception.NotFoundException;
+import com.cinema.common.exception.exception.ResourceLockedException;
+import com.cinema.common.exception.exception.ServiceUnavailableException;
+import com.cinema.common.exception.exception.UnauthorizedException;
+import com.cinema.common.response.factory.ResponseFactory;
+import com.cinema.common.response.model.ApiResponse;
+import com.cinema.common.response.model.ErrorBody;
+
+import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -135,6 +136,13 @@ public class GlobalExceptionHandler {
             InternalServerException exception) {
 
         return buildBusinessError(exception, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleServiceUnavailable(
+            ServiceUnavailableException exception) {
+
+        return buildBusinessError(exception, HttpStatus.SERVICE_UNAVAILABLE);
     }
 
     @ExceptionHandler({

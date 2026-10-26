@@ -6,8 +6,10 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 import com.cinema.inventory.dto.response.ShowtimeResponse;
+import com.cinema.inventory.dto.response.ShowtimeSchedulingResponse;
 import com.cinema.inventory.dto.response.ShowtimeScreeningVersionResponse;
 import com.cinema.inventory.entity.Showtime;
+import com.cinema.inventory.entity.ShowtimeScheduling;
 import com.cinema.inventory.entity.ShowtimeScreeningVersion;
 
 @Mapper(config = InventoryMapperConfig.class)
@@ -23,5 +25,7 @@ public interface ShowtimeMapper {
 
     ShowtimeScreeningVersionResponse toResponse(ShowtimeScreeningVersion screeningVersion);
 
+    ShowtimeSchedulingResponse toResponse(ShowtimeScheduling scheduling);
+    
     List<ShowtimeResponse> toResponses(List<Showtime> showtimes);
 }

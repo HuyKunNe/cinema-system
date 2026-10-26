@@ -1,17 +1,20 @@
 package com.cinema.inventory.repository;
 
+import com.cinema.inventory.entity.Showtime;
+import com.cinema.inventory.enums.ShowtimeStatus;
+
+import jakarta.persistence.LockModeType;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-
-import com.cinema.inventory.entity.Showtime;
-import com.cinema.inventory.enums.ShowtimeStatus;
 
 public interface ShowtimeRepository extends JpaRepository<Showtime, UUID> {
 
@@ -114,4 +117,38 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, UUID> {
             where showtime.id = :showtimeId
             """)
     Optional<Showtime> findByIdForSeatMap(@Param("showtimeId") UUID showtimeId);
+
+    @Query(
+            """
+            select showtime.room.id
+            from Showtime showtime
+            where showtime.id = :showtimeId
+            """)
+    Optional<UUID> findRoomIdForScheduleChange(@Param("showtimeId") UUID showtimeId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            """
+            select showtime
+            from Showtime showtime
+            where showtime.id = :showtimeId
+            """)
+    Optional<Showtime> findByIdForUpdate(@Param("showtimeId") UUID showtimeId);
+
+    @Query(
+            """
+            select case when count(showtime) > 0 then true else false end
+            from Showtime showtime
+            where showtime.room.id = :roomId
+              and showtime.status not in :excludedStatuses
+              and (:excludedShowtimeId is null or showtime.id <> :excludedShowtimeId)
+              and showtime.startsAt < :readyAt
+              and coalesce(showtime.scheduling.readyAt, showtime.endsAt) > :startsAt
+            """)
+    boolean existsSchedulingConflict(
+            @Param("roomId") UUID roomId,
+            @Param("excludedShowtimeId") UUID excludedShowtimeId,
+            @Param("startsAt") OffsetDateTime startsAt,
+            @Param("readyAt") OffsetDateTime readyAt,
+            @Param("excludedStatuses") Collection<ShowtimeStatus> excludedStatuses);
 }

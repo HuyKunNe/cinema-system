@@ -8,6 +8,7 @@ import com.cinema.inventory.dto.request.CreateShowtimeRequest;
 import com.cinema.inventory.dto.response.ShowtimeResponse;
 import com.cinema.inventory.entity.Room;
 import com.cinema.inventory.entity.Showtime;
+import com.cinema.inventory.entity.ShowtimeScheduling;
 import com.cinema.inventory.entity.ShowtimeScreeningVersion;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
@@ -17,10 +18,13 @@ import com.cinema.inventory.repository.ShowtimeRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Clock;
+import java.time.OffsetDateTime;
 import java.util.Set;
 
 @Service
@@ -32,6 +36,7 @@ public class ShowtimeCreationService {
     private final ShowSeatGenerationService seatGenerationService;
     private final ShowtimeMapper mapper;
     private final MovieCatalogClient movieCatalogClient;
+    private final Clock clock;
     private final TransactionTemplate transactions;
 
     public ShowtimeCreationService(
@@ -41,6 +46,7 @@ public class ShowtimeCreationService {
             ShowSeatGenerationService seatGenerationService,
             ShowtimeMapper mapper,
             MovieCatalogClient movieCatalogClient,
+            Clock clock,
             PlatformTransactionManager transactionManager) {
 
         this.roomRepository = roomRepository;
@@ -49,7 +55,10 @@ public class ShowtimeCreationService {
         this.seatGenerationService = seatGenerationService;
         this.mapper = mapper;
         this.movieCatalogClient = movieCatalogClient;
+        this.clock = clock;
         this.transactions = new TransactionTemplate(transactionManager);
+        this.transactions.setIsolationLevel(
+                TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
 
     @Transactional(propagation = Propagation.NEVER)
@@ -66,32 +75,40 @@ public class ShowtimeCreationService {
                     InventoryErrorCode.SHOWTIME_ROOM_REQUIRED);
         }
 
-        if (request.startsAt() == null || request.endsAt() == null) {
-            throw new ValidationException(
-                    InventoryErrorCode.SHOWTIME_PERIOD_REQUIRED);
-        }
+        validateTimes(request.startsAt(), request.endsAt());
+        ShowtimeScheduling.validateBreak(request.breakMinutes());
 
-        if (!request.endsAt().isAfter(request.startsAt())) {
-            throw new ValidationException(
-                    InventoryErrorCode.INVALID_SHOWTIME_PERIOD);
-        }
+        var movie = movieCatalogClient.getMovieForScheduling(request.movieId());
 
-        ShowtimeScreeningVersion snapshot =
+        ShowtimeScreeningVersion screeningVersion =
                 movieCatalogClient.getActiveVersion(
                         request.movieId(), request.movieScreeningVersionId());
 
-        return transactions.execute(status -> persist(request, snapshot));
+        ShowtimeScheduling scheduling =
+                new ShowtimeScheduling(
+                        movie.version(),
+                        movie.durationMinutes(),
+                        request.breakMinutes(),
+                        request.endsAt());
+
+        scheduling.validateDuration(request.startsAt(), request.endsAt());
+
+        return transactions.execute(
+                status -> persist(request, screeningVersion, scheduling));
     }
 
     private ShowtimeResponse persist(
             CreateShowtimeRequest request,
-            ShowtimeScreeningVersion snapshot) {
+            ShowtimeScreeningVersion screeningVersion,
+            ShowtimeScheduling scheduling) {
 
         Room room =
                 roomRepository.findByIdForUpdate(request.roomId())
                         .orElseThrow(
                                 () -> new NotFoundException(
                                         InventoryErrorCode.ROOM_NOT_FOUND));
+
+        validateTimes(request.startsAt(), request.endsAt());
 
         if (!room.isActive()) {
             throw new ConflictException(InventoryErrorCode.ROOM_INACTIVE);
@@ -108,7 +125,7 @@ public class ShowtimeCreationService {
                     InventoryErrorCode.ROOM_CONTENT_FORMATS_NOT_CONFIGURED);
         }
 
-        if (!formats.contains(snapshot.getContentFormat())) {
+        if (!formats.contains(screeningVersion.getContentFormat())) {
             throw new ConflictException(
                     InventoryErrorCode.SHOWTIME_FORMAT_NOT_SUPPORTED);
         }
@@ -117,14 +134,15 @@ public class ShowtimeCreationService {
                 layoutService.resolveForNewShowtime(
                         room.getId(), request.roomLayoutId());
 
-        boolean overlapping =
-                showtimeRepository.existsOverlappingShowtime(
+        boolean conflict =
+                showtimeRepository.existsSchedulingConflict(
                         room.getId(),
+                        null,
                         request.startsAt(),
-                        request.endsAt(),
+                        scheduling.getReadyAt(),
                         Set.of(ShowtimeStatus.CANCELLED));
 
-        if (overlapping) {
+        if (conflict) {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_OVERLAP);
         }
 
@@ -135,13 +153,32 @@ public class ShowtimeCreationService {
                         request.startsAt(),
                         request.endsAt(),
                         layout,
-                        snapshot);
+                        screeningVersion,
+                        scheduling);
 
         Showtime saved = showtimeRepository.save(showtime);
-
         seatGenerationService.generate(saved, request.basePrice());
-        showtimeRepository.flush();
 
+        showtimeRepository.flush();
         return mapper.toResponse(saved);
+    }
+
+    private void validateTimes(
+            OffsetDateTime startsAt, OffsetDateTime endsAt) {
+
+        if (startsAt == null || endsAt == null) {
+            throw new ValidationException(
+                    InventoryErrorCode.SHOWTIME_PERIOD_REQUIRED);
+        }
+
+        if (!endsAt.isAfter(startsAt)) {
+            throw new ValidationException(
+                    InventoryErrorCode.INVALID_SHOWTIME_PERIOD);
+        }
+
+        if (!startsAt.isAfter(OffsetDateTime.now(clock))) {
+            throw new ValidationException(
+                    InventoryErrorCode.SHOWTIME_START_NOT_FUTURE);
+        }
     }
 }

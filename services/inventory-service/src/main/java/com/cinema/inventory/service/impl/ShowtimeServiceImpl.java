@@ -1,5 +1,17 @@
 package com.cinema.inventory.service.impl;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
@@ -9,6 +21,7 @@ import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
 import com.cinema.inventory.dto.response.ShowtimeResponse;
 import com.cinema.inventory.entity.Room;
 import com.cinema.inventory.entity.Showtime;
+import com.cinema.inventory.entity.ShowtimeScheduling;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.ShowtimeMapper;
@@ -16,17 +29,6 @@ import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ShowtimeCreationService;
 import com.cinema.inventory.service.ShowtimeService;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.Clock;
-import java.time.Duration;
-import java.time.OffsetDateTime;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
 
 @Service
 public class ShowtimeServiceImpl implements ShowtimeService {
@@ -124,55 +126,101 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public ShowtimeResponse update(UUID showtimeId, UpdateShowtimeRequest request) {
 
-        Showtime showtime = findShowtime(showtimeId);
+        if (request == null
+                || request.expectedVersion() == null
+                || request.expectedVersion() < 0
+                || (request.status() != null && request.status() != ShowtimeStatus.SCHEDULED)) {
+            throw new ValidationException(InventoryErrorCode.INVALID_SHOWTIME_UPDATE);
+        }
 
-        validateNoOverlapExcludingId(
-                showtime.getRoom().getId(), showtimeId, request.startsAt(), request.endsAt());
+        validateTimeRange(request.startsAt(), request.endsAt());
+        ShowtimeScheduling.validateBreak(request.breakMinutes());
 
-        showtime.changeSchedule(request.startsAt(), request.endsAt());
+        UUID roomId =
+                showtimeRepository
+                        .findRoomIdForScheduleChange(showtimeId)
+                        .orElseThrow(
+                                () -> new NotFoundException(InventoryErrorCode.SHOWTIME_NOT_FOUND));
 
-        return showtimeMapper.toResponse(showtime);
+        Room room =
+                roomRepository
+                        .findByIdForUpdate(roomId)
+                        .orElseThrow(
+                                () -> new NotFoundException(InventoryErrorCode.ROOM_NOT_FOUND));
+
+        Showtime showtime = findShowtimeForUpdate(showtimeId);
+
+        if (!request.expectedVersion().equals(showtime.getVersion())) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_VERSION_CONFLICT);
+        }
+
+        if (showtime.getStatus() != ShowtimeStatus.SCHEDULED) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_EDITABLE);
+        }
+
+        validateRoomAvailable(room);
+
+        if (!request.startsAt().isAfter(OffsetDateTime.now(clock))) {
+            throw new ValidationException(InventoryErrorCode.SHOWTIME_START_NOT_FUTURE);
+        }
+
+        showtime.changeSchedule(request.startsAt(), request.endsAt(), request.breakMinutes());
+
+        boolean conflict =
+                showtimeRepository.existsSchedulingConflict(
+                        roomId,
+                        showtimeId,
+                        showtime.getStartsAt(),
+                        showtime.getScheduling().getReadyAt(),
+                        NON_BLOCKING_STATUSES);
+
+        if (conflict) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_OVERLAP);
+        }
+
+        return flushAndMap(showtime);
     }
 
     @Override
     @Transactional
     public ShowtimeResponse openForBooking(UUID showtimeId) {
-        Showtime showtime = findShowtime(showtimeId);
+        Showtime showtime = findShowtimeForUpdate(showtimeId);
 
         validateRoomAvailable(showtime.getRoom());
-        showtime.openForBooking();
 
-        return showtimeMapper.toResponse(showtime);
+        if (!showtime.getStartsAt().isAfter(OffsetDateTime.now(clock))) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_EDITABLE);
+        }
+
+        showtime.openForBooking();
+        return flushAndMap(showtime);
     }
 
     @Override
     @Transactional
     public ShowtimeResponse close(UUID showtimeId) {
-        Showtime showtime = findShowtime(showtimeId);
+        Showtime showtime = findShowtimeForUpdate(showtimeId);
         showtime.close();
-
-        return showtimeMapper.toResponse(showtime);
+        return flushAndMap(showtime);
     }
 
     @Override
     @Transactional
     public ShowtimeResponse cancel(UUID showtimeId) {
-        Showtime showtime = findShowtime(showtimeId);
+        Showtime showtime = findShowtimeForUpdate(showtimeId);
         showtime.cancel();
-
-        return showtimeMapper.toResponse(showtime);
+        return flushAndMap(showtime);
     }
 
     @Override
     @Transactional
     public ShowtimeResponse complete(UUID showtimeId) {
-        Showtime showtime = findShowtime(showtimeId);
+        Showtime showtime = findShowtimeForUpdate(showtimeId);
         showtime.complete();
-
-        return showtimeMapper.toResponse(showtime);
+        return flushAndMap(showtime);
     }
 
     private Room findRoom(UUID roomId) {
@@ -187,6 +235,17 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                 .orElseThrow(() -> new NotFoundException(InventoryErrorCode.SHOWTIME_NOT_FOUND));
     }
 
+    private Showtime findShowtimeForUpdate(UUID showtimeId) {
+        return showtimeRepository
+                .findByIdForUpdate(showtimeId)
+                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.SHOWTIME_NOT_FOUND));
+    }
+
+    private ShowtimeResponse flushAndMap(Showtime showtime) {
+        showtimeRepository.flush();
+        return showtimeMapper.toResponse(showtime);
+    }
+
     private void validateRoomAvailable(Room room) {
         if (!room.isActive()) {
             throw new ConflictException(InventoryErrorCode.ROOM_INACTIVE);
@@ -194,20 +253,6 @@ public class ShowtimeServiceImpl implements ShowtimeService {
 
         if (!room.getCinema().isActive()) {
             throw new ConflictException(InventoryErrorCode.CINEMA_INACTIVE);
-        }
-    }
-
-    private void validateNoOverlapExcludingId(
-            UUID roomId, UUID showtimeId, OffsetDateTime startsAt, OffsetDateTime endsAt) {
-
-        validateTimeRange(startsAt, endsAt);
-
-        boolean overlapping =
-                showtimeRepository.existsOverlappingShowtimeExcludingId(
-                        roomId, showtimeId, startsAt, endsAt, NON_BLOCKING_STATUSES);
-
-        if (overlapping) {
-            throw new ConflictException(InventoryErrorCode.SHOWTIME_OVERLAP);
         }
     }
 

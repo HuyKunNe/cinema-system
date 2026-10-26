@@ -21,6 +21,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.util.Set;
 import java.util.UUID;
 
 @Component
@@ -28,6 +29,9 @@ public class MovieCatalogClient {
 
     private static final String REGISTRATION_ID = "movie-catalog";
     private static final String SERVICE_PRINCIPAL = "inventory-service";
+
+    private static final Set<String> KNOWN_MOVIE_STATUSES =
+            Set.of("UPCOMING", "NOW_SHOWING", "ENDED", "INACTIVE");
 
     private final RestClient restClient;
     private final OAuth2AuthorizedClientManager authorizedClientManager;
@@ -44,51 +48,43 @@ public class MovieCatalogClient {
         this.authorizedClientService = authorizedClientService;
     }
 
-    public ShowtimeScreeningVersion getActiveVersion(UUID movieId, UUID versionId) {
-        RemoteScreeningVersion response;
+    public MovieSchedulingDetails getMovieForScheduling(UUID movieId) {
+        RemoteMovie response =
+                get(
+                        "/api/v1/movies/{movieId}",
+                        RemoteMovie.class,
+                        InventoryErrorCode.MOVIE_NOT_FOUND,
+                        movieId);
 
-        try {
-            var authorizedClient =
-                    authorizedClientManager.authorize(
-                            OAuth2AuthorizeRequest.withClientRegistrationId(REGISTRATION_ID)
-                                    .principal(SERVICE_PRINCIPAL)
-                                    .build());
-
-            if (authorizedClient == null) {
-                throw new MovieCatalogUnavailableException();
-            }
-
-            response =
-                    restClient
-                            .get()
-                            .uri(
-                                    "/api/v1/movies/{movieId}/screening-versions/{versionId}",
-                                    movieId,
-                                    versionId)
-                            .accept(MediaType.APPLICATION_JSON)
-                            .headers(
-                                    headers ->
-                                            headers.setBearerAuth(
-                                                    authorizedClient
-                                                            .getAccessToken()
-                                                            .getTokenValue()))
-                            .retrieve()
-                            .body(RemoteScreeningVersion.class);
-
-        } catch (RestClientResponseException exception) {
-            if (exception.getStatusCode().value() == 404) {
-                throw new NotFoundException(InventoryErrorCode.SCREENING_VERSION_NOT_FOUND);
-            }
-
-            if (exception.getStatusCode().value() == 401) {
-                authorizedClientService.removeAuthorizedClient(REGISTRATION_ID, SERVICE_PRINCIPAL);
-            }
-
-            throw new MovieCatalogUnavailableException();
-
-        } catch (RestClientException | OAuth2AuthorizationException exception) {
+        if (response == null
+                || !movieId.equals(response.id())
+                || response.durationMinutes() == null
+                || response.durationMinutes() < 1
+                || response.version() == null
+                || response.version() < 0
+                || response.status() == null
+                || !KNOWN_MOVIE_STATUSES.contains(response.status())) {
             throw new MovieCatalogUnavailableException();
         }
+
+        if ("ENDED".equals(response.status())
+                || "INACTIVE".equals(response.status())) {
+            throw new ConflictException(
+                    InventoryErrorCode.MOVIE_NOT_SCHEDULABLE);
+        }
+
+        return new MovieSchedulingDetails(
+                response.durationMinutes(), response.version());
+    }
+
+    public ShowtimeScreeningVersion getActiveVersion(UUID movieId, UUID versionId) {
+        RemoteScreeningVersion response =
+                get(
+                        "/api/v1/movies/{movieId}/screening-versions/{versionId}",
+                        RemoteScreeningVersion.class,
+                        InventoryErrorCode.SCREENING_VERSION_NOT_FOUND,
+                        movieId,
+                        versionId);
 
         if (response == null
                 || !movieId.equals(response.movieId())
@@ -99,7 +95,8 @@ public class MovieCatalogClient {
         }
 
         if (!response.active()) {
-            throw new ConflictException(InventoryErrorCode.SCREENING_VERSION_INACTIVE);
+            throw new ConflictException(
+                    InventoryErrorCode.SCREENING_VERSION_INACTIVE);
         }
 
         try {
@@ -115,6 +112,62 @@ public class MovieCatalogClient {
             throw new MovieCatalogUnavailableException();
         }
     }
+
+    private <T> T get(
+            String path,
+            Class<T> responseType,
+            InventoryErrorCode notFoundCode,
+            Object... uriVariables) {
+
+        try {
+            var authorizedClient =
+                    authorizedClientManager.authorize(
+                            OAuth2AuthorizeRequest
+                                    .withClientRegistrationId(REGISTRATION_ID)
+                                    .principal(SERVICE_PRINCIPAL)
+                                    .build());
+
+            if (authorizedClient == null) {
+                throw new MovieCatalogUnavailableException();
+            }
+
+            return restClient.get()
+                    .uri(path, uriVariables)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .headers(
+                            headers ->
+                                    headers.setBearerAuth(
+                                            authorizedClient.getAccessToken().getTokenValue()))
+                    .retrieve()
+                    .body(responseType);
+
+        } catch (RestClientResponseException exception) {
+            if (exception.getStatusCode().value() == 404) {
+                throw new NotFoundException(notFoundCode);
+            }
+
+            if (exception.getStatusCode().value() == 401) {
+                authorizedClientService.removeAuthorizedClient(
+                        REGISTRATION_ID, SERVICE_PRINCIPAL);
+            }
+
+            throw new MovieCatalogUnavailableException();
+
+        } catch (RestClientException | OAuth2AuthorizationException exception) {
+            throw new MovieCatalogUnavailableException();
+        }
+    }
+
+    public record MovieSchedulingDetails(
+            Integer durationMinutes,
+            Long version) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record RemoteMovie(
+            UUID id,
+            Integer durationMinutes,
+            String status,
+            Long version) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record RemoteScreeningVersion(

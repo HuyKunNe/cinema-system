@@ -27,6 +27,7 @@ import com.cinema.inventory.mapper.ShowtimeMapper;
 import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ShowSeatGenerationService;
+import com.cinema.inventory.service.ShowtimeCreationService;
 import com.cinema.inventory.service.ShowtimeLayoutService;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -69,6 +70,8 @@ class ShowtimeServiceImplTest {
 
     @Mock private ShowtimeLayoutService showtimeLayoutService;
 
+    @Mock private ShowtimeCreationService showtimeCreationService;
+
     private ShowtimeServiceImpl showtimeService;
 
     private static final BigDecimal BASE_PRICE = new BigDecimal("100000.00");
@@ -80,10 +83,9 @@ class ShowtimeServiceImplTest {
                         showtimeRepository,
                         roomRepository,
                         showtimeMapper,
-                        showSeatGenerationService,
                         Clock.fixed(STARTS_AT.minusDays(1).toInstant(), STARTS_AT.getOffset()),
                         new BookableShowtimeProperties(),
-                        showtimeLayoutService);
+                        showtimeCreationService);
     }
 
     @Test

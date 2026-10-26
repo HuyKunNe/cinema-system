@@ -568,6 +568,52 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_MOVIE_CATALOG_UNAVAILABLE",
                     "Movie screening version could not be verified");
 
+    public static final InventoryErrorCode MOVIE_NOT_FOUND =
+            new InventoryErrorCode(
+                    ErrorCategory.RESOURCE, "INVENTORY_MOVIE_NOT_FOUND", "Movie not found");
+
+    public static final InventoryErrorCode MOVIE_NOT_SCHEDULABLE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_MOVIE_NOT_SCHEDULABLE",
+                    "Movie is not available for new showtimes");
+
+    public static final InventoryErrorCode INVALID_SHOWTIME_BREAK =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_INVALID_SHOWTIME_BREAK",
+                    "Break minutes must be between 0 and 120");
+
+    public static final InventoryErrorCode SHOWTIME_DURATION_MISMATCH =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_SHOWTIME_DURATION_MISMATCH",
+                    "Showtime duration must match the pinned movie duration");
+
+    public static final InventoryErrorCode SHOWTIME_START_NOT_FUTURE =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_SHOWTIME_START_NOT_FUTURE",
+                    "Showtime start must be in the future");
+
+    public static final InventoryErrorCode SHOWTIME_SCHEDULING_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_SCHEDULING_REQUIRED",
+                    "Showtime has no scheduling snapshot");
+
+    public static final InventoryErrorCode SHOWTIME_VERSION_CONFLICT =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_VERSION_CONFLICT",
+                    "Showtime has changed; reload before saving");
+
+    public static final InventoryErrorCode INVALID_SHOWTIME_UPDATE =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_INVALID_SHOWTIME_UPDATE",
+                    "Invalid showtime schedule update");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;
