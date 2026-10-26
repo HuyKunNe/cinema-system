@@ -21,6 +21,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.text.Normalizer;
+import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -52,6 +53,12 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
 
     @Column(name = "fare_matrix_revision", nullable = false)
     private long fareMatrixRevision = 0;
+
+    @Column(name = "published_at")
+    private OffsetDateTime publishedAt;
+
+    @Column(name = "published_by", length = 255)
+    private String publishedBy;
 
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(
@@ -175,6 +182,33 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
 
     public PricingPolicyVersionStatus getStatus() {
         return status;
+    }
+
+    public void publish(OffsetDateTime publishedAt, String publishedBy) {
+        if (status == PricingPolicyVersionStatus.PUBLISHED) {
+            return;
+        }
+
+        requireDraft();
+
+        if (publishedAt == null
+                || publishedBy == null
+                || publishedBy.isBlank()
+                || publishedBy.length() > 255) {
+            throw invalid();
+        }
+
+        this.status = PricingPolicyVersionStatus.PUBLISHED;
+        this.publishedAt = publishedAt;
+        this.publishedBy = publishedBy;
+    }
+
+    public OffsetDateTime getPublishedAt() {
+        return publishedAt;
+    }
+
+    public String getPublishedBy() {
+        return publishedBy;
     }
 
     public record Metadata(String name, String description, PricingDayGroup dayGroup) {

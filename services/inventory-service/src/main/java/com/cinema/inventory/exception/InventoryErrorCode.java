@@ -680,6 +680,36 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PRICING_MATRIX_DAY_GROUP_LOCKED",
                     "Clear the draft fare matrix before changing its day group");
 
+    public static final InventoryErrorCode PRICING_MATRIX_SCOPE_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_PRICING_MATRIX_SCOPE_REQUIRED",
+                    "Select at least one pricing experience and content format");
+
+    public static final InventoryErrorCode PRICING_MATRIX_ADULT_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_PRICING_MATRIX_ADULT_REQUIRED",
+                    "Fare matrix must include ADULT");
+
+    public static final InventoryErrorCode PRICING_MATRIX_SEAT_TYPES_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_PRICING_MATRIX_SEAT_TYPES_REQUIRED",
+                    "Select at least one seat type");
+
+    public static final InventoryErrorCode PRICING_MATRIX_INCOMPLETE =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_PRICING_MATRIX_INCOMPLETE",
+                    "Fare matrix cell has not been configured");
+
+    public static final InventoryErrorCode PRICING_POLICY_NOT_PUBLISHABLE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_NOT_PUBLISHABLE",
+                    "Pricing policy version is not publishable; validate the stored fare matrix");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;
