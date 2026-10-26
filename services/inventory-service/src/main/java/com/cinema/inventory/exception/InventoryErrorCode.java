@@ -730,6 +730,13 @@ public final class InventoryErrorCode implements ErrorCode {
                     "Room cannot be deactivated while open-for-booking "
                             + "showtimes exist today or later in the cinema time zone");
 
+    public static final InventoryErrorCode COUPLE_CATEGORY_FARE_CONFLICT =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_COUPLE_CATEGORY_FARE_CONFLICT",
+                    "Couple fares must not differ by ticket category "
+                            + "within the same experience, format and time band");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

@@ -47,6 +47,23 @@ Current status:
 
 ## 2026-10-26
 
+### Holiday Couple Fare Validation
+
+#### Fixed
+
+- Enforce equal priced couple fares across ticket categories
+  within each holiday experience, format and time band.
+- Preserve NOT_APPLICABLE category cells.
+- Preserve independent holiday time bands and content formats.
+- Preserve the existing non-holiday all-day uniform-fare rule.
+
+#### Verification status
+
+- Added regression cases for category conflicts, zero amounts,
+  non-sale cells and independent pricing dimensions.
+- Tests and build were not run.
+- Manual API verification is pending.
+
 ### Room Deactivation Protection
 
 #### Changed
