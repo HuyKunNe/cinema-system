@@ -3,6 +3,7 @@ package com.cinema.inventory.service;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.inventory.entity.FareMatrixCell.Key;
 import com.cinema.inventory.entity.FareMatrixCell.Value;
+import com.cinema.inventory.enums.FareCellState;
 import com.cinema.inventory.enums.PricingDayGroup;
 import com.cinema.inventory.enums.PricingExperienceType;
 import com.cinema.inventory.enums.PricingTimeBand;
@@ -17,15 +18,25 @@ public final class FareMatrixRules {
 
     private FareMatrixRules() {}
 
-    public static void validateUniformFares(PricingDayGroup dayGroup, Map<Key, Value> values) {
+    public static void validateUniformFares(
+            PricingDayGroup dayGroup,
+            Map<Key, Value> values) {
 
         Map<Key, Value> premiumGroups = new HashMap<>();
         Map<Key, Value> coupleGroups = new HashMap<>();
 
         for (Value value : values.values()) {
+            // A non-sale cell has no selling price to compare.
+            // Missing cells are checked separately before publication.
+            if (value.state() != FareCellState.PRICED) {
+                continue;
+            }
+
             Key key = value.key();
 
-            if (key.experienceType() == PricingExperienceType.PREMIUM_CINEMA) {
+            if (key.experienceType()
+                    == PricingExperienceType.PREMIUM_CINEMA) {
+
                 Key group =
                         new Key(
                                 key.experienceType(),
@@ -41,7 +52,8 @@ public final class FareMatrixRules {
                         InventoryErrorCode.PREMIUM_CATEGORY_FARE_CONFLICT);
             }
 
-            if (dayGroup != PricingDayGroup.HOLIDAY && key.seatType() == SeatType.COUPLE) {
+            if (dayGroup != PricingDayGroup.HOLIDAY
+                    && key.seatType() == SeatType.COUPLE) {
 
                 Key group =
                         new Key(
@@ -52,13 +64,19 @@ public final class FareMatrixRules {
                                 SeatType.COUPLE);
 
                 requireSameFare(
-                        coupleGroups, group, value, InventoryErrorCode.COUPLE_FIXED_FARE_CONFLICT);
+                        coupleGroups,
+                        group,
+                        value,
+                        InventoryErrorCode.COUPLE_FIXED_FARE_CONFLICT);
             }
         }
     }
 
     private static void requireSameFare(
-            Map<Key, Value> groups, Key group, Value candidate, InventoryErrorCode errorCode) {
+            Map<Key, Value> groups,
+            Key group,
+            Value candidate,
+            InventoryErrorCode errorCode) {
 
         Value previous = groups.putIfAbsent(group, candidate);
 

@@ -45,6 +45,42 @@ Current status:
 
 # Unreleased
 
+## 2026-10-26
+
+### Room Creation With Initial Configuration
+
+#### Changed
+
+- Accept optional active and contentFormats fields in CreateRoomRequest.
+- Persist the room and its supported formats in one transaction.
+- Reject duplicate content formats.
+- Preserve legacy creation defaults: active room with no configured formats.
+
+#### Verification status
+
+- Automated tests and build were not run in this round.
+- Manual API verification is pending.
+
+### Pricing Matrix Non-Sale Cell Validation
+
+#### Fixed
+
+- Compare only PRICED cells when enforcing uniform premium and
+  non-holiday couple fares.
+- Allow NOT_APPLICABLE cells for ticket categories that are not sold.
+- Preserve rejection of conflicting selling prices.
+- Keep incomplete-matrix checks in the publication validation flow.
+
+#### Verification status
+
+- Automated tests and build were not run in this round.
+- Manual API verification is pending.
+
+#### Compatibility
+
+- No HTTP contract or database migration changes.
+- R28 Notification Service remains deferred.
+
 ## 2026-09-22
 
 ### Inventory Lifecycle-Release Lock Hardening

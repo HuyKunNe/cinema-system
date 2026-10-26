@@ -1,6 +1,8 @@
 package com.cinema.inventory.service.impl;
 
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -8,11 +10,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
+import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.inventory.dto.request.CreateRoomRequest;
 import com.cinema.inventory.dto.request.UpdateRoomRequest;
 import com.cinema.inventory.dto.response.RoomResponse;
 import com.cinema.inventory.entity.Cinema;
 import com.cinema.inventory.entity.Room;
+import com.cinema.inventory.enums.ContentFormat;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.RoomMapper;
 import com.cinema.inventory.repository.CinemaRepository;
@@ -30,6 +34,7 @@ public class RoomServiceImpl implements RoomService {
             RoomRepository roomRepository,
             CinemaRepository cinemaRepository,
             RoomMapper roomMapper) {
+
         this.roomRepository = roomRepository;
         this.cinemaRepository = cinemaRepository;
         this.roomMapper = roomMapper;
@@ -39,6 +44,9 @@ public class RoomServiceImpl implements RoomService {
     @Transactional
     public RoomResponse create(UUID cinemaId, CreateRoomRequest request) {
 
+        Set<ContentFormat> contentFormats =
+                normalizeContentFormats(request.contentFormats());
+
         Cinema cinema = findCinema(cinemaId);
 
         if (!cinema.isActive()) {
@@ -47,11 +55,20 @@ public class RoomServiceImpl implements RoomService {
 
         String normalizedName = normalize(request.name());
 
-        if (roomRepository.existsByCinema_IdAndNameIgnoreCase(cinemaId, normalizedName)) {
-            throw new ConflictException(InventoryErrorCode.ROOM_NAME_ALREADY_EXISTS);
+        if (roomRepository.existsByCinema_IdAndNameIgnoreCase(
+                cinemaId, normalizedName)) {
+
+            throw new ConflictException(
+                    InventoryErrorCode.ROOM_NAME_ALREADY_EXISTS);
         }
 
         Room room = new Room(cinema, normalizedName, request.roomType());
+
+        room.replaceSupportedContentFormats(contentFormats);
+
+        if (Boolean.FALSE.equals(request.active())) {
+            room.deactivate();
+        }
 
         Room savedRoom = roomRepository.saveAndFlush(room);
 
@@ -69,35 +86,44 @@ public class RoomServiceImpl implements RoomService {
     public List<RoomResponse> getActiveRooms(UUID cinemaId) {
         findCinema(cinemaId);
 
-        List<Room> rooms = roomRepository.findAllByCinema_IdAndActiveTrueOrderByNameAsc(cinemaId);
+        List<Room> rooms =
+                roomRepository.findAllByCinema_IdAndActiveTrueOrderByNameAsc(
+                        cinemaId);
 
         return roomMapper.toResponses(rooms);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<RoomResponse> getManagedRooms(UUID cinemaId, Boolean active) {
+    public List<RoomResponse> getManagedRooms(
+            UUID cinemaId, Boolean active) {
+
         findCinema(cinemaId);
 
         List<Room> rooms =
                 active == null
-                        ? roomRepository.findAllByCinema_IdOrderByNameAscIdAsc(cinemaId)
-                        : roomRepository.findAllByCinema_IdAndActiveOrderByNameAscIdAsc(
-                                cinemaId, active);
+                        ? roomRepository.findAllByCinema_IdOrderByNameAscIdAsc(
+                                cinemaId)
+                        : roomRepository
+                                .findAllByCinema_IdAndActiveOrderByNameAscIdAsc(
+                                        cinemaId, active);
 
         return roomMapper.toResponses(rooms);
     }
 
     @Override
     @Transactional
-    public RoomResponse update(UUID roomId, UpdateRoomRequest request) {
+    public RoomResponse update(
+            UUID roomId, UpdateRoomRequest request) {
 
         Room room = findRoom(roomId);
         String normalizedName = normalize(request.name());
 
         if (roomRepository.existsByCinema_IdAndNameIgnoreCaseAndIdNot(
                 room.getCinema().getId(), normalizedName, roomId)) {
-            throw new ConflictException(InventoryErrorCode.ROOM_NAME_ALREADY_EXISTS);
+
+            throw new ConflictException(
+                    InventoryErrorCode.ROOM_NAME_ALREADY_EXISTS);
         }
 
         room.setName(normalizedName);
@@ -117,13 +143,42 @@ public class RoomServiceImpl implements RoomService {
     private Cinema findCinema(UUID cinemaId) {
         return cinemaRepository
                 .findById(cinemaId)
-                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.CINEMA_NOT_FOUND));
+                .orElseThrow(
+                        () -> new NotFoundException(
+                                InventoryErrorCode.CINEMA_NOT_FOUND));
     }
 
     private Room findRoom(UUID roomId) {
         return roomRepository
                 .findById(roomId)
-                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.ROOM_NOT_FOUND));
+                .orElseThrow(
+                        () -> new NotFoundException(
+                                InventoryErrorCode.ROOM_NOT_FOUND));
+    }
+
+    private Set<ContentFormat> normalizeContentFormats(
+            List<ContentFormat> requestedFormats) {
+
+        Set<ContentFormat> formats =
+                EnumSet.noneOf(ContentFormat.class);
+
+        if (requestedFormats == null) {
+            return formats;
+        }
+
+        if (requestedFormats.size() > ContentFormat.values().length) {
+            throw new ValidationException(
+                    InventoryErrorCode.ROOM_CONTENT_FORMATS_INVALID);
+        }
+
+        for (ContentFormat format : requestedFormats) {
+            if (format == null || !formats.add(format)) {
+                throw new ValidationException(
+                        InventoryErrorCode.ROOM_CONTENT_FORMATS_INVALID);
+            }
+        }
+
+        return formats;
     }
 
     private String normalize(String value) {
