@@ -53,6 +53,10 @@ public class InventorySecurityConfig {
         "/api/v1/showtimes", "/api/v1/showtimes/**"
     };
 
+    private static final String[] PRICING_MANAGEMENT_ENDPOINTS = {
+        "/api/v1/cinemas/*/pricing-policies", "/api/v1/cinemas/*/pricing-policies/**"
+    };
+
     private static final String[] SWAGGER_ENDPOINTS = {
         "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**"
     };
@@ -77,6 +81,8 @@ public class InventorySecurityConfig {
                                         .permitAll()
                                         .requestMatchers("/actuator/health", "/actuator/info")
                                         .permitAll()
+                                        .requestMatchers(PRICING_MANAGEMENT_ENDPOINTS)
+                                        .hasAuthority("inventory:manage")
                                         .requestMatchers(
                                                 HttpMethod.GET, INVENTORY_MANAGEMENT_READ_ENDPOINTS)
                                         .hasAuthority("inventory:manage")

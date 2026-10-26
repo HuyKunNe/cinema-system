@@ -614,6 +614,48 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_INVALID_SHOWTIME_UPDATE",
                     "Invalid showtime schedule update");
 
+    public static final InventoryErrorCode INVALID_PRICING_POLICY =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_INVALID_PRICING_POLICY",
+                    "Pricing policy metadata is invalid");
+
+    public static final InventoryErrorCode PRICING_POLICY_NOT_FOUND =
+            new InventoryErrorCode(
+                    ErrorCategory.RESOURCE,
+                    "INVENTORY_PRICING_POLICY_NOT_FOUND",
+                    "Pricing policy not found");
+
+    public static final InventoryErrorCode PRICING_POLICY_VERSION_NOT_FOUND =
+            new InventoryErrorCode(
+                    ErrorCategory.RESOURCE,
+                    "INVENTORY_PRICING_POLICY_VERSION_NOT_FOUND",
+                    "Pricing policy version not found");
+
+    public static final InventoryErrorCode PRICING_POLICY_NOT_DRAFT =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_NOT_DRAFT",
+                    "Only draft pricing policy versions can be edited");
+
+    public static final InventoryErrorCode PRICING_POLICY_VERSION_CONFLICT =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_VERSION_CONFLICT",
+                    "Pricing policy version has changed; reload before saving");
+
+    public static final InventoryErrorCode PRICING_POLICY_CREATE_CONFLICT =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_CREATE_CONFLICT",
+                    "Client request ID was already used with different metadata");
+
+    public static final InventoryErrorCode PRICING_POLICY_DATA_INCONSISTENT =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_DATA_INCONSISTENT",
+                    "Pricing policy data is inconsistent");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;
