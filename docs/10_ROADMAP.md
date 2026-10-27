@@ -859,6 +859,36 @@ R24.5             — DONE
 R24               — DONE
 ```
 
+### Post-R27 versioned pricing workflow
+
+Status: **IN PROGRESS**
+
+Implemented in source:
+
+- version-specific cinema scopes;
+- draft metadata and fare-matrix editing;
+- stored-matrix validation and immutable publication;
+- creation of a new draft from an explicitly selected published version;
+- idempotent draft creation and serialized revision allocation.
+
+Verification pending:
+
+- V17 migration on an existing database;
+- exact copying of matrix dimensions, states and amounts;
+- source-version immutability;
+- repeated and concurrent draft-creation requests;
+- authorization through Gateway and Inventory.
+
+Remaining implementation:
+
+- published-version binding to showtimes;
+- removal of legacy base-price and seat-multiplier pricing;
+- ticket-category propagation and booking fare snapshots;
+- batch showtime creation.
+
+This follow-up maintains the existing Inventory and Booking workflows.
+It does not start R28 Notification Service.
+
 ### Post-R27 Inventory lifecycle-release hardening
 
 Status: **IN PROGRESS**

@@ -87,4 +87,16 @@ public interface CinemaPricingPolicyVersionRepository
             """)
     Optional<CinemaPricingPolicyVersion> findForUpdate(
             @Param("policyId") UUID policyId, @Param("versionId") UUID versionId);
+
+    @EntityGraph(attributePaths = {"policy", "cinemas"})
+    Optional<CinemaPricingPolicyVersion> findByPolicy_IdAndDraftClientRequestId(
+            UUID policyId, UUID draftClientRequestId);
+
+    @Query(
+            """
+            select coalesce(max(revision.revision), 0)
+            from CinemaPricingPolicyVersion revision
+            where revision.policy.id = :policyId
+            """)
+    long findHighestRevision(@Param("policyId") UUID policyId);
 }

@@ -45,6 +45,43 @@ Current status:
 
 # Unreleased
 
+## 2026-10-27
+
+### Pricing Draft Creation From Published Versions
+
+#### Added
+
+- Add POST
+  /api/v1/cinemas/{cinemaId}/pricing-policies/{policyId}/versions/{sourceVersionId}/draft.
+- Create a new DRAFT revision from an explicitly selected PUBLISHED version.
+- Copy metadata, cinema scopes, matrix dimensions and configured fare cells.
+- Preserve source version data and publication metadata.
+- Allocate revision numbers under the existing policy lock.
+- Persist draft source and client request ID for idempotent retries.
+- Return 201 for creation and 200 for a repeated matching request.
+
+#### Migration
+
+- V17 adds nullable draft source and request columns.
+- Existing versions retain their IDs, status, prices and publication metadata.
+- Enforce unique draft request IDs within each policy.
+
+#### Security
+
+- Reuse inventory:manage protection at Gateway and Inventory.
+- Require the source version to apply to the cinema in the request path.
+
+#### Verification status
+
+- Tests and build were not run.
+- Migration, copy fidelity, retry and concurrency checks remain pending.
+
+#### Remaining work
+
+- Bind published pricing versions to showtimes.
+- Replace legacy base-price and seat-multiplier pricing.
+- Propagate ticket categories and immutable fare snapshots through booking.
+
 ## 2026-10-26
 
 ### Versioned Pricing Cinema Scopes

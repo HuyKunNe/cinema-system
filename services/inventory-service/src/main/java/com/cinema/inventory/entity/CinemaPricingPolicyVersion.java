@@ -1,13 +1,5 @@
 package com.cinema.inventory.entity;
 
-import java.text.Normalizer;
-import java.time.OffsetDateTime;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
@@ -30,6 +22,17 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.text.Normalizer;
+import java.time.OffsetDateTime;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 @Entity
 @Table(name = "cinema_pricing_policy_versions")
 public class CinemaPricingPolicyVersion extends BaseEntity {
@@ -40,6 +43,14 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
 
     @Column(name = "revision_number", nullable = false, updatable = false)
     private long revision;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "draft_source_version_id", updatable = false)
+    private CinemaPricingPolicyVersion draftSourceVersion;
+
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(name = "draft_client_request_id", updatable = false, columnDefinition = "BINARY(16)")
+    private UUID draftClientRequestId;
 
     @Column(name = "name", nullable = false, length = 120)
     private String name;
@@ -113,6 +124,45 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
         this.cinemas.addAll(cinemas);
 
         apply(metadata);
+    }
+
+    public CinemaPricingPolicyVersion newDraft(long nextRevision, UUID clientRequestId) {
+
+        if (status != PricingPolicyVersionStatus.PUBLISHED) {
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_SOURCE_NOT_PUBLISHED);
+        }
+
+        if (nextRevision <= revision || clientRequestId == null) {
+            throw invalid();
+        }
+
+        CinemaPricingPolicyVersion draft =
+                new CinemaPricingPolicyVersion(
+                        policy,
+                        nextRevision,
+                        new Metadata(name, description, dayGroup),
+                        new HashSet<>(cinemas));
+
+        draft.draftSourceVersion = this;
+        draft.draftClientRequestId = clientRequestId;
+
+        Set<FareMatrixScope> copiedScopes =
+                fareScopes.stream()
+                        .map(
+                                scope ->
+                                        new FareMatrixScope(
+                                                scope.getExperienceType(),
+                                                scope.getContentFormat()))
+                        .collect(Collectors.toSet());
+
+        draft.replaceDraftMatrixDefinition(
+                copiedScopes, new HashSet<>(fareTicketCategories), new HashSet<>(fareSeatTypes));
+
+        return draft;
+    }
+
+    public UUID getDraftSourceVersionId() {
+        return draftSourceVersion == null ? null : draftSourceVersion.getId();
     }
 
     public void replaceDraftMetadata(Metadata metadata) {

@@ -764,6 +764,24 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PRICING_FINGERPRINT_UNAVAILABLE",
                     "Pricing request fingerprint could not be calculated");
 
+    public static final InventoryErrorCode PRICING_POLICY_SOURCE_NOT_PUBLISHED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_SOURCE_NOT_PUBLISHED",
+                    "Create a new draft from a published pricing policy version");
+
+    public static final InventoryErrorCode PRICING_POLICY_DRAFT_CREATE_CONFLICT =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_DRAFT_CREATE_CONFLICT",
+                    "Client request ID was already used with another source version");
+
+    public static final InventoryErrorCode PRICING_POLICY_REVISION_EXHAUSTED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_REVISION_EXHAUSTED",
+                    "Pricing policy revision limit has been reached");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;
