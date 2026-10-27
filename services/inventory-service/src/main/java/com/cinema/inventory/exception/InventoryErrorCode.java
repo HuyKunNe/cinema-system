@@ -782,6 +782,24 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PRICING_POLICY_REVISION_EXHAUSTED",
                     "Pricing policy revision limit has been reached");
 
+    public static final InventoryErrorCode INVALID_PRICING_FARE_QUOTE =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_INVALID_PRICING_FARE_QUOTE",
+                    "Pricing fare quote parameters are invalid");
+
+    public static final InventoryErrorCode PRICING_POLICY_VERSION_NOT_PUBLISHED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_VERSION_NOT_PUBLISHED",
+                    "Pricing policy version must be published");
+
+    public static final InventoryErrorCode PRICING_FARE_NOT_APPLICABLE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_FARE_NOT_APPLICABLE",
+                    "The selected fare combination is not available in this version");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

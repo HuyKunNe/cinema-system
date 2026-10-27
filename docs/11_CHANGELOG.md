@@ -84,6 +84,37 @@ Current status:
 
 ## 2026-10-26
 
+### Published Pricing Fare Quotes
+
+#### Added
+
+- Add POST
+  /api/v1/cinemas/{cinemaId}/pricing-policies/{policyId}/versions/{versionId}/quote.
+- Quote an exact stored fare from an explicitly selected published version.
+- Resolve the time band from the screening start in the cinema time zone.
+- Reuse the existing BEFORE_17 and FROM_17 boundary calculation.
+- Return the local screening start, selected day group, fare unit and capacity.
+- Accept configured zero-price fares.
+- Reject non-sale and unsupported fare combinations without a fallback price.
+
+#### Business rules
+
+- Read 2D and 3D fares independently.
+- Use the selected version's day group without inferring holiday dates.
+- Return the stored couple-seat amount for the entire PAIR unit.
+- Apply no multipliers or surcharges.
+
+#### Security and database
+
+- Reuse inventory:manage protection at Gateway and Inventory.
+- Reuse version applicability checks from FareMatrixService.
+- No database migration is required.
+
+#### Verification status
+
+- Tests and build were not run.
+- Manual boundary, scope, format and fare-state checks remain pending.
+
 ### Versioned Pricing Cinema Scopes
 
 #### Changed

@@ -869,7 +869,9 @@ Implemented in source:
 - draft metadata and fare-matrix editing;
 - stored-matrix validation and immutable publication;
 - creation of a new draft from an explicitly selected published version;
-- idempotent draft creation and serialized revision allocation.
+- idempotent draft creation and serialized revision allocation;
+- exact fare quotes from explicitly selected published versions;
+- cinema-local time-band resolution for published fare quotes.
 
 Verification pending:
 
@@ -877,7 +879,9 @@ Verification pending:
 - exact copying of matrix dimensions, states and amounts;
 - source-version immutability;
 - repeated and concurrent draft-creation requests;
-- authorization through Gateway and Inventory.
+- authorization through Gateway and Inventory;
+- fare quotes at the cinema-local 17:00 boundary;
+- independent format prices, zero amounts and non-sale combinations.
 
 Remaining implementation:
 
