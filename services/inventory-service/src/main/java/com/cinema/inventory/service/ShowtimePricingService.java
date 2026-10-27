@@ -188,6 +188,8 @@ public class ShowtimePricingService {
             return;
         }
 
+        seatGenerationService.validateCompleteGeneration(showtime, seats);
+
         var selected = showtime.getPricingPolicyVersion();
 
         showtime.replacePricingPolicyVersion(selected);

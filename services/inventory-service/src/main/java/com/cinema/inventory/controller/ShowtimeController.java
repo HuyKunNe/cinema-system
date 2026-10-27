@@ -1,9 +1,18 @@
 package com.cinema.inventory.controller;
 
-import java.net.URI;
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.UUID;
+import com.cinema.inventory.dto.request.CreateShowtimeRequest;
+import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
+import com.cinema.inventory.dto.response.ShowtimeResponse;
+import com.cinema.inventory.service.ShowtimeService;
+
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+
+import jakarta.validation.Valid;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -17,18 +26,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.cinema.inventory.dto.request.CreateShowtimeRequest;
-import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
-import com.cinema.inventory.dto.response.ShowtimeResponse;
-import com.cinema.inventory.service.ShowtimeService;
-
-import io.swagger.v3.oas.annotations.media.ArraySchema;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
-import jakarta.validation.Valid;
+import java.net.URI;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/showtimes")
@@ -100,13 +101,15 @@ public class ShowtimeController {
     }
 
     @GetMapping("/{showtimeId}")
-    public ResponseEntity<ShowtimeResponse> getShowtimeById(@PathVariable("showtimeId") UUID showtimeId) {
+    public ResponseEntity<ShowtimeResponse> getShowtimeById(
+            @PathVariable("showtimeId") UUID showtimeId) {
 
         return ResponseEntity.ok(showtimeService.getById(showtimeId));
     }
 
     @GetMapping("/by-room/{roomId}")
-    public ResponseEntity<List<ShowtimeResponse>> getShowtimesByRoom(@PathVariable("roomId") UUID roomId) {
+    public ResponseEntity<List<ShowtimeResponse>> getShowtimesByRoom(
+            @PathVariable("roomId") UUID roomId) {
 
         return ResponseEntity.ok(showtimeService.getByRoomId(roomId));
     }
@@ -144,19 +147,22 @@ public class ShowtimeController {
     }
 
     @PatchMapping("/{showtimeId}/close")
-    public ResponseEntity<ShowtimeResponse> closeShowtime(@PathVariable("showtimeId") UUID showtimeId) {
+    public ResponseEntity<ShowtimeResponse> closeShowtime(
+            @PathVariable("showtimeId") UUID showtimeId) {
 
         return ResponseEntity.ok(showtimeService.close(showtimeId));
     }
 
     @PatchMapping("/{showtimeId}/cancel")
-    public ResponseEntity<ShowtimeResponse> cancelShowtime(@PathVariable("showtimeId") UUID showtimeId) {
+    public ResponseEntity<ShowtimeResponse> cancelShowtime(
+            @PathVariable("showtimeId") UUID showtimeId) {
 
         return ResponseEntity.ok(showtimeService.cancel(showtimeId));
     }
 
     @PatchMapping("/{showtimeId}/complete")
-    public ResponseEntity<ShowtimeResponse> completeShowtime(@PathVariable("showtimeId") UUID showtimeId) {
+    public ResponseEntity<ShowtimeResponse> completeShowtime(
+            @PathVariable("showtimeId") UUID showtimeId) {
 
         return ResponseEntity.ok(showtimeService.complete(showtimeId));
     }

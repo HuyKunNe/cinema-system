@@ -92,6 +92,54 @@ public class ShowSeatGenerationService {
     }
 
     @Transactional
+    public void validateCompleteGeneration(Showtime showtime, List<ShowSeat> showSeats) {
+
+        validateScheduledShowtime(showtime);
+
+        List<LayoutSeatSnapshot> snapshots = loadSnapshots(showtime);
+
+        if (showSeats == null || showSeats.size() != snapshots.size()) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_LAYOUT_SEATS_MISMATCH);
+        }
+
+        Map<UUID, LayoutSeatSnapshot> expectedBySeatId = new HashMap<>();
+
+        for (LayoutSeatSnapshot snapshot : snapshots) {
+            UUID seatId = snapshot.seat().getId();
+
+            if (expectedBySeatId.putIfAbsent(seatId, snapshot) != null) {
+                throw new ConflictException(InventoryErrorCode.SEAT_MAP_DATA_INCONSISTENT);
+            }
+        }
+
+        Set<UUID> actualSeatIds = new HashSet<>();
+
+        for (ShowSeat showSeat : showSeats) {
+            if (showSeat == null
+                    || showSeat.getSeat() == null
+                    || showSeat.getSeat().getId() == null
+                    || showSeat.getShowtime() == null
+                    || !showtime.getId().equals(showSeat.getShowtime().getId())) {
+
+                throw new ConflictException(InventoryErrorCode.SEAT_MAP_DATA_INCONSISTENT);
+            }
+
+            UUID seatId = showSeat.getSeat().getId();
+            LayoutSeatSnapshot expected = expectedBySeatId.get(seatId);
+
+            if (expected == null || !actualSeatIds.add(seatId)) {
+                throw new ConflictException(InventoryErrorCode.SHOWTIME_LAYOUT_SEATS_MISMATCH);
+            }
+
+            if (!Objects.equals(showSeat.getSeatNumber(), expected.seatNumber())
+                    || showSeat.getSeatType() != expected.seatType()) {
+
+                throw new ConflictException(InventoryErrorCode.SEAT_MAP_DATA_INCONSISTENT);
+            }
+        }
+    }
+
+    @Transactional
     public List<ShowSeat> generateFromPublishedPricing(Showtime showtime) {
         validateScheduledShowtime(showtime);
 
