@@ -861,74 +861,48 @@ R24               — DONE
 
 ### Configurable pricing definitions
 
-Status: **REQUIREMENTS CONFIRMED — IMPLEMENTATION PENDING**
-
-Authoritative specification:
-docs/18_PRICING_CONFIGURATION.md.
-
-Confirmed requirements:
-
-- configurable named time bands;
-- configurable ticket groups and display ordering;
-- descriptive eligibility conditions without automatic age inference;
-- exactly one unconditional default regular-price group per version;
-- identifier-based matrix references;
-- immutable published definitions;
-- migration preserving existing version IDs, amounts and non-sale states.
-
-Implementation sequence:
-
-1. Migrate fixed bands and categories to version-owned definitions.
-2. Update draft editing, matrix storage, validation and revision copying.
-3. Update publication and fare resolution.
-4. Integrate showtime assignments and booking group references.
-5. Regenerate FE clients and replace fixed labels and selectors.
-
-The fixed-enum implementation below remains the current runtime baseline.
-Implementation proposals using hard-coded ADULT or BEFORE_17/FROM_17
-must be updated before integration.
-
-### Configurable pricing definitions
-
-Status: **DATA MODEL IMPLEMENTED — API MIGRATION PENDING**
+Status: **ID CONTRACT IMPLEMENTED — CONFIGURATION EDITING PENDING**
 
 Confirmed business:
 
 - configurable named time bands;
 - configurable ticket groups;
 - descriptive eligibility conditions;
-- one unconditional default regular-price group;
+- exactly one unconditional default regular-price group;
 - immutable published definitions.
 
 Implemented in source:
 
-- version-owned definition entities;
-- UUIDv7 definition identifiers;
-- V19 backfill of existing definitions and fare-cell references;
-- composite foreign keys enforcing version ownership;
-- definition initialization and legacy write synchronization;
-- definition copying when creating draft revisions;
-- publication checks for overlap and default-group consistency.
+- version-owned definitions and UUIDv7 identifiers;
+- V19 backfill and ownership foreign keys;
+- identifier-based matrix request and response cells;
+- configured time-band and ticket-group metadata in matrix responses;
+- dynamic matrix coverage and uniform-fare validation;
+- configured time-band resolution;
+- default-group resolution for quotes and showtime seat prices;
+- explicit ID mapping during published-to-draft copying;
+- V20 removal of legacy fare-cell enum keys.
 
 Verification pending:
 
-- V19 migration with existing published and draft versions;
-- unchanged fare amounts and non-sale states;
-- non-null, correctly owned references on every stored fare cell;
-- legacy matrix replacement and clearing;
-- draft copying with new definition IDs.
+- V19 and V20 migration with existing data;
+- preservation of fare amounts and non-sale states;
+- matrix replacement, clearing and optimistic concurrency;
+- published-to-draft copying with new definition IDs;
+- quote boundaries and default-group resolution;
+- showtime assignment, refresh and opening.
 
 Next increment:
 
-- change matrix request and response keys to definition IDs;
-- add draft configuration editing;
-- update matrix completeness and business validation for dynamic definitions;
-- update fare resolution to configured time bands and ticket groups;
-- regenerate FE clients after the new contract is available.
+- add HTTP editing of draft time bands and ticket groups;
+- preserve definition IDs during edits;
+- validate ownership, overlap and the unconditional default group;
+- handle matrix cells affected by configuration changes;
+- increment the parent version for configuration changes;
+- regenerate frontend clients against the completed editing contract.
 
-The existing enum-based APIs remain the compatibility contract
-during this data-model increment.
-
+Explicit group selection in booking and removal of provisional legacy
+showtime price inputs remain separate work.
 
 ### Post-R27 showtime release-date validation
 

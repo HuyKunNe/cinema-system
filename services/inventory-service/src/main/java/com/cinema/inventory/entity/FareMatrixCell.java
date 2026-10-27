@@ -1,14 +1,20 @@
 package com.cinema.inventory.entity;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Objects;
+import java.util.UUID;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
 import com.cinema.inventory.enums.ContentFormat;
 import com.cinema.inventory.enums.FareCellState;
 import com.cinema.inventory.enums.PricingExperienceType;
-import com.cinema.inventory.enums.PricingTimeBand;
 import com.cinema.inventory.enums.SeatType;
-import com.cinema.inventory.enums.TicketCategory;
 import com.cinema.inventory.exception.InventoryErrorCode;
 
 import jakarta.persistence.Column;
@@ -19,14 +25,6 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.Objects;
-import java.util.UUID;
 
 @Entity
 @Table(name = "pricing_fare_cells")
@@ -43,14 +41,6 @@ public class FareMatrixCell extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "content_format", nullable = false, length = 20)
     private ContentFormat contentFormat;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "time_band", nullable = false, length = 20)
-    private PricingTimeBand timeBand;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "ticket_category", nullable = false, length = 30)
-    private TicketCategory ticketCategory;
 
     @JdbcTypeCode(SqlTypes.BINARY)
     @Column(
@@ -81,28 +71,40 @@ public class FareMatrixCell extends BaseEntity {
 
     protected FareMatrixCell() {}
 
-    public FareMatrixCell(CinemaPricingPolicyVersion policyVersion, Value value) {
+        public FareMatrixCell(
+            CinemaPricingPolicyVersion policyVersion,
+            Value value) {
 
         if (policyVersion == null
                 || policyVersion.getId() == null
                 || value == null
                 || value.state() == FareCellState.UNCONFIGURED) {
+
             throw invalid();
         }
 
         policyVersion.requireDraft();
 
+        Key key = value.key();
+
+        boolean hasTimeBand =
+                policyVersion.getPricingTimeBands().stream()
+                        .anyMatch(item -> item.getId().equals(key.timeBandId()));
+
+        boolean hasTicketGroup =
+                policyVersion.getPricingTicketGroups().stream()
+                        .anyMatch(item -> item.getId().equals(key.ticketGroupId()));
+
+        if (!hasTimeBand || !hasTicketGroup) {
+            throw invalid();
+        }
+
         this.policyVersion = policyVersion;
-        this.experienceType = value.key().experienceType();
-        this.contentFormat = value.key().contentFormat();
-        this.timeBand = value.key().timeBand();
-        this.ticketCategory = value.key().ticketCategory();
-
-        this.timeBandId = policyVersion.requireLegacyTimeBand(value.key().timeBand()).getId();
-
-        this.ticketGroupId =
-                policyVersion.requireLegacyTicketGroup(value.key().ticketCategory()).getId();
-        this.seatType = value.key().seatType();
+        this.experienceType = key.experienceType();
+        this.contentFormat = key.contentFormat();
+        this.timeBandId = key.timeBandId();
+        this.ticketGroupId = key.ticketGroupId();
+        this.seatType = key.seatType();
         this.state = value.state();
         this.amount = value.amount();
     }
@@ -115,38 +117,49 @@ public class FareMatrixCell extends BaseEntity {
         return ticketGroupId;
     }
 
-    public Value toValue() {
-        if (!Objects.equals(timeBandId, policyVersion.requireLegacyTimeBand(timeBand).getId())
-                || !Objects.equals(
-                        ticketGroupId,
-                        policyVersion.requireLegacyTicketGroup(ticketCategory).getId())) {
+        public Value toValue() {
+        boolean hasTimeBand =
+                policyVersion.getPricingTimeBands().stream()
+                        .anyMatch(item -> item.getId().equals(timeBandId));
 
-            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_DATA_INCONSISTENT);
+        boolean hasTicketGroup =
+                policyVersion.getPricingTicketGroups().stream()
+                        .anyMatch(item -> item.getId().equals(ticketGroupId));
+
+        if (!hasTimeBand || !hasTicketGroup) {
+            throw new ConflictException(
+                    InventoryErrorCode.PRICING_POLICY_DATA_INCONSISTENT);
         }
+
         return new Value(
-                new Key(experienceType, contentFormat, timeBand, ticketCategory, seatType),
+                new Key(
+                        experienceType,
+                        contentFormat,
+                        timeBandId,
+                        ticketGroupId,
+                        seatType),
                 state,
                 amount);
     }
 
-    public record Key(
+        public record Key(
             PricingExperienceType experienceType,
             ContentFormat contentFormat,
-            PricingTimeBand timeBand,
-            TicketCategory ticketCategory,
+            UUID timeBandId,
+            UUID ticketGroupId,
             SeatType seatType) {
 
         public Key {
             if (experienceType == null
                     || contentFormat == null
-                    || timeBand == null
-                    || ticketCategory == null
+                    || timeBandId == null
+                    || ticketGroupId == null
                     || seatType == null) {
+
                 throw invalid();
             }
         }
     }
-
     public record Value(Key key, FareCellState state, BigDecimal amount) {
 
         public Value {

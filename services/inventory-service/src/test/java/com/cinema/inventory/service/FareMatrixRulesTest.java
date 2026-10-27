@@ -4,6 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
+
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.inventory.entity.FareMatrixCell.Key;
 import com.cinema.inventory.entity.FareMatrixCell.Value;
@@ -15,12 +22,6 @@ import com.cinema.inventory.enums.PricingTimeBand;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.TicketCategory;
 import com.cinema.inventory.exception.InventoryErrorCode;
-
-import org.junit.jupiter.api.Test;
-
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
 
 class FareMatrixRulesTest {
 
@@ -52,8 +53,7 @@ class FareMatrixRulesTest {
                                                     child.key(), child)));
 
             assertThat(exception.getErrorCode())
-                    .isSameAs(
-                            InventoryErrorCode.COUPLE_CATEGORY_FARE_CONFLICT);
+                    .isSameAs(InventoryErrorCode.COUPLE_CATEGORY_FARE_CONFLICT);
         }
     }
 
@@ -68,10 +68,7 @@ class FareMatrixRulesTest {
 
         Value child =
                 new Value(
-                        key(
-                                ContentFormat.TWO_D,
-                                PricingTimeBand.BEFORE_17,
-                                TicketCategory.CHILD),
+                        key(ContentFormat.TWO_D, PricingTimeBand.BEFORE_17, TicketCategory.CHILD),
                         FareCellState.NOT_APPLICABLE,
                         null);
 
@@ -152,8 +149,7 @@ class FareMatrixRulesTest {
                                                 evening.key(), evening)));
 
         assertThat(exception.getErrorCode())
-                .isSameAs(
-                        InventoryErrorCode.COUPLE_FIXED_FARE_CONFLICT);
+                .isSameAs(InventoryErrorCode.COUPLE_FIXED_FARE_CONFLICT);
     }
 
     private Value priced(
@@ -163,21 +159,22 @@ class FareMatrixRulesTest {
             String amount) {
 
         return new Value(
-                key(format, timeBand, category),
-                FareCellState.PRICED,
-                new BigDecimal(amount));
+                key(format, timeBand, category), FareCellState.PRICED, new BigDecimal(amount));
     }
 
-    private Key key(
-            ContentFormat format,
-            PricingTimeBand timeBand,
-            TicketCategory category) {
+    private Key key(ContentFormat format, PricingTimeBand timeBand, TicketCategory category) {
+
+        UUID timeBandId =
+                UUID.fromString(
+                        timeBand == PricingTimeBand.BEFORE_17
+                                ? "019a0c12-1000-7000-8000-000000000001"
+                                : "019a0c12-1000-7000-8000-000000000002");
+
+        UUID ticketGroupId =
+                UUID.fromString(
+                        "019a0c12-1000-7000-8000-%012d".formatted(100 + category.ordinal()));
 
         return new Key(
-                PricingExperienceType.STANDARD,
-                format,
-                timeBand,
-                category,
-                SeatType.COUPLE);
+                PricingExperienceType.STANDARD, format, timeBandId, ticketGroupId, SeatType.COUPLE);
     }
 }

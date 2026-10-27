@@ -3,29 +3,29 @@ package com.cinema.inventory.service;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.inventory.entity.FareMatrixCell.Key;
 import com.cinema.inventory.entity.FareMatrixCell.Value;
+import com.cinema.inventory.enums.ContentFormat;
 import com.cinema.inventory.enums.FareCellState;
 import com.cinema.inventory.enums.PricingDayGroup;
 import com.cinema.inventory.enums.PricingExperienceType;
-import com.cinema.inventory.enums.PricingTimeBand;
 import com.cinema.inventory.enums.SeatType;
-import com.cinema.inventory.enums.TicketCategory;
 import com.cinema.inventory.exception.InventoryErrorCode;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 public final class FareMatrixRules {
 
     private FareMatrixRules() {}
 
-    public static void validateUniformFares(PricingDayGroup dayGroup, Map<Key, Value> values) {
+    public static void validateUniformFares(
+            PricingDayGroup dayGroup,
+            Map<Key, Value> values) {
 
-        Map<Key, Value> premiumGroups = new HashMap<>();
-        Map<Key, Value> coupleGroups = new HashMap<>();
+        Map<UniformGroup, Value> premiumGroups = new HashMap<>();
+        Map<UniformGroup, Value> coupleGroups = new HashMap<>();
 
         for (Value value : values.values()) {
-            // A non-sale cell has no selling price to compare.
-            // Missing cells are checked separately before publication.
             if (value.state() != FareCellState.PRICED) {
                 continue;
             }
@@ -33,13 +33,11 @@ public final class FareMatrixRules {
             Key key = value.key();
 
             if (key.experienceType() == PricingExperienceType.PREMIUM_CINEMA) {
-
-                Key group =
-                        new Key(
+                UniformGroup group =
+                        new UniformGroup(
                                 key.experienceType(),
                                 key.contentFormat(),
-                                key.timeBand(),
-                                TicketCategory.ADULT,
+                                key.timeBandId(),
                                 key.seatType());
 
                 requireSameFare(
@@ -52,12 +50,11 @@ public final class FareMatrixRules {
             if (key.seatType() == SeatType.COUPLE) {
                 boolean holiday = dayGroup == PricingDayGroup.HOLIDAY;
 
-                Key group =
-                        new Key(
+                UniformGroup group =
+                        new UniformGroup(
                                 key.experienceType(),
                                 key.contentFormat(),
-                                holiday ? key.timeBand() : PricingTimeBand.BEFORE_17,
-                                TicketCategory.ADULT,
+                                holiday ? key.timeBandId() : null,
                                 SeatType.COUPLE);
 
                 requireSameFare(
@@ -72,7 +69,10 @@ public final class FareMatrixRules {
     }
 
     private static void requireSameFare(
-            Map<Key, Value> groups, Key group, Value candidate, InventoryErrorCode errorCode) {
+            Map<UniformGroup, Value> groups,
+            UniformGroup group,
+            Value candidate,
+            InventoryErrorCode errorCode) {
 
         Value previous = groups.putIfAbsent(group, candidate);
 
@@ -80,4 +80,10 @@ public final class FareMatrixRules {
             throw new ValidationException(errorCode);
         }
     }
+
+    private record UniformGroup(
+            PricingExperienceType experienceType,
+            ContentFormat contentFormat,
+            UUID timeBandId,
+            SeatType seatType) {}
 }

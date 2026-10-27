@@ -183,22 +183,25 @@ public class ShowtimePricingService {
         return seats;
     }
 
-    private void applyFares(Showtime showtime, List<ShowSeat> seats) {
+        private void applyFares(
+            Showtime showtime,
+            List<ShowSeat> seats) {
 
         if (seats.isEmpty()) {
-            throw new ConflictException(InventoryErrorCode.NO_ACTIVE_SEATS);
+            throw new ConflictException(
+                    InventoryErrorCode.NO_ACTIVE_SEATS);
         }
 
         var selected = showtime.getPricingPolicyVersion();
 
-        // Recheck publication and cinema applicability.
         showtime.replacePricingPolicyVersion(selected);
 
         if (showtime.getRoom().getRoomType() == null
                 || showtime.getScreeningVersion() == null
                 || showtime.getScreeningVersion().getContentFormat() == null) {
 
-            throw new ConflictException(InventoryErrorCode.SHOWTIME_PRICING_CONTEXT_REQUIRED);
+            throw new ConflictException(
+                    InventoryErrorCode.SHOWTIME_PRICING_CONTEXT_REQUIRED);
         }
 
         var matrix =
@@ -207,21 +210,25 @@ public class ShowtimePricingService {
                         selected.getPolicy().getId(),
                         selected.getId());
 
-        if (matrix.status() != PricingPolicyVersionStatus.PUBLISHED) {
-            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_VERSION_NOT_PUBLISHED);
-        }
+        var experience =
+                showtime.getRoom()
+                        .getRoomType()
+                        .getPricingExperienceType();
 
-        if (!matrix.coverageComplete()) {
-            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_DATA_INCONSISTENT);
-        }
+        var format =
+                showtime.getScreeningVersion().getContentFormat();
 
-        var experience = showtime.getRoom().getRoomType().getPricingExperienceType();
+        var localStartsAt =
+                showtime.getStartsAt()
+                        .atZoneSameInstant(
+                                PricingFareResolver.cinemaZone(
+                                        showtime.getRoom()
+                                                .getCinema()
+                                                .getTimeZone()))
+                        .toLocalTime();
 
-        var format = showtime.getScreeningVersion().getContentFormat();
-
-        PricingTimeBand timeBand = resolveTimeBand(showtime);
-
-        Map<SeatType, BigDecimal> prices = new EnumMap<>(SeatType.class);
+        Map<SeatType, BigDecimal> prices =
+                new EnumMap<>(SeatType.class);
 
         for (ShowSeat seat : seats) {
             SeatType seatType = seat.getSeatType();
@@ -231,24 +238,13 @@ public class ShowtimePricingService {
             }
 
             var fare =
-                    matrix.cells().stream()
-                            .filter(
-                                    cell ->
-                                            cell.experienceType() == experience
-                                                    && cell.contentFormat() == format
-                                                    && cell.timeBand() == timeBand
-                                                    && cell.ticketCategory() == TicketCategory.ADULT
-                                                    && cell.seatType() == seatType)
-                            .findFirst()
-                            .orElseThrow(
-                                    () ->
-                                            new ConflictException(
-                                                    InventoryErrorCode
-                                                            .PRICING_FARE_NOT_APPLICABLE));
-
-            if (fare.state() != FareCellState.PRICED) {
-                throw new ConflictException(InventoryErrorCode.PRICING_FARE_NOT_APPLICABLE);
-            }
+                    PricingFareResolver.resolve(
+                            matrix,
+                            localStartsAt,
+                            experience,
+                            format,
+                            null,
+                            seatType);
 
             prices.put(seatType, fare.amount());
         }
@@ -257,20 +253,6 @@ public class ShowtimePricingService {
             seat.changePrice(prices.get(seat.getSeatType()));
         }
     }
-
-    private static PricingTimeBand resolveTimeBand(Showtime showtime) {
-        String configured = showtime.getRoom().getCinema().getTimeZone();
-
-        String zoneName = configured == null ? "Asia/Ho_Chi_Minh" : configured;
-
-        if (!ZoneId.getAvailableZoneIds().contains(zoneName)) {
-            throw new ValidationException(InventoryErrorCode.CINEMA_TIME_ZONE_INVALID);
-        }
-
-        return PricingTimeBand.fromLocalTime(
-                showtime.getStartsAt().atZoneSameInstant(ZoneId.of(zoneName)).toLocalTime());
-    }
-
     private static void requireScheduled(Showtime showtime) {
         if (showtime.getStatus() != ShowtimeStatus.SCHEDULED) {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_EDITABLE);

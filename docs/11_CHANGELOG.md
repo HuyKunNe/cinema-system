@@ -47,6 +47,41 @@ Current status:
 
 ## 2026-10-27
 
+### Pricing Matrix Definition IDs and Fare Resolution
+
+#### Changed
+
+- Use version-owned time-band and ticket-group IDs in matrix cells.
+- Return configured names, descriptions, order and time boundaries.
+- Remove fixed time-band and ticket-category options from the matrix contract.
+- Calculate matrix coverage from the version-owned definitions.
+- Resolve fares using configured cinema-local time bands.
+- Use the version's default ticket group when no group is requested.
+- Use the same fare resolver for quotes and assigned showtime prices.
+- Map source definition IDs to new IDs when copying a published revision.
+- Preserve premium and couple-seat uniform-price rules.
+- Reject legacy pricing request fields instead of silently ignoring them.
+
+#### Breaking changes
+
+- Matrix cells use timeBandId and ticketGroupId.
+- Matrix replacement no longer accepts ticketCategories.
+- Quote requests use optional ticketGroupId instead of ticketCategory.
+- V20 removes legacy fare-cell enum columns and pricing_fare_categories.
+- Deploy the migration and Java changes together.
+- Coordinate frontend API-client regeneration with this contract change.
+
+#### Remaining work
+
+- HTTP editing of draft time bands and ticket groups.
+- Explicit ticket-group selection in the booking workflow.
+- Removal of legacy provisional showtime price inputs.
+
+#### Verification status
+
+- Tests and build were not run.
+- Migration, API, copying, fare boundaries and opening checks remain pending.
+
 ### Version-Owned Pricing Definitions — Data Migration
 
 #### Added
@@ -79,7 +114,7 @@ Current status:
 #### Verification status
 
 - Tests and build were not run.
-- Migration, existing matrix writes and draft-copy verification remain pending. 
+- Migration, existing matrix writes and draft-copy verification remain pending.
 
 ### Showtime Published Pricing Assignment
 

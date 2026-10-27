@@ -6,9 +6,7 @@ import com.cinema.inventory.enums.FareUnit;
 import com.cinema.inventory.enums.PricingDayGroup;
 import com.cinema.inventory.enums.PricingExperienceType;
 import com.cinema.inventory.enums.PricingPolicyVersionStatus;
-import com.cinema.inventory.enums.PricingTimeBand;
 import com.cinema.inventory.enums.SeatType;
-import com.cinema.inventory.enums.TicketCategory;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.math.BigDecimal;
@@ -23,7 +21,9 @@ public record FareMatrixResponse(
         PricingDayGroup dayGroup,
         PricingPolicyVersionStatus status,
         List<ScopeResponse> scopes,
-        List<TicketCategory> ticketCategories,
+        List<TimeBandResponse> timeBands,
+        List<TicketGroupResponse> ticketGroups,
+        UUID defaultTicketGroupId,
         List<SeatType> seatTypes,
         int requiredCellCount,
         int configuredCellCount,
@@ -33,30 +33,35 @@ public record FareMatrixResponse(
         Options options) {
 
     public record ScopeResponse(
-            PricingExperienceType experienceType,
-            ContentFormat contentFormat) {}
+            PricingExperienceType experienceType, ContentFormat contentFormat) {}
+
+    public record TimeBandResponse(
+            UUID id, String name, int startMinute, int endMinute, int sortOrder) {}
+
+    @JsonInclude(JsonInclude.Include.ALWAYS)
+    public record TicketGroupResponse(
+            UUID id,
+            String name,
+            String eligibilityDescription,
+            boolean defaultGroup,
+            int sortOrder) {}
 
     @JsonInclude(JsonInclude.Include.ALWAYS)
     public record CellResponse(
             PricingExperienceType experienceType,
             ContentFormat contentFormat,
-            PricingTimeBand timeBand,
-            TicketCategory ticketCategory,
+            UUID timeBandId,
+            UUID ticketGroupId,
             SeatType seatType,
             FareCellState state,
             BigDecimal amount,
             FareUnit unit) {}
 
-    public record SeatTypeOption(
-            SeatType seatType,
-            FareUnit unit,
-            int capacity) {}
+    public record SeatTypeOption(SeatType seatType, FareUnit unit, int capacity) {}
 
     public record Options(
             List<PricingExperienceType> experienceTypes,
             List<ContentFormat> contentFormats,
-            List<PricingTimeBand> timeBands,
-            List<TicketCategory> ticketCategories,
             List<SeatTypeOption> seatTypes,
             List<FareCellState> cellStates) {}
 }

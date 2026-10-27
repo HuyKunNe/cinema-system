@@ -115,27 +115,39 @@ public class PricingPolicyDraftService {
             throw new ConflictException(InventoryErrorCode.PRICING_POLICY_REVISION_EXHAUSTED);
         }
 
-        CinemaPricingPolicyVersion draft =
-                versionRepository.saveAndFlush(
-                        source.newDraft(highestRevision + 1, request.clientRequestId()));
+        var copied = source.newDraft(highestRevision + 1, request.clientRequestId());
+
+        CinemaPricingPolicyVersion draft = versionRepository.saveAndFlush(copied.draft());
 
         List<FareMatrixCell> copiedCells =
                 matrix.cells().stream()
                         .map(
-                                cell ->
-                                        new FareMatrixCell(
-                                                draft,
-                                                new Value(
-                                                        new Key(
-                                                                cell.experienceType(),
-                                                                cell.contentFormat(),
-                                                                cell.timeBand(),
-                                                                cell.ticketCategory(),
-                                                                cell.seatType()),
-                                                        cell.state(),
-                                                        cell.amount())))
-                        .toList();
+                                cell -> {
+                                    UUID timeBandId = copied.timeBandIds().get(cell.timeBandId());
 
+                                    UUID ticketGroupId =
+                                            copied.ticketGroupIds().get(cell.ticketGroupId());
+
+                                    if (timeBandId == null || ticketGroupId == null) {
+
+                                        throw new ConflictException(
+                                                InventoryErrorCode
+                                                        .PRICING_POLICY_DATA_INCONSISTENT);
+                                    }
+
+                                    return new FareMatrixCell(
+                                            draft,
+                                            new Value(
+                                                    new Key(
+                                                            cell.experienceType(),
+                                                            cell.contentFormat(),
+                                                            timeBandId,
+                                                            ticketGroupId,
+                                                            cell.seatType()),
+                                                    cell.state(),
+                                                    cell.amount()));
+                                })
+                        .toList();
         cellRepository.saveAll(copiedCells);
         cellRepository.flush();
 

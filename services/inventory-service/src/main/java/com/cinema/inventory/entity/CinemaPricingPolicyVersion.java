@@ -1,5 +1,20 @@
 package com.cinema.inventory.entity;
 
+import java.text.Normalizer;
+import java.time.OffsetDateTime;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
@@ -24,20 +39,6 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
-import java.text.Normalizer;
-import java.time.OffsetDateTime;
-import java.util.Comparator;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "cinema_pricing_policy_versions")
@@ -99,14 +100,6 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
 
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(
-            name = "pricing_fare_categories",
-            joinColumns = @JoinColumn(name = "policy_version_id"))
-    @Enumerated(EnumType.STRING)
-    @Column(name = "ticket_category", nullable = false, length = 30)
-    private Set<TicketCategory> fareTicketCategories = new HashSet<>();
-
-    @ElementCollection(fetch = FetchType.LAZY)
-    @CollectionTable(
             name = "pricing_fare_seat_types",
             joinColumns = @JoinColumn(name = "policy_version_id"))
     @Enumerated(EnumType.STRING)
@@ -139,8 +132,7 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
         initializePricingDefinitions();
     }
 
-    public CinemaPricingPolicyVersion newDraft(long nextRevision, UUID clientRequestId) {
-
+    public DraftCopy newDraft(long nextRevision, UUID clientRequestId) {
         if (status != PricingPolicyVersionStatus.PUBLISHED) {
             throw new ConflictException(InventoryErrorCode.PRICING_POLICY_SOURCE_NOT_PUBLISHED);
         }
@@ -168,13 +160,12 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
                                                 scope.getContentFormat()))
                         .collect(Collectors.toSet());
 
-        draft.replaceDraftMatrixDefinition(
-                copiedScopes, new HashSet<>(fareTicketCategories), new HashSet<>(fareSeatTypes));
+        draft.replaceDraftMatrixDefinition(copiedScopes, new HashSet<>(fareSeatTypes));
 
-        draft.copyPricingDefinitionsFrom(this);
+        DraftCopy result = draft.copyPricingDefinitionsFrom(this);
         draft.validatePricingDefinitions();
 
-        return draft;
+        return result;
     }
 
     public UUID getDraftSourceVersionId() {
@@ -201,30 +192,23 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
         }
     }
 
-    public void replaceDraftMatrixDefinition(
-            Set<FareMatrixScope> scopes, Set<TicketCategory> categories, Set<SeatType> seatTypes) {
+    public void replaceDraftMatrixDefinition(Set<FareMatrixScope> scopes, Set<SeatType> seatTypes) {
 
         requireDraft();
 
         if (scopes == null
-                || categories == null
                 || seatTypes == null
                 || scopes.stream().anyMatch(Objects::isNull)
-                || categories.stream().anyMatch(Objects::isNull)
                 || seatTypes.stream().anyMatch(Objects::isNull)) {
+
             throw new ValidationException(InventoryErrorCode.INVALID_FARE_MATRIX);
         }
 
         fareScopes.clear();
         fareScopes.addAll(scopes);
 
-        fareTicketCategories.clear();
-        fareTicketCategories.addAll(categories);
-
         fareSeatTypes.clear();
         fareSeatTypes.addAll(seatTypes);
-
-        syncLegacyTicketGroups(categories);
 
         fareMatrixRevision++;
     }
@@ -272,10 +256,6 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
         return Set.copyOf(fareScopes);
     }
 
-    public Set<TicketCategory> getFareTicketCategories() {
-        return Set.copyOf(fareTicketCategories);
-    }
-
     public Set<SeatType> getFareSeatTypes() {
         return Set.copyOf(fareSeatTypes);
     }
@@ -300,30 +280,6 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
                         Comparator.comparingInt(PricingTicketGroup::getSortOrder)
                                 .thenComparing(PricingTicketGroup::getId))
                 .toList();
-    }
-
-    public PricingTimeBandDefinition requireLegacyTimeBand(PricingTimeBand code) {
-
-        if (code == null) {
-            throw inconsistentDefinitions();
-        }
-
-        return pricingTimeBands.stream()
-                .filter(definition -> definition.getLegacyCode() == code)
-                .findFirst()
-                .orElseThrow(CinemaPricingPolicyVersion::inconsistentDefinitions);
-    }
-
-    public PricingTicketGroup requireLegacyTicketGroup(TicketCategory category) {
-
-        if (category == null) {
-            throw inconsistentDefinitions();
-        }
-
-        return pricingTicketGroups.stream()
-                .filter(group -> group.getLegacyCategory() == category)
-                .findFirst()
-                .orElseThrow(CinemaPricingPolicyVersion::inconsistentDefinitions);
     }
 
     public void validatePricingDefinitions() {
@@ -367,45 +323,36 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
         pricingTicketGroups.add(PricingTicketGroup.fromLegacy(this, TicketCategory.ADULT));
     }
 
-    private void syncLegacyTicketGroups(Set<TicketCategory> categories) {
+    private DraftCopy copyPricingDefinitionsFrom(CinemaPricingPolicyVersion source) {
 
-        Set<TicketCategory> required = EnumSet.noneOf(TicketCategory.class);
-
-        required.add(TicketCategory.ADULT);
-        required.addAll(categories);
-
-        pricingTicketGroups.removeIf(
-                group ->
-                        group.getLegacyCategory() != null
-                                && !required.contains(group.getLegacyCategory()));
-
-        for (TicketCategory category : required) {
-            boolean exists =
-                    pricingTicketGroups.stream()
-                            .anyMatch(group -> group.getLegacyCategory() == category);
-
-            if (!exists) {
-                pricingTicketGroups.add(PricingTicketGroup.fromLegacy(this, category));
-            }
-        }
-    }
-
-    private void copyPricingDefinitionsFrom(CinemaPricingPolicyVersion source) {
+        Map<UUID, UUID> timeBandIds = new HashMap<>();
+        Map<UUID, UUID> ticketGroupIds = new HashMap<>();
 
         pricingTimeBands.clear();
 
         for (PricingTimeBandDefinition definition : source.pricingTimeBands) {
+            PricingTimeBandDefinition copied = definition.copyTo(this);
 
-            pricingTimeBands.add(definition.copyTo(this));
+            pricingTimeBands.add(copied);
+            timeBandIds.put(definition.getId(), copied.getId());
         }
 
         pricingTicketGroups.clear();
 
         for (PricingTicketGroup group : source.pricingTicketGroups) {
+            PricingTicketGroup copied = group.copyTo(this);
 
-            pricingTicketGroups.add(group.copyTo(this));
+            pricingTicketGroups.add(copied);
+            ticketGroupIds.put(group.getId(), copied.getId());
         }
+
+        return new DraftCopy(this, Map.copyOf(timeBandIds), Map.copyOf(ticketGroupIds));
     }
+
+    public record DraftCopy(
+            CinemaPricingPolicyVersion draft,
+            Map<UUID, UUID> timeBandIds,
+            Map<UUID, UUID> ticketGroupIds) {}
 
     private static ConflictException inconsistentDefinitions() {
         return new ConflictException(InventoryErrorCode.PRICING_POLICY_DATA_INCONSISTENT);

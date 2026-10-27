@@ -4,9 +4,7 @@ import com.cinema.inventory.dto.response.FareMatrixResponse.ScopeResponse;
 import com.cinema.inventory.enums.ContentFormat;
 import com.cinema.inventory.enums.PricingExperienceType;
 import com.cinema.inventory.enums.PricingPolicyVersionStatus;
-import com.cinema.inventory.enums.PricingTimeBand;
 import com.cinema.inventory.enums.SeatType;
-import com.cinema.inventory.enums.TicketCategory;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.util.List;
@@ -31,7 +29,7 @@ public record FareMatrixValidationResponse(
     public record CellReference(
             PricingExperienceType experienceType,
             ContentFormat contentFormat,
-            PricingTimeBand timeBand,
-            TicketCategory ticketCategory,
+            UUID timeBandId,
+            UUID ticketGroupId,
             SeatType seatType) {}
 }

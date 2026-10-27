@@ -11,7 +11,6 @@ import com.cinema.inventory.entity.FareMatrixCell.Key;
 import com.cinema.inventory.entity.FareMatrixCell.Value;
 import com.cinema.inventory.enums.FareCellState;
 import com.cinema.inventory.enums.PricingPolicyVersionStatus;
-import com.cinema.inventory.enums.TicketCategory;
 import com.cinema.inventory.exception.InventoryErrorCode;
 
 import org.springframework.stereotype.Service;
@@ -32,8 +31,19 @@ public class DraftFareMatrixValidationService {
             issues.add(global(InventoryErrorCode.PRICING_MATRIX_SCOPE_REQUIRED));
         }
 
-        if (!matrix.ticketCategories().contains(TicketCategory.ADULT)) {
-            issues.add(global(InventoryErrorCode.PRICING_MATRIX_ADULT_REQUIRED));
+        long defaultGroupCount =
+                matrix.ticketGroups().stream().filter(group -> group.defaultGroup()).count();
+
+        boolean defaultGroupMatches =
+                matrix.ticketGroups().stream()
+                        .anyMatch(
+                                group ->
+                                        group.defaultGroup()
+                                                && group.id().equals(matrix.defaultTicketGroupId())
+                                                && group.eligibilityDescription() == null);
+
+        if (defaultGroupCount != 1 || !defaultGroupMatches) {
+            issues.add(global(InventoryErrorCode.INVALID_PRICING_DEFINITION));
         }
 
         if (matrix.seatTypes().isEmpty()) {
@@ -60,8 +70,8 @@ public class DraftFareMatrixValidationService {
                         new Key(
                                 cell.experienceType(),
                                 cell.contentFormat(),
-                                cell.timeBand(),
-                                cell.ticketCategory(),
+                                cell.timeBandId(),
+                                cell.ticketGroupId(),
                                 cell.seatType());
 
                 Value value = new Value(key, cell.state(), cell.amount());
@@ -120,8 +130,8 @@ public class DraftFareMatrixValidationService {
         return new CellReference(
                 cell.experienceType(),
                 cell.contentFormat(),
-                cell.timeBand(),
-                cell.ticketCategory(),
+                cell.timeBandId(),
+                cell.ticketGroupId(),
                 cell.seatType());
     }
 }
