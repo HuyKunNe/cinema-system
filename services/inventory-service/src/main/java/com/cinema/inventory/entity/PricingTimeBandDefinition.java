@@ -16,6 +16,7 @@ import jakarta.persistence.Table;
 
 import java.text.Normalizer;
 import java.time.LocalTime;
+import java.util.Objects;
 
 @Entity
 @Table(name = "pricing_time_bands")
@@ -61,33 +62,14 @@ public class PricingTimeBandDefinition extends BaseEntity {
             int sortOrder,
             PricingTimeBand legacyCode) {
 
-        if (policyVersion == null
-                || policyVersion.getId() == null
-                || name == null
-                || startMinute < 0
-                || startMinute >= 1440
-                || endMinute < 0
-                || endMinute > 1440
-                || startMinute == endMinute
-                || sortOrder < 0) {
-
-            throw invalid();
-        }
-
-        policyVersion.requireDraft();
-
-        String normalized = Normalizer.normalize(name.trim(), Normalizer.Form.NFC);
-
-        if (normalized.isEmpty() || normalized.length() > 120) {
+        if (policyVersion == null || policyVersion.getId() == null) {
             throw invalid();
         }
 
         this.policyVersion = policyVersion;
-        this.name = normalized;
-        this.startMinute = startMinute;
-        this.endMinute = endMinute == 0 ? 1440 : endMinute;
-        this.sortOrder = sortOrder;
         this.legacyCode = legacyCode;
+
+        replaceDraftDetails(new Details(name, startMinute, endMinute, sortOrder));
     }
 
     public static PricingTimeBandDefinition fromLegacy(
@@ -143,6 +125,59 @@ public class PricingTimeBandDefinition extends BaseEntity {
         }
 
         return minute >= startMinute || minute < endMinute;
+    }
+
+    boolean replaceDraftDetails(Details details) {
+        policyVersion.requireDraft();
+
+        if (details == null) {
+            throw invalid();
+        }
+
+        boolean changed =
+                !Objects.equals(name, details.name())
+                        || startMinute != details.startMinute()
+                        || endMinute != details.endMinute()
+                        || sortOrder != details.sortOrder();
+
+        this.name = details.name();
+        this.startMinute = details.startMinute();
+        this.endMinute = details.endMinute();
+        this.sortOrder = details.sortOrder();
+
+        return changed;
+    }
+
+    public record Details(String name, int startMinute, int endMinute, int sortOrder) {
+
+        public Details {
+            if (name == null
+                    || startMinute < 0
+                    || startMinute >= 1440
+                    || endMinute < 0
+                    || endMinute > 1440
+                    || startMinute == endMinute
+                    || sortOrder < 0) {
+
+                throw invalid();
+            }
+
+            name = Normalizer.normalize(name.trim(), Normalizer.Form.NFC);
+
+            if (name.isEmpty() || name.length() > 120) {
+                throw invalid();
+            }
+
+            endMinute = endMinute == 0 ? 1440 : endMinute;
+        }
+
+        boolean containsMinute(int minute) {
+            if (endMinute > startMinute) {
+                return minute >= startMinute && minute < endMinute;
+            }
+
+            return minute >= startMinute || minute < endMinute;
+        }
     }
 
     private static ValidationException invalid() {

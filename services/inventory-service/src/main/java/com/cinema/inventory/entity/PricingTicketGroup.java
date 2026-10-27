@@ -1,5 +1,8 @@
 package com.cinema.inventory.entity;
 
+import java.text.Normalizer;
+import java.util.Objects;
+
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
 import com.cinema.inventory.enums.TicketCategory;
@@ -14,17 +17,12 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
-import java.text.Normalizer;
-
 @Entity
 @Table(name = "pricing_ticket_groups")
 public class PricingTicketGroup extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(
-            name = "policy_version_id",
-            nullable = false,
-            updatable = false)
+    @JoinColumn(name = "policy_version_id", nullable = false, updatable = false)
     private CinemaPricingPolicyVersion policyVersion;
 
     @Column(name = "name", nullable = false, length = 120)
@@ -52,13 +50,7 @@ public class PricingTicketGroup extends BaseEntity {
             boolean defaultGroup,
             int sortOrder) {
 
-        this(
-                policyVersion,
-                name,
-                eligibilityDescription,
-                defaultGroup,
-                sortOrder,
-                null);
+        this(policyVersion, name, eligibilityDescription, defaultGroup, sortOrder, null);
     }
 
     private PricingTicketGroup(
@@ -69,52 +61,18 @@ public class PricingTicketGroup extends BaseEntity {
             int sortOrder,
             TicketCategory legacyCategory) {
 
-        if (policyVersion == null
-                || policyVersion.getId() == null
-                || name == null
-                || sortOrder < 0) {
-
-            throw invalid();
-        }
-
-        policyVersion.requireDraft();
-
-        String normalizedName =
-                Normalizer.normalize(name.trim(), Normalizer.Form.NFC);
-
-        String normalizedDescription =
-                eligibilityDescription == null
-                        ? null
-                        : Normalizer.normalize(
-                                eligibilityDescription.trim(),
-                                Normalizer.Form.NFC);
-
-        if (normalizedDescription != null
-                && normalizedDescription.isEmpty()) {
-
-            normalizedDescription = null;
-        }
-
-        if (normalizedName.isEmpty()
-                || normalizedName.length() > 120
-                || (normalizedDescription != null
-                        && normalizedDescription.length() > 1000)
-                || (defaultGroup && normalizedDescription != null)) {
-
+        if (policyVersion == null || policyVersion.getId() == null) {
             throw invalid();
         }
 
         this.policyVersion = policyVersion;
-        this.name = normalizedName;
-        this.eligibilityDescription = normalizedDescription;
-        this.defaultGroup = defaultGroup;
-        this.sortOrder = sortOrder;
         this.legacyCategory = legacyCategory;
+
+        replaceDraftDetails(new Details(name, eligibilityDescription, defaultGroup, sortOrder));
     }
 
     public static PricingTicketGroup fromLegacy(
-            CinemaPricingPolicyVersion owner,
-            TicketCategory category) {
+            CinemaPricingPolicyVersion owner, TicketCategory category) {
 
         if (category == null) {
             throw invalid();
@@ -129,24 +87,13 @@ public class PricingTicketGroup extends BaseEntity {
                 };
 
         return new PricingTicketGroup(
-                owner,
-                name,
-                null,
-                category == TicketCategory.ADULT,
-                category.ordinal(),
-                category);
+                owner, name, null, category == TicketCategory.ADULT, category.ordinal(), category);
     }
 
-    public PricingTicketGroup copyTo(
-            CinemaPricingPolicyVersion owner) {
+    public PricingTicketGroup copyTo(CinemaPricingPolicyVersion owner) {
 
         return new PricingTicketGroup(
-                owner,
-                name,
-                eligibilityDescription,
-                defaultGroup,
-                sortOrder,
-                legacyCategory);
+                owner, name, eligibilityDescription, defaultGroup, sortOrder, legacyCategory);
     }
 
     public String getName() {
@@ -169,8 +116,57 @@ public class PricingTicketGroup extends BaseEntity {
         return legacyCategory;
     }
 
+    boolean replaceDraftDetails(Details details) {
+        policyVersion.requireDraft();
+
+        if (details == null) {
+            throw invalid();
+        }
+
+        boolean changed =
+                !Objects.equals(name, details.name())
+                        || !Objects.equals(eligibilityDescription, details.eligibilityDescription())
+                        || defaultGroup != details.defaultGroup()
+                        || sortOrder != details.sortOrder();
+
+        this.name = details.name();
+        this.eligibilityDescription = details.eligibilityDescription();
+        this.defaultGroup = details.defaultGroup();
+        this.sortOrder = details.sortOrder();
+
+        return changed;
+    }
+
+    public record Details(
+            String name, String eligibilityDescription, boolean defaultGroup, int sortOrder) {
+
+        public Details {
+            if (name == null || sortOrder < 0) {
+                throw invalid();
+            }
+
+            name = Normalizer.normalize(name.trim(), Normalizer.Form.NFC);
+
+            if (eligibilityDescription != null) {
+                eligibilityDescription =
+                        Normalizer.normalize(eligibilityDescription.trim(), Normalizer.Form.NFC);
+
+                if (eligibilityDescription.isEmpty()) {
+                    eligibilityDescription = null;
+                }
+            }
+
+            if (name.isEmpty()
+                    || name.length() > 120
+                    || (eligibilityDescription != null && eligibilityDescription.length() > 1000)
+                    || (defaultGroup && eligibilityDescription != null)) {
+
+                throw invalid();
+            }
+        }
+    }
+
     private static ValidationException invalid() {
-        return new ValidationException(
-                InventoryErrorCode.INVALID_PRICING_DEFINITION);
+        return new ValidationException(InventoryErrorCode.INVALID_PRICING_DEFINITION);
     }
 }

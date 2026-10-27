@@ -66,81 +66,79 @@ public class FareMatrixService {
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
-    public FareMatrixResponse get(
-            UUID cinemaId, UUID policyId, UUID versionId) {
+    public FareMatrixResponse get(UUID cinemaId, UUID policyId, UUID versionId) {
 
         return loadMatrix(cinemaId, policyId, versionId);
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public FareMatrixResponse getForPublication(
-            UUID cinemaId, UUID policyId, UUID versionId) {
+    public FareMatrixResponse getForPublication(UUID cinemaId, UUID policyId, UUID versionId) {
 
         return loadMatrix(cinemaId, policyId, versionId);
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public FareMatrixResponse getForShowtimePricing(
-            UUID cinemaId, UUID policyId, UUID versionId) {
+    public FareMatrixResponse getForShowtimePricing(UUID cinemaId, UUID policyId, UUID versionId) {
 
         return loadMatrix(cinemaId, policyId, versionId);
     }
 
-    private FareMatrixResponse loadMatrix(
-            UUID cinemaId, UUID policyId, UUID versionId) {
+    @Transactional(propagation = Propagation.MANDATORY)
+    public FareMatrixResponse getForConfiguration(UUID cinemaId, UUID policyId, UUID versionId) {
+
+        return loadMatrix(cinemaId, policyId, versionId);
+    }
+
+    private FareMatrixResponse loadMatrix(UUID cinemaId, UUID policyId, UUID versionId) {
 
         requireCinema(cinemaId);
 
         if (!policyRepository.existsById(policyId)) {
-            throw new NotFoundException(
-                    InventoryErrorCode.PRICING_POLICY_NOT_FOUND);
+            throw new NotFoundException(InventoryErrorCode.PRICING_POLICY_NOT_FOUND);
         }
 
         CinemaPricingPolicyVersion revision =
-                versionRepository.findForRead(cinemaId, policyId, versionId)
+                versionRepository
+                        .findForRead(cinemaId, policyId, versionId)
                         .orElseThrow(
-                                () -> new NotFoundException(
-                                        InventoryErrorCode
-                                                .PRICING_POLICY_VERSION_NOT_FOUND));
+                                () ->
+                                        new NotFoundException(
+                                                InventoryErrorCode
+                                                        .PRICING_POLICY_VERSION_NOT_FOUND));
 
         return render(revision, readValues(versionId));
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public FareMatrixResponse replace(
-            UUID cinemaId,
-            UUID policyId,
-            UUID versionId,
-            ReplaceFareMatrixRequest request) {
+            UUID cinemaId, UUID policyId, UUID versionId, ReplaceFareMatrixRequest request) {
 
-        if (request == null
-                || request.expectedVersion() == null
-                || request.expectedVersion() < 0) {
+        if (request == null || request.expectedVersion() == null || request.expectedVersion() < 0) {
             throw invalid();
         }
 
         requireCinema(cinemaId);
 
-        policyRepository.findByIdForUpdate(policyId)
+        policyRepository
+                .findByIdForUpdate(policyId)
                 .orElseThrow(
-                        () -> new NotFoundException(
-                                InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
+                        () -> new NotFoundException(InventoryErrorCode.PRICING_POLICY_NOT_FOUND));
 
         CinemaPricingPolicyVersion revision =
-                versionRepository.findForUpdate(policyId, versionId)
+                versionRepository
+                        .findForUpdate(policyId, versionId)
                         .orElseThrow(
-                                () -> new NotFoundException(
-                                        InventoryErrorCode
-                                                .PRICING_POLICY_VERSION_NOT_FOUND));
+                                () ->
+                                        new NotFoundException(
+                                                InventoryErrorCode
+                                                        .PRICING_POLICY_VERSION_NOT_FOUND));
 
         if (!revision.appliesTo(cinemaId)) {
-            throw new NotFoundException(
-                    InventoryErrorCode.PRICING_POLICY_VERSION_NOT_FOUND);
+            throw new NotFoundException(InventoryErrorCode.PRICING_POLICY_VERSION_NOT_FOUND);
         }
 
         if (!request.expectedVersion().equals(revision.getVersion())) {
-            throw new ConflictException(
-                    InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
         }
 
         revision.requireDraft();
@@ -148,8 +146,7 @@ public class FareMatrixService {
 
         Definition definition = normalize(request, revision);
 
-        FareMatrixRules.validateUniformFares(
-                revision.getDayGroup(), definition.values());
+        FareMatrixRules.validateUniformFares(revision.getDayGroup(), definition.values());
 
         Map<Key, Value> current = readValues(versionId);
 
@@ -164,8 +161,7 @@ public class FareMatrixService {
 
         cellRepository.deleteForVersion(versionId);
 
-        revision.replaceDraftMatrixDefinition(
-                definition.scopes(), definition.seatTypes());
+        revision.replaceDraftMatrixDefinition(definition.scopes(), definition.seatTypes());
 
         versionRepository.flush();
 
@@ -181,12 +177,9 @@ public class FareMatrixService {
     }
 
     private Definition normalize(
-            ReplaceFareMatrixRequest request,
-            CinemaPricingPolicyVersion revision) {
+            ReplaceFareMatrixRequest request, CinemaPricingPolicyVersion revision) {
 
-        if (request.scopes() == null
-                || request.scopes().size() > 10
-                || request.cells() == null) {
+        if (request.scopes() == null || request.scopes().size() > 10 || request.cells() == null) {
             throw invalid();
         }
 
@@ -195,15 +188,12 @@ public class FareMatrixService {
         for (var input : request.scopes()) {
             if (input == null
                     || !scopes.add(
-                            new FareMatrixScope(
-                                    input.experienceType(),
-                                    input.contentFormat()))) {
+                            new FareMatrixScope(input.experienceType(), input.contentFormat()))) {
                 throw invalid();
             }
         }
 
-        Set<SeatType> seatTypes =
-                uniqueEnums(request.seatTypes(), SeatType.class);
+        Set<SeatType> seatTypes = uniqueEnums(request.seatTypes(), SeatType.class);
 
         if (scopes.isEmpty()) {
             if (!seatTypes.isEmpty() || !request.cells().isEmpty()) {
@@ -252,8 +242,7 @@ public class FareMatrixService {
     private Map<Key, Value> readValues(UUID versionId) {
         Map<Key, Value> values = new HashMap<>();
 
-        for (FareMatrixCell cell :
-                cellRepository.findAllByPolicyVersion_Id(versionId)) {
+        for (FareMatrixCell cell : cellRepository.findAllByPolicyVersion_Id(versionId)) {
 
             Value value;
 
@@ -272,9 +261,7 @@ public class FareMatrixService {
         return values;
     }
 
-    private FareMatrixResponse render(
-            CinemaPricingPolicyVersion revision,
-            Map<Key, Value> values) {
+    private FareMatrixResponse render(CinemaPricingPolicyVersion revision, Map<Key, Value> values) {
 
         try {
             revision.validatePricingDefinitions();
@@ -303,9 +290,7 @@ public class FareMatrixService {
                             key.timeBandId(),
                             key.ticketGroupId(),
                             key.seatType(),
-                            value == null
-                                    ? FareCellState.UNCONFIGURED
-                                    : value.state(),
+                            value == null ? FareCellState.UNCONFIGURED : value.state(),
                             value == null ? null : value.amount(),
                             unit(key.seatType())));
         }
@@ -381,10 +366,7 @@ public class FareMatrixService {
 
         long count = scopes.size();
 
-        for (int size :
-                new int[] {
-                    timeBands.size(), ticketGroups.size(), seatTypes.size()
-                }) {
+        for (int size : new int[] {timeBands.size(), ticketGroups.size(), seatTypes.size()}) {
 
             count *= size;
 
@@ -398,8 +380,7 @@ public class FareMatrixService {
         for (FareMatrixScope scope : sortedScopes(scopes)) {
             for (var timeBand : timeBands) {
                 for (var ticketGroup : ticketGroups) {
-                    for (SeatType seatType :
-                            seatTypes.stream().sorted().toList()) {
+                    for (SeatType seatType : seatTypes.stream().sorted().toList()) {
 
                         keys.add(
                                 new Key(
@@ -416,8 +397,7 @@ public class FareMatrixService {
         return keys;
     }
 
-    private List<FareMatrixScope> sortedScopes(
-            Set<FareMatrixScope> scopes) {
+    private List<FareMatrixScope> sortedScopes(Set<FareMatrixScope> scopes) {
 
         return scopes.stream()
                 .sorted(
@@ -431,27 +411,18 @@ public class FareMatrixService {
                 Arrays.asList(PricingExperienceType.values()),
                 Arrays.asList(ContentFormat.values()),
                 Arrays.stream(SeatType.values())
-                        .map(
-                                type ->
-                                        new SeatTypeOption(
-                                                type,
-                                                unit(type),
-                                                type.getCapacity()))
+                        .map(type -> new SeatTypeOption(type, unit(type), type.getCapacity()))
                         .toList(),
                 Arrays.asList(FareCellState.values()));
     }
 
     private FareUnit unit(SeatType seatType) {
-        return seatType == SeatType.COUPLE
-                ? FareUnit.PAIR
-                : FareUnit.SEAT;
+        return seatType == SeatType.COUPLE ? FareUnit.PAIR : FareUnit.SEAT;
     }
 
-    private <E extends Enum<E>> Set<E> uniqueEnums(
-            List<E> values, Class<E> type) {
+    private <E extends Enum<E>> Set<E> uniqueEnums(List<E> values, Class<E> type) {
 
-        if (values == null
-                || values.size() > type.getEnumConstants().length) {
+        if (values == null || values.size() > type.getEnumConstants().length) {
             throw invalid();
         }
 
@@ -468,23 +439,18 @@ public class FareMatrixService {
 
     private void requireCinema(UUID cinemaId) {
         if (!cinemaRepository.existsById(cinemaId)) {
-            throw new NotFoundException(
-                    InventoryErrorCode.CINEMA_NOT_FOUND);
+            throw new NotFoundException(InventoryErrorCode.CINEMA_NOT_FOUND);
         }
     }
 
     private static ValidationException invalid() {
-        return new ValidationException(
-                InventoryErrorCode.INVALID_FARE_MATRIX);
+        return new ValidationException(InventoryErrorCode.INVALID_FARE_MATRIX);
     }
 
     private static ConflictException inconsistent() {
-        return new ConflictException(
-                InventoryErrorCode.PRICING_POLICY_DATA_INCONSISTENT);
+        return new ConflictException(InventoryErrorCode.PRICING_POLICY_DATA_INCONSISTENT);
     }
 
     private record Definition(
-            Set<FareMatrixScope> scopes,
-            Set<SeatType> seatTypes,
-            Map<Key, Value> values) {}
+            Set<FareMatrixScope> scopes, Set<SeatType> seatTypes, Map<Key, Value> values) {}
 }

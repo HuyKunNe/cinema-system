@@ -47,6 +47,40 @@ Current status:
 
 ## 2026-10-27
 
+### Draft Pricing Configuration Editing
+
+#### Added
+
+- Add PUT pricing-policy version configuration.
+- Edit names, time boundaries, descriptions, order and the default group.
+- Create definitions with server-generated UUIDv7 IDs.
+- Preserve IDs and fares for retained definitions.
+- Delete fare cells before removing their referenced definitions.
+- Return the refreshed fare matrix after configuration writes.
+
+#### Validation and concurrency
+
+- Require DRAFT status and inventory:manage.
+- Require expectedVersion matching the pricing version.
+- Reject foreign or duplicated definition IDs.
+- Reject overlapping time bands.
+- Require exactly one unconditional default ticket group.
+- Increment the parent version when configuration changes.
+- Keep no-op writes unchanged.
+- Execute configuration and affected-cell changes atomically.
+
+#### Data behavior
+
+- New dimensions produce UNCONFIGURED matrix cells.
+- Existing fares remain attached to retained definition IDs.
+- Eligibility descriptions do not create automatic eligibility rules.
+- No new migration is required.
+
+#### Verification status
+
+- Tests and build were not run.
+- Editing, deletion, rollback, concurrency and publication checks remain pending.
+
 ### Pricing Matrix Definition IDs and Fare Resolution
 
 #### Changed

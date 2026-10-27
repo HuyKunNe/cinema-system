@@ -1,20 +1,5 @@
 package com.cinema.inventory.entity;
 
-import java.text.Normalizer;
-import java.time.OffsetDateTime;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
@@ -39,6 +24,21 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.text.Normalizer;
+import java.time.OffsetDateTime;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "cinema_pricing_policy_versions")
@@ -314,6 +314,160 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
             }
         }
     }
+
+    public void validatePricingDefinitionEdits(
+            List<TimeBandEdit> timeBands, List<TicketGroupEdit> ticketGroups) {
+
+        requireDraft();
+
+        if (timeBands == null
+                || timeBands.isEmpty()
+                || ticketGroups == null
+                || ticketGroups.isEmpty()
+                || timeBands.stream().anyMatch(edit -> edit == null || edit.details() == null)
+                || ticketGroups.stream().anyMatch(edit -> edit == null || edit.details() == null)) {
+
+            throw invalidDefinitions();
+        }
+
+        Set<UUID> ownedTimeBandIds =
+                pricingTimeBands.stream()
+                        .map(PricingTimeBandDefinition::getId)
+                        .collect(Collectors.toSet());
+
+        Set<UUID> ownedTicketGroupIds =
+                pricingTicketGroups.stream()
+                        .map(PricingTicketGroup::getId)
+                        .collect(Collectors.toSet());
+
+        validateRequestedDefinitionIds(
+                timeBands.stream().map(TimeBandEdit::id).toList(), ownedTimeBandIds);
+
+        validateRequestedDefinitionIds(
+                ticketGroups.stream().map(TicketGroupEdit::id).toList(), ownedTicketGroupIds);
+
+        long defaultCount =
+                ticketGroups.stream().filter(edit -> edit.details().defaultGroup()).count();
+
+        if (defaultCount != 1) {
+            throw invalidDefinitions();
+        }
+
+        boolean[] occupied = new boolean[1440];
+
+        for (TimeBandEdit edit : timeBands) {
+            for (int minute = 0; minute < 1440; minute++) {
+                if (!edit.details().containsMinute(minute)) {
+                    continue;
+                }
+
+                if (occupied[minute]) {
+                    throw invalidDefinitions();
+                }
+
+                occupied[minute] = true;
+            }
+        }
+    }
+
+    public void replaceDraftPricingDefinitions(
+            List<TimeBandEdit> timeBands, List<TicketGroupEdit> ticketGroups) {
+
+        validatePricingDefinitionEdits(timeBands, ticketGroups);
+
+        Map<UUID, PricingTimeBandDefinition> existingTimeBands =
+                pricingTimeBands.stream()
+                        .collect(Collectors.toMap(PricingTimeBandDefinition::getId, item -> item));
+
+        Map<UUID, PricingTicketGroup> existingTicketGroups =
+                pricingTicketGroups.stream()
+                        .collect(Collectors.toMap(PricingTicketGroup::getId, item -> item));
+
+        Set<UUID> retainedTimeBandIds =
+                timeBands.stream()
+                        .map(TimeBandEdit::id)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+
+        Set<UUID> retainedTicketGroupIds =
+                ticketGroups.stream()
+                        .map(TicketGroupEdit::id)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+
+        boolean changed =
+                pricingTimeBands.removeIf(item -> !retainedTimeBandIds.contains(item.getId()));
+
+        changed |=
+                pricingTicketGroups.removeIf(
+                        item -> !retainedTicketGroupIds.contains(item.getId()));
+
+        for (TimeBandEdit edit : timeBands) {
+            var details = edit.details();
+
+            if (edit.id() == null) {
+                pricingTimeBands.add(
+                        new PricingTimeBandDefinition(
+                                this,
+                                details.name(),
+                                details.startMinute(),
+                                details.endMinute(),
+                                details.sortOrder()));
+
+                changed = true;
+            } else {
+                changed |= existingTimeBands.get(edit.id()).replaceDraftDetails(details);
+            }
+        }
+
+        for (TicketGroupEdit edit : ticketGroups) {
+            var details = edit.details();
+
+            if (edit.id() == null) {
+                pricingTicketGroups.add(
+                        new PricingTicketGroup(
+                                this,
+                                details.name(),
+                                details.eligibilityDescription(),
+                                details.defaultGroup(),
+                                details.sortOrder()));
+
+                changed = true;
+            } else {
+                changed |= existingTicketGroups.get(edit.id()).replaceDraftDetails(details);
+            }
+        }
+
+        validatePricingDefinitions();
+
+        if (changed) {
+            fareMatrixRevision++;
+        }
+    }
+
+    private static void validateRequestedDefinitionIds(
+            List<UUID> requestedIds, Set<UUID> ownedIds) {
+
+        Set<UUID> seen = new HashSet<>();
+
+        for (UUID id : requestedIds) {
+            if (id == null) {
+                continue;
+            }
+
+            if (!ownedIds.contains(id) || !seen.add(id)) {
+                throw invalidDefinitions();
+            }
+        }
+    }
+
+    private static ValidationException invalidDefinitions() {
+        return new ValidationException(InventoryErrorCode.INVALID_PRICING_DEFINITION);
+    }
+
+    public record TimeBandEdit(UUID id, PricingTimeBandDefinition.Details details) {}
+
+    public record TicketGroupEdit(UUID id, PricingTicketGroup.Details details) {}
 
     private void initializePricingDefinitions() {
         pricingTimeBands.add(PricingTimeBandDefinition.fromLegacy(this, PricingTimeBand.BEFORE_17));

@@ -861,7 +861,7 @@ R24               — DONE
 
 ### Configurable pricing definitions
 
-Status: **ID CONTRACT IMPLEMENTED — CONFIGURATION EDITING PENDING**
+Status: **CONFIGURATION EDITING IMPLEMENTED IN SOURCE — VERIFICATION PENDING**
 
 Confirmed business:
 
@@ -892,17 +892,31 @@ Verification pending:
 - quote boundaries and default-group resolution;
 - showtime assignment, refresh and opening.
 
+Configuration editing implemented in source:
+
+- PUT configuration for draft versions;
+- server-generated IDs for new definitions;
+- preservation of retained IDs and fares;
+- deletion of cells referencing removed definitions;
+- ownership, overlap and default-group validation;
+- parent-version updates for configuration changes;
+- refreshed matrix responses after configuration writes.
+
+Additional verification pending:
+
+- metadata and time-boundary edits preserve IDs and fares;
+- added dimensions produce unconfigured cells;
+- removed definitions leave no orphan fare cells;
+- invalid requests leave configuration and fares unchanged;
+- stale writes return conflicts;
+- published versions reject configuration writes;
+- no-op writes preserve the parent version.
+
 Next increment:
 
-- add HTTP editing of draft time bands and ticket groups;
-- preserve definition IDs during edits;
-- validate ownership, overlap and the unconditional default group;
-- handle matrix cells affected by configuration changes;
-- increment the parent version for configuration changes;
-- regenerate frontend clients against the completed editing contract.
-
-Explicit group selection in booking and removal of provisional legacy
-showtime price inputs remain separate work.
+- regenerate ADMIN frontend clients;
+- implement configurable time bands and ticket groups in the pricing workflow;
+- complete manual verification of the editing contract.
 
 ### Post-R27 showtime release-date validation
 
