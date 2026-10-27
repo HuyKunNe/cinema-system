@@ -39,7 +39,7 @@ public class MovieScreeningVersionController {
 
     @GetMapping
     @SecurityRequirements
-    public ResponseEntity<List<MovieScreeningVersionResponse>> list(
+    public ResponseEntity<List<MovieScreeningVersionResponse>> listMovieScreeningVersions(
             @PathVariable("movieId") UUID movieId,
             @RequestParam(name = "active", required = false)
             Boolean active) {
@@ -49,7 +49,7 @@ public class MovieScreeningVersionController {
 
     @GetMapping("/{versionId}")
     @SecurityRequirements
-    public ResponseEntity<MovieScreeningVersionResponse> get(
+    public ResponseEntity<MovieScreeningVersionResponse> getMovieScreeningVersion(
             @PathVariable("movieId") UUID movieId,
             @PathVariable("versionId") UUID versionId) {
 
@@ -60,7 +60,7 @@ public class MovieScreeningVersionController {
     @SecurityRequirement(
             name = "oauth2",
             scopes = {"movie:manage"})
-    public ResponseEntity<MovieScreeningVersionResponse> create(
+    public ResponseEntity<MovieScreeningVersionResponse> createMovieScreeningVersion(
             @PathVariable("movieId") UUID movieId,
             @Valid @RequestBody CreateMovieScreeningVersionRequest request) {
 
@@ -81,7 +81,7 @@ public class MovieScreeningVersionController {
     @SecurityRequirement(
             name = "oauth2",
             scopes = {"movie:manage"})
-    public ResponseEntity<MovieScreeningVersionResponse> updateActive(
+    public ResponseEntity<MovieScreeningVersionResponse> updateMovieScreeningVersionActive(
             @PathVariable("movieId") UUID movieId,
             @PathVariable("versionId") UUID versionId,
             @Valid

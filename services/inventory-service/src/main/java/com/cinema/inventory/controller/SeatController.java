@@ -44,7 +44,7 @@ public class SeatController {
     }
 
     @PostMapping
-    public ResponseEntity<SeatResponse> create(
+    public ResponseEntity<SeatResponse> createSeat(
             @RequestParam("roomId") UUID roomId,
             @Valid @RequestBody CreateSeatRequest request) {
 
@@ -56,7 +56,7 @@ public class SeatController {
     }
 
     @PostMapping("/range")
-    public ResponseEntity<List<SeatResponse>> createRange(
+    public ResponseEntity<List<SeatResponse>> createSeatRange(
             @RequestParam("roomId") UUID roomId,
             @Valid @RequestBody CreateSeatRangeRequest request) {
 
@@ -69,7 +69,7 @@ public class SeatController {
     }
 
     @GetMapping("/{seatId}")
-    public ResponseEntity<SeatResponse> getById(
+    public ResponseEntity<SeatResponse> getSeatById(
             @PathVariable("seatId") UUID seatId) {
 
         return ResponseEntity.ok(seatService.getById(seatId));
@@ -109,7 +109,7 @@ public class SeatController {
     }
 
     @PutMapping("/{seatId}")
-    public ResponseEntity<SeatResponse> update(
+    public ResponseEntity<SeatResponse> updateSeat(
             @PathVariable("seatId") UUID seatId,
             @Valid @RequestBody UpdateSeatRequest request) {
 

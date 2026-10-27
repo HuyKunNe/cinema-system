@@ -128,11 +128,8 @@ public record CreateShowtimeRequest(
     }
 
     @JsonIgnore
-    @AssertTrue(
-            message =
-                    "Supply pricingPolicyVersionId without basePrice, "
-                            + "or legacy basePrice without a pricing version")
+    @AssertTrue(message = "basePrice must be omitted when pricingPolicyVersionId is supplied")
     public boolean isPricingSourceValid() {
-        return pricingPolicyVersionId == null ? basePrice != null : basePrice == null;
+        return basePrice == null || pricingPolicyVersionId == null;
     }
 }

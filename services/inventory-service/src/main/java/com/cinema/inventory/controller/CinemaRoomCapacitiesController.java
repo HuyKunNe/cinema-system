@@ -28,7 +28,7 @@ public class CinemaRoomCapacitiesController {
     }
 
     @GetMapping
-    public ResponseEntity<CinemaRoomCapacitiesResponse> get(
+    public ResponseEntity<CinemaRoomCapacitiesResponse> getCinemaRoomCapacities(
             @PathVariable("cinemaId") UUID cinemaId) {
 
         return ResponseEntity.ok(service.get(cinemaId));

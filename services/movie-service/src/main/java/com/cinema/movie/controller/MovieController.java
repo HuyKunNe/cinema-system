@@ -45,14 +45,14 @@ public class MovieController {
     }
 
     @PostMapping
-    public ResponseEntity<MovieResponse> create(@Valid @RequestBody CreateMovieRequest request) {
+    public ResponseEntity<MovieResponse> createMovie(@Valid @RequestBody CreateMovieRequest request) {
         MovieResponse response = movieService.create(request);
 
         return ResponseEntity.created(URI.create("/api/v1/movies/" + response.id())).body(response);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<MovieResponse> findById(@PathVariable("id") UUID id) {
+    public ResponseEntity<MovieResponse> findMovieById(@PathVariable("id") UUID id) {
         return ResponseEntity.ok(movieService.findById(id));
     }
 
@@ -107,12 +107,12 @@ public class MovieController {
     }
 
     @GetMapping
-    public ResponseEntity<List<MovieResponse>> findAll() {
+    public ResponseEntity<List<MovieResponse>> findAllMovies() {
         return ResponseEntity.ok(movieService.findAll());
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<MovieResponse> update(
+    public ResponseEntity<MovieResponse> updateMovie(
             @PathVariable("id") UUID id, @Valid @RequestBody UpdateMovieRequest request) {
         return ResponseEntity.ok(movieService.update(id, request));
     }
@@ -165,7 +165,7 @@ public class MovieController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable("id") UUID id) {
+    public ResponseEntity<Void> deleteMovie(@PathVariable("id") UUID id) {
         movieService.delete(id);
 
         return ResponseEntity.noContent().build();

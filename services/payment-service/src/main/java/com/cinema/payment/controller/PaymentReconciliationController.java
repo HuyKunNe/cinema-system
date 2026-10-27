@@ -36,7 +36,7 @@ public class PaymentReconciliationController {
     }
 
     @PostMapping("/{reconciliationCaseId}/resolve")
-    public ResponseEntity<ReconciliationOperationResult> resolve(
+    public ResponseEntity<ReconciliationOperationResult> resolvePaymentReconciliation(
             @PathVariable UUID reconciliationCaseId,
             @Valid @RequestBody ResolveReconciliationRequest request,
             Authentication authentication) {
@@ -61,7 +61,7 @@ public class PaymentReconciliationController {
     }
 
     @PostMapping("/{reconciliationCaseId}/reject")
-    public ResponseEntity<ReconciliationOperationResult> reject(
+    public ResponseEntity<ReconciliationOperationResult> rejectPaymentReconciliation(
             @PathVariable UUID reconciliationCaseId,
             @Valid @RequestBody RejectReconciliationRequest request,
             Authentication authentication) {

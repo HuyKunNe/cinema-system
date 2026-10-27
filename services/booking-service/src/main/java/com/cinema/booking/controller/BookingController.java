@@ -44,7 +44,7 @@ public class BookingController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<BookingResponse>> create(
+    public ResponseEntity<ApiResponse<BookingResponse>> createBooking(
             @Valid @RequestBody CreateBookingRequest request) {
 
         BookingResponse response = bookingService.create(CurrentUser.id(), request);
@@ -64,7 +64,7 @@ public class BookingController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<BookingResponse>>> findAll(
+    public ResponseEntity<ApiResponse<PageResponse<BookingResponse>>> findAllBookings(
             @RequestParam(name = "page", defaultValue = "0")
                     @Min(value = 0, message = "Page must be zero or greater")
                     int page,
@@ -80,7 +80,7 @@ public class BookingController {
     }
 
     @PostMapping("/{bookingId}/cancel")
-    public ResponseEntity<ApiResponse<BookingResponse>> cancel(
+    public ResponseEntity<ApiResponse<BookingResponse>> cancelBooking(
             @PathVariable("bookingId") @UuidV7 UUID bookingId) {
 
         BookingResponse response = bookingCancellationService.cancel(CurrentUser.id(), bookingId);

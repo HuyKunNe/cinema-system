@@ -40,7 +40,7 @@ public class ShowSeatController {
     }
 
     @PostMapping
-    public ResponseEntity<List<ShowSeatResponse>> generate(
+    public ResponseEntity<List<ShowSeatResponse>> generateShowSeats(
             @RequestParam("showtimeId") UUID showtimeId,
             @Valid @RequestBody GenerateShowSeatsRequest request) {
 
@@ -51,13 +51,13 @@ public class ShowSeatController {
     }
 
     @GetMapping("/{showSeatId}")
-    public ResponseEntity<ShowSeatResponse> getById(@PathVariable("showSeatId") UUID showSeatId) {
+    public ResponseEntity<ShowSeatResponse> getShowSeatById(@PathVariable("showSeatId") UUID showSeatId) {
 
         return ResponseEntity.ok(showSeatService.getById(showSeatId));
     }
 
     @GetMapping
-    public ResponseEntity<List<ShowSeatResponse>> getByShowtimeId(
+    public ResponseEntity<List<ShowSeatResponse>> getShowSeatsByShowtime(
             @RequestParam("showtimeId") UUID showtimeId,
             @RequestParam(name = "availableOnly", defaultValue = "false") boolean availableOnly) {
 
@@ -68,23 +68,9 @@ public class ShowSeatController {
         return ResponseEntity.ok(showSeatService.getByShowtimeId(showtimeId));
     }
 
-    @Operation(
-            summary = "Hold an available show seat",
-            description =
-                    """
-                    Requires inventory:write.
-
-                    The seat must be AVAILABLE and expiresAt must be in the future.
-                    The showtime must be OPEN_FOR_BOOKING and start in the future.
-                    Its room and cinema must both be active.
-
-                    Returns HTTP 409 with INVENTORY_SHOWTIME_NOT_BOOKABLE
-                    when showtime eligibility is not satisfied.
-
-                    This endpoint does not reuse an existing HELD seat.
-                    """)
+    @Operation(operationId = "holdShowSeat", summary = "Hold an available show seat")
     @PutMapping("/{showSeatId}/hold")
-    public ResponseEntity<ShowSeatResponse> hold(
+    public ResponseEntity<ShowSeatResponse> holdShowSeat(
             @PathVariable("showSeatId") UUID showSeatId,
             @Valid @RequestBody HoldShowSeatRequest request) {
 
@@ -92,7 +78,7 @@ public class ShowSeatController {
     }
 
     @PutMapping("/{showSeatId}/book")
-    public ResponseEntity<ShowSeatResponse> book(
+    public ResponseEntity<ShowSeatResponse> bookShowSeat(
             @PathVariable("showSeatId") UUID showSeatId,
             @Valid @RequestBody ShowSeatBookingRequest request) {
 
@@ -100,7 +86,7 @@ public class ShowSeatController {
     }
 
     @PutMapping("/{showSeatId}/release")
-    public ResponseEntity<ShowSeatResponse> release(
+    public ResponseEntity<ShowSeatResponse> releaseShowSeat(
             @PathVariable("showSeatId") UUID showSeatId,
             @Valid @RequestBody ShowSeatBookingRequest request) {
 

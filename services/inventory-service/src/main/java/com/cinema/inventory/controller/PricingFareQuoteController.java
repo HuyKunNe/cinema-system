@@ -4,6 +4,7 @@ import com.cinema.inventory.dto.request.QuotePricingFareRequest;
 import com.cinema.inventory.dto.response.PricingFareQuoteResponse;
 import com.cinema.inventory.service.PricingFareQuoteService;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import jakarta.validation.Valid;
@@ -31,6 +32,7 @@ public class PricingFareQuoteController {
         this.service = service;
     }
 
+    @Operation(operationId = "quotePricingFare")
     @PostMapping("/quote")
     public ResponseEntity<PricingFareQuoteResponse> quote(
             @PathVariable("cinemaId") UUID cinemaId,

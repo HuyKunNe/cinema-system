@@ -32,7 +32,7 @@ public class ShowtimePricingController {
     }
 
     @PutMapping("/{showtimeId}/pricing")
-    public ResponseEntity<ShowtimeResponse> replace(
+    public ResponseEntity<ShowtimeResponse> replaceShowtimePricing(
             @PathVariable("showtimeId") UUID showtimeId,
             @Valid @RequestBody ReplaceShowtimePricingRequest request) {
 

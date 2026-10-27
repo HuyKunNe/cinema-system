@@ -5,6 +5,7 @@ import com.cinema.inventory.dto.response.CinemaPricingPolicyVersionResponse;
 import com.cinema.inventory.dto.response.FareMatrixValidationResponse;
 import com.cinema.inventory.service.PricingPolicyPublicationService;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import jakarta.validation.Valid;
@@ -33,6 +34,7 @@ public class PricingPolicyPublicationController {
 
         this.service = service;
     }
+    @Operation(operationId = "validatePricingPolicyFareMatrix")
 
     @GetMapping("/fare-matrix/validation")
     public ResponseEntity<FareMatrixValidationResponse> validate(
@@ -42,6 +44,7 @@ public class PricingPolicyPublicationController {
 
         return ResponseEntity.ok(service.validate(cinemaId, policyId, versionId));
     }
+    @Operation(operationId = "publishPricingPolicyVersion")
 
     @PostMapping("/publish")
     public ResponseEntity<CinemaPricingPolicyVersionResponse> publish(

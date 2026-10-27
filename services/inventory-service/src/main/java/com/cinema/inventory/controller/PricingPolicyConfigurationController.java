@@ -4,6 +4,7 @@ import com.cinema.inventory.dto.request.ReplacePricingConfigurationRequest;
 import com.cinema.inventory.dto.response.FareMatrixResponse;
 import com.cinema.inventory.service.PricingPolicyConfigurationService;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import jakarta.validation.Valid;
@@ -33,6 +34,7 @@ public class PricingPolicyConfigurationController {
         this.service = service;
     }
 
+    @Operation(operationId = "replacePricingPolicyConfiguration")
     @PutMapping
     public ResponseEntity<FareMatrixResponse> replace(
             @PathVariable("cinemaId") UUID cinemaId,

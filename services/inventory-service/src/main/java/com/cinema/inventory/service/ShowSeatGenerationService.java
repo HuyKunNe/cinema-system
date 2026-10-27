@@ -86,6 +86,12 @@ public class ShowSeatGenerationService {
     }
 
     @Transactional
+    public void validateForDeferredGeneration(Showtime showtime) {
+        validateShowtime(showtime);
+        loadSnapshots(showtime);
+    }
+
+    @Transactional
     public List<ShowSeat> generateFromPublishedPricing(Showtime showtime) {
         validateScheduledShowtime(showtime);
 

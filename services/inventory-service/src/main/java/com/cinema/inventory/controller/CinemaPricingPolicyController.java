@@ -5,6 +5,7 @@ import com.cinema.inventory.dto.request.ReplacePricingPolicyDraftRequest;
 import com.cinema.inventory.dto.response.CinemaPricingPolicyVersionResponse;
 import com.cinema.inventory.service.CinemaPricingPolicyService;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import jakarta.validation.Valid;
@@ -36,6 +37,7 @@ public class CinemaPricingPolicyController {
         this.service = service;
     }
 
+    @Operation(operationId = "createCinemaPricingPolicy")
     @PostMapping
     public ResponseEntity<CinemaPricingPolicyVersionResponse> create(
             @PathVariable("cinemaId") UUID cinemaId,
@@ -58,6 +60,7 @@ public class CinemaPricingPolicyController {
                 .body(response);
     }
 
+    @Operation(operationId = "listLatestCinemaPricingPolicies")
     @GetMapping
     public ResponseEntity<List<CinemaPricingPolicyVersionResponse>> listLatest(
             @PathVariable("cinemaId") UUID cinemaId) {
@@ -65,6 +68,7 @@ public class CinemaPricingPolicyController {
         return ResponseEntity.ok(service.listLatest(cinemaId));
     }
 
+    @Operation(operationId = "listCinemaPricingPolicyVersions")
     @GetMapping("/{policyId}/versions")
     public ResponseEntity<List<CinemaPricingPolicyVersionResponse>> listVersions(
             @PathVariable("cinemaId") UUID cinemaId, @PathVariable("policyId") UUID policyId) {
@@ -72,6 +76,7 @@ public class CinemaPricingPolicyController {
         return ResponseEntity.ok(service.listVersions(cinemaId, policyId));
     }
 
+    @Operation(operationId = "getCinemaPricingPolicyVersion")
     @GetMapping("/{policyId}/versions/{versionId}")
     public ResponseEntity<CinemaPricingPolicyVersionResponse> get(
             @PathVariable("cinemaId") UUID cinemaId,
@@ -81,6 +86,7 @@ public class CinemaPricingPolicyController {
         return ResponseEntity.ok(service.get(cinemaId, policyId, versionId));
     }
 
+    @Operation(operationId = "replaceCinemaPricingPolicyDraft")
     @PutMapping("/{policyId}/versions/{versionId}")
     public ResponseEntity<CinemaPricingPolicyVersionResponse> replaceDraft(
             @PathVariable("cinemaId") UUID cinemaId,

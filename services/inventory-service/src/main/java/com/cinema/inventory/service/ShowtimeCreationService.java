@@ -178,10 +178,12 @@ public class ShowtimeCreationService {
 
         Showtime saved = showtimeRepository.save(showtime);
 
-        if (saved.getPricingPolicyVersion() == null) {
+        if (saved.getPricingPolicyVersion() != null) {
+            seatGenerationService.generateFromPublishedPricing(saved);
+        } else if (request.basePrice() != null) {
             seatGenerationService.generate(saved, request.basePrice());
         } else {
-            seatGenerationService.generateFromPublishedPricing(saved);
+            seatGenerationService.validateForDeferredGeneration(saved);
         }
 
         showtimeRepository.flush();

@@ -23,7 +23,7 @@ public class AdministrativeUserAccountController {
     }
 
     @PatchMapping("/{userId}/lock")
-    public ResponseEntity<Void> lock(@PathVariable UUID userId) {
+    public ResponseEntity<Void> lockUserAccount(@PathVariable UUID userId) {
 
         administrativeUserAccountService.lock(userId);
 
@@ -31,7 +31,7 @@ public class AdministrativeUserAccountController {
     }
 
     @PatchMapping("/{userId}/unlock")
-    public ResponseEntity<Void> unlock(@PathVariable UUID userId) {
+    public ResponseEntity<Void> unlockUserAccount(@PathVariable UUID userId) {
 
         administrativeUserAccountService.unlock(userId);
 
@@ -39,7 +39,7 @@ public class AdministrativeUserAccountController {
     }
 
     @PatchMapping("/{userId}/disable")
-    public ResponseEntity<Void> disable(@PathVariable UUID userId) {
+    public ResponseEntity<Void> disableUserAccount(@PathVariable UUID userId) {
 
         administrativeUserAccountService.disable(userId);
 
@@ -47,7 +47,7 @@ public class AdministrativeUserAccountController {
     }
 
     @PatchMapping("/{userId}/enable")
-    public ResponseEntity<Void> enable(@PathVariable UUID userId) {
+    public ResponseEntity<Void> enableUserAccount(@PathVariable UUID userId) {
 
         administrativeUserAccountService.enable(userId);
 

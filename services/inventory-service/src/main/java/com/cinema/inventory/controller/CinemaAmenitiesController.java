@@ -33,7 +33,7 @@ public class CinemaAmenitiesController {
 
     @GetMapping
     @SecurityRequirements
-    public ResponseEntity<CinemaAmenitiesResponse> get(
+    public ResponseEntity<CinemaAmenitiesResponse> getCinemaAmenities(
             @PathVariable("cinemaId") UUID cinemaId) {
 
         return ResponseEntity.ok(service.get(cinemaId));
@@ -43,7 +43,7 @@ public class CinemaAmenitiesController {
     @SecurityRequirement(
             name = "oauth2",
             scopes = {"inventory:manage"})
-    public ResponseEntity<CinemaAmenitiesResponse> replace(
+    public ResponseEntity<CinemaAmenitiesResponse> replaceCinemaAmenities(
             @PathVariable("cinemaId") UUID cinemaId,
             @Valid @RequestBody ReplaceCinemaAmenitiesRequest request) {
 

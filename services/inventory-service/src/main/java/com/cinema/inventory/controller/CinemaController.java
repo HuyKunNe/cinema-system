@@ -5,6 +5,7 @@ import com.cinema.inventory.dto.request.UpdateCinemaRequest;
 import com.cinema.inventory.dto.response.CinemaResponse;
 import com.cinema.inventory.service.CinemaService;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import jakarta.validation.Valid;
@@ -33,11 +34,12 @@ public class CinemaController {
         this.cinemaService = cinemaService;
     }
 
+    @Operation(operationId = "createCinema")
     @PostMapping
     @SecurityRequirement(
             name = "oauth2",
             scopes = {"inventory:manage"})
-    public ResponseEntity<CinemaResponse> create(@Valid @RequestBody CreateCinemaRequest request) {
+    public ResponseEntity<CinemaResponse> createCinema(@Valid @RequestBody CreateCinemaRequest request) {
 
         CinemaResponse response = cinemaService.create(request);
 
@@ -46,7 +48,7 @@ public class CinemaController {
     }
 
     @GetMapping("/{cinemaId}")
-    public ResponseEntity<CinemaResponse> getById(@PathVariable("cinemaId") UUID cinemaId) {
+    public ResponseEntity<CinemaResponse> getCinemaById(@PathVariable("cinemaId") UUID cinemaId) {
 
         return ResponseEntity.ok(cinemaService.getById(cinemaId));
     }
@@ -73,7 +75,7 @@ public class CinemaController {
     @SecurityRequirement(
             name = "oauth2",
             scopes = {"inventory:manage"})
-    public ResponseEntity<CinemaResponse> update(
+    public ResponseEntity<CinemaResponse> updateCinema(
             @PathVariable("cinemaId") UUID cinemaId,
             @Valid @RequestBody UpdateCinemaRequest request) {
 

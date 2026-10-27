@@ -8,13 +8,9 @@ import com.cinema.inventory.dto.response.ShowtimeResponse;
 import com.cinema.inventory.entity.CinemaPricingPolicyVersion;
 import com.cinema.inventory.entity.ShowSeat;
 import com.cinema.inventory.entity.Showtime;
-import com.cinema.inventory.enums.FareCellState;
-import com.cinema.inventory.enums.PricingPolicyVersionStatus;
-import com.cinema.inventory.enums.PricingTimeBand;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.ShowSeatStatus;
 import com.cinema.inventory.enums.ShowtimeStatus;
-import com.cinema.inventory.enums.TicketCategory;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.ShowtimeMapper;
 import com.cinema.inventory.repository.CinemaPricingPolicyVersionRepository;
@@ -29,7 +25,6 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.ZoneId;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +39,7 @@ public class ShowtimePricingService {
     private final CinemaPricingPolicyVersionRepository versionRepository;
     private final ShowSeatRepository showSeatRepository;
     private final FareMatrixService fareMatrixService;
+    private final ShowSeatGenerationService seatGenerationService;
     private final ShowtimeMapper mapper;
 
     public ShowtimePricingService(
@@ -53,7 +49,8 @@ public class ShowtimePricingService {
             CinemaPricingPolicyVersionRepository versionRepository,
             ShowSeatRepository showSeatRepository,
             FareMatrixService fareMatrixService,
-            ShowtimeMapper mapper) {
+            ShowtimeMapper mapper,
+            ShowSeatGenerationService seatGenerationService) {
 
         this.showtimeRepository = showtimeRepository;
         this.roomRepository = roomRepository;
@@ -62,6 +59,7 @@ public class ShowtimePricingService {
         this.showSeatRepository = showSeatRepository;
         this.fareMatrixService = fareMatrixService;
         this.mapper = mapper;
+        this.seatGenerationService = seatGenerationService;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -183,13 +181,11 @@ public class ShowtimePricingService {
         return seats;
     }
 
-        private void applyFares(
-            Showtime showtime,
-            List<ShowSeat> seats) {
+    private void applyFares(Showtime showtime, List<ShowSeat> seats) {
 
         if (seats.isEmpty()) {
-            throw new ConflictException(
-                    InventoryErrorCode.NO_ACTIVE_SEATS);
+            seatGenerationService.generateFromPublishedPricing(showtime);
+            return;
         }
 
         var selected = showtime.getPricingPolicyVersion();
@@ -200,8 +196,7 @@ public class ShowtimePricingService {
                 || showtime.getScreeningVersion() == null
                 || showtime.getScreeningVersion().getContentFormat() == null) {
 
-            throw new ConflictException(
-                    InventoryErrorCode.SHOWTIME_PRICING_CONTEXT_REQUIRED);
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_PRICING_CONTEXT_REQUIRED);
         }
 
         var matrix =
@@ -210,25 +205,18 @@ public class ShowtimePricingService {
                         selected.getPolicy().getId(),
                         selected.getId());
 
-        var experience =
-                showtime.getRoom()
-                        .getRoomType()
-                        .getPricingExperienceType();
+        var experience = showtime.getRoom().getRoomType().getPricingExperienceType();
 
-        var format =
-                showtime.getScreeningVersion().getContentFormat();
+        var format = showtime.getScreeningVersion().getContentFormat();
 
         var localStartsAt =
                 showtime.getStartsAt()
                         .atZoneSameInstant(
                                 PricingFareResolver.cinemaZone(
-                                        showtime.getRoom()
-                                                .getCinema()
-                                                .getTimeZone()))
+                                        showtime.getRoom().getCinema().getTimeZone()))
                         .toLocalTime();
 
-        Map<SeatType, BigDecimal> prices =
-                new EnumMap<>(SeatType.class);
+        Map<SeatType, BigDecimal> prices = new EnumMap<>(SeatType.class);
 
         for (ShowSeat seat : seats) {
             SeatType seatType = seat.getSeatType();
@@ -239,12 +227,7 @@ public class ShowtimePricingService {
 
             var fare =
                     PricingFareResolver.resolve(
-                            matrix,
-                            localStartsAt,
-                            experience,
-                            format,
-                            null,
-                            seatType);
+                            matrix, localStartsAt, experience, format, null, seatType);
 
             prices.put(seatType, fare.amount());
         }
@@ -253,6 +236,7 @@ public class ShowtimePricingService {
             seat.changePrice(prices.get(seat.getSeatType()));
         }
     }
+
     private static void requireScheduled(Showtime showtime) {
         if (showtime.getStatus() != ShowtimeStatus.SCHEDULED) {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_EDITABLE);

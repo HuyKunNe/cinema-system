@@ -33,7 +33,7 @@ public class PaymentRefundController {
     }
 
     @PostMapping("/{paymentId}/refunds")
-    public ResponseEntity<RefundRequestResult> requestRefund(
+    public ResponseEntity<RefundRequestResult> requestPaymentRefund(
             @PathVariable UUID paymentId,
             @Valid @RequestBody RefundPaymentRequest request,
             Authentication authentication) {

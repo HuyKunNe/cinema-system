@@ -34,7 +34,7 @@ public class RoomController {
     }
 
     @PostMapping
-    public ResponseEntity<RoomResponse> create(
+    public ResponseEntity<RoomResponse> createRoom(
             @RequestParam("cinemaId") UUID cinemaId,
             @Valid @RequestBody CreateRoomRequest request) {
 
@@ -44,7 +44,7 @@ public class RoomController {
     }
 
     @GetMapping("/{roomId}")
-    public ResponseEntity<RoomResponse> getById(@PathVariable("roomId") UUID roomId) {
+    public ResponseEntity<RoomResponse> getRoomById(@PathVariable("roomId") UUID roomId) {
 
         return ResponseEntity.ok(roomService.getById(roomId));
     }
@@ -68,7 +68,7 @@ public class RoomController {
     }
 
     @PutMapping("/{roomId}")
-    public ResponseEntity<RoomResponse> update(
+    public ResponseEntity<RoomResponse> updateRoom(
             @PathVariable("roomId") UUID roomId, @Valid @RequestBody UpdateRoomRequest request) {
 
         return ResponseEntity.ok(roomService.update(roomId, request));

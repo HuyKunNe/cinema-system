@@ -30,7 +30,7 @@ public class RoomContentFormatsController {
     }
 
     @GetMapping
-    public ResponseEntity<RoomContentFormatsResponse> get(@PathVariable("roomId") UUID roomId) {
+    public ResponseEntity<RoomContentFormatsResponse> getRoomContentFormats(@PathVariable("roomId") UUID roomId) {
 
         return ResponseEntity.ok(service.get(roomId));
     }
@@ -39,7 +39,7 @@ public class RoomContentFormatsController {
     @SecurityRequirement(
             name = "oauth2",
             scopes = {"inventory:manage"})
-    public ResponseEntity<RoomContentFormatsResponse> replace(
+    public ResponseEntity<RoomContentFormatsResponse> replaceRoomContentFormats(
             @PathVariable("roomId") UUID roomId,
             @Valid @RequestBody ReplaceRoomContentFormatsRequest request) {
 

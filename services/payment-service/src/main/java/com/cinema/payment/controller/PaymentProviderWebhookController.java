@@ -28,7 +28,7 @@ public class PaymentProviderWebhookController {
     }
 
     @PostMapping("/{provider}")
-    public ResponseEntity<byte[]> handle(
+    public ResponseEntity<byte[]> handlePaymentProviderWebhook(
             @PathVariable("provider") String provider,
             @RequestHeader HttpHeaders headers,
             @RequestBody byte[] rawBody) {

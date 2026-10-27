@@ -32,7 +32,7 @@ public class GenreController {
     }
 
     @PostMapping
-    public ResponseEntity<GenreResponse> create(
+    public ResponseEntity<GenreResponse> createGenre(
             @Valid @RequestBody CreateGenreRequest request) {
         GenreResponse response = genreService.create(request);
 
@@ -42,7 +42,7 @@ public class GenreController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<GenreResponse> findById(
+    public ResponseEntity<GenreResponse> findGenreById(
             @PathVariable("id") UUID id) {
         return ResponseEntity.ok(genreService.findById(id));
     }
@@ -53,7 +53,7 @@ public class GenreController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<GenreResponse> update(
+    public ResponseEntity<GenreResponse> updateGenre(
             @PathVariable("id") UUID id,
             @Valid @RequestBody UpdateGenreRequest request) {
         return ResponseEntity.ok(
@@ -61,7 +61,7 @@ public class GenreController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(
+    public ResponseEntity<Void> deleteGenre(
             @PathVariable("id") UUID id) {
         genreService.delete(id);
 
