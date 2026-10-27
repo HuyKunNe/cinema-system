@@ -77,7 +77,7 @@ class ShowtimeControllerTest {
         UUID roomId = UUID.randomUUID();
 
         CreateShowtimeRequest request =
-                new CreateShowtimeRequest(movieId, roomId, STARTS_AT, ENDS_AT, BASE_PRICE);
+               createRequest(movieId, roomId, STARTS_AT, ENDS_AT, BASE_PRICE);
 
         ShowtimeResponse response =
                 response(showtimeId, movieId, roomId, STARTS_AT, ENDS_AT, ShowtimeStatus.SCHEDULED);
@@ -423,19 +423,27 @@ class ShowtimeControllerTest {
     }
 
     @Test
-    void createShouldReturnBadRequestWhenBasePriceIsZero() throws Exception {
+    void createShouldRejectLegacyBasePrice() throws Exception {
+        com.fasterxml.jackson.databind.node.ObjectNode body =
+                objectMapper.valueToTree(
+                        createRequest(UUID.randomUUID(), UUID.randomUUID(), STARTS_AT, ENDS_AT));
 
-        CreateShowtimeRequest request =
-                new CreateShowtimeRequest(
-                        UUID.randomUUID(), UUID.randomUUID(), STARTS_AT, ENDS_AT, BigDecimal.ZERO);
+        body.put("basePrice", 100000);
 
         mockMvc.perform(
                         post("/api/v1/showtimes")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
+                                .content(body.toString()))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(showtimeService);
+    }
+
+    private CreateShowtimeRequest createRequest(
+            UUID movieId, UUID roomId, OffsetDateTime startsAt, OffsetDateTime endsAt) {
+
+        return new CreateShowtimeRequest(
+                movieId, roomId, startsAt, endsAt, null, UUID.randomUUID(), 15, null);
     }
 
     private ShowtimeResponse response(

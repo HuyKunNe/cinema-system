@@ -1,6 +1,5 @@
 package com.cinema.inventory.controller;
 
-import com.cinema.inventory.dto.request.GenerateShowSeatsRequest;
 import com.cinema.inventory.dto.request.HoldShowSeatRequest;
 import com.cinema.inventory.dto.request.ShowSeatBookingRequest;
 import com.cinema.inventory.dto.response.ShowSeatResponse;
@@ -18,14 +17,12 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,19 +36,9 @@ public class ShowSeatController {
         this.showSeatService = showSeatService;
     }
 
-    @PostMapping
-    public ResponseEntity<List<ShowSeatResponse>> generateShowSeats(
-            @RequestParam("showtimeId") UUID showtimeId,
-            @Valid @RequestBody GenerateShowSeatsRequest request) {
-
-        List<ShowSeatResponse> response = showSeatService.generate(showtimeId, request);
-
-        return ResponseEntity.created(URI.create("/api/v1/show-seats?showtimeId=" + showtimeId))
-                .body(response);
-    }
-
     @GetMapping("/{showSeatId}")
-    public ResponseEntity<ShowSeatResponse> getShowSeatById(@PathVariable("showSeatId") UUID showSeatId) {
+    public ResponseEntity<ShowSeatResponse> getShowSeatById(
+            @PathVariable("showSeatId") UUID showSeatId) {
 
         return ResponseEntity.ok(showSeatService.getById(showSeatId));
     }

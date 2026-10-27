@@ -15,7 +15,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.cinema.common.security.config.SecurityConfiguration;
 import com.cinema.common.security.config.ServletSecurityConfiguration;
 import com.cinema.inventory.config.InventorySecurityConfig;
-import com.cinema.inventory.dto.request.GenerateShowSeatsRequest;
 import com.cinema.inventory.dto.request.HoldShowSeatRequest;
 import com.cinema.inventory.dto.request.ShowSeatBookingRequest;
 import com.cinema.inventory.service.ShowSeatService;
@@ -33,7 +32,6 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -50,8 +48,6 @@ import java.util.UUID;
             "cinema.security.oauth2.audience=cinema-api"
         })
 class ShowSeatSecurityTest {
-
-    private static final BigDecimal DEFAULT_PRICE = new BigDecimal("100000.00");
 
     @Autowired private MockMvc mockMvc;
 
@@ -106,23 +102,20 @@ class ShowSeatSecurityTest {
     }
 
     @Test
-    void generateShouldSucceedWithManagePermission() throws Exception {
-
-        UUID showtimeId = UUID.randomUUID();
-        GenerateShowSeatsRequest request = new GenerateShowSeatsRequest(DEFAULT_PRICE);
+    void retiredGenerationShouldReturnMethodNotAllowedWithManagePermission() throws Exception {
 
         mockMvc.perform(
                         post("/api/v1/show-seats")
-                                .param("showtimeId", showtimeId.toString())
+                                .param("showtimeId", UUID.randomUUID().toString())
                                 .with(
                                         jwt().authorities(
                                                         new SimpleGrantedAuthority(
                                                                 "inventory:manage")))
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
+                                .content("{\"defaultPrice\":100000}"))
+                .andExpect(status().isMethodNotAllowed());
 
-        verify(showSeatService).generate(showtimeId, request);
+        verifyNoInteractions(showSeatService);
     }
 
     @Test
@@ -307,26 +300,22 @@ class ShowSeatSecurityTest {
 
     private org.springframework.test.web.servlet.ResultActions performGenerate() throws Exception {
 
-        GenerateShowSeatsRequest request = new GenerateShowSeatsRequest(DEFAULT_PRICE);
-
         return mockMvc.perform(
                 post("/api/v1/show-seats")
                         .param("showtimeId", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)));
+                        .content(objectMapper.writeValueAsString("{\\\"defaultPrice\\\":100000}")));
     }
 
     private org.springframework.test.web.servlet.ResultActions performGenerateWithUserRole()
             throws Exception {
-
-        GenerateShowSeatsRequest request = new GenerateShowSeatsRequest(DEFAULT_PRICE);
 
         return mockMvc.perform(
                 post("/api/v1/show-seats")
                         .param("showtimeId", UUID.randomUUID().toString())
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_USER")))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)));
+                        .content(objectMapper.writeValueAsString("{\\\"defaultPrice\\\":100000}")));
     }
 
     private org.springframework.test.web.servlet.ResultActions performHold(

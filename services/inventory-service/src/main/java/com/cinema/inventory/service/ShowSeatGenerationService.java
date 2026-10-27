@@ -28,61 +28,19 @@ public class ShowSeatGenerationService {
 
     private final SeatRepository seatRepository;
     private final ShowSeatRepository showSeatRepository;
-    private final SeatPricingPolicy seatPricingPolicy;
     private final ShowtimeLayoutService showtimeLayoutService;
     private final FareMatrixService fareMatrixService;
 
     public ShowSeatGenerationService(
             SeatRepository seatRepository,
             ShowSeatRepository showSeatRepository,
-            SeatPricingPolicy seatPricingPolicy,
             ShowtimeLayoutService showtimeLayoutService,
             FareMatrixService fareMatrixService) {
 
         this.seatRepository = seatRepository;
         this.showSeatRepository = showSeatRepository;
-        this.seatPricingPolicy = seatPricingPolicy;
         this.showtimeLayoutService = showtimeLayoutService;
         this.fareMatrixService = fareMatrixService;
-    }
-
-    @Transactional
-    public List<ShowSeat> generate(Showtime showtime, BigDecimal basePrice) {
-
-        validateShowtime(showtime);
-
-        List<LayoutSeatSnapshot> snapshots = loadSnapshots(showtime);
-
-        List<ShowSeat> existingShowSeats =
-                showSeatRepository.findAllByShowtime_IdOrderBySeatNumberAsc(showtime.getId());
-
-        if (showtime.getRoomLayout() != null) {
-            validateExistingSnapshots(snapshots, existingShowSeats);
-        }
-
-        Set<UUID> existingSeatIds = new HashSet<>();
-
-        for (ShowSeat showSeat : existingShowSeats) {
-            existingSeatIds.add(showSeat.getSeat().getId());
-        }
-
-        List<ShowSeat> generatedShowSeats =
-                snapshots.stream()
-                        .filter(snapshot -> !existingSeatIds.contains(snapshot.seat().getId()))
-                        .map(
-                                snapshot ->
-                                        createShowSeatWithPrice(
-                                                showtime,
-                                                snapshot,
-                                                seatPricingPolicy.calculate(
-                                                        basePrice, snapshot.seatType())))
-                        .toList();
-
-        if (generatedShowSeats.isEmpty()) {
-            return List.of();
-        }
-
-        return showSeatRepository.saveAll(generatedShowSeats);
     }
 
     @Transactional
@@ -230,30 +188,6 @@ public class ShowSeatGenerationService {
         }
 
         return snapshots;
-    }
-
-    private void validateExistingSnapshots(
-            List<LayoutSeatSnapshot> snapshots, List<ShowSeat> existingShowSeats) {
-
-        Map<UUID, LayoutSeatSnapshot> snapshotsBySeatId = new HashMap<>();
-
-        for (LayoutSeatSnapshot snapshot : snapshots) {
-            snapshotsBySeatId.put(snapshot.seat().getId(), snapshot);
-        }
-
-        for (ShowSeat showSeat : existingShowSeats) {
-            LayoutSeatSnapshot snapshot = snapshotsBySeatId.get(showSeat.getSeat().getId());
-
-            if (snapshot == null) {
-                throw new ConflictException(InventoryErrorCode.SHOWTIME_LAYOUT_SEATS_MISMATCH);
-            }
-
-            if (!Objects.equals(showSeat.getSeatNumber(), snapshot.seatNumber())
-                    || showSeat.getSeatType() != snapshot.seatType()) {
-
-                throw new ConflictException(InventoryErrorCode.SEAT_MAP_DATA_INCONSISTENT);
-            }
-        }
     }
 
     private ShowSeat createShowSeatWithPrice(

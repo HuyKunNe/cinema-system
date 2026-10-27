@@ -22,11 +22,9 @@ import com.cinema.inventory.enums.RoomType;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.ShowSeatStatus;
 import com.cinema.inventory.mapper.ShowSeatMapper;
-import com.cinema.inventory.repository.SeatRepository;
 import com.cinema.inventory.repository.ShowSeatRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ShowSeatService;
-import com.cinema.inventory.service.ShowtimeLayoutService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,26 +50,16 @@ class ShowSeatTransitionServiceImplTest {
 
     @Mock private ShowtimeRepository showtimeRepository;
 
-    @Mock private SeatRepository seatRepository;
-
     @Mock private ShowSeatMapper showSeatMapper;
-
-    @Mock private ShowtimeLayoutService showtimeLayoutService;
 
     private ShowSeatService showSeatService;
 
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(NOW.toInstant(), ZoneOffset.UTC);
-
         showSeatService =
                 new ShowSeatServiceImpl(
-                        showSeatRepository,
-                        showtimeRepository,
-                        seatRepository,
-                        showSeatMapper,
-                        clock,
-                        showtimeLayoutService);
+                        showSeatRepository, showtimeRepository, showSeatMapper, clock);
     }
 
     @Test

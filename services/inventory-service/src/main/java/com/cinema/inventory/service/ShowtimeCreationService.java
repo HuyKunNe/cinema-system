@@ -78,10 +78,6 @@ public class ShowtimeCreationService {
             throw new ValidationException(InventoryErrorCode.SHOWTIME_ROOM_REQUIRED);
         }
 
-        if (!request.isPricingSourceValid()) {
-            throw new ValidationException(InventoryErrorCode.INVALID_SHOWTIME_PRICING);
-        }
-
         validateTimes(request.startsAt(), request.endsAt());
         ShowtimeScheduling.validateBreak(request.breakMinutes());
 
@@ -180,8 +176,6 @@ public class ShowtimeCreationService {
 
         if (saved.getPricingPolicyVersion() != null) {
             seatGenerationService.generateFromPublishedPricing(saved);
-        } else if (request.basePrice() != null) {
-            seatGenerationService.generate(saved, request.basePrice());
         } else {
             seatGenerationService.validateForDeferredGeneration(saved);
         }

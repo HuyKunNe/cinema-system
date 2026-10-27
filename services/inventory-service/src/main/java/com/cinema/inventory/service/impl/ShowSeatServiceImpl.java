@@ -3,7 +3,6 @@ package com.cinema.inventory.service.impl;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
-import com.cinema.inventory.dto.request.GenerateShowSeatsRequest;
 import com.cinema.inventory.dto.request.HoldShowSeatRequest;
 import com.cinema.inventory.dto.request.ShowSeatBookingRequest;
 import com.cinema.inventory.dto.response.ShowSeatResponse;
@@ -13,12 +12,9 @@ import com.cinema.inventory.enums.ShowSeatStatus;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.ShowSeatMapper;
-import com.cinema.inventory.repository.SeatRepository;
 import com.cinema.inventory.repository.ShowSeatRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
-import com.cinema.inventory.service.LayoutSeatSnapshot;
 import com.cinema.inventory.service.ShowSeatService;
-import com.cinema.inventory.service.ShowtimeLayoutService;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,76 +29,19 @@ public class ShowSeatServiceImpl implements ShowSeatService {
 
     private final ShowSeatRepository showSeatRepository;
     private final ShowtimeRepository showtimeRepository;
-    private final SeatRepository seatRepository;
     private final ShowSeatMapper showSeatMapper;
     private final Clock clock;
-    private final ShowtimeLayoutService showtimeLayoutService;
 
     public ShowSeatServiceImpl(
             ShowSeatRepository showSeatRepository,
             ShowtimeRepository showtimeRepository,
-            SeatRepository seatRepository,
             ShowSeatMapper showSeatMapper,
-            Clock clock,
-            ShowtimeLayoutService showtimeLayoutService) {
+            Clock clock) {
 
         this.showSeatRepository = showSeatRepository;
         this.showtimeRepository = showtimeRepository;
-        this.seatRepository = seatRepository;
         this.showSeatMapper = showSeatMapper;
         this.clock = clock;
-        this.showtimeLayoutService = showtimeLayoutService;
-    }
-
-    @Override
-    @Transactional
-    public List<ShowSeatResponse> generate(UUID showtimeId, GenerateShowSeatsRequest request) {
-
-        Showtime showtime =
-                showtimeRepository
-                        .findByIdForUpdate(showtimeId)
-                        .orElseThrow(
-                                () -> new NotFoundException(InventoryErrorCode.SHOWTIME_NOT_FOUND));
-
-        validateShowtimeEditable(showtime);
-
-        if (showtime.getPricingPolicyVersion() != null) {
-            throw new ConflictException(InventoryErrorCode.SHOWTIME_PRICING_GENERATION_LOCKED);
-        }
-
-        validateShowSeatsNotGenerated(showtimeId);
-
-        List<LayoutSeatSnapshot> snapshots;
-
-        if (showtime.getRoomLayout() == null) {
-            snapshots =
-                    seatRepository
-                            .findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(
-                                    showtime.getRoom().getId())
-                            .stream()
-                            .map(LayoutSeatSnapshot::fromSeat)
-                            .toList();
-
-            if (snapshots.isEmpty()) {
-                throw new ConflictException(InventoryErrorCode.NO_ACTIVE_SEATS);
-            }
-        } else {
-            snapshots = showtimeLayoutService.getSeatSnapshotsForGeneration(showtime);
-        }
-
-        List<ShowSeat> showSeats =
-                snapshots.stream()
-                        .map(
-                                snapshot ->
-                                        new ShowSeat(
-                                                showtime,
-                                                snapshot.seat(),
-                                                snapshot.seatNumber(),
-                                                snapshot.seatType(),
-                                                request.defaultPrice()))
-                        .toList();
-
-        return showSeatMapper.toResponses(showSeatRepository.saveAll(showSeats));
     }
 
     @Override
@@ -145,18 +84,6 @@ public class ShowSeatServiceImpl implements ShowSeatService {
         return showSeatRepository
                 .findById(showSeatId)
                 .orElseThrow(() -> new NotFoundException(InventoryErrorCode.SHOW_SEAT_NOT_FOUND));
-    }
-
-    private void validateShowtimeEditable(Showtime showtime) {
-        if (showtime.getStatus() != ShowtimeStatus.SCHEDULED) {
-            throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_EDITABLE);
-        }
-    }
-
-    private void validateShowSeatsNotGenerated(UUID showtimeId) {
-        if (showSeatRepository.existsByShowtime_Id(showtimeId)) {
-            throw new ConflictException(InventoryErrorCode.SHOW_SEATS_ALREADY_GENERATED);
-        }
     }
 
     @Override
