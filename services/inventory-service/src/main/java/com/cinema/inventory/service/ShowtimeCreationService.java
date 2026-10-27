@@ -1,17 +1,5 @@
 package com.cinema.inventory.service;
 
-import java.time.Clock;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.util.Set;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
@@ -25,14 +13,28 @@ import com.cinema.inventory.entity.ShowtimeScreeningVersion;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.ShowtimeMapper;
+import com.cinema.inventory.repository.CinemaPricingPolicyVersionRepository;
 import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.Set;
 
 @Service
 public class ShowtimeCreationService {
 
     private final RoomRepository roomRepository;
     private final ShowtimeRepository showtimeRepository;
+    private final CinemaPricingPolicyVersionRepository pricingVersionRepository;
     private final ShowtimeLayoutService layoutService;
     private final ShowSeatGenerationService seatGenerationService;
     private final ShowtimeMapper mapper;
@@ -48,7 +50,8 @@ public class ShowtimeCreationService {
             ShowtimeMapper mapper,
             MovieCatalogClient movieCatalogClient,
             Clock clock,
-            PlatformTransactionManager transactionManager) {
+            PlatformTransactionManager transactionManager,
+            CinemaPricingPolicyVersionRepository pricingVersionRepository) {
 
         this.roomRepository = roomRepository;
         this.showtimeRepository = showtimeRepository;
@@ -57,6 +60,8 @@ public class ShowtimeCreationService {
         this.mapper = mapper;
         this.movieCatalogClient = movieCatalogClient;
         this.clock = clock;
+        this.pricingVersionRepository = pricingVersionRepository;
+
         this.transactions = new TransactionTemplate(transactionManager);
         this.transactions.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
@@ -71,6 +76,10 @@ public class ShowtimeCreationService {
 
         if (request.roomId() == null) {
             throw new ValidationException(InventoryErrorCode.SHOWTIME_ROOM_REQUIRED);
+        }
+
+        if (!request.isPricingSourceValid()) {
+            throw new ValidationException(InventoryErrorCode.INVALID_SHOWTIME_PRICING);
         }
 
         validateTimes(request.startsAt(), request.endsAt());
@@ -154,10 +163,29 @@ public class ShowtimeCreationService {
                         screeningVersion,
                         scheduling);
 
+        if (request.pricingPolicyVersionId() != null) {
+            var selected =
+                    pricingVersionRepository
+                            .findById(request.pricingPolicyVersionId())
+                            .orElseThrow(
+                                    () ->
+                                            new NotFoundException(
+                                                    InventoryErrorCode
+                                                            .PRICING_POLICY_VERSION_NOT_FOUND));
+
+            showtime.replacePricingPolicyVersion(selected);
+        }
+
         Showtime saved = showtimeRepository.save(showtime);
-        seatGenerationService.generate(saved, request.basePrice());
+
+        if (saved.getPricingPolicyVersion() == null) {
+            seatGenerationService.generate(saved, request.basePrice());
+        } else {
+            seatGenerationService.generateFromPublishedPricing(saved);
+        }
 
         showtimeRepository.flush();
+
         return mapper.toResponse(saved);
     }
 
@@ -175,5 +203,4 @@ public class ShowtimeCreationService {
             throw new ValidationException(InventoryErrorCode.SHOWTIME_START_NOT_FUTURE);
         }
     }
-
 }

@@ -18,6 +18,7 @@ import com.cinema.inventory.enums.RoomType;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.repository.SeatRepository;
 import com.cinema.inventory.repository.ShowSeatRepository;
+import com.cinema.inventory.service.FareMatrixService;
 import com.cinema.inventory.service.SeatPricingPolicy;
 import com.cinema.inventory.service.ShowSeatGenerationService;
 import com.cinema.inventory.service.ShowtimeLayoutService;
@@ -46,6 +47,8 @@ class ShowSeatGenerationServiceTest {
 
     @Mock private ShowSeatRepository showSeatRepository;
 
+    @Mock private FareMatrixService fareMatrixService;
+
     @Mock private SeatPricingPolicy seatPricingPolicy;
 
     @Mock private ShowtimeLayoutService showtimeLayoutService;
@@ -59,7 +62,8 @@ class ShowSeatGenerationServiceTest {
                         seatRepository,
                         showSeatRepository,
                         seatPricingPolicy,
-                        showtimeLayoutService);
+                        showtimeLayoutService,
+                        fareMatrixService);
     }
 
     @Test
