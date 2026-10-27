@@ -1,5 +1,6 @@
 package com.cinema.inventory.service;
 
+import com.cinema.inventory.dto.request.CreateShowtimeBatchRequest;
 import com.cinema.inventory.dto.request.CreateShowtimeRequest;
 import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
 import com.cinema.inventory.dto.response.ShowtimeResponse;
@@ -11,6 +12,8 @@ import java.util.UUID;
 public interface ShowtimeService {
 
     ShowtimeResponse create(CreateShowtimeRequest request);
+
+    List<ShowtimeResponse> createBatch(CreateShowtimeBatchRequest request);
 
     ShowtimeResponse getById(UUID showtimeId);
 

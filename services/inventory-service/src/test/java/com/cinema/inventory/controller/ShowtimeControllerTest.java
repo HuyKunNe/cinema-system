@@ -29,7 +29,6 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -50,7 +49,6 @@ class ShowtimeControllerTest {
 
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
-    private static final BigDecimal BASE_PRICE = new BigDecimal("100000.00");
     private static final DateTimeFormatter JSON_DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
 
@@ -76,8 +74,7 @@ class ShowtimeControllerTest {
         UUID movieId = UUID.randomUUID();
         UUID roomId = UUID.randomUUID();
 
-        CreateShowtimeRequest request =
-               createRequest(movieId, roomId, STARTS_AT, ENDS_AT, BASE_PRICE);
+        CreateShowtimeRequest request = createRequest(movieId, roomId, STARTS_AT, ENDS_AT);
 
         ShowtimeResponse response =
                 response(showtimeId, movieId, roomId, STARTS_AT, ENDS_AT, ShowtimeStatus.SCHEDULED);
@@ -104,8 +101,7 @@ class ShowtimeControllerTest {
     void createShouldReturnBadRequestWhenEndsAtIsBeforeStartsAt() throws Exception {
 
         CreateShowtimeRequest request =
-                new CreateShowtimeRequest(
-                        UUID.randomUUID(), UUID.randomUUID(), ENDS_AT, STARTS_AT, BASE_PRICE);
+                createRequest(UUID.randomUUID(), UUID.randomUUID(), ENDS_AT, STARTS_AT);
 
         mockMvc.perform(
                         post("/api/v1/showtimes")
@@ -119,8 +115,7 @@ class ShowtimeControllerTest {
     @Test
     void createShouldReturnBadRequestWhenMovieIdIsNull() throws Exception {
 
-        CreateShowtimeRequest request =
-                new CreateShowtimeRequest(null, UUID.randomUUID(), STARTS_AT, ENDS_AT, BASE_PRICE);
+        CreateShowtimeRequest request = createRequest(null, UUID.randomUUID(), STARTS_AT, ENDS_AT);
 
         mockMvc.perform(
                         post("/api/v1/showtimes")

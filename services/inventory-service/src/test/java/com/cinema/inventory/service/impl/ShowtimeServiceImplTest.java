@@ -12,20 +12,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import java.math.BigDecimal;
-import java.time.Clock;
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
@@ -42,10 +28,20 @@ import com.cinema.inventory.mapper.ShowtimeMapper;
 import com.cinema.inventory.repository.CinemaRepository;
 import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
-import com.cinema.inventory.service.ShowSeatGenerationService;
 import com.cinema.inventory.service.ShowtimeCreationService;
-import com.cinema.inventory.service.ShowtimeLayoutService;
 import com.cinema.inventory.service.ShowtimePricingService;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.Clock;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @ExtendWith(MockitoExtension.class)
 class ShowtimeServiceImplTest {
@@ -71,10 +67,6 @@ class ShowtimeServiceImplTest {
 
     @Mock private ShowtimeMapper showtimeMapper;
 
-    @Mock private ShowSeatGenerationService showSeatGenerationService;
-
-    @Mock private ShowtimeLayoutService showtimeLayoutService;
-
     @Mock private ShowtimeCreationService showtimeCreationService;
 
     @Mock private MovieCatalogClient movieCatalogClient;
@@ -82,8 +74,6 @@ class ShowtimeServiceImplTest {
     @Mock private ShowtimePricingService showtimePricingService;
 
     private ShowtimeServiceImpl showtimeService;
-
-    private static final BigDecimal BASE_PRICE = new BigDecimal("100000.00");
 
     @BeforeEach
     void setUp() {
@@ -101,153 +91,28 @@ class ShowtimeServiceImplTest {
     }
 
     @Test
-    void createShouldSaveAndReturnMappedShowtime() {
-        Room room = availableRoom();
-
+    void createShouldDelegateToCreationService() {
         CreateShowtimeRequest request = createRequest(STARTS_AT, ENDS_AT);
+        ShowtimeResponse expected = response(STARTS_AT, ENDS_AT, ShowtimeStatus.SCHEDULED);
 
-        ShowtimeResponse expectedResponse = response(STARTS_AT, ENDS_AT, ShowtimeStatus.SCHEDULED);
+        when(showtimeCreationService.create(request)).thenReturn(expected);
 
-        when(roomRepository.findById(ROOM_ID)).thenReturn(Optional.of(room));
+        assertThat(showtimeService.create(request)).isSameAs(expected);
 
-        when(showtimeRepository.existsOverlappingShowtime(
-                        eq(ROOM_ID), eq(STARTS_AT), eq(ENDS_AT), anyCollection()))
-                .thenReturn(false);
-
-        when(showtimeRepository.save(any(Showtime.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        when(showtimeMapper.toResponse(any(Showtime.class))).thenReturn(expectedResponse);
-
-        ShowtimeResponse result = showtimeService.create(request);
-
-        ArgumentCaptor<Showtime> showtimeCaptor = ArgumentCaptor.forClass(Showtime.class);
-
-        verify(showtimeRepository).save(showtimeCaptor.capture());
-
-        Showtime savedShowtime = showtimeCaptor.getValue();
-
-        assertThat(savedShowtime.getMovieId()).isEqualTo(MOVIE_ID);
-
-        assertThat(savedShowtime.getRoom()).isSameAs(room);
-
-        assertThat(savedShowtime.getStartsAt()).isEqualTo(STARTS_AT);
-
-        assertThat(savedShowtime.getEndsAt()).isEqualTo(ENDS_AT);
-
-        assertThat(savedShowtime.getStatus()).isEqualTo(ShowtimeStatus.SCHEDULED);
-
-        verify(showtimeRepository)
-                .existsOverlappingShowtime(
-                        eq(ROOM_ID), eq(STARTS_AT), eq(ENDS_AT), anyCollection());
-        verify(showSeatGenerationService).generate(savedShowtime, BASE_PRICE);
-        verify(showtimeMapper).toResponse(savedShowtime);
-
-        assertThat(result).isSameAs(expectedResponse);
+        verify(showtimeCreationService).create(request);
+        verifyNoInteractions(showtimeRepository, roomRepository, cinemaRepository, showtimeMapper);
     }
 
     @Test
-    void createShouldThrowWhenRoomDoesNotExist() {
+    void createShouldPropagateCreationConflict() {
         CreateShowtimeRequest request = createRequest(STARTS_AT, ENDS_AT);
+        ConflictException failure =
+                new ConflictException(
+                        com.cinema.inventory.exception.InventoryErrorCode.SHOWTIME_OVERLAP);
 
-        when(roomRepository.findById(ROOM_ID)).thenReturn(Optional.empty());
+        when(showtimeCreationService.create(request)).thenThrow(failure);
 
-        assertThatThrownBy(() -> showtimeService.create(request))
-                .isInstanceOf(NotFoundException.class);
-
-        verify(roomRepository).findById(ROOM_ID);
-
-        verifyNoInteractions(showtimeRepository, showtimeMapper);
-    }
-
-    @Test
-    void createShouldThrowWhenRoomIsInactive() {
-        Room room = availableRoom();
-
-        when(room.isActive()).thenReturn(false);
-
-        CreateShowtimeRequest request = createRequest(STARTS_AT, ENDS_AT);
-
-        when(roomRepository.findById(ROOM_ID)).thenReturn(Optional.of(room));
-
-        assertThatThrownBy(() -> showtimeService.create(request))
-                .isInstanceOf(ConflictException.class);
-
-        verify(showtimeRepository, never())
-                .existsOverlappingShowtime(any(), any(), any(), anyCollection());
-
-        verify(showtimeRepository, never()).save(any(Showtime.class));
-
-        verifyNoInteractions(showtimeMapper);
-    }
-
-    @Test
-    void createShouldThrowWhenCinemaIsInactive() {
-        Cinema cinema = mock(Cinema.class);
-        Room room = mock(Room.class);
-
-        when(room.isActive()).thenReturn(true);
-
-        when(room.getCinema()).thenReturn(cinema);
-
-        when(cinema.isActive()).thenReturn(false);
-
-        CreateShowtimeRequest request = createRequest(STARTS_AT, ENDS_AT);
-
-        when(roomRepository.findById(ROOM_ID)).thenReturn(Optional.of(room));
-
-        assertThatThrownBy(() -> showtimeService.create(request))
-                .isInstanceOf(ConflictException.class);
-
-        verify(showtimeRepository, never())
-                .existsOverlappingShowtime(any(), any(), any(), anyCollection());
-
-        verify(showtimeRepository, never()).save(any(Showtime.class));
-
-        verifyNoInteractions(showtimeMapper);
-    }
-
-    @Test
-    void createShouldThrowWhenTimeRangeIsInvalid() {
-        Room room = availableRoom();
-
-        CreateShowtimeRequest request = createRequest(STARTS_AT, STARTS_AT);
-
-        when(roomRepository.findById(ROOM_ID)).thenReturn(Optional.of(room));
-
-        assertThatThrownBy(() -> showtimeService.create(request))
-                .isInstanceOf(ValidationException.class);
-
-        verify(showtimeRepository, never())
-                .existsOverlappingShowtime(any(), any(), any(), anyCollection());
-
-        verify(showtimeRepository, never()).save(any(Showtime.class));
-
-        verifyNoInteractions(showtimeMapper);
-    }
-
-    @Test
-    void createShouldThrowWhenShowtimeOverlaps() {
-        Room room = availableRoom();
-
-        CreateShowtimeRequest request = createRequest(STARTS_AT, ENDS_AT);
-
-        when(roomRepository.findById(ROOM_ID)).thenReturn(Optional.of(room));
-
-        when(showtimeRepository.existsOverlappingShowtime(
-                        eq(ROOM_ID), eq(STARTS_AT), eq(ENDS_AT), anyCollection()))
-                .thenReturn(true);
-
-        assertThatThrownBy(() -> showtimeService.create(request))
-                .isInstanceOf(ConflictException.class);
-
-        verify(showtimeRepository)
-                .existsOverlappingShowtime(
-                        eq(ROOM_ID), eq(STARTS_AT), eq(ENDS_AT), anyCollection());
-
-        verify(showtimeRepository, never()).save(any(Showtime.class));
-
-        verifyNoInteractions(showtimeMapper);
+        assertThatThrownBy(() -> showtimeService.create(request)).isSameAs(failure);
     }
 
     @Test
@@ -739,7 +604,8 @@ class ShowtimeServiceImplTest {
 
     private CreateShowtimeRequest createRequest(OffsetDateTime startsAt, OffsetDateTime endsAt) {
 
-        return new CreateShowtimeRequest(MOVIE_ID, ROOM_ID, startsAt, endsAt, BASE_PRICE);
+        return new CreateShowtimeRequest(
+                MOVIE_ID, ROOM_ID, startsAt, endsAt, null, UUID.randomUUID(), 15, null);
     }
 
     private Room availableRoom() {

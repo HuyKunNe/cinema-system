@@ -28,6 +28,15 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Set;
+import com.cinema.inventory.client.MovieCatalogClient.MovieSchedulingDetails;
+import com.cinema.inventory.dto.request.CreateShowtimeBatchRequest;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 
 @Service
 public class ShowtimeCreationService {
@@ -66,26 +75,115 @@ public class ShowtimeCreationService {
         this.transactions.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
 
-    @Transactional(propagation = Propagation.NEVER)
+        @Transactional(propagation = Propagation.NEVER)
     public ShowtimeResponse create(CreateShowtimeRequest request) {
+        PreparedCreation prepared =
+                prepare(request, new HashMap<>(), new HashMap<>());
+
+        return transactions.execute(
+                status ->
+                        persist(
+                                prepared.request(),
+                                prepared.screeningVersion(),
+                                prepared.scheduling(),
+                                prepared.releaseDate()));
+    }
+
+    @Transactional(propagation = Propagation.NEVER)
+    public List<ShowtimeResponse> createBatch(
+            CreateShowtimeBatchRequest request) {
+
+        if (request == null
+                || request.showtimes() == null
+                || request.showtimes().isEmpty()
+                || request.showtimes().size()
+                        > CreateShowtimeBatchRequest.MAX_SHOWTIMES
+                || request.showtimes().stream().anyMatch(Objects::isNull)) {
+
+            throw new ValidationException(
+                    InventoryErrorCode.INVALID_SHOWTIME_BATCH);
+        }
+
+        List<CreateShowtimeRequest> items =
+                List.copyOf(request.showtimes());
+
+        Map<UUID, MovieSchedulingDetails> movieCache = new HashMap<>();
+        Map<ScreeningVersionKey, ShowtimeScreeningVersion> versionCache =
+                new HashMap<>();
+
+        List<PreparedCreation> prepared = new ArrayList<>(items.size());
+
+        for (CreateShowtimeRequest item : items) {
+            prepared.add(prepare(item, movieCache, versionCache));
+        }
+
+        return transactions.execute(
+                status -> {
+                    lockBatchRooms(prepared);
+
+                    List<ShowtimeResponse> responses =
+                            new ArrayList<>(prepared.size());
+
+                    for (PreparedCreation item : prepared) {
+                        responses.add(
+                                persist(
+                                        item.request(),
+                                        item.screeningVersion(),
+                                        item.scheduling(),
+                                        item.releaseDate()));
+                    }
+
+                    return List.copyOf(responses);
+                });
+    }
+
+    private PreparedCreation prepare(
+            CreateShowtimeRequest request,
+            Map<UUID, MovieSchedulingDetails> movieCache,
+            Map<ScreeningVersionKey, ShowtimeScreeningVersion> versionCache) {
+
         if (request == null
                 || request.movieId() == null
                 || request.movieScreeningVersionId() == null) {
-            throw new ValidationException(InventoryErrorCode.SCREENING_VERSION_REQUIRED);
+
+            throw new ValidationException(
+                    InventoryErrorCode.SCREENING_VERSION_REQUIRED);
         }
 
         if (request.roomId() == null) {
-            throw new ValidationException(InventoryErrorCode.SHOWTIME_ROOM_REQUIRED);
+            throw new ValidationException(
+                    InventoryErrorCode.SHOWTIME_ROOM_REQUIRED);
         }
 
         validateTimes(request.startsAt(), request.endsAt());
         ShowtimeScheduling.validateBreak(request.breakMinutes());
 
-        var movie = movieCatalogClient.getMovieForScheduling(request.movieId());
+        MovieSchedulingDetails movie =
+                movieCache.computeIfAbsent(
+                        request.movieId(),
+                        movieCatalogClient::getMovieForScheduling);
+
+        ScreeningVersionKey key =
+                new ScreeningVersionKey(
+                        request.movieId(),
+                        request.movieScreeningVersionId());
+
+        ShowtimeScreeningVersion cachedVersion =
+                versionCache.computeIfAbsent(
+                        key,
+                        ignored ->
+                                movieCatalogClient.getActiveVersion(
+                                        key.movieId(),
+                                        key.screeningVersionId()));
 
         ShowtimeScreeningVersion screeningVersion =
-                movieCatalogClient.getActiveVersion(
-                        request.movieId(), request.movieScreeningVersionId());
+                new ShowtimeScreeningVersion(
+                        cachedVersion.getId(),
+                        cachedVersion.getVersion(),
+                        cachedVersion.getContentFormat(),
+                        cachedVersion.getAudioLanguage(),
+                        cachedVersion.getPresentationType(),
+                        cachedVersion.getSubtitleLanguage());
 
         ShowtimeScheduling scheduling =
                 new ShowtimeScheduling(
@@ -94,11 +192,44 @@ public class ShowtimeCreationService {
                         request.breakMinutes(),
                         request.endsAt());
 
-        scheduling.validateDuration(request.startsAt(), request.endsAt());
+        scheduling.validateDuration(
+                request.startsAt(),
+                request.endsAt());
 
-        return transactions.execute(
-                status -> persist(request, screeningVersion, scheduling, movie.releaseDate()));
+        return new PreparedCreation(
+                request,
+                screeningVersion,
+                scheduling,
+                movie.releaseDate());
     }
+
+    private void lockBatchRooms(List<PreparedCreation> prepared) {
+        List<UUID> roomIds =
+                prepared.stream()
+                        .map(item -> item.request().roomId())
+                        .distinct()
+                        .sorted()
+                        .toList();
+
+        for (UUID roomId : roomIds) {
+            roomRepository
+                    .findByIdForUpdate(roomId)
+                    .orElseThrow(
+                            () ->
+                                    new NotFoundException(
+                                            InventoryErrorCode.ROOM_NOT_FOUND));
+        }
+    }
+
+    private record ScreeningVersionKey(
+            UUID movieId,
+            UUID screeningVersionId) {}
+
+    private record PreparedCreation(
+            CreateShowtimeRequest request,
+            ShowtimeScreeningVersion screeningVersion,
+            ShowtimeScheduling scheduling,
+            LocalDate releaseDate) {}
 
     private ShowtimeResponse persist(
             CreateShowtimeRequest request,

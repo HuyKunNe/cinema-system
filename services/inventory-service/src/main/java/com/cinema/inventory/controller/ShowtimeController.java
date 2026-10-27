@@ -1,5 +1,6 @@
 package com.cinema.inventory.controller;
 
+import com.cinema.inventory.dto.request.CreateShowtimeBatchRequest;
 import com.cinema.inventory.dto.request.CreateShowtimeRequest;
 import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
 import com.cinema.inventory.dto.response.ShowtimeResponse;
@@ -10,11 +11,13 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 
 import jakarta.validation.Valid;
 
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -62,6 +65,16 @@ public class ShowtimeController {
 
         return ResponseEntity.created(URI.create("/api/v1/showtimes/" + response.id()))
                 .body(response);
+    }
+
+    @SecurityRequirement(
+            name = "oauth2",
+            scopes = {"showtime:manage"})
+    @PostMapping("/batch")
+    public ResponseEntity<List<ShowtimeResponse>> createShowtimeBatch(
+            @Valid @RequestBody CreateShowtimeBatchRequest request) {
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(showtimeService.createBatch(request));
     }
 
     @SecurityRequirements

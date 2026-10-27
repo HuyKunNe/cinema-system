@@ -1,25 +1,31 @@
 package com.cinema.inventory.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.inventory.dto.response.FareMatrixResponse;
 import com.cinema.inventory.entity.Cinema;
+import com.cinema.inventory.entity.CinemaPricingPolicy;
+import com.cinema.inventory.entity.CinemaPricingPolicyVersion;
 import com.cinema.inventory.entity.Room;
 import com.cinema.inventory.entity.Seat;
 import com.cinema.inventory.entity.ShowSeat;
 import com.cinema.inventory.entity.Showtime;
+import com.cinema.inventory.entity.ShowtimeScreeningVersion;
+import com.cinema.inventory.enums.ContentFormat;
+import com.cinema.inventory.enums.FareCellState;
+import com.cinema.inventory.enums.FareUnit;
+import com.cinema.inventory.enums.PricingDayGroup;
+import com.cinema.inventory.enums.PricingExperienceType;
+import com.cinema.inventory.enums.PricingPolicyVersionStatus;
 import com.cinema.inventory.enums.RoomType;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.repository.SeatRepository;
 import com.cinema.inventory.repository.ShowSeatRepository;
 import com.cinema.inventory.service.FareMatrixService;
-import com.cinema.inventory.service.SeatPricingPolicy;
 import com.cinema.inventory.service.ShowSeatGenerationService;
 import com.cinema.inventory.service.ShowtimeLayoutService;
 
@@ -28,6 +34,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -37,21 +44,18 @@ import java.util.UUID;
 @ExtendWith(MockitoExtension.class)
 class ShowSeatGenerationServiceTest {
 
+    private static final UUID CINEMA_ID = UUID.randomUUID();
     private static final UUID ROOM_ID = UUID.randomUUID();
-
     private static final UUID SHOWTIME_ID = UUID.randomUUID();
-
-    private static final BigDecimal BASE_PRICE = new BigDecimal("100000.00");
+    private static final UUID POLICY_ID = UUID.randomUUID();
+    private static final UUID VERSION_ID = UUID.randomUUID();
+    private static final UUID BAND_ID = UUID.randomUUID();
+    private static final UUID GROUP_ID = UUID.randomUUID();
 
     @Mock private SeatRepository seatRepository;
-
     @Mock private ShowSeatRepository showSeatRepository;
-
+    @Mock private ShowtimeLayoutService layoutService;
     @Mock private FareMatrixService fareMatrixService;
-
-    @Mock private SeatPricingPolicy seatPricingPolicy;
-
-    @Mock private ShowtimeLayoutService showtimeLayoutService;
 
     private ShowSeatGenerationService generationService;
 
@@ -61,121 +65,141 @@ class ShowSeatGenerationServiceTest {
                 new ShowSeatGenerationService(
                         seatRepository,
                         showSeatRepository,
-                        seatPricingPolicy,
-                        showtimeLayoutService,
+                        layoutService,
                         fareMatrixService);
     }
 
     @Test
-    void generateShouldCreateShowSeatsForActiveSeats() {
+    void publishedGenerationShouldPreserveZeroAndWholePairFares() {
         Showtime showtime = showtime();
-        Seat standardSeat = seat("A1", SeatType.STANDARD);
+        assignPublishedPricing(showtime);
 
-        Seat coupleSeat = seat("C1", SeatType.COUPLE);
+        Seat standard = seat(showtime.getRoom(), "A1", SeatType.STANDARD);
+        Seat couple = seat(showtime.getRoom(), "C1", SeatType.COUPLE);
 
         when(seatRepository.findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(ROOM_ID))
-                .thenReturn(List.of(standardSeat, coupleSeat));
+                .thenReturn(List.of(standard, couple));
 
-        when(showSeatRepository.findAllByShowtime_IdOrderBySeatNumberAsc(SHOWTIME_ID))
-                .thenReturn(List.of());
-
-        when(seatPricingPolicy.calculate(BASE_PRICE, SeatType.STANDARD))
-                .thenReturn(new BigDecimal("100000.00"));
-
-        when(seatPricingPolicy.calculate(BASE_PRICE, SeatType.COUPLE))
-                .thenReturn(new BigDecimal("200000.00"));
+        when(fareMatrixService.getForShowtimePricing(
+                        CINEMA_ID, POLICY_ID, VERSION_ID))
+                .thenReturn(matrix());
 
         when(showSeatRepository.saveAll(anyList()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        List<ShowSeat> result = generationService.generate(showtime, BASE_PRICE);
+        List<ShowSeat> result =
+                generationService.generateFromPublishedPricing(showtime);
 
         assertThat(result).hasSize(2);
-
-        assertThat(result).extracting(ShowSeat::getSeatNumber).containsExactly("A1", "C1");
-
-        assertThat(result.get(0).getPrice()).isEqualByComparingTo("100000.00");
-
-        assertThat(result.get(1).getPrice()).isEqualByComparingTo("200000.00");
-
+        assertThat(result.get(0).getPrice()).isEqualByComparingTo("0");
+        assertThat(result.get(1).getPrice()).isEqualByComparingTo("217000");
         assertThat(showtime.getShowSeats()).hasSize(2);
-
-        verify(showSeatRepository).saveAll(anyList());
     }
 
     @Test
-    void generateShouldSkipExistingShowSeat() {
-        Showtime showtime = showtime();
-        Seat seat = seat("A1", SeatType.STANDARD);
-
-        ShowSeat existing = new ShowSeat(showtime, seat, new BigDecimal("100000.00"));
-
-        when(seatRepository.findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(ROOM_ID))
-                .thenReturn(List.of(seat));
-
-        when(showSeatRepository.findAllByShowtime_IdOrderBySeatNumberAsc(SHOWTIME_ID))
-                .thenReturn(List.of(existing));
-
-        List<ShowSeat> result = generationService.generate(showtime, BASE_PRICE);
-
-        assertThat(result).isEmpty();
-
-        verify(showSeatRepository, never()).saveAll(anyList());
-
-        verifyNoInteractions(seatPricingPolicy);
-    }
-
-    @Test
-    void generateShouldThrowWhenRoomHasNoActiveSeats() {
+    void deferredValidationShouldNotGenerateSeatsOrPrices() {
         Showtime showtime = showtime();
 
         when(seatRepository.findAllByRoom_IdAndActiveTrueOrderBySeatNumberAsc(ROOM_ID))
-                .thenReturn(List.of());
+                .thenReturn(List.of(seat(showtime.getRoom(), "A1", SeatType.STANDARD)));
 
-        assertThatThrownBy(() -> generationService.generate(showtime, BASE_PRICE))
-                .isInstanceOf(ConflictException.class);
+        generationService.validateForDeferredGeneration(showtime);
 
-        verify(showSeatRepository, never()).saveAll(anyList());
-
-        verifyNoInteractions(seatPricingPolicy);
+        assertThat(showtime.getShowSeats()).isEmpty();
+        verifyNoInteractions(showSeatRepository, fareMatrixService);
     }
 
     private Showtime showtime() {
-        Cinema cinema = new Cinema("CGV Vincom", "72 Le Thanh Ton", "Ho Chi Minh");
+        Cinema cinema = new Cinema("Cinema", "Address", "City");
+        ReflectionTestUtils.setField(cinema, "id", CINEMA_ID);
 
         Room room = new Room(cinema, "Room 01", RoomType.STANDARD);
-
-        setId(room, ROOM_ID);
+        ReflectionTestUtils.setField(room, "id", ROOM_ID);
 
         Showtime showtime =
                 new Showtime(
                         UUID.randomUUID(),
                         room,
-                        OffsetDateTime.parse("2099-01-01T03:00:00Z"),
-                        OffsetDateTime.parse("2099-01-01T05:00:00Z"));
+                        OffsetDateTime.parse("2099-01-01T10:00:00Z"),
+                        OffsetDateTime.parse("2099-01-01T12:00:00Z"));
 
-        setId(showtime, SHOWTIME_ID);
-
+        ReflectionTestUtils.setField(showtime, "id", SHOWTIME_ID);
         return showtime;
     }
 
-    private Seat seat(String seatNumber, SeatType seatType) {
-
-        Room room = showtime().getRoom();
-
-        Seat seat = new Seat(room, seatNumber, seatNumber.substring(0, 1), seatType);
-
-        setId(seat, UUID.randomUUID());
-
+    private Seat seat(Room room, String number, SeatType type) {
+        Seat seat = new Seat(room, number, number.substring(0, 1), type);
+        ReflectionTestUtils.setField(seat, "id", UUID.randomUUID());
         return seat;
     }
 
-    private void setId(Object entity, UUID id) {
+    private void assignPublishedPricing(Showtime showtime) {
+        CinemaPricingPolicy policy = mock(CinemaPricingPolicy.class);
+        CinemaPricingPolicyVersion version =
+                mock(CinemaPricingPolicyVersion.class);
+        ShowtimeScreeningVersion screening =
+                mock(ShowtimeScreeningVersion.class);
 
-        /*
-         * Dùng helper thiết lập ID hiện có của common-test
-         * hoặc ReflectionTestUtils nếu BaseEntity không có setter.
-         */
-        org.springframework.test.util.ReflectionTestUtils.setField(entity, "id", id);
+        when(policy.getId()).thenReturn(POLICY_ID);
+        when(version.getId()).thenReturn(VERSION_ID);
+        when(version.getPolicy()).thenReturn(policy);
+        when(version.getStatus()).thenReturn(PricingPolicyVersionStatus.PUBLISHED);
+        when(version.appliesTo(CINEMA_ID)).thenReturn(true);
+        when(screening.getContentFormat()).thenReturn(ContentFormat.TWO_D);
+
+        showtime.replacePricingPolicyVersion(version);
+        ReflectionTestUtils.setField(showtime, "screeningVersion", screening);
+    }
+
+    private FareMatrixResponse matrix() {
+        return new FareMatrixResponse(
+                POLICY_ID,
+                VERSION_ID,
+                1L,
+                0L,
+                PricingDayGroup.WEEKDAY,
+                PricingPolicyVersionStatus.PUBLISHED,
+                List.of(
+                        new FareMatrixResponse.ScopeResponse(
+                                PricingExperienceType.STANDARD,
+                                ContentFormat.TWO_D)),
+                List.of(
+                        new FareMatrixResponse.TimeBandResponse(
+                                BAND_ID, "Buổi tối", 1020, 1440, 0)),
+                List.of(
+                        new FareMatrixResponse.TicketGroupResponse(
+                                GROUP_ID, "Mặc định", null, true, 0)),
+                GROUP_ID,
+                List.of(SeatType.STANDARD, SeatType.COUPLE),
+                2,
+                2,
+                0,
+                true,
+                List.of(
+                        cell(SeatType.STANDARD, BigDecimal.ZERO, FareUnit.SEAT),
+                        cell(SeatType.COUPLE, new BigDecimal("217000"), FareUnit.PAIR)),
+                new FareMatrixResponse.Options(
+                        List.of(PricingExperienceType.STANDARD),
+                        List.of(ContentFormat.TWO_D),
+                        List.of(
+                                new FareMatrixResponse.SeatTypeOption(
+                                        SeatType.STANDARD, FareUnit.SEAT, 1),
+                                new FareMatrixResponse.SeatTypeOption(
+                                        SeatType.COUPLE, FareUnit.PAIR, 2)),
+                        List.of(FareCellState.PRICED)));
+    }
+
+    private FareMatrixResponse.CellResponse cell(
+            SeatType type, BigDecimal amount, FareUnit unit) {
+
+        return new FareMatrixResponse.CellResponse(
+                PricingExperienceType.STANDARD,
+                ContentFormat.TWO_D,
+                BAND_ID,
+                GROUP_ID,
+                type,
+                FareCellState.PRICED,
+                amount,
+                unit);
     }
 }

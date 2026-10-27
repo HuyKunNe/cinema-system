@@ -5,6 +5,7 @@ import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.inventory.client.MovieCatalogClient;
 import com.cinema.inventory.config.BookableShowtimeProperties;
+import com.cinema.inventory.dto.request.CreateShowtimeBatchRequest;
 import com.cinema.inventory.dto.request.CreateShowtimeRequest;
 import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
 import com.cinema.inventory.dto.response.ShowtimeResponse;
@@ -77,6 +78,12 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     @Override
     public ShowtimeResponse create(CreateShowtimeRequest request) {
         return showtimeCreationService.create(request);
+    }
+
+    @Override
+    public List<ShowtimeResponse> createBatch(CreateShowtimeBatchRequest request) {
+
+        return showtimeCreationService.createBatch(request);
     }
 
     @Override

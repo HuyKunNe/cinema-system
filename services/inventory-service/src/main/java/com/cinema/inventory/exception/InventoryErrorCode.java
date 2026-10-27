@@ -830,6 +830,12 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_INVALID_PRICING_DEFINITION",
                     "Pricing time-band and ticket-group definitions are invalid");
 
+    public static final InventoryErrorCode INVALID_SHOWTIME_BATCH =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_INVALID_SHOWTIME_BATCH",
+                    "A showtime batch must contain between 1 and 50 non-null items");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;
