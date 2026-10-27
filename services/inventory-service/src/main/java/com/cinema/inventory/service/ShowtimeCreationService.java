@@ -1,9 +1,12 @@
 package com.cinema.inventory.service;
 
+import com.cinema.common.exception.exception.BusinessException;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.inventory.client.MovieCatalogClient;
+import com.cinema.inventory.client.MovieCatalogClient.MovieSchedulingDetails;
+import com.cinema.inventory.dto.request.CreateShowtimeBatchRequest;
 import com.cinema.inventory.dto.request.CreateShowtimeRequest;
 import com.cinema.inventory.dto.response.ShowtimeResponse;
 import com.cinema.inventory.entity.Room;
@@ -12,6 +15,7 @@ import com.cinema.inventory.entity.ShowtimeScheduling;
 import com.cinema.inventory.entity.ShowtimeScreeningVersion;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
+import com.cinema.inventory.exception.ShowtimeBatchItemException;
 import com.cinema.inventory.mapper.ShowtimeMapper;
 import com.cinema.inventory.repository.CinemaPricingPolicyVersionRepository;
 import com.cinema.inventory.repository.RoomRepository;
@@ -27,15 +31,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.Set;
-import com.cinema.inventory.client.MovieCatalogClient.MovieSchedulingDetails;
-import com.cinema.inventory.dto.request.CreateShowtimeBatchRequest;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -75,10 +76,9 @@ public class ShowtimeCreationService {
         this.transactions.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
 
-        @Transactional(propagation = Propagation.NEVER)
+    @Transactional(propagation = Propagation.NEVER)
     public ShowtimeResponse create(CreateShowtimeRequest request) {
-        PreparedCreation prepared =
-                prepare(request, new HashMap<>(), new HashMap<>());
+        PreparedCreation prepared = prepare(request, new HashMap<>(), new HashMap<>());
 
         return transactions.execute(
                 status ->
@@ -90,47 +90,51 @@ public class ShowtimeCreationService {
     }
 
     @Transactional(propagation = Propagation.NEVER)
-    public List<ShowtimeResponse> createBatch(
-            CreateShowtimeBatchRequest request) {
+    public List<ShowtimeResponse> createBatch(CreateShowtimeBatchRequest request) {
 
         if (request == null
                 || request.showtimes() == null
                 || request.showtimes().isEmpty()
-                || request.showtimes().size()
-                        > CreateShowtimeBatchRequest.MAX_SHOWTIMES
+                || request.showtimes().size() > CreateShowtimeBatchRequest.MAX_SHOWTIMES
                 || request.showtimes().stream().anyMatch(Objects::isNull)) {
 
-            throw new ValidationException(
-                    InventoryErrorCode.INVALID_SHOWTIME_BATCH);
+            throw new ValidationException(InventoryErrorCode.INVALID_SHOWTIME_BATCH);
         }
 
-        List<CreateShowtimeRequest> items =
-                List.copyOf(request.showtimes());
+        List<CreateShowtimeRequest> items = List.copyOf(request.showtimes());
 
         Map<UUID, MovieSchedulingDetails> movieCache = new HashMap<>();
-        Map<ScreeningVersionKey, ShowtimeScreeningVersion> versionCache =
-                new HashMap<>();
+        Map<ScreeningVersionKey, ShowtimeScreeningVersion> versionCache = new HashMap<>();
 
         List<PreparedCreation> prepared = new ArrayList<>(items.size());
 
-        for (CreateShowtimeRequest item : items) {
-            prepared.add(prepare(item, movieCache, versionCache));
+        for (int index = 0; index < items.size(); index++) {
+            try {
+                prepared.add(prepare(items.get(index), movieCache, versionCache));
+            } catch (BusinessException exception) {
+                throw new ShowtimeBatchItemException(index, exception);
+            }
         }
 
         return transactions.execute(
                 status -> {
                     lockBatchRooms(prepared);
 
-                    List<ShowtimeResponse> responses =
-                            new ArrayList<>(prepared.size());
+                    List<ShowtimeResponse> responses = new ArrayList<>(prepared.size());
 
-                    for (PreparedCreation item : prepared) {
-                        responses.add(
-                                persist(
-                                        item.request(),
-                                        item.screeningVersion(),
-                                        item.scheduling(),
-                                        item.releaseDate()));
+                    for (int index = 0; index < prepared.size(); index++) {
+                        PreparedCreation item = prepared.get(index);
+
+                        try {
+                            responses.add(
+                                    persist(
+                                            item.request(),
+                                            item.screeningVersion(),
+                                            item.scheduling(),
+                                            item.releaseDate()));
+                        } catch (BusinessException exception) {
+                            throw new ShowtimeBatchItemException(index, exception);
+                        }
                     }
 
                     return List.copyOf(responses);
@@ -146,13 +150,11 @@ public class ShowtimeCreationService {
                 || request.movieId() == null
                 || request.movieScreeningVersionId() == null) {
 
-            throw new ValidationException(
-                    InventoryErrorCode.SCREENING_VERSION_REQUIRED);
+            throw new ValidationException(InventoryErrorCode.SCREENING_VERSION_REQUIRED);
         }
 
         if (request.roomId() == null) {
-            throw new ValidationException(
-                    InventoryErrorCode.SHOWTIME_ROOM_REQUIRED);
+            throw new ValidationException(InventoryErrorCode.SHOWTIME_ROOM_REQUIRED);
         }
 
         validateTimes(request.startsAt(), request.endsAt());
@@ -160,21 +162,17 @@ public class ShowtimeCreationService {
 
         MovieSchedulingDetails movie =
                 movieCache.computeIfAbsent(
-                        request.movieId(),
-                        movieCatalogClient::getMovieForScheduling);
+                        request.movieId(), movieCatalogClient::getMovieForScheduling);
 
         ScreeningVersionKey key =
-                new ScreeningVersionKey(
-                        request.movieId(),
-                        request.movieScreeningVersionId());
+                new ScreeningVersionKey(request.movieId(), request.movieScreeningVersionId());
 
         ShowtimeScreeningVersion cachedVersion =
                 versionCache.computeIfAbsent(
                         key,
                         ignored ->
                                 movieCatalogClient.getActiveVersion(
-                                        key.movieId(),
-                                        key.screeningVersionId()));
+                                        key.movieId(), key.screeningVersionId()));
 
         ShowtimeScreeningVersion screeningVersion =
                 new ShowtimeScreeningVersion(
@@ -192,38 +190,33 @@ public class ShowtimeCreationService {
                         request.breakMinutes(),
                         request.endsAt());
 
-        scheduling.validateDuration(
-                request.startsAt(),
-                request.endsAt());
+        scheduling.validateDuration(request.startsAt(), request.endsAt());
 
-        return new PreparedCreation(
-                request,
-                screeningVersion,
-                scheduling,
-                movie.releaseDate());
+        return new PreparedCreation(request, screeningVersion, scheduling, movie.releaseDate());
     }
 
     private void lockBatchRooms(List<PreparedCreation> prepared) {
-        List<UUID> roomIds =
-                prepared.stream()
-                        .map(item -> item.request().roomId())
-                        .distinct()
-                        .sorted()
-                        .toList();
+        Map<UUID, Integer> firstIndexByRoom = new HashMap<>();
+
+        for (int index = 0; index < prepared.size(); index++) {
+            firstIndexByRoom.putIfAbsent(prepared.get(index).request().roomId(), index);
+        }
+
+        List<UUID> roomIds = firstIndexByRoom.keySet().stream().sorted().toList();
 
         for (UUID roomId : roomIds) {
             roomRepository
                     .findByIdForUpdate(roomId)
                     .orElseThrow(
                             () ->
-                                    new NotFoundException(
-                                            InventoryErrorCode.ROOM_NOT_FOUND));
+                                    new ShowtimeBatchItemException(
+                                            firstIndexByRoom.get(roomId),
+                                            new NotFoundException(
+                                                    InventoryErrorCode.ROOM_NOT_FOUND)));
         }
     }
 
-    private record ScreeningVersionKey(
-            UUID movieId,
-            UUID screeningVersionId) {}
+    private record ScreeningVersionKey(UUID movieId, UUID screeningVersionId) {}
 
     private record PreparedCreation(
             CreateShowtimeRequest request,
