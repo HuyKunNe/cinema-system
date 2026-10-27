@@ -47,6 +47,34 @@ Current status:
 
 ## 2026-10-27
 
+### Showtime Rescheduling Release-Date Validation
+
+#### Changed
+
+- Validate the current movie release date when rescheduling a showtime.
+- Read releaseDate from the existing Movie Service movie endpoint.
+- Perform the catalog request before Inventory pessimistic write locks.
+- Share cinema-local release-date validation between creation and rescheduling.
+- Lock room, cinema and showtime in that order during rescheduling.
+- Recheck the expected version and scheduling identity after locking.
+- Accept screenings on the release date.
+- Preserve movies with no configured release date.
+- Preserve the pinned screening version and scheduling duration.
+
+#### API and database
+
+- Reuse PUT /api/v1/showtimes/{showtimeId}.
+- Reuse INVENTORY_SHOWTIME_BEFORE_RELEASE_DATE.
+- No request, response or database migration changes.
+- Rescheduling now requires a successful Movie Service release-date lookup.
+
+#### Verification status
+
+- Updated the service constructor wiring in the existing test.
+- Tests and build were not run.
+- Manual release-date, timezone, catalog-failure and concurrency checks
+  remain pending.
+
 ### Pricing Draft Creation From Published Versions
 
 #### Added

@@ -1,5 +1,17 @@
 package com.cinema.inventory.service;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.Set;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
+
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
@@ -15,19 +27,6 @@ import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.ShowtimeMapper;
 import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
-
-import java.time.Clock;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.util.Set;
 
 @Service
 public class ShowtimeCreationService {
@@ -118,7 +117,8 @@ public class ShowtimeCreationService {
             throw new ConflictException(InventoryErrorCode.CINEMA_INACTIVE);
         }
 
-        validateReleaseDate(request.startsAt(), room.getCinema().getTimeZone(), releaseDate);
+        ShowtimeReleaseDateValidator.validate(
+                request.startsAt(), room.getCinema().getTimeZone(), releaseDate);
 
         var formats = room.getSupportedContentFormats();
 
@@ -176,25 +176,4 @@ public class ShowtimeCreationService {
         }
     }
 
-    private void validateReleaseDate(
-            OffsetDateTime startsAt, String configuredTimeZone, LocalDate releaseDate) {
-
-        if (releaseDate == null) {
-            return;
-        }
-
-        String zoneName = configuredTimeZone == null ? "Asia/Ho_Chi_Minh" : configuredTimeZone;
-
-        if (!ZoneId.getAvailableZoneIds().contains(zoneName)) {
-            throw new ValidationException(InventoryErrorCode.CINEMA_TIME_ZONE_INVALID);
-        }
-
-        ZoneId cinemaZone = ZoneId.of(zoneName);
-
-        LocalDate screeningDate = startsAt.atZoneSameInstant(cinemaZone).toLocalDate();
-
-        if (screeningDate.isBefore(releaseDate)) {
-            throw new ValidationException(InventoryErrorCode.SHOWTIME_BEFORE_RELEASE_DATE);
-        }
-    }
 }

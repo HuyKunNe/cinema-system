@@ -151,4 +151,12 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, UUID> {
             @Param("startsAt") OffsetDateTime startsAt,
             @Param("readyAt") OffsetDateTime readyAt,
             @Param("excludedStatuses") Collection<ShowtimeStatus> excludedStatuses);
+
+    @Query(
+            """
+            select showtime.movieId
+            from Showtime showtime
+            where showtime.id = :showtimeId
+            """)
+    Optional<UUID> findMovieIdForScheduleChange(@Param("showtimeId") UUID showtimeId);
 }

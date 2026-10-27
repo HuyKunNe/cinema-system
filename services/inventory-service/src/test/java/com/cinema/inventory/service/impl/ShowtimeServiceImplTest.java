@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.inventory.client.MovieCatalogClient;
 import com.cinema.inventory.config.BookableShowtimeProperties;
 import com.cinema.inventory.dto.request.CreateShowtimeRequest;
 import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
@@ -75,6 +76,8 @@ class ShowtimeServiceImplTest {
 
     @Mock private ShowtimeCreationService showtimeCreationService;
 
+    @Mock private MovieCatalogClient movieCatalogClient;
+
     private ShowtimeServiceImpl showtimeService;
 
     private static final BigDecimal BASE_PRICE = new BigDecimal("100000.00");
@@ -89,7 +92,8 @@ class ShowtimeServiceImplTest {
                         Clock.fixed(STARTS_AT.minusDays(1).toInstant(), STARTS_AT.getOffset()),
                         new BookableShowtimeProperties(),
                         showtimeCreationService,
-                        cinemaRepository);
+                        cinemaRepository,
+                        movieCatalogClient);
     }
 
     @Test

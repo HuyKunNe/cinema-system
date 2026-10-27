@@ -859,6 +859,31 @@ R24.5             — DONE
 R24               — DONE
 ```
 
+### Post-R27 showtime release-date validation
+
+Status: **IMPLEMENTED IN SOURCE — VERIFICATION PENDING**
+
+Implemented:
+
+- cinema-local release-date validation during showtime creation;
+- current Movie Service release-date lookup during rescheduling;
+- shared release-date validation for creation and rescheduling;
+- catalog lookup before Inventory pessimistic write locks;
+- room, cinema and showtime lock order during rescheduling;
+- version and scheduling-identity checks after locking.
+
+Verification pending:
+
+- rejection before the release date;
+- acceptance on the release date;
+- equivalent instants represented with different UTC offsets;
+- movies without a configured release date;
+- release-date changes made after showtime creation;
+- catalog failure without a persisted schedule change;
+- concurrent schedule updates with the same expected version.
+
+No public DTO or database migration changes are required.
+
 ### Post-R27 versioned pricing workflow
 
 Status: **IN PROGRESS**

@@ -1,8 +1,14 @@
 package com.cinema.inventory.client;
 
-import java.time.LocalDate;
-import java.util.Set;
-import java.util.UUID;
+import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.NotFoundException;
+import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.inventory.entity.ShowtimeScreeningVersion;
+import com.cinema.inventory.enums.ContentFormat;
+import com.cinema.inventory.enums.PresentationType;
+import com.cinema.inventory.exception.InventoryErrorCode;
+import com.cinema.inventory.exception.MovieCatalogUnavailableException;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
@@ -15,15 +21,9 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
-import com.cinema.common.exception.exception.ConflictException;
-import com.cinema.common.exception.exception.NotFoundException;
-import com.cinema.common.exception.exception.ValidationException;
-import com.cinema.inventory.entity.ShowtimeScreeningVersion;
-import com.cinema.inventory.enums.ContentFormat;
-import com.cinema.inventory.enums.PresentationType;
-import com.cinema.inventory.exception.InventoryErrorCode;
-import com.cinema.inventory.exception.MovieCatalogUnavailableException;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.time.LocalDate;
+import java.util.Set;
+import java.util.UUID;
 
 @Component
 public class MovieCatalogClient {
@@ -74,6 +74,21 @@ public class MovieCatalogClient {
 
         return new MovieSchedulingDetails(
                 response.durationMinutes(), response.version(), response.releaseDate());
+    }
+
+    public LocalDate getMovieReleaseDate(UUID movieId) {
+        RemoteMovie response =
+                get(
+                        "/api/v1/movies/{movieId}",
+                        RemoteMovie.class,
+                        InventoryErrorCode.MOVIE_NOT_FOUND,
+                        movieId);
+
+        if (response == null || !movieId.equals(response.id())) {
+            throw new MovieCatalogUnavailableException();
+        }
+
+        return response.releaseDate();
     }
 
     public ShowtimeScreeningVersion getActiveVersion(UUID movieId, UUID versionId) {
