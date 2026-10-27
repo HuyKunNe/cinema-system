@@ -16,6 +16,7 @@ import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.inventory.entity.ShowSeat;
 import com.cinema.inventory.entity.Showtime;
+import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.repository.SeatRepository;
 import com.cinema.inventory.repository.ShowSeatRepository;
@@ -140,7 +141,16 @@ public class ShowSeatGenerationService {
         }
 
         if (showtime.getRoom() == null || showtime.getRoom().getId() == null) {
+
             throw new ValidationException(InventoryErrorCode.SHOWTIME_ROOM_REQUIRED);
+        }
+
+        if (showtime.getStatus() != ShowtimeStatus.SCHEDULED) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_EDITABLE);
+        }
+
+        if (showtime.getPricingPolicyVersion() != null) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_PRICING_GENERATION_LOCKED);
         }
     }
 }

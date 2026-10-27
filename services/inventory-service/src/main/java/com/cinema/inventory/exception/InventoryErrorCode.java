@@ -800,6 +800,36 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PRICING_FARE_NOT_APPLICABLE",
                     "The selected fare combination is not available in this version");
 
+    public static final InventoryErrorCode INVALID_SHOWTIME_PRICING =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_INVALID_SHOWTIME_PRICING",
+                    "Showtime pricing parameters are invalid");
+
+    public static final InventoryErrorCode SHOWTIME_PRICING_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_PRICING_REQUIRED",
+                    "Select a published pricing version before opening booking");
+
+    public static final InventoryErrorCode SHOWTIME_PRICING_CONTEXT_REQUIRED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_PRICING_CONTEXT_REQUIRED",
+                    "Showtime requires a configured room type and pinned content format");
+
+    public static final InventoryErrorCode SHOWTIME_PRICING_GENERATION_LOCKED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_PRICING_GENERATION_LOCKED",
+                    "Finish generating show seats before assigning a pricing version");
+
+    public static final InventoryErrorCode INVALID_PRICING_DEFINITION =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_INVALID_PRICING_DEFINITION",
+                    "Pricing time-band and ticket-group definitions are invalid");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

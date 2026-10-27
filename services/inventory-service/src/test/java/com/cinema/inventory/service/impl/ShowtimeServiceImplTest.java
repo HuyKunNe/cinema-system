@@ -12,6 +12,20 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
@@ -31,20 +45,7 @@ import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ShowSeatGenerationService;
 import com.cinema.inventory.service.ShowtimeCreationService;
 import com.cinema.inventory.service.ShowtimeLayoutService;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.math.BigDecimal;
-import java.time.Clock;
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import com.cinema.inventory.service.ShowtimePricingService;
 
 @ExtendWith(MockitoExtension.class)
 class ShowtimeServiceImplTest {
@@ -78,6 +79,8 @@ class ShowtimeServiceImplTest {
 
     @Mock private MovieCatalogClient movieCatalogClient;
 
+    @Mock private ShowtimePricingService showtimePricingService;
+
     private ShowtimeServiceImpl showtimeService;
 
     private static final BigDecimal BASE_PRICE = new BigDecimal("100000.00");
@@ -93,7 +96,8 @@ class ShowtimeServiceImplTest {
                         new BookableShowtimeProperties(),
                         showtimeCreationService,
                         cinemaRepository,
-                        movieCatalogClient);
+                        movieCatalogClient,
+                        showtimePricingService);
     }
 
     @Test

@@ -859,6 +859,77 @@ R24.5             — DONE
 R24               — DONE
 ```
 
+### Configurable pricing definitions
+
+Status: **REQUIREMENTS CONFIRMED — IMPLEMENTATION PENDING**
+
+Authoritative specification:
+docs/18_PRICING_CONFIGURATION.md.
+
+Confirmed requirements:
+
+- configurable named time bands;
+- configurable ticket groups and display ordering;
+- descriptive eligibility conditions without automatic age inference;
+- exactly one unconditional default regular-price group per version;
+- identifier-based matrix references;
+- immutable published definitions;
+- migration preserving existing version IDs, amounts and non-sale states.
+
+Implementation sequence:
+
+1. Migrate fixed bands and categories to version-owned definitions.
+2. Update draft editing, matrix storage, validation and revision copying.
+3. Update publication and fare resolution.
+4. Integrate showtime assignments and booking group references.
+5. Regenerate FE clients and replace fixed labels and selectors.
+
+The fixed-enum implementation below remains the current runtime baseline.
+Implementation proposals using hard-coded ADULT or BEFORE_17/FROM_17
+must be updated before integration.
+
+### Configurable pricing definitions
+
+Status: **DATA MODEL IMPLEMENTED — API MIGRATION PENDING**
+
+Confirmed business:
+
+- configurable named time bands;
+- configurable ticket groups;
+- descriptive eligibility conditions;
+- one unconditional default regular-price group;
+- immutable published definitions.
+
+Implemented in source:
+
+- version-owned definition entities;
+- UUIDv7 definition identifiers;
+- V19 backfill of existing definitions and fare-cell references;
+- composite foreign keys enforcing version ownership;
+- definition initialization and legacy write synchronization;
+- definition copying when creating draft revisions;
+- publication checks for overlap and default-group consistency.
+
+Verification pending:
+
+- V19 migration with existing published and draft versions;
+- unchanged fare amounts and non-sale states;
+- non-null, correctly owned references on every stored fare cell;
+- legacy matrix replacement and clearing;
+- draft copying with new definition IDs.
+
+Next increment:
+
+- change matrix request and response keys to definition IDs;
+- add draft configuration editing;
+- update matrix completeness and business validation for dynamic definitions;
+- update fare resolution to configured time bands and ticket groups;
+- regenerate FE clients after the new contract is available.
+
+The existing enum-based APIs remain the compatibility contract
+during this data-model increment.
+
+
 ### Post-R27 showtime release-date validation
 
 Status: **IMPLEMENTED IN SOURCE — VERIFICATION PENDING**
@@ -900,6 +971,12 @@ Implemented in source:
 - nullable pricing version references on showtimes;
 - scheduled-only assignment guards for published, applicable versions;
 - pricing policy and version identifiers in showtime responses.
+- published pricing assignment through the showtime pricing API;
+- confirmed VIP-room to PREMIUM_CINEMA mapping;
+- exact ADULT seat fares for requests without ticket categories;
+- fare refresh after schedule changes and before opening;
+- required pricing selection for new opening transitions;
+- price immutability after opening and while held or booked.
 
 Verification pending:
 
@@ -912,15 +989,20 @@ Verification pending:
 - independent format prices, zero amounts and non-sale combinations;
 - showtime response mapping for assigned and unassigned references;
 - assignment guards when connected to the write APIs.
+- assignment and clearing with optimistic version checks;
+- assigned fare refresh across the cinema-local 17:00 boundary;
+- rejection of unavailable ADULT combinations;
+- rollback of schedule and pricing changes on incompatible fares;
+- pricing requirements for new opening transitions;
+- concurrent assignment, opening and seat-generation requests.
 
 Remaining implementation:
 
-- APIs that assign published pricing versions when creating or editing
-  scheduled showtimes;
-- room, format and fare compatibility checks for pricing assignments;
-- pricing validation before opening booking;
-- removal of legacy base-price and seat-multiplier pricing;
-- ticket-category propagation and booking fare snapshots;
+- direct pricing selection in CreateShowtimeRequest;
+- removal of legacy basePrice and defaultPrice request fields;
+- removal of legacy seat-multiplier pricing;
+- explicit ticket-category propagation through booking;
+- pricing provenance in booking fare snapshots and events;
 - batch showtime creation.
 
 This follow-up maintains the existing Inventory and Booking workflows.

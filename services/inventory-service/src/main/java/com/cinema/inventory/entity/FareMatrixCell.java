@@ -1,5 +1,6 @@
 package com.cinema.inventory.entity;
 
+import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
 import com.cinema.inventory.enums.ContentFormat;
@@ -19,9 +20,13 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Objects;
+import java.util.UUID;
 
 @Entity
 @Table(name = "pricing_fare_cells")
@@ -47,6 +52,22 @@ public class FareMatrixCell extends BaseEntity {
     @Column(name = "ticket_category", nullable = false, length = 30)
     private TicketCategory ticketCategory;
 
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(
+            name = "time_band_id",
+            nullable = false,
+            updatable = false,
+            columnDefinition = "BINARY(16)")
+    private UUID timeBandId;
+
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(
+            name = "ticket_group_id",
+            nullable = false,
+            updatable = false,
+            columnDefinition = "BINARY(16)")
+    private UUID ticketGroupId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "seat_type", nullable = false, length = 20)
     private SeatType seatType;
@@ -60,9 +81,7 @@ public class FareMatrixCell extends BaseEntity {
 
     protected FareMatrixCell() {}
 
-    public FareMatrixCell(
-            CinemaPricingPolicyVersion policyVersion,
-            Value value) {
+    public FareMatrixCell(CinemaPricingPolicyVersion policyVersion, Value value) {
 
         if (policyVersion == null
                 || policyVersion.getId() == null
@@ -78,19 +97,34 @@ public class FareMatrixCell extends BaseEntity {
         this.contentFormat = value.key().contentFormat();
         this.timeBand = value.key().timeBand();
         this.ticketCategory = value.key().ticketCategory();
+
+        this.timeBandId = policyVersion.requireLegacyTimeBand(value.key().timeBand()).getId();
+
+        this.ticketGroupId =
+                policyVersion.requireLegacyTicketGroup(value.key().ticketCategory()).getId();
         this.seatType = value.key().seatType();
         this.state = value.state();
         this.amount = value.amount();
     }
 
+    public UUID getTimeBandId() {
+        return timeBandId;
+    }
+
+    public UUID getTicketGroupId() {
+        return ticketGroupId;
+    }
+
     public Value toValue() {
+        if (!Objects.equals(timeBandId, policyVersion.requireLegacyTimeBand(timeBand).getId())
+                || !Objects.equals(
+                        ticketGroupId,
+                        policyVersion.requireLegacyTicketGroup(ticketCategory).getId())) {
+
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_DATA_INCONSISTENT);
+        }
         return new Value(
-                new Key(
-                        experienceType,
-                        contentFormat,
-                        timeBand,
-                        ticketCategory,
-                        seatType),
+                new Key(experienceType, contentFormat, timeBand, ticketCategory, seatType),
                 state,
                 amount);
     }
@@ -113,10 +147,7 @@ public class FareMatrixCell extends BaseEntity {
         }
     }
 
-    public record Value(
-            Key key,
-            FareCellState state,
-            BigDecimal amount) {
+    public record Value(Key key, FareCellState state, BigDecimal amount) {
 
         public Value {
             if (key == null || state == null) {
@@ -143,13 +174,11 @@ public class FareMatrixCell extends BaseEntity {
         }
 
         public boolean sameFare(Value other) {
-            return state == other.state
-                    && Objects.equals(amount, other.amount);
+            return state == other.state && Objects.equals(amount, other.amount);
         }
     }
 
     private static ValidationException invalid() {
-        return new ValidationException(
-                InventoryErrorCode.INVALID_FARE_MATRIX);
+        return new ValidationException(InventoryErrorCode.INVALID_FARE_MATRIX);
     }
 }

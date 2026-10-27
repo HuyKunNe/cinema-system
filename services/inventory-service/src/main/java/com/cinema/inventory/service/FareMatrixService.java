@@ -76,6 +76,12 @@ public class FareMatrixService {
         return loadMatrix(cinemaId, policyId, versionId);
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
+    public FareMatrixResponse getForShowtimePricing(UUID cinemaId, UUID policyId, UUID versionId) {
+
+        return loadMatrix(cinemaId, policyId, versionId);
+    }
+
     private FareMatrixResponse loadMatrix(UUID cinemaId, UUID policyId, UUID versionId) {
 
         requireCinema(cinemaId);

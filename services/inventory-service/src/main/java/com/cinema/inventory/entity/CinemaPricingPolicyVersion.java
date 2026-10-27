@@ -5,10 +5,12 @@ import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
 import com.cinema.inventory.enums.PricingDayGroup;
 import com.cinema.inventory.enums.PricingPolicyVersionStatus;
+import com.cinema.inventory.enums.PricingTimeBand;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.TicketCategory;
 import com.cinema.inventory.exception.InventoryErrorCode;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -20,6 +22,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 import org.hibernate.annotations.JdbcTypeCode;
@@ -27,7 +30,10 @@ import org.hibernate.type.SqlTypes;
 
 import java.text.Normalizer;
 import java.time.OffsetDateTime;
+import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -107,6 +113,12 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
     @Column(name = "seat_type", nullable = false, length = 20)
     private Set<SeatType> fareSeatTypes = new HashSet<>();
 
+    @OneToMany(mappedBy = "policyVersion", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<PricingTimeBandDefinition> pricingTimeBands = new HashSet<>();
+
+    @OneToMany(mappedBy = "policyVersion", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<PricingTicketGroup> pricingTicketGroups = new HashSet<>();
+
     protected CinemaPricingPolicyVersion() {}
 
     public CinemaPricingPolicyVersion(
@@ -124,6 +136,7 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
         this.cinemas.addAll(cinemas);
 
         apply(metadata);
+        initializePricingDefinitions();
     }
 
     public CinemaPricingPolicyVersion newDraft(long nextRevision, UUID clientRequestId) {
@@ -157,6 +170,9 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
 
         draft.replaceDraftMatrixDefinition(
                 copiedScopes, new HashSet<>(fareTicketCategories), new HashSet<>(fareSeatTypes));
+
+        draft.copyPricingDefinitionsFrom(this);
+        draft.validatePricingDefinitions();
 
         return draft;
     }
@@ -207,6 +223,8 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
 
         fareSeatTypes.clear();
         fareSeatTypes.addAll(seatTypes);
+
+        syncLegacyTicketGroups(categories);
 
         fareMatrixRevision++;
     }
@@ -268,6 +286,131 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
         this.dayGroup = metadata.dayGroup();
     }
 
+    public List<PricingTimeBandDefinition> getPricingTimeBands() {
+        return pricingTimeBands.stream()
+                .sorted(
+                        Comparator.comparingInt(PricingTimeBandDefinition::getSortOrder)
+                                .thenComparing(PricingTimeBandDefinition::getId))
+                .toList();
+    }
+
+    public List<PricingTicketGroup> getPricingTicketGroups() {
+        return pricingTicketGroups.stream()
+                .sorted(
+                        Comparator.comparingInt(PricingTicketGroup::getSortOrder)
+                                .thenComparing(PricingTicketGroup::getId))
+                .toList();
+    }
+
+    public PricingTimeBandDefinition requireLegacyTimeBand(PricingTimeBand code) {
+
+        if (code == null) {
+            throw inconsistentDefinitions();
+        }
+
+        return pricingTimeBands.stream()
+                .filter(definition -> definition.getLegacyCode() == code)
+                .findFirst()
+                .orElseThrow(CinemaPricingPolicyVersion::inconsistentDefinitions);
+    }
+
+    public PricingTicketGroup requireLegacyTicketGroup(TicketCategory category) {
+
+        if (category == null) {
+            throw inconsistentDefinitions();
+        }
+
+        return pricingTicketGroups.stream()
+                .filter(group -> group.getLegacyCategory() == category)
+                .findFirst()
+                .orElseThrow(CinemaPricingPolicyVersion::inconsistentDefinitions);
+    }
+
+    public void validatePricingDefinitions() {
+        if (pricingTimeBands.isEmpty()
+                || pricingTicketGroups.isEmpty()
+                || pricingTicketGroups.stream().filter(PricingTicketGroup::isDefaultGroup).count()
+                        != 1) {
+
+            throw new ValidationException(InventoryErrorCode.INVALID_PRICING_DEFINITION);
+        }
+
+        boolean[] occupied = new boolean[1440];
+
+        for (PricingTimeBandDefinition definition : pricingTimeBands) {
+            for (int minute = 0; minute < 1440; minute++) {
+                if (!definition.containsMinute(minute)) {
+                    continue;
+                }
+
+                if (occupied[minute]) {
+                    throw new ValidationException(InventoryErrorCode.INVALID_PRICING_DEFINITION);
+                }
+
+                occupied[minute] = true;
+            }
+        }
+
+        for (PricingTicketGroup group : pricingTicketGroups) {
+            if (group.isDefaultGroup() && group.getEligibilityDescription() != null) {
+
+                throw new ValidationException(InventoryErrorCode.INVALID_PRICING_DEFINITION);
+            }
+        }
+    }
+
+    private void initializePricingDefinitions() {
+        pricingTimeBands.add(PricingTimeBandDefinition.fromLegacy(this, PricingTimeBand.BEFORE_17));
+
+        pricingTimeBands.add(PricingTimeBandDefinition.fromLegacy(this, PricingTimeBand.FROM_17));
+
+        pricingTicketGroups.add(PricingTicketGroup.fromLegacy(this, TicketCategory.ADULT));
+    }
+
+    private void syncLegacyTicketGroups(Set<TicketCategory> categories) {
+
+        Set<TicketCategory> required = EnumSet.noneOf(TicketCategory.class);
+
+        required.add(TicketCategory.ADULT);
+        required.addAll(categories);
+
+        pricingTicketGroups.removeIf(
+                group ->
+                        group.getLegacyCategory() != null
+                                && !required.contains(group.getLegacyCategory()));
+
+        for (TicketCategory category : required) {
+            boolean exists =
+                    pricingTicketGroups.stream()
+                            .anyMatch(group -> group.getLegacyCategory() == category);
+
+            if (!exists) {
+                pricingTicketGroups.add(PricingTicketGroup.fromLegacy(this, category));
+            }
+        }
+    }
+
+    private void copyPricingDefinitionsFrom(CinemaPricingPolicyVersion source) {
+
+        pricingTimeBands.clear();
+
+        for (PricingTimeBandDefinition definition : source.pricingTimeBands) {
+
+            pricingTimeBands.add(definition.copyTo(this));
+        }
+
+        pricingTicketGroups.clear();
+
+        for (PricingTicketGroup group : source.pricingTicketGroups) {
+
+            pricingTicketGroups.add(group.copyTo(this));
+        }
+    }
+
+    private static ConflictException inconsistentDefinitions() {
+        return new ConflictException(InventoryErrorCode.PRICING_POLICY_DATA_INCONSISTENT);
+    }
+
     public CinemaPricingPolicy getPolicy() {
         return policy;
     }
@@ -305,7 +448,7 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
                 || publishedBy.length() > 255) {
             throw invalid();
         }
-
+        validatePricingDefinitions();
         this.status = PricingPolicyVersionStatus.PUBLISHED;
         this.publishedAt = publishedAt;
         this.publishedBy = publishedBy;

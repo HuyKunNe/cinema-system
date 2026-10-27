@@ -5,6 +5,7 @@ import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.ShowSeatStatus;
+import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
 
 import jakarta.persistence.Column;
@@ -128,7 +129,14 @@ public class ShowSeat extends BaseEntity {
     }
 
     public void changePrice(BigDecimal price) {
+        if (showtime == null || showtime.getStatus() != ShowtimeStatus.SCHEDULED) {
+
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_EDITABLE);
+        }
+
+        requireAdministrativeAvailabilityChange();
         validatePrice(price);
+
         this.price = price;
     }
 

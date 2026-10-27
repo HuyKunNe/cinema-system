@@ -47,6 +47,82 @@ Current status:
 
 ## 2026-10-27
 
+### Version-Owned Pricing Definitions — Data Migration
+
+#### Added
+
+- Add version-owned time-band and ticket-group entities.
+- Use UUIDv7 identifiers for imported and newly created definitions.
+- Add definition identifiers to stored fare cells.
+- Enforce version ownership through composite foreign keys.
+- Initialize definitions when creating a pricing version.
+- Synchronize definitions during legacy matrix writes.
+- Copy definitions to new IDs when creating a draft revision.
+- Validate non-overlapping bands and exactly one unconditional default group.
+
+#### Migration
+
+- V19 imports the existing time bands and configured categories.
+- Existing policy, version and fare-cell IDs remain unchanged.
+- Fare amounts, states and publication metadata remain unchanged.
+- Empty drafts receive the initial default regular-price group.
+- Eligibility descriptions start as null.
+- Existing enum columns remain as compatibility data.
+
+#### Runtime scope
+
+- Existing API contracts remain unchanged.
+- Arbitrary definitions are not editable through HTTP yet.
+- Identifier-based matrix DTOs and fare resolution are the next increment.
+- Deploy V19 with the entity and write-path changes in this increment.
+
+#### Verification status
+
+- Tests and build were not run.
+- Migration, existing matrix writes and draft-copy verification remain pending. 
+
+### Showtime Published Pricing Assignment
+
+#### Added
+
+- Add PUT /api/v1/showtimes/{showtimeId}/pricing.
+- Assign or clear an exact published version while SCHEDULED.
+- Use expectedVersion for assignment concurrency.
+- Resolve ADULT fares from the assigned version for every generated seat type.
+- Recalculate assigned fares after schedule changes.
+- Require and revalidate published pricing before opening booking.
+- Lock room, cinema, showtime and stable ShowSeat IDs during assignment.
+- Protect seat prices after opening and while held or booked.
+- Finish seat generation before assigning pricing.
+
+#### Confirmed business rules
+
+- RoomType.VIP maps to PREMIUM_CINEMA.
+- SeatType.VIP remains a separate seat type.
+- Booking requests containing only seatNumbers use ADULT fares.
+- Couple-seat amounts are copied for the entire pair without multiplication.
+- Time bands use the cinema-local screening start.
+- The selected version determines the day group.
+- No holiday calendar, format inheritance or surcharge is applied.
+
+#### Compatibility and remaining work
+
+- No migration is required beyond V18.
+- Existing creation and generation requests still contain legacy price inputs.
+- These provisional prices are replaced before a new opening transition.
+- Previously open showtimes and existing booking snapshots are not repriced.
+- Direct pricing selection in CreateShowtimeRequest remains pending.
+- Removing basePrice, defaultPrice and SeatPricingPolicy remains pending.
+- Explicit non-ADULT categories and pricing provenance in booking events
+  remain pending.
+
+#### Verification status
+
+- Updated service constructor wiring in the existing test.
+- Tests and build were not run.
+- Assignment, rollback, opening, boundary, booking snapshot and concurrency
+  checks remain pending.
+
 ### Showtime Pricing Version Reference Foundation
 
 #### Added

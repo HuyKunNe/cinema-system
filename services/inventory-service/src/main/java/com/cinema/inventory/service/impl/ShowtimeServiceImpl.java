@@ -19,6 +19,7 @@ import com.cinema.inventory.repository.CinemaRepository;
 import com.cinema.inventory.repository.RoomRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ShowtimeCreationService;
+import com.cinema.inventory.service.ShowtimePricingService;
 import com.cinema.inventory.service.ShowtimeReleaseDateValidator;
 import com.cinema.inventory.service.ShowtimeService;
 
@@ -49,6 +50,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     private final BookableShowtimeProperties bookableShowtimeProperties;
     private final ShowtimeCreationService showtimeCreationService;
     private final MovieCatalogClient movieCatalogClient;
+    private final ShowtimePricingService showtimePricingService;
 
     public ShowtimeServiceImpl(
             ShowtimeRepository showtimeRepository,
@@ -58,7 +60,8 @@ public class ShowtimeServiceImpl implements ShowtimeService {
             BookableShowtimeProperties bookableShowtimeProperties,
             ShowtimeCreationService showtimeCreationService,
             CinemaRepository cinemaRepository,
-            MovieCatalogClient movieCatalogClient) {
+            MovieCatalogClient movieCatalogClient,
+            ShowtimePricingService showtimePricingService) {
 
         this.showtimeRepository = showtimeRepository;
         this.roomRepository = roomRepository;
@@ -68,6 +71,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         this.showtimeCreationService = showtimeCreationService;
         this.cinemaRepository = cinemaRepository;
         this.movieCatalogClient = movieCatalogClient;
+        this.showtimePricingService = showtimePricingService;
     }
 
     @Override
@@ -213,6 +217,8 @@ public class ShowtimeServiceImpl implements ShowtimeService {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_OVERLAP);
         }
 
+        showtimePricingService.refreshIfAssigned(showtime);
+
         return flushAndMap(showtime);
     }
 
@@ -245,6 +251,8 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         if (!showtime.getStartsAt().isAfter(OffsetDateTime.now(clock))) {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_EDITABLE);
         }
+
+        showtimePricingService.requireAssignedAndRefresh(showtime);
 
         showtime.openForBooking();
 

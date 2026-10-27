@@ -58,9 +58,18 @@ public class ShowSeatServiceImpl implements ShowSeatService {
     @Transactional
     public List<ShowSeatResponse> generate(UUID showtimeId, GenerateShowSeatsRequest request) {
 
-        Showtime showtime = findShowtime(showtimeId);
+        Showtime showtime =
+                showtimeRepository
+                        .findByIdForUpdate(showtimeId)
+                        .orElseThrow(
+                                () -> new NotFoundException(InventoryErrorCode.SHOWTIME_NOT_FOUND));
 
         validateShowtimeEditable(showtime);
+
+        if (showtime.getPricingPolicyVersion() != null) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_PRICING_GENERATION_LOCKED);
+        }
+
         validateShowSeatsNotGenerated(showtimeId);
 
         List<LayoutSeatSnapshot> snapshots;
