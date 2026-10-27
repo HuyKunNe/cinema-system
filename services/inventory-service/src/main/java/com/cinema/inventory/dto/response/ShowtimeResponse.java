@@ -36,7 +36,58 @@ public record ShowtimeResponse(
                         nullable = true,
                         description = "Pinned scheduling details. Null for legacy showtimes.")
                 ShowtimeSchedulingResponse scheduling,
-        Long version) {
+        Long version,
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+                @Schema(
+                        nullable = true,
+                        description =
+                                "Policy owning the selected pricing version. "
+                                        + "Null while no pricing version is assigned.")
+                UUID pricingPolicyId,
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+                @Schema(
+                        nullable = true,
+                        description =
+                                "Exact pricing policy version selected for the showtime. "
+                                        + "Null while no pricing version is assigned.")
+                UUID pricingPolicyVersionId) {
+
+    public ShowtimeResponse(
+            UUID id,
+            UUID movieId,
+            UUID roomId,
+            String roomName,
+            UUID cinemaId,
+            String cinemaName,
+            OffsetDateTime startsAt,
+            OffsetDateTime endsAt,
+            ShowtimeStatus status,
+            OffsetDateTime createdAt,
+            OffsetDateTime updatedAt,
+            UUID roomLayoutId,
+            ShowtimeScreeningVersionResponse screeningVersion,
+            ShowtimeSchedulingResponse scheduling,
+            Long version) {
+
+        this(
+                id,
+                movieId,
+                roomId,
+                roomName,
+                cinemaId,
+                cinemaName,
+                startsAt,
+                endsAt,
+                status,
+                createdAt,
+                updatedAt,
+                roomLayoutId,
+                screeningVersion,
+                scheduling,
+                version,
+                null,
+                null);
+    }
 
     public ShowtimeResponse(
             UUID id,

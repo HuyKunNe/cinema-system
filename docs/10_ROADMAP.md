@@ -896,21 +896,29 @@ Implemented in source:
 - creation of a new draft from an explicitly selected published version;
 - idempotent draft creation and serialized revision allocation;
 - exact fare quotes from explicitly selected published versions;
-- cinema-local time-band resolution for published fare quotes.
+- cinema-local time-band resolution for published fare quotes;
+- nullable pricing version references on showtimes;
+- scheduled-only assignment guards for published, applicable versions;
+- pricing policy and version identifiers in showtime responses.
 
 Verification pending:
 
-- V17 migration on an existing database;
+- V17 and V18 migrations on an existing database;
 - exact copying of matrix dimensions, states and amounts;
 - source-version immutability;
 - repeated and concurrent draft-creation requests;
 - authorization through Gateway and Inventory;
 - fare quotes at the cinema-local 17:00 boundary;
-- independent format prices, zero amounts and non-sale combinations.
+- independent format prices, zero amounts and non-sale combinations;
+- showtime response mapping for assigned and unassigned references;
+- assignment guards when connected to the write APIs.
 
 Remaining implementation:
 
-- published-version binding to showtimes;
+- APIs that assign published pricing versions when creating or editing
+  scheduled showtimes;
+- room, format and fare compatibility checks for pricing assignments;
+- pricing validation before opening booking;
 - removal of legacy base-price and seat-multiplier pricing;
 - ticket-category propagation and booking fare snapshots;
 - batch showtime creation.

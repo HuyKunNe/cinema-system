@@ -1,8 +1,16 @@
 package com.cinema.inventory.entity;
 
+import java.time.OffsetDateTime;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+
 import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
+import com.cinema.inventory.enums.PricingPolicyVersionStatus;
 import com.cinema.inventory.enums.RoomLayoutStatus;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
@@ -17,12 +25,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-
-import java.time.OffsetDateTime;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
 
 @Entity
 @Table(name = "showtimes")
@@ -42,6 +44,10 @@ public class Showtime extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "room_layout_id", nullable = true, updatable = false)
     private RoomLayout roomLayout;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "pricing_policy_version_id", nullable = true)
+    private CinemaPricingPolicyVersion pricingPolicyVersion;
 
     @Column(name = "starts_at", nullable = false)
     private OffsetDateTime startsAt;
@@ -157,6 +163,34 @@ public class Showtime extends BaseEntity {
 
     public RoomLayout getRoomLayout() {
         return roomLayout;
+    }
+
+    public CinemaPricingPolicyVersion getPricingPolicyVersion() {
+        return pricingPolicyVersion;
+    }
+
+    public void replacePricingPolicyVersion(CinemaPricingPolicyVersion selectedVersion) {
+
+        requireStatus(ShowtimeStatus.SCHEDULED);
+
+        if (selectedVersion != null) {
+            if (selectedVersion.getStatus() != PricingPolicyVersionStatus.PUBLISHED) {
+
+                throw new ConflictException(
+                        InventoryErrorCode.PRICING_POLICY_VERSION_NOT_PUBLISHED);
+            }
+
+            if (room == null || room.getCinema() == null || room.getCinema().getId() == null) {
+
+                throw new ValidationException(InventoryErrorCode.SHOWTIME_ROOM_REQUIRED);
+            }
+
+            if (!selectedVersion.appliesTo(room.getCinema().getId())) {
+                throw new NotFoundException(InventoryErrorCode.PRICING_POLICY_VERSION_NOT_FOUND);
+            }
+        }
+
+        this.pricingPolicyVersion = selectedVersion;
     }
 
     void assignRoom(Room room) {

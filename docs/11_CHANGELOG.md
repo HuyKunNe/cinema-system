@@ -47,6 +47,36 @@ Current status:
 
 ## 2026-10-27
 
+### Showtime Pricing Version Reference Foundation
+
+#### Added
+
+- Add a nullable pricing policy version reference to Showtime.
+- Allow replacing or clearing the reference while the showtime is SCHEDULED.
+- Require assigned versions to be PUBLISHED and applicable to the cinema.
+- Expose pricingPolicyId and pricingPolicyVersionId in ShowtimeResponse.
+- Preserve existing Java response constructor signatures.
+
+#### Migration
+
+- V18 adds the nullable reference, index and foreign key.
+- Existing showtimes remain unassigned.
+- No version is selected automatically.
+- Existing seat prices and booking snapshots are not recalculated.
+
+#### Integration scope
+
+- This increment implements the data model and response mapping.
+- Creation and update requests do not accept pricing selection yet.
+- Opening validation and fixed-fare booking integration remain pending.
+- Legacy base-price and multiplier pricing still require replacement.
+
+#### Verification status
+
+- Tests and build were not run.
+- Migration and API response verification remain pending.
+- Assignment guards require verification when connected to the write APIs.
+
 ### Showtime Rescheduling Release-Date Validation
 
 #### Changed
