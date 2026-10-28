@@ -67,6 +67,9 @@ public class BookingSeat {
     @Column(name = "requested_ticket_group_id", updatable = false, columnDefinition = "BINARY(16)")
     private UUID requestedTicketGroupId;
 
+    @Column(name = "ticket_group_name", length = 120)
+    private String ticketGroupName;
+
     @JdbcTypeCode(SqlTypes.BINARY)
     @Column(name = "ticket_group_id", columnDefinition = "BINARY(16)")
     private UUID ticketGroupId;
@@ -88,17 +91,51 @@ public class BookingSeat {
         this(bookingId, showtimeId, seatNumber, null);
     }
 
-    public BookingSeat(
-            UUID bookingId, UUID showtimeId, String seatNumber, UUID requestedTicketGroupId) {
+    public void completeSnapshot(
+            UUID inventorySeatId, String seatType, BigDecimal price, UUID appliedTicketGroupId) {
 
-        validateBookingId(bookingId);
-        validateShowtimeId(showtimeId);
-        validateSeatNumber(seatNumber);
+        completeSnapshot(inventorySeatId, seatType, price, appliedTicketGroupId, null);
+    }
 
-        this.bookingId = bookingId;
-        this.showtimeId = showtimeId;
-        this.seatNumber = normalizeSeatNumber(seatNumber);
-        this.requestedTicketGroupId = requestedTicketGroupId;
+    public void completeSnapshot(
+            UUID inventorySeatId,
+            String seatType,
+            BigDecimal price,
+            UUID appliedTicketGroupId,
+            String appliedTicketGroupName) {
+
+        if (hasAnySnapshotValue()) {
+            throw new ConflictException(BookingErrorCode.SEAT_SNAPSHOT_ALREADY_COMPLETED);
+        }
+
+        validateInventorySeatId(inventorySeatId);
+        validateSeatType(seatType);
+        validatePrice(price);
+
+        if (requestedTicketGroupId != null
+                && !requestedTicketGroupId.equals(appliedTicketGroupId)) {
+
+            throw new ConflictException(BookingErrorCode.RESERVATION_RESULT_MISMATCH);
+        }
+
+        String normalizedGroupName = null;
+
+        if (appliedTicketGroupName != null) {
+            normalizedGroupName = appliedTicketGroupName.trim();
+
+            if (appliedTicketGroupId == null
+                    || normalizedGroupName.isBlank()
+                    || normalizedGroupName.length() > 120) {
+
+                throw new ValidationException(BookingErrorCode.EVENT_PAYLOAD_INVALID);
+            }
+        }
+
+        this.inventorySeatId = inventorySeatId;
+        this.seatType = seatType.trim().toUpperCase(Locale.ROOT);
+        this.price = price;
+        this.ticketGroupId = appliedTicketGroupId;
+        this.ticketGroupName = normalizedGroupName;
     }
 
     public UUID getId() {
@@ -127,6 +164,10 @@ public class BookingSeat {
 
     public UUID getTicketGroupId() {
         return ticketGroupId;
+    }
+
+    public String getTicketGroupName() {
+        return ticketGroupName;
     }
 
     public String getSeatType() {
@@ -180,7 +221,8 @@ public class BookingSeat {
         return inventorySeatId != null
                 || seatType != null
                 || price != null
-                || ticketGroupId != null;
+                || ticketGroupId != null
+                || ticketGroupName != null;
     }
 
     private static String normalizeSeatNumber(String seatNumber) {

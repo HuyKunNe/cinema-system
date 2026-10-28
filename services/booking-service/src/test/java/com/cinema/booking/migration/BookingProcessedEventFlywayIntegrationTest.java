@@ -135,6 +135,6 @@ class BookingProcessedEventFlywayIntegrationTest extends AbstractMySqlIntegratio
                         """,
                         String.class);
 
-        assertThat(versions).containsExactly("1");
+        assertThat(versions).containsExactly("1", "2", "3");
     }
 }

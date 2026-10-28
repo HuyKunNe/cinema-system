@@ -147,13 +147,20 @@ public class SeatReservationPricingService {
                 throw inconsistent();
             }
 
+            var group =
+                    matrix.ticketGroups().stream()
+                            .filter(candidate -> candidate.id().equals(fare.ticketGroupId()))
+                            .findFirst()
+                            .orElseThrow(SeatReservationPricingService::inconsistent);
+
             snapshots.add(
                     new ReservedSeatPayload(
                             seat.getId(),
                             seat.getSeatNumber(),
                             seat.getSeatType(),
                             fare.amount(),
-                            fare.ticketGroupId()));
+                            fare.ticketGroupId(),
+                            group.name()));
         }
 
         return new Resolution(true, snapshots);
@@ -180,4 +187,3 @@ public class SeatReservationPricingService {
         }
     }
 }
-

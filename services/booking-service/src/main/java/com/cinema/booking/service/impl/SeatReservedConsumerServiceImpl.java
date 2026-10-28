@@ -216,6 +216,14 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
             throw new ValidationException(BookingErrorCode.EVENT_PAYLOAD_INVALID);
         }
 
+        if (seat.ticketGroupName() != null
+                && (seat.ticketGroupId() == null
+                        || seat.ticketGroupName().isBlank()
+                        || seat.ticketGroupName().length() > 120)) {
+
+            throw new ValidationException(BookingErrorCode.EVENT_PAYLOAD_INVALID);
+        }
+
         requireInventoryResourceUuid(seat.inventorySeatId());
     }
 
@@ -258,7 +266,8 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
                     reservedSeat.inventorySeatId(),
                     reservedSeat.seatType(),
                     reservedSeat.price(),
-                    reservedSeat.ticketGroupId());
+                    reservedSeat.ticketGroupId(),
+                    reservedSeat.ticketGroupName());
 
             calculatedTotal = calculatedTotal.add(reservedSeat.price());
         }

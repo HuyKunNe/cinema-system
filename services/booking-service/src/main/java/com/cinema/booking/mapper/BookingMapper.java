@@ -33,5 +33,6 @@ public interface BookingMapper {
 
     @Mapping(target = "requestedTicketGroupId", source = "requestedTicketGroupId")
     @Mapping(target = "ticketGroupId", source = "ticketGroupId")
+    @Mapping(target = "ticketGroupName", source = "ticketGroupName")
     BookingSeatResponse toResponse(BookingSeat bookingSeat);
 }

@@ -260,6 +260,6 @@ class BookingFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                         """,
                         String.class);
 
-        assertThat(versions).containsExactly("1", "2");
+        assertThat(versions).containsExactly("1", "2", "3");
     }
 }

@@ -44,13 +44,7 @@ public class DefaultSeatReservedOutboxFactory implements SeatReservedOutboxFacto
 
         List<ReservedSeatPayload> seats =
                 showSeats.stream()
-                        .map(
-                                seat ->
-                                        new ReservedSeatPayload(
-                                                seat.getId(),
-                                                seat.getSeatNumber(),
-                                                seat.getSeatType(),
-                                                seat.getPrice()))
+                        .map(DefaultSeatReservedOutboxFactory::toDefaultSnapshot)
                         .toList();
 
         return createFromSnapshots(
@@ -127,6 +121,14 @@ public class DefaultSeatReservedOutboxFactory implements SeatReservedOutboxFacto
                 throw invalidPayload();
             }
 
+            if (seat.ticketGroupName() != null
+                    && (seat.ticketGroupId() == null
+                            || seat.ticketGroupName().isBlank()
+                            || seat.ticketGroupName().length() > 120)) {
+
+                throw invalidPayload();
+            }
+
             String number = seat.seatNumber().trim().toUpperCase(Locale.ROOT);
 
             if (!identifiers.add(seat.inventorySeatId()) || !numbers.add(number)) {
@@ -148,5 +150,34 @@ public class DefaultSeatReservedOutboxFactory implements SeatReservedOutboxFacto
 
     private static ValidationException invalidPayload() {
         return new ValidationException(InventoryErrorCode.EVENT_PAYLOAD_INVALID);
+    }
+
+    private static ReservedSeatPayload toDefaultSnapshot(ShowSeat seat) {
+
+        var selected = seat.getShowtime().getPricingPolicyVersion();
+
+        if (selected == null) {
+            return new ReservedSeatPayload(
+                    seat.getId(), seat.getSeatNumber(), seat.getSeatType(), seat.getPrice());
+        }
+
+        var defaults =
+                selected.getPricingTicketGroups().stream()
+                        .filter(group -> group.isDefaultGroup())
+                        .toList();
+
+        if (defaults.size() != 1) {
+            throw invalidPayload();
+        }
+
+        var group = defaults.getFirst();
+
+        return new ReservedSeatPayload(
+                seat.getId(),
+                seat.getSeatNumber(),
+                seat.getSeatType(),
+                seat.getPrice(),
+                group.getId(),
+                group.getName());
     }
 }

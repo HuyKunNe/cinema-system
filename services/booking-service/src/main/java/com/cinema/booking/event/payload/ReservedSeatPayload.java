@@ -10,11 +10,23 @@ public record ReservedSeatPayload(
         String seatNumber,
         String seatType,
         BigDecimal price,
-        @JsonInclude(JsonInclude.Include.NON_NULL) UUID ticketGroupId) {
+        @JsonInclude(JsonInclude.Include.NON_NULL) UUID ticketGroupId,
+        @JsonInclude(JsonInclude.Include.NON_NULL) String ticketGroupName) {
 
     public ReservedSeatPayload(
             UUID inventorySeatId, String seatNumber, String seatType, BigDecimal price) {
 
-        this(inventorySeatId, seatNumber, seatType, price, null);
+        this(inventorySeatId, seatNumber, seatType, price, null, null);
+    }
+
+    public ReservedSeatPayload(
+            UUID inventorySeatId,
+            String seatNumber,
+            String seatType,
+            BigDecimal price,
+            UUID ticketGroupId) {
+
+        this(inventorySeatId, seatNumber, seatType, price, ticketGroupId, null);
     }
 }
+
