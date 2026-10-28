@@ -101,6 +101,9 @@ public class InventorySecurityConfig {
                                                 "/api/v1/show-seats/*/book",
                                                 "/api/v1/show-seats/*/release")
                                         .hasAuthority("inventory:write")
+                                        .requestMatchers(
+                                                HttpMethod.POST, "/api/v1/showtimes/*/seat-quote")
+                                        .permitAll()
                                         .requestMatchers(SHOWTIME_MANAGEMENT_ENDPOINTS)
                                         .hasAuthority("showtime:manage")
                                         .requestMatchers(INVENTORY_MANAGEMENT_ENDPOINTS)
