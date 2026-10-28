@@ -98,6 +98,10 @@ public class DefaultBookingConfirmedPayloadValidator implements BookingConfirmed
         validateSeatType(seat.seatType());
 
         validateMoney(seat.price(), MAX_PRICE_PRECISION);
+
+        if (seat.ticketGroupId() != null) {
+            requireInventoryResourceUuid(seat.ticketGroupId());
+        }
     }
 
     private static void validateSeatNumber(String seatNumber) {

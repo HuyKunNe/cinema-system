@@ -50,7 +50,8 @@ public class DefaultBookingConfirmedOutboxFactory implements BookingConfirmedOut
                                         new ConfirmedSeatPayload(
                                                 seat.getSeatNumber(),
                                                 seat.getSeatType(),
-                                                seat.getPrice()))
+                                                seat.getPrice(),
+                                                seat.getTicketGroupId()))
                         .toList();
 
         BookingConfirmedPayload payload =

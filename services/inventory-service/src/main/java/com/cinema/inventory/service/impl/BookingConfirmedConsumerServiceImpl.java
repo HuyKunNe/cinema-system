@@ -140,14 +140,18 @@ public class BookingConfirmedConsumerServiceImpl implements BookingConfirmedCons
         }
 
         if (!showSeat.isHeldBy(payload.bookingId())) {
-
             throw new ConflictException(InventoryErrorCode.SEAT_NOT_HELD_BY_BOOKING);
         }
 
         if (showSeat.getSeatType() == null
-                || !showSeat.getSeatType().name().equals(expectedSeat.seatType())
-                || showSeat.getPrice() == null
-                || showSeat.getPrice().compareTo(expectedSeat.price()) != 0) {
+                || !showSeat.getSeatType().name().equals(expectedSeat.seatType())) {
+
+            throw mismatch();
+        }
+
+        if (expectedSeat.ticketGroupId() == null
+                && (showSeat.getPrice() == null
+                        || showSeat.getPrice().compareTo(expectedSeat.price()) != 0)) {
 
             throw mismatch();
         }
