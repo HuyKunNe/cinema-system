@@ -255,7 +255,10 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
             }
 
             bookingSeat.completeSnapshot(
-                    reservedSeat.inventorySeatId(), reservedSeat.seatType(), reservedSeat.price());
+                    reservedSeat.inventorySeatId(),
+                    reservedSeat.seatType(),
+                    reservedSeat.price(),
+                    reservedSeat.ticketGroupId());
 
             calculatedTotal = calculatedTotal.add(reservedSeat.price());
         }

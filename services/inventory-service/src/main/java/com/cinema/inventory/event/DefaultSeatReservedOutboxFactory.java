@@ -2,6 +2,7 @@ package com.cinema.inventory.event;
 
 import com.cinema.common.core.id.UuidGenerator;
 import com.cinema.common.exception.exception.InternalServerException;
+import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.common.outbox.enums.AggregateType;
 import com.cinema.inventory.entity.ShowSeat;
@@ -16,7 +17,10 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @Component
@@ -25,7 +29,6 @@ public class DefaultSeatReservedOutboxFactory implements SeatReservedOutboxFacto
     private final ObjectMapper objectMapper;
 
     public DefaultSeatReservedOutboxFactory(ObjectMapper objectMapper) {
-
         this.objectMapper = objectMapper;
     }
 
@@ -41,12 +44,39 @@ public class DefaultSeatReservedOutboxFactory implements SeatReservedOutboxFacto
 
         List<ReservedSeatPayload> seats =
                 showSeats.stream()
-                        .sorted(Comparator.comparing(ShowSeat::getSeatNumber))
-                        .map(this::toPayload)
+                        .map(
+                                seat ->
+                                        new ReservedSeatPayload(
+                                                seat.getId(),
+                                                seat.getSeatNumber(),
+                                                seat.getSeatType(),
+                                                seat.getPrice()))
                         .toList();
 
-        BigDecimal totalAmount =
+        return createFromSnapshots(
+                bookingId, showtimeId, seats, heldAt, holdExpiresAt, correlationId, causationId);
+    }
+
+    @Override
+    public OutboxEventEntity createFromSnapshots(
+            UUID bookingId,
+            UUID showtimeId,
+            List<ReservedSeatPayload> seats,
+            OffsetDateTime heldAt,
+            OffsetDateTime holdExpiresAt,
+            UUID correlationId,
+            UUID causationId) {
+
+        validateSnapshots(seats);
+
+        List<ReservedSeatPayload> snapshots =
                 seats.stream()
+                        .sorted(Comparator.comparing(ReservedSeatPayload::seatNumber))
+                        .toList();
+
+        // Each COUPLE snapshot already contains the entire pair price.
+        BigDecimal totalAmount =
+                snapshots.stream()
                         .map(ReservedSeatPayload::price)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -54,7 +84,7 @@ public class DefaultSeatReservedOutboxFactory implements SeatReservedOutboxFacto
                 new SeatReservedPayload(
                         bookingId,
                         showtimeId,
-                        seats,
+                        snapshots,
                         totalAmount,
                         InventoryEventContract.CURRENCY_VND,
                         heldAt,
@@ -75,17 +105,38 @@ public class DefaultSeatReservedOutboxFactory implements SeatReservedOutboxFacto
                 heldAt);
     }
 
-    private ReservedSeatPayload toPayload(ShowSeat showSeat) {
+    private static void validateSnapshots(List<ReservedSeatPayload> seats) {
 
-        return new ReservedSeatPayload(
-                showSeat.getId(),
-                showSeat.getSeatNumber(),
-                showSeat.getSeatType(),
-                showSeat.getPrice());
+        if (seats == null || seats.isEmpty()) {
+            throw invalidPayload();
+        }
+
+        Set<UUID> identifiers = new HashSet<>();
+        Set<String> numbers = new HashSet<>();
+
+        for (ReservedSeatPayload seat : seats) {
+            if (seat == null
+                    || seat.inventorySeatId() == null
+                    || seat.seatNumber() == null
+                    || seat.seatNumber().isBlank()
+                    || seat.seatNumber().length() > 20
+                    || seat.seatType() == null
+                    || seat.price() == null
+                    || seat.price().signum() < 0) {
+
+                throw invalidPayload();
+            }
+
+            String number = seat.seatNumber().trim().toUpperCase(Locale.ROOT);
+
+            if (!identifiers.add(seat.inventorySeatId()) || !numbers.add(number)) {
+
+                throw invalidPayload();
+            }
+        }
     }
 
     private String serialize(SeatReservedPayload payload) {
-
         try {
             return objectMapper.writeValueAsString(payload);
 
@@ -93,5 +144,9 @@ public class DefaultSeatReservedOutboxFactory implements SeatReservedOutboxFacto
             throw new InternalServerException(
                     InventoryErrorCode.OUTBOX_PAYLOAD_SERIALIZATION_FAILED, exception);
         }
+    }
+
+    private static ValidationException invalidPayload() {
+        return new ValidationException(InventoryErrorCode.EVENT_PAYLOAD_INVALID);
     }
 }

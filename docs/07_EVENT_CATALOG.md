@@ -607,6 +607,18 @@ not introduce an Inventory `RESERVED` state.
 }
 ```
 
+Each seat may include an optional `ticketGroupId`, identifying the ticket
+group actually applied by Inventory.
+
+The seat `price` is the authoritative reservation-price snapshot for that
+group. For COUPLE, it represents the entire pair price and is summed once.
+
+Booking stores the applied group together with the seat-price snapshot.
+When a specific group was requested, the applied group must match it.
+
+Legacy events may omit `ticketGroupId`. A legacy result cannot complete a
+seat that explicitly requested a ticket group.
+
 ## Consumer behavior
 
 Booking Service must perform one local transaction:

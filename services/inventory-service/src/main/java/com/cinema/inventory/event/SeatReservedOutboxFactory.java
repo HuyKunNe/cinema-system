@@ -2,6 +2,7 @@ package com.cinema.inventory.event;
 
 import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.inventory.entity.ShowSeat;
+import com.cinema.inventory.event.payload.ReservedSeatPayload;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -13,6 +14,15 @@ public interface SeatReservedOutboxFactory {
             UUID bookingId,
             UUID showtimeId,
             List<ShowSeat> showSeats,
+            OffsetDateTime heldAt,
+            OffsetDateTime holdExpiresAt,
+            UUID correlationId,
+            UUID causationId);
+
+    OutboxEventEntity createFromSnapshots(
+            UUID bookingId,
+            UUID showtimeId,
+            List<ReservedSeatPayload> seats,
             OffsetDateTime heldAt,
             OffsetDateTime holdExpiresAt,
             UUID correlationId,
