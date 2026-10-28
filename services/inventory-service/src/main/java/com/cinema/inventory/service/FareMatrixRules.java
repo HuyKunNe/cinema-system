@@ -5,7 +5,6 @@ import com.cinema.inventory.entity.FareMatrixCell.Key;
 import com.cinema.inventory.entity.FareMatrixCell.Value;
 import com.cinema.inventory.enums.ContentFormat;
 import com.cinema.inventory.enums.FareCellState;
-import com.cinema.inventory.enums.PricingDayGroup;
 import com.cinema.inventory.enums.PricingExperienceType;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.exception.InventoryErrorCode;
@@ -18,59 +17,31 @@ public final class FareMatrixRules {
 
     private FareMatrixRules() {}
 
-    public static void validateUniformFares(PricingDayGroup dayGroup, Map<Key, Value> values) {
+    public static void validateUniformFares(Map<Key, Value> values) {
 
         Map<PremiumGroup, Value> premiumGroups = new HashMap<>();
-        Map<CoupleGroup, Value> coupleGroups = new HashMap<>();
 
         for (Value value : values.values()) {
-            if (value.state() != FareCellState.PRICED) {
+            Key key = value.key();
+
+            // Every COUPLE cell is independently configured.
+            if (key.seatType() == SeatType.COUPLE
+                    || value.state() != FareCellState.PRICED
+                    || key.experienceType() != PricingExperienceType.PREMIUM_CINEMA) {
+
                 continue;
             }
 
-            Key key = value.key();
+            PremiumGroup group =
+                    new PremiumGroup(key.contentFormat(), key.timeBandId(), key.seatType());
 
-            // COUPLE has its own customer-group pricing rule.
-            if (key.experienceType() == PricingExperienceType.PREMIUM_CINEMA
-                    && key.seatType() != SeatType.COUPLE) {
+            Value previous = premiumGroups.putIfAbsent(group, value);
 
-                PremiumGroup group =
-                        new PremiumGroup(key.contentFormat(), key.timeBandId(), key.seatType());
-
-                requireSameFare(
-                        premiumGroups,
-                        group,
-                        value,
-                        InventoryErrorCode.PREMIUM_CATEGORY_FARE_CONFLICT);
+            if (previous != null && !previous.sameFare(value)) {
+                throw new ValidationException(InventoryErrorCode.PREMIUM_CATEGORY_FARE_CONFLICT);
             }
-
-            if (key.seatType() == SeatType.COUPLE && dayGroup != PricingDayGroup.HOLIDAY) {
-
-                CoupleGroup group =
-                        new CoupleGroup(
-                                key.experienceType(), key.contentFormat(), key.ticketGroupId());
-
-                requireSameFare(
-                        coupleGroups, group, value, InventoryErrorCode.COUPLE_FIXED_FARE_CONFLICT);
-            }
-        }
-    }
-
-    private static <K> void requireSameFare(
-            Map<K, Value> groups, K group, Value candidate, InventoryErrorCode errorCode) {
-
-        Value previous = groups.putIfAbsent(group, candidate);
-
-        if (previous != null && !previous.sameFare(candidate)) {
-            throw new ValidationException(errorCode);
         }
     }
 
     private record PremiumGroup(ContentFormat contentFormat, UUID timeBandId, SeatType seatType) {}
-
-    private record CoupleGroup(
-            PricingExperienceType experienceType,
-            ContentFormat contentFormat,
-            UUID ticketGroupId) {}
 }
-

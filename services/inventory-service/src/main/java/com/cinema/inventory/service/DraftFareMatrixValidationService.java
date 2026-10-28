@@ -96,7 +96,7 @@ public class DraftFareMatrixValidationService {
         }
 
         try {
-            FareMatrixRules.validateUniformFares(matrix.dayGroup(), configured);
+            FareMatrixRules.validateUniformFares(configured);
         } catch (ValidationException exception) {
             issues.add(
                     new Issue(

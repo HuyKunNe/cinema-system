@@ -146,7 +146,7 @@ public class FareMatrixService {
 
         Definition definition = normalize(request, revision);
 
-        FareMatrixRules.validateUniformFares(revision.getDayGroup(), definition.values());
+        FareMatrixRules.validateUniformFares(definition.values());
 
         Map<Key, Value> current = readValues(versionId);
 
