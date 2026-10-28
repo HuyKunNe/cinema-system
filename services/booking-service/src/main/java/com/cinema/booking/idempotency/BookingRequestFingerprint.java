@@ -1,5 +1,6 @@
 package com.cinema.booking.idempotency;
 
+import com.cinema.booking.dto.request.BookingSeatSelectionRequest;
 import com.cinema.booking.exception.BookingErrorCode;
 import com.cinema.common.exception.exception.InternalServerException;
 
@@ -12,6 +13,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
+import java.util.Comparator;
 
 @Component
 public class BookingRequestFingerprint {
@@ -41,6 +43,61 @@ public class BookingRequestFingerprint {
             throw new InternalServerException(
                     BookingErrorCode.REQUEST_FINGERPRINT_GENERATION_FAILED, exception);
         }
+    }
+
+    public String generateWithSeatSelections(
+            UUID showtimeId,
+            List<BookingSeatSelectionRequest> normalizedSeats,
+            BigDecimal expectedTotalAmount) {
+
+        boolean hasExplicitGroups =
+                normalizedSeats.stream().anyMatch(seat -> seat.ticketGroupId() != null);
+
+        if (!hasExplicitGroups) {
+            List<String> numbers =
+                    normalizedSeats.stream().map(BookingSeatSelectionRequest::seatNumber).toList();
+
+            return generate(showtimeId, numbers, expectedTotalAmount);
+        }
+
+        List<BookingSeatSelectionRequest> sorted =
+                normalizedSeats.stream()
+                        .sorted(Comparator.comparing(BookingSeatSelectionRequest::seatNumber))
+                        .toList();
+
+        StringBuilder canonical = new StringBuilder("booking-seat-groups-v1|");
+
+        appendField(canonical, showtimeId.toString());
+        appendField(canonical, Integer.toString(sorted.size()));
+
+        for (var seat : sorted) {
+            appendField(canonical, seat.seatNumber());
+            appendField(
+                    canonical, seat.ticketGroupId() == null ? "" : seat.ticketGroupId().toString());
+        }
+
+        appendField(
+                canonical,
+                expectedTotalAmount == null
+                        ? ""
+                        : expectedTotalAmount.stripTrailingZeros().toPlainString());
+
+        try {
+            MessageDigest digest = MessageDigest.getInstance(ALGORITHM);
+
+            return HexFormat.of()
+                    .formatHex(
+                            digest.digest(canonical.toString().getBytes(StandardCharsets.UTF_8)));
+
+        } catch (NoSuchAlgorithmException exception) {
+            throw new InternalServerException(
+                    BookingErrorCode.REQUEST_FINGERPRINT_GENERATION_FAILED, exception);
+        }
+    }
+
+    private static void appendField(StringBuilder target, String value) {
+
+        target.append(value.length()).append(':').append(value);
     }
 
     public String generate(

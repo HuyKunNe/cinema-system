@@ -78,7 +78,10 @@ public class DefaultSeatReservationRequestedOutboxFactory
 
         return bookingSeats.stream()
                 .sorted(Comparator.comparing(BookingSeat::getSeatNumber))
-                .map(bookingSeat -> new RequestedSeatPayload(bookingSeat.getSeatNumber()))
+                .map(
+                        seat ->
+                                new RequestedSeatPayload(
+                                        seat.getSeatNumber(), seat.getRequestedTicketGroupId()))
                 .toList();
     }
 

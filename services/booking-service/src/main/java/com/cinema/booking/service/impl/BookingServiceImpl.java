@@ -1,6 +1,7 @@
 package com.cinema.booking.service.impl;
 
 import com.cinema.booking.config.BookingProperties;
+import com.cinema.booking.dto.request.BookingSeatSelectionRequest;
 import com.cinema.booking.dto.request.CreateBookingRequest;
 import com.cinema.booking.dto.response.BookingResponse;
 import com.cinema.booking.entity.Booking;
@@ -28,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -71,34 +73,57 @@ public class BookingServiceImpl implements BookingService {
 
         requireUserId(userId);
 
-        String normalizedClientRequestId = normalizeClientRequestId(request.clientRequestId());
+        if (request == null || !request.isSeatSelectionValid()) {
+            throw new ValidationException(BookingErrorCode.INVALID_SEAT_SELECTION);
+        }
 
-        List<String> normalizedSeatNumbers = normalizeSeatNumbers(request.seatNumbers());
+        if (request.showtimeId() == null) {
+            throw new ValidationException(BookingErrorCode.SHOWTIME_ID_REQUIRED);
+        }
 
-        validateSeatCount(normalizedSeatNumbers);
-        validateNoDuplicateSeats(normalizedSeatNumbers);
+        String clientRequestId = normalizeClientRequestId(request.clientRequestId());
 
-        List<String> sortedSeatNumbers = normalizedSeatNumbers.stream().sorted().toList();
+        List<BookingSeatSelectionRequest> selections = normalizeSeatSelections(request);
+
+        List<String> numbers =
+                selections.stream().map(BookingSeatSelectionRequest::seatNumber).toList();
+
+        validateSeatCount(numbers);
+        validateNoDuplicateSeats(numbers);
+
+        List<BookingSeatSelectionRequest> sortedSelections =
+                selections.stream()
+                        .sorted(Comparator.comparing(BookingSeatSelectionRequest::seatNumber))
+                        .toList();
+
+        List<String> sortedNumbers =
+                sortedSelections.stream().map(BookingSeatSelectionRequest::seatNumber).toList();
 
         BigDecimal expectedTotalAmount = validateExpectedTotalAmount(request.expectedTotalAmount());
 
+        boolean hasExplicitGroups =
+                sortedSelections.stream().anyMatch(seat -> seat.ticketGroupId() != null);
+
         String fingerprint =
-                expectedTotalAmount == null
-                        ? requestFingerprint.generate(request.showtimeId(), sortedSeatNumbers)
-                        : requestFingerprint.generate(
-                                request.showtimeId(), sortedSeatNumbers, expectedTotalAmount);
+                hasExplicitGroups
+                        ? requestFingerprint.generateWithSeatSelections(
+                                request.showtimeId(), sortedSelections, expectedTotalAmount)
+                        : expectedTotalAmount == null
+                                ? requestFingerprint.generate(request.showtimeId(), sortedNumbers)
+                                : requestFingerprint.generate(
+                                        request.showtimeId(), sortedNumbers, expectedTotalAmount);
 
         return bookingRepository
-                .findByUserIdAndClientRequestId(userId, normalizedClientRequestId)
+                .findByUserIdAndClientRequestId(userId, clientRequestId)
                 .map(booking -> resolveExisting(booking, fingerprint))
                 .orElseGet(
                         () ->
                                 createOrResolveConcurrentRequest(
                                         userId,
                                         request.showtimeId(),
-                                        normalizedClientRequestId,
+                                        clientRequestId,
                                         fingerprint,
-                                        sortedSeatNumbers,
+                                        sortedSelections,
                                         expectedTotalAmount));
     }
 
@@ -152,22 +177,33 @@ public class BookingServiceImpl implements BookingService {
             UUID showtimeId,
             String clientRequestId,
             String fingerprint,
-            List<String> normalizedSeatNumbers,
+            List<BookingSeatSelectionRequest> selections,
             BigDecimal expectedTotalAmount) {
 
         try {
+            boolean hasExplicitGroups =
+                    selections.stream().anyMatch(seat -> seat.ticketGroupId() != null);
+
+            if (hasExplicitGroups) {
+                return bookingCreationService.createWithSeatSelections(
+                        userId,
+                        showtimeId,
+                        clientRequestId,
+                        fingerprint,
+                        selections,
+                        expectedTotalAmount);
+            }
+
+            List<String> numbers =
+                    selections.stream().map(BookingSeatSelectionRequest::seatNumber).toList();
+
             if (expectedTotalAmount == null) {
                 return bookingCreationService.createNew(
-                        userId, showtimeId, clientRequestId, fingerprint, normalizedSeatNumbers);
+                        userId, showtimeId, clientRequestId, fingerprint, numbers);
             }
 
             return bookingCreationService.createNew(
-                    userId,
-                    showtimeId,
-                    clientRequestId,
-                    fingerprint,
-                    normalizedSeatNumbers,
-                    expectedTotalAmount);
+                    userId, showtimeId, clientRequestId, fingerprint, numbers, expectedTotalAmount);
 
         } catch (DataIntegrityViolationException exception) {
             return bookingRepository
@@ -244,13 +280,17 @@ public class BookingServiceImpl implements BookingService {
     }
 
     private String normalizeSeatNumber(String seatNumber) {
-
         if (seatNumber == null || seatNumber.isBlank()) {
-
             throw new ValidationException(BookingErrorCode.SEAT_NUMBER_REQUIRED);
         }
 
-        return seatNumber.trim().toUpperCase(Locale.ROOT);
+        String normalized = seatNumber.trim().toUpperCase(Locale.ROOT);
+
+        if (normalized.isBlank() || normalized.length() > 20) {
+            throw new ValidationException(BookingErrorCode.INVALID_SEAT_SELECTION);
+        }
+
+        return normalized;
     }
 
     private void validateSeatCount(List<String> seatNumbers) {
@@ -267,6 +307,29 @@ public class BookingServiceImpl implements BookingService {
 
             throw new ValidationException(BookingErrorCode.DUPLICATE_SEAT_NUMBER);
         }
+    }
+
+    private List<BookingSeatSelectionRequest> normalizeSeatSelections(
+            CreateBookingRequest request) {
+
+        if (request.seatNumbers() != null) {
+            return normalizeSeatNumbers(request.seatNumbers()).stream()
+                    .map(number -> new BookingSeatSelectionRequest(number, null))
+                    .toList();
+        }
+
+        return request.seats().stream()
+                .map(
+                        seat -> {
+                            if (seat == null) {
+                                throw new ValidationException(
+                                        BookingErrorCode.INVALID_SEAT_SELECTION);
+                            }
+
+                            return new BookingSeatSelectionRequest(
+                                    normalizeSeatNumber(seat.seatNumber()), seat.ticketGroupId());
+                        })
+                .toList();
     }
 
     private static void requireUserId(UUID userId) {

@@ -1,6 +1,7 @@
 package com.cinema.booking.service.impl;
 
 import com.cinema.booking.config.BookingProperties;
+import com.cinema.booking.dto.request.BookingSeatSelectionRequest;
 import com.cinema.booking.dto.response.BookingResponse;
 import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
@@ -111,5 +112,48 @@ public class BookingCreationServiceImpl implements BookingCreationService {
                 requestFingerprint,
                 normalizedSeatNumbers,
                 null);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse createWithSeatSelections(
+            UUID userId,
+            UUID showtimeId,
+            String clientRequestId,
+            String requestFingerprint,
+            List<BookingSeatSelectionRequest> normalizedSeats,
+            BigDecimal expectedTotalAmount) {
+
+        OffsetDateTime now = OffsetDateTime.now(clock);
+
+        OffsetDateTime expiresAt = now.plus(bookingProperties.reservationExpiration());
+
+        Booking booking =
+                new Booking(
+                        userId, showtimeId, clientRequestId, requestFingerprint, expiresAt, now);
+
+        Booking savedBooking = bookingRepository.saveAndFlush(booking);
+
+        List<BookingSeat> bookingSeats =
+                normalizedSeats.stream()
+                        .map(
+                                selection ->
+                                        new BookingSeat(
+                                                savedBooking.getId(),
+                                                showtimeId,
+                                                selection.seatNumber(),
+                                                selection.ticketGroupId()))
+                        .toList();
+
+        List<BookingSeat> savedSeats = bookingSeatRepository.saveAll(bookingSeats);
+
+        OutboxEventEntity outboxEvent =
+                expectedTotalAmount == null
+                        ? outboxFactory.create(savedBooking, savedSeats, now)
+                        : outboxFactory.create(savedBooking, savedSeats, now, expectedTotalAmount);
+
+        outboxService.save(outboxEvent);
+
+        return bookingMapper.toResponse(savedBooking, savedSeats);
     }
 }

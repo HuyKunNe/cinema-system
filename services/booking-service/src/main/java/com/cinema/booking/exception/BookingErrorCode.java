@@ -315,6 +315,12 @@ public final class BookingErrorCode implements ErrorCode {
                     "Expected total amount must be nonnegative with "
                             + "at most 17 integer digits and 2 decimal places");
 
+    public static final BookingErrorCode INVALID_SEAT_SELECTION =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_INVALID_SEAT_SELECTION",
+                    "Supply exactly one valid seatNumbers or seats list");
+
     private final ErrorCategory category;
 
     private final String code;

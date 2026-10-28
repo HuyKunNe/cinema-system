@@ -1,5 +1,6 @@
 package com.cinema.booking.service;
 
+import com.cinema.booking.dto.request.BookingSeatSelectionRequest;
 import com.cinema.booking.dto.response.BookingResponse;
 
 import java.math.BigDecimal;
@@ -21,5 +22,13 @@ public interface BookingCreationService {
             String clientRequestId,
             String requestFingerprint,
             List<String> normalizedSeatNumbers,
+            BigDecimal expectedTotalAmount);
+
+    BookingResponse createWithSeatSelections(
+            UUID userId,
+            UUID showtimeId,
+            String clientRequestId,
+            String requestFingerprint,
+            List<BookingSeatSelectionRequest> normalizedSeats,
             BigDecimal expectedTotalAmount);
 }
