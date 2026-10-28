@@ -19,6 +19,8 @@ import com.cinema.inventory.exception.ShowtimeBatchItemException;
 import com.cinema.inventory.mapper.ShowtimeMapper;
 import com.cinema.inventory.repository.CinemaPricingPolicyVersionRepository;
 import com.cinema.inventory.repository.RoomRepository;
+import com.cinema.inventory.repository.ShowtimeBatchRequestRepository;
+import com.cinema.inventory.repository.ShowtimeBatchRequestRepository.StoredBatch;
 import com.cinema.inventory.repository.ShowtimeRepository;
 
 import org.springframework.stereotype.Service;
@@ -45,6 +47,8 @@ public class ShowtimeCreationService {
     private final RoomRepository roomRepository;
     private final ShowtimeRepository showtimeRepository;
     private final CinemaPricingPolicyVersionRepository pricingVersionRepository;
+    private final ShowtimeBatchRequestRepository batchRequestRepository;
+    private final ShowtimeBatchPayloadCodec batchCodec;
     private final ShowtimeLayoutService layoutService;
     private final ShowSeatGenerationService seatGenerationService;
     private final ShowtimeMapper mapper;
@@ -61,7 +65,9 @@ public class ShowtimeCreationService {
             MovieCatalogClient movieCatalogClient,
             Clock clock,
             PlatformTransactionManager transactionManager,
-            CinemaPricingPolicyVersionRepository pricingVersionRepository) {
+            CinemaPricingPolicyVersionRepository pricingVersionRepository,
+            ShowtimeBatchRequestRepository batchRequestRepository,
+            ShowtimeBatchPayloadCodec batchCodec) {
 
         this.roomRepository = roomRepository;
         this.showtimeRepository = showtimeRepository;
@@ -71,6 +77,8 @@ public class ShowtimeCreationService {
         this.movieCatalogClient = movieCatalogClient;
         this.clock = clock;
         this.pricingVersionRepository = pricingVersionRepository;
+        this.batchRequestRepository = batchRequestRepository;
+        this.batchCodec = batchCodec;
 
         this.transactions = new TransactionTemplate(transactionManager);
         this.transactions.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
@@ -93,6 +101,7 @@ public class ShowtimeCreationService {
     public List<ShowtimeResponse> createBatch(CreateShowtimeBatchRequest request) {
 
         if (request == null
+                || request.clientRequestId() == null
                 || request.showtimes() == null
                 || request.showtimes().isEmpty()
                 || request.showtimes().size() > CreateShowtimeBatchRequest.MAX_SHOWTIMES
@@ -101,7 +110,18 @@ public class ShowtimeCreationService {
             throw new ValidationException(InventoryErrorCode.INVALID_SHOWTIME_BATCH);
         }
 
+        UUID clientRequestId = request.clientRequestId();
         List<CreateShowtimeRequest> items = List.copyOf(request.showtimes());
+
+        String requestHash = batchCodec.fingerprint(items);
+
+        var completed = batchRequestRepository.find(clientRequestId);
+
+        if (completed.isPresent()) {
+            StoredBatch stored = completed.get();
+            requireSameRequest(stored, requestHash);
+            return batchCodec.decode(stored.responseJson());
+        }
 
         Map<UUID, MovieSchedulingDetails> movieCache = new HashMap<>();
         Map<ScreeningVersionKey, ShowtimeScreeningVersion> versionCache = new HashMap<>();
@@ -111,6 +131,7 @@ public class ShowtimeCreationService {
         for (int index = 0; index < items.size(); index++) {
             try {
                 prepared.add(prepare(items.get(index), movieCache, versionCache));
+
             } catch (BusinessException exception) {
                 throw new ShowtimeBatchItemException(index, exception);
             }
@@ -118,6 +139,16 @@ public class ShowtimeCreationService {
 
         return transactions.execute(
                 status -> {
+                    batchRequestRepository.claim(clientRequestId, requestHash);
+
+                    StoredBatch stored = batchRequestRepository.findForUpdate(clientRequestId);
+
+                    requireSameRequest(stored, requestHash);
+
+                    if (stored.responseJson() != null) {
+                        return batchCodec.decode(stored.responseJson());
+                    }
+
                     lockBatchRooms(prepared);
 
                     List<ShowtimeResponse> responses = new ArrayList<>(prepared.size());
@@ -132,13 +163,26 @@ public class ShowtimeCreationService {
                                             item.screeningVersion(),
                                             item.scheduling(),
                                             item.releaseDate()));
+
                         } catch (BusinessException exception) {
                             throw new ShowtimeBatchItemException(index, exception);
                         }
                     }
 
-                    return List.copyOf(responses);
+                    List<ShowtimeResponse> result = List.copyOf(responses);
+
+                    batchRequestRepository.complete(
+                            clientRequestId, requestHash, batchCodec.encode(result));
+
+                    return result;
                 });
+    }
+
+    private void requireSameRequest(StoredBatch stored, String requestHash) {
+
+        if (!requestHash.equals(stored.requestHash())) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_BATCH_REQUEST_CONFLICT);
+        }
     }
 
     private PreparedCreation prepare(

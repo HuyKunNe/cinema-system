@@ -40,8 +40,7 @@ class ShowtimeBatchExceptionHandlerTest {
     @ParameterizedTest
     @MethodSource("businessFailures")
     void shouldPreserveOriginalErrorAndIdentifyRequestItem(
-            BusinessException original,
-            int expectedStatus) throws Exception {
+            BusinessException original, int expectedStatus) throws Exception {
 
         ShowtimeService service = mock(ShowtimeService.class);
         GlobalExceptionHandler globalHandler = new GlobalExceptionHandler();
@@ -55,15 +54,14 @@ class ShowtimeBatchExceptionHandlerTest {
                         .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
         MockMvc mockMvc =
-                MockMvcBuilders
-                        .standaloneSetup(new ShowtimeController(service))
+                MockMvcBuilders.standaloneSetup(new ShowtimeController(service))
                         .setControllerAdvice(batchHandler, globalHandler)
-                        .setMessageConverters(
-                                new MappingJackson2HttpMessageConverter(mapper))
+                        .setMessageConverters(new MappingJackson2HttpMessageConverter(mapper))
                         .build();
 
         CreateShowtimeBatchRequest request =
                 new CreateShowtimeBatchRequest(
+                        UUID.randomUUID(),
                         List.of(
                                 item("2099-01-01T03:00:00Z", "2099-01-01T05:00:00Z"),
                                 item("2099-01-01T05:15:00Z", "2099-01-01T07:15:00Z")));
@@ -77,18 +75,12 @@ class ShowtimeBatchExceptionHandlerTest {
                                 .content(mapper.writeValueAsString(request)))
                 .andExpect(status().is(expectedStatus))
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(
-                        jsonPath("$.error.code")
-                                .value(original.getErrorCode().code()))
-                .andExpect(
-                        jsonPath("$.error.message")
-                                .value(original.getErrorCode().message()))
+                .andExpect(jsonPath("$.error.code").value(original.getErrorCode().code()))
+                .andExpect(jsonPath("$.error.message").value(original.getErrorCode().message()))
                 .andExpect(
                         jsonPath("$.error.category")
                                 .value(original.getErrorCode().category().name()))
-                .andExpect(
-                        jsonPath("$.error.details[0].field")
-                                .value("showtimes[1]"))
+                .andExpect(jsonPath("$.error.details[0].field").value("showtimes[1]"))
                 .andExpect(
                         jsonPath("$.error.details[0].message")
                                 .value(original.getErrorCode().message()));
@@ -97,20 +89,10 @@ class ShowtimeBatchExceptionHandlerTest {
     private static Stream<Arguments> businessFailures() {
         return Stream.of(
                 Arguments.of(
-                        new ValidationException(
-                                InventoryErrorCode.INVALID_SHOWTIME_BATCH),
-                        400),
-                Arguments.of(
-                        new NotFoundException(
-                                InventoryErrorCode.MOVIE_NOT_FOUND),
-                        404),
-                Arguments.of(
-                        new ConflictException(
-                                InventoryErrorCode.SHOWTIME_OVERLAP),
-                        409),
-                Arguments.of(
-                        new MovieCatalogUnavailableException(),
-                        503));
+                        new ValidationException(InventoryErrorCode.INVALID_SHOWTIME_BATCH), 400),
+                Arguments.of(new NotFoundException(InventoryErrorCode.MOVIE_NOT_FOUND), 404),
+                Arguments.of(new ConflictException(InventoryErrorCode.SHOWTIME_OVERLAP), 409),
+                Arguments.of(new MovieCatalogUnavailableException(), 503));
     }
 
     private static CreateShowtimeRequest item(String startsAt, String endsAt) {

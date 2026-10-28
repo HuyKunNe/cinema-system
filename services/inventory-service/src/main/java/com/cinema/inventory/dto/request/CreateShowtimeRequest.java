@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import jakarta.validation.constraints.AssertTrue;
-import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -19,8 +18,8 @@ import java.util.UUID;
 public record CreateShowtimeRequest(
         @NotNull UUID movieId,
         @NotNull UUID roomId,
-        @NotNull @Future OffsetDateTime startsAt,
-        @NotNull @Future OffsetDateTime endsAt,
+        @NotNull OffsetDateTime startsAt,
+        @NotNull OffsetDateTime endsAt,
         @Schema(
                         requiredMode = Schema.RequiredMode.NOT_REQUIRED,
                         nullable = true,

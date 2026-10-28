@@ -830,6 +830,18 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_INVALID_PRICING_DEFINITION",
                     "Pricing time-band and ticket-group definitions are invalid");
 
+    public static final InventoryErrorCode SHOWTIME_BATCH_REQUEST_CONFLICT =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_BATCH_REQUEST_CONFLICT",
+                    "The batch request identifier was already used with different items");
+
+    public static final InventoryErrorCode SHOWTIME_BATCH_REQUEST_INCONSISTENT =
+            new InventoryErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "INVENTORY_SHOWTIME_BATCH_REQUEST_INCONSISTENT",
+                    "The stored batch creation result is inconsistent");
+
     public static final InventoryErrorCode INVALID_SHOWTIME_BATCH =
             new InventoryErrorCode(
                     ErrorCategory.VALIDATION,
