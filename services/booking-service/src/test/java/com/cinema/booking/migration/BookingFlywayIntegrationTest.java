@@ -249,7 +249,7 @@ class BookingFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    void flywayShouldContainFreshBaseline() {
+    void flywayShouldContainSchemaAndTicketGroupMigrations() {
         List<String> versions =
                 jdbcTemplate.queryForList(
                         """
@@ -260,6 +260,6 @@ class BookingFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                         """,
                         String.class);
 
-        assertThat(versions).containsExactly("1");
+        assertThat(versions).containsExactly("1", "2");
     }
 }

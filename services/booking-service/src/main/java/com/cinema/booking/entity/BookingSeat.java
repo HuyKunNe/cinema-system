@@ -63,6 +63,14 @@ public class BookingSeat {
     @Column(name = "seat_number", nullable = false, updatable = false, length = 20)
     private String seatNumber;
 
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(name = "requested_ticket_group_id", updatable = false, columnDefinition = "BINARY(16)")
+    private UUID requestedTicketGroupId;
+
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(name = "ticket_group_id", columnDefinition = "BINARY(16)")
+    private UUID ticketGroupId;
+
     @Column(name = "seat_type", length = 50)
     private String seatType;
 
@@ -77,6 +85,12 @@ public class BookingSeat {
 
     public BookingSeat(UUID bookingId, UUID showtimeId, String seatNumber) {
 
+        this(bookingId, showtimeId, seatNumber, null);
+    }
+
+    public BookingSeat(
+            UUID bookingId, UUID showtimeId, String seatNumber, UUID requestedTicketGroupId) {
+
         validateBookingId(bookingId);
         validateShowtimeId(showtimeId);
         validateSeatNumber(seatNumber);
@@ -84,6 +98,7 @@ public class BookingSeat {
         this.bookingId = bookingId;
         this.showtimeId = showtimeId;
         this.seatNumber = normalizeSeatNumber(seatNumber);
+        this.requestedTicketGroupId = requestedTicketGroupId;
     }
 
     public UUID getId() {
@@ -106,6 +121,14 @@ public class BookingSeat {
         return seatNumber;
     }
 
+    public UUID getRequestedTicketGroupId() {
+        return requestedTicketGroupId;
+    }
+
+    public UUID getTicketGroupId() {
+        return ticketGroupId;
+    }
+
     public String getSeatType() {
         return seatType;
     }
@@ -119,10 +142,19 @@ public class BookingSeat {
     }
 
     public boolean hasCompletedSnapshot() {
-        return inventorySeatId != null && seatType != null && price != null;
+        return inventorySeatId != null
+                && seatType != null
+                && price != null
+                && (requestedTicketGroupId == null || requestedTicketGroupId.equals(ticketGroupId));
     }
 
     public void completeSnapshot(UUID inventorySeatId, String seatType, BigDecimal price) {
+
+        completeSnapshot(inventorySeatId, seatType, price, null);
+    }
+
+    public void completeSnapshot(
+            UUID inventorySeatId, String seatType, BigDecimal price, UUID appliedTicketGroupId) {
 
         if (hasAnySnapshotValue()) {
             throw new ConflictException(BookingErrorCode.SEAT_SNAPSHOT_ALREADY_COMPLETED);
@@ -132,13 +164,23 @@ public class BookingSeat {
         validateSeatType(seatType);
         validatePrice(price);
 
+        if (requestedTicketGroupId != null
+                && !requestedTicketGroupId.equals(appliedTicketGroupId)) {
+
+            throw new ConflictException(BookingErrorCode.RESERVATION_RESULT_MISMATCH);
+        }
+
         this.inventorySeatId = inventorySeatId;
         this.seatType = seatType.trim().toUpperCase(Locale.ROOT);
         this.price = price;
+        this.ticketGroupId = appliedTicketGroupId;
     }
 
     private boolean hasAnySnapshotValue() {
-        return inventorySeatId != null || seatType != null || price != null;
+        return inventorySeatId != null
+                || seatType != null
+                || price != null
+                || ticketGroupId != null;
     }
 
     private static String normalizeSeatNumber(String seatNumber) {

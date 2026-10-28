@@ -132,20 +132,26 @@ Approved Booking fields:
 
 ```text
 id
-userId
+bookingId
+inventorySeatId
 showtimeId
-clientRequestId
-status
-totalAmount
-currency
-expiresAt
-confirmedAt
-cancelledAt
-rejectionReason
-version
+seatNumber
+requestedTicketGroupId
+ticketGroupId
+seatType
+price
 createdAt
-updatedAt
 ```
+
+`requestedTicketGroupId` preserves the requested ticket group and is immutable
+after seat creation. Null means no specific group was requested.
+
+`ticketGroupId` records the group applied by Inventory when completing the
+authoritative seat snapshot. Existing snapshots may omit this metadata.
+
+When a specific group was requested, snapshot completion requires the applied
+group to match it. Ticket-group identifiers are external UUID references,
+without cross-database foreign keys.
 
 Approved BookingSeat fields:
 
@@ -866,4 +872,3 @@ The current maintenance checkpoint is:
 > **Inventory lifecycle-release lock hardening**
 
 Payment provider execution, payment-attempt persistence, provider idempotency, terminal payment-result publication, refund and reconciliation are implemented by Payment Service through the completed R27 round.
-

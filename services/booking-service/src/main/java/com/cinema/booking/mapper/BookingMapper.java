@@ -31,5 +31,7 @@ public interface BookingMapper {
     @Mapping(target = "updatedAt", source = "booking.updatedAt")
     BookingResponse toResponse(Booking booking, List<BookingSeat> bookingSeats);
 
+    @Mapping(target = "requestedTicketGroupId", source = "requestedTicketGroupId")
+    @Mapping(target = "ticketGroupId", source = "ticketGroupId")
     BookingSeatResponse toResponse(BookingSeat bookingSeat);
 }
