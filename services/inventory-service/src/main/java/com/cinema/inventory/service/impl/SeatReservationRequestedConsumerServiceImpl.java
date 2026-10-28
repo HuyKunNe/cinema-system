@@ -12,12 +12,14 @@ import com.cinema.inventory.event.SeatReservationRejectedOutboxFactory;
 import com.cinema.inventory.event.SeatReservationRejectionReason;
 import com.cinema.inventory.event.SeatReservedOutboxFactory;
 import com.cinema.inventory.event.payload.RequestedSeatPayload;
+import com.cinema.inventory.event.payload.ReservedSeatPayload;
 import com.cinema.inventory.event.payload.SeatReservationRequestedPayload;
 import com.cinema.inventory.event.serialization.SeatReservationRequestedPayloadReader;
 import com.cinema.inventory.event.validation.SeatReservationRequestedMessageValidator;
 import com.cinema.inventory.repository.ShowSeatRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ProcessedEventRegistrationService;
+import com.cinema.inventory.service.SeatReservationPricingService;
 import com.cinema.inventory.service.SeatReservationRequestedConsumerService;
 
 import org.springframework.stereotype.Service;
@@ -55,6 +57,8 @@ public class SeatReservationRequestedConsumerServiceImpl
 
     private final ProcessedEventRegistrationService processedEventRegistrationService;
 
+    private final SeatReservationPricingService reservationPricingService;
+
     private final ShowtimeRepository showtimeRepository;
 
     private final ShowSeatRepository showSeatRepository;
@@ -76,7 +80,8 @@ public class SeatReservationRequestedConsumerServiceImpl
             SeatReservedOutboxFactory seatReservedOutboxFactory,
             SeatReservationRejectedOutboxFactory seatReservationRejectedOutboxFactory,
             OutboxService outboxService,
-            Clock clock) {
+            Clock clock,
+            SeatReservationPricingService reservationPricingService) {
 
         this.messageValidator = messageValidator;
         this.payloadReader = payloadReader;
@@ -87,6 +92,7 @@ public class SeatReservationRequestedConsumerServiceImpl
         this.seatReservationRejectedOutboxFactory = seatReservationRejectedOutboxFactory;
         this.outboxService = outboxService;
         this.clock = clock;
+        this.reservationPricingService = reservationPricingService;
     }
 
     @Override
@@ -156,79 +162,100 @@ public class SeatReservationRequestedConsumerServiceImpl
                     message);
         }
 
-        if (payload.expectedTotalAmount() != null) {
-            BigDecimal actualTotal =
-                    showSeats.stream()
-                            .map(ShowSeat::getPrice)
-                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        boolean groupedPricing =
+                payload.seats().stream().anyMatch(seat -> seat.ticketGroupId() != null);
 
-            if (actualTotal.compareTo(payload.expectedTotalAmount()) != 0) {
+        List<ReservedSeatPayload> reservationSnapshots = List.of();
 
+        if (groupedPricing) {
+            var resolution =
+                    reservationPricingService.resolve(
+                            payload.showtimeId(), showSeats, payload.seats());
+
+            if (!resolution.applicable()) {
                 return reject(
                         payload,
-                        SeatReservationRejectionReason.PRICE_CHANGED,
-                        "Seat prices differ from the accepted quote",
-                        List.of(),
-                        now,
+                        SeatReservationRejectionReason.FARE_NOT_APPLICABLE,
+                        "Requested ticket group has no applicable fare",
+                        seatNumbers,
+                        OffsetDateTime.now(clock),
                         message);
             }
+
+            reservationSnapshots = resolution.seats();
         }
 
-        List<String> foundSeatNumbers =
-                showSeats.stream()
-                        .map(ShowSeat::getSeatNumber)
-                        .map(this::normalizeSeatNumber)
-                        .toList();
+        BigDecimal actualTotal =
+                groupedPricing
+                        ? reservationSnapshots.stream()
+                                .map(ReservedSeatPayload::price)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                        : showSeats.stream()
+                                .map(ShowSeat::getPrice)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        List<String> missingSeats =
-                seatNumbers.stream()
-                        .filter(seatNumber -> !foundSeatNumbers.contains(seatNumber))
-                        .toList();
+        OffsetDateTime holdAt = OffsetDateTime.now(clock);
 
-        if (!missingSeats.isEmpty()) {
+        if (!payload.holdExpiresAt().isAfter(holdAt)) {
             return reject(
                     payload,
-                    SeatReservationRejectionReason.SEAT_NOT_FOUND,
-                    SEAT_NOT_FOUND_MESSAGE,
-                    missingSeats,
-                    now,
+                    SeatReservationRejectionReason.RESERVATION_EXPIRED,
+                    RESERVATION_EXPIRED_MESSAGE,
+                    seatNumbers,
+                    holdAt,
                     message);
         }
 
-        List<String> unavailableSeats =
-                showSeats.stream()
-                        .filter(showSeat -> !canUseExistingOrCreateHold(showSeat, payload, now))
-                        .map(ShowSeat::getSeatNumber)
-                        .sorted()
-                        .toList();
+        boolean stillEligible =
+                showtimeRepository.existsHoldEligibleShowtime(
+                        payload.showtimeId(), holdAt, ShowtimeStatus.OPEN_FOR_BOOKING);
 
-        if (!unavailableSeats.isEmpty()) {
+        if (!stillEligible) {
             return reject(
                     payload,
-                    SeatReservationRejectionReason.SEAT_UNAVAILABLE,
-                    SEAT_UNAVAILABLE_MESSAGE,
-                    unavailableSeats,
-                    now,
+                    SeatReservationRejectionReason.INVALID_REQUEST,
+                    INVALID_REQUEST_MESSAGE,
+                    seatNumbers,
+                    holdAt,
+                    message);
+        }
+
+        if (payload.expectedTotalAmount() != null
+                && actualTotal.compareTo(payload.expectedTotalAmount()) != 0) {
+
+            return reject(
+                    payload,
+                    SeatReservationRejectionReason.PRICE_CHANGED,
+                    "Seat prices differ from the accepted quote",
+                    List.of(),
+                    holdAt,
                     message);
         }
 
         showSeats.stream()
-                .filter(showSeat -> showSeat.getStatus() == ShowSeatStatus.AVAILABLE)
-                .forEach(
-                        showSeat ->
-                                showSeat.hold(payload.bookingId(), payload.holdExpiresAt(), now));
+                .filter(seat -> seat.getStatus() == ShowSeatStatus.AVAILABLE)
+                .forEach(seat -> seat.hold(payload.bookingId(), payload.holdExpiresAt(), holdAt));
 
         showSeatRepository.saveAll(showSeats);
 
         OutboxEventEntity outboxEvent =
-                seatReservedOutboxFactory.create(
-                        payload.bookingId(),
-                        payload.showtimeId(),
-                        showSeats,
-                        now,
-                        payload.holdExpiresAt(),
-                        message.correlationId(),
-                        message.eventId());
+                groupedPricing
+                        ? seatReservedOutboxFactory.createFromSnapshots(
+                                payload.bookingId(),
+                                payload.showtimeId(),
+                                reservationSnapshots,
+                                holdAt,
+                                payload.holdExpiresAt(),
+                                message.correlationId(),
+                                message.eventId())
+                        : seatReservedOutboxFactory.create(
+                                payload.bookingId(),
+                                payload.showtimeId(),
+                                showSeats,
+                                holdAt,
+                                payload.holdExpiresAt(),
+                                message.correlationId(),
+                                message.eventId());
 
         outboxService.save(outboxEvent);
 

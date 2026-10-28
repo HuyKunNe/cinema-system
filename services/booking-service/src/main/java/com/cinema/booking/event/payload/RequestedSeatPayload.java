@@ -1,3 +1,13 @@
 package com.cinema.booking.event.payload;
 
-public record RequestedSeatPayload(String seatNumber) {}
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+import java.util.UUID;
+
+public record RequestedSeatPayload(
+        String seatNumber, @JsonInclude(JsonInclude.Include.NON_NULL) UUID ticketGroupId) {
+
+    public RequestedSeatPayload(String seatNumber) {
+        this(seatNumber, null);
+    }
+}

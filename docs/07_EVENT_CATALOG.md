@@ -506,15 +506,16 @@ Booking Service must not update `show_seats`.
 
 ## Required fields
 
-| Field                | Required | Description                          |
-| -------------------- | -------: | ------------------------------------ |
-| `bookingId`          |      Yes | Booking Service aggregate identifier |
-| `userId`             |      Yes | External user reference              |
-| `showtimeId`         |      Yes | Showtime reference                   |
-| `seats`              |      Yes | Non-empty requested seat set         |
-| `seats[].seatNumber` |      Yes | Normalized seat label                |
-| `requestedAt`        |      Yes | Request creation time                |
-| `holdExpiresAt`      |      Yes | Requested hold deadline              |
+| Field                   | Required | Description                                                                        |
+| ----------------------- | -------: | ---------------------------------------------------------------------------------- |
+| `bookingId`             |      Yes | Booking Service aggregate identifier                                               |
+| `userId`                |      Yes | External user reference                                                            |
+| `showtimeId`            |      Yes | Showtime reference                                                                 |
+| `seats`                 |      Yes | Non-empty requested seat set                                                       |
+| `seats[].seatNumber`    |      Yes | Normalized seat label                                                              |
+| `requestedAt`           |      Yes | Request creation time                                                              |
+| `holdExpiresAt`         |      Yes | Requested hold deadline                                                            |
+| `seats[].ticketGroupId` |       No | Requested group owned by the assigned pricing version; null uses its default group |
 
 ## Deadline Semantics
 

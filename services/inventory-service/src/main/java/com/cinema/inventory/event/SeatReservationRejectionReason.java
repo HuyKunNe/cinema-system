@@ -12,6 +12,8 @@ public enum SeatReservationRejectionReason {
     RESERVATION_EXPIRED,
 
     PRICE_CHANGED,
+    
+    FARE_NOT_APPLICABLE,
 
     INVENTORY_CONFLICT
 }

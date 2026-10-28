@@ -19,6 +19,8 @@ public enum SeatReservationRejectionReason {
 
     PRICE_CHANGED,
 
+    FARE_NOT_APPLICABLE,
+
     INVENTORY_CONFLICT;
 
     public static SeatReservationRejectionReason from(String value) {
