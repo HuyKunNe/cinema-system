@@ -4,6 +4,7 @@ import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.inventory.dto.response.FareMatrixResponse;
 import com.cinema.inventory.dto.response.FareMatrixResponse.CellResponse;
+import com.cinema.inventory.dto.response.FareMatrixResponse.TimeBandResponse;
 import com.cinema.inventory.enums.ContentFormat;
 import com.cinema.inventory.enums.FareCellState;
 import com.cinema.inventory.enums.PricingExperienceType;
@@ -20,14 +21,10 @@ public final class PricingFareResolver {
     private PricingFareResolver() {}
 
     public static ZoneId cinemaZone(String configured) {
-        String zoneName =
-                configured == null
-                        ? "Asia/Ho_Chi_Minh"
-                        : configured;
+        String zoneName = configured == null ? "Asia/Ho_Chi_Minh" : configured;
 
         if (!ZoneId.getAvailableZoneIds().contains(zoneName)) {
-            throw new ValidationException(
-                    InventoryErrorCode.CINEMA_TIME_ZONE_INVALID);
+            throw new ValidationException(InventoryErrorCode.CINEMA_TIME_ZONE_INVALID);
         }
 
         return ZoneId.of(zoneName);
@@ -42,8 +39,7 @@ public final class PricingFareResolver {
             SeatType seatType) {
 
         if (matrix.status() != PricingPolicyVersionStatus.PUBLISHED) {
-            throw new ConflictException(
-                    InventoryErrorCode.PRICING_POLICY_VERSION_NOT_PUBLISHED);
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_VERSION_NOT_PUBLISHED);
         }
 
         if (!matrix.coverageComplete()) {
@@ -60,36 +56,13 @@ public final class PricingFareResolver {
         }
 
         boolean hasTicketGroup =
-                matrix.ticketGroups().stream()
-                        .anyMatch(group -> group.id().equals(ticketGroupId));
+                matrix.ticketGroups().stream().anyMatch(group -> group.id().equals(ticketGroupId));
 
         if (!hasTicketGroup) {
             throw unavailable();
         }
 
-        int minute =
-                localStartsAt.getHour() * 60
-                        + localStartsAt.getMinute();
-
-        var matchingBands =
-                matrix.timeBands().stream()
-                        .filter(
-                                band ->
-                                        contains(
-                                                minute,
-                                                band.startMinute(),
-                                                band.endMinute()))
-                        .toList();
-
-        if (matchingBands.isEmpty()) {
-            throw unavailable();
-        }
-
-        if (matchingBands.size() != 1) {
-            throw inconsistent();
-        }
-
-        UUID timeBandId = matchingBands.getFirst().id();
+        UUID timeBandId = resolveTimeBand(matrix, localStartsAt).id();
 
         CellResponse fare =
                 matrix.cells().stream()
@@ -114,8 +87,7 @@ public final class PricingFareResolver {
         return fare;
     }
 
-    private static boolean contains(
-            int minute, int startMinute, int endMinute) {
+    private static boolean contains(int minute, int startMinute, int endMinute) {
 
         if (endMinute > startMinute) {
             return minute >= startMinute && minute < endMinute;
@@ -124,13 +96,32 @@ public final class PricingFareResolver {
         return minute >= startMinute || minute < endMinute;
     }
 
+    public static TimeBandResponse resolveTimeBand(
+            FareMatrixResponse matrix, LocalTime localStartsAt) {
+
+        int minute = localStartsAt.getHour() * 60 + localStartsAt.getMinute();
+
+        var matchingBands =
+                matrix.timeBands().stream()
+                        .filter(band -> contains(minute, band.startMinute(), band.endMinute()))
+                        .toList();
+
+        if (matchingBands.isEmpty()) {
+            throw unavailable();
+        }
+
+        if (matchingBands.size() != 1) {
+            throw inconsistent();
+        }
+
+        return matchingBands.getFirst();
+    }
+
     private static ConflictException unavailable() {
-        return new ConflictException(
-                InventoryErrorCode.PRICING_FARE_NOT_APPLICABLE);
+        return new ConflictException(InventoryErrorCode.PRICING_FARE_NOT_APPLICABLE);
     }
 
     private static ConflictException inconsistent() {
-        return new ConflictException(
-                InventoryErrorCode.PRICING_POLICY_DATA_INCONSISTENT);
+        return new ConflictException(InventoryErrorCode.PRICING_POLICY_DATA_INCONSISTENT);
     }
 }

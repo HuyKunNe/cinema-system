@@ -1,6 +1,7 @@
 package com.cinema.inventory.repository;
 
 import com.cinema.inventory.entity.ShowSeat;
+import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.ShowSeatStatus;
 
 import jakarta.persistence.LockModeType;
@@ -117,4 +118,12 @@ public interface ShowSeatRepository extends JpaRepository<ShowSeat, UUID> {
     List<ShowSeat> findAllForQuote(
             @Param("showtimeId") UUID showtimeId,
             @Param("seatNumbers") Collection<String> seatNumbers);
+
+    @Query(
+            """
+            select distinct showSeat.seatType
+            from ShowSeat showSeat
+            where showSeat.showtime.id = :showtimeId
+            """)
+    List<SeatType> findSeatTypesForTicketPrices(@Param("showtimeId") UUID showtimeId);
 }
