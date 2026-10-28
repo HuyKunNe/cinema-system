@@ -64,21 +64,21 @@ class InventoryFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
     void migrationShouldCreateAllInventoryTables() {
         List<String> tables =
                 jdbcTemplate.queryForList(
-                    """
-                        SELECT table_name
-                        FROM information_schema.tables
-                        WHERE table_schema = DATABASE()
-                        AND table_name IN (
-                            'cinemas',
-                            'rooms',
-                            'seats',
-                            'showtimes',
-                            'show_seats',
-                            'processed_events',
-                            'outbox_events'
-                        )
-                        ORDER BY table_name
-                    """,
+                        """
+                            SELECT table_name
+                            FROM information_schema.tables
+                            WHERE table_schema = DATABASE()
+                            AND table_name IN (
+                                'cinemas',
+                                'rooms',
+                                'seats',
+                                'showtimes',
+                                'show_seats',
+                                'processed_events',
+                                'outbox_events'
+                            )
+                            ORDER BY table_name
+                        """,
                         String.class);
 
         assertThat(tables).containsExactlyInAnyOrderElementsOf(EXPECTED_TABLES);
@@ -179,8 +179,7 @@ class InventoryFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                           AND constraint_type = 'UNIQUE'
                           AND constraint_name IN (
                               'uk_rooms_cinema_name',
-                              'uk_seats_room_number',
-                              'uk_showtimes_room_start',
+                              'uk_seats_room_legacy_number',
                               'uk_show_seats_showtime_seat',
                               'uk_show_seats_showtime_number'
                           )
@@ -190,8 +189,7 @@ class InventoryFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
         assertThat(constraints)
                 .containsExactlyInAnyOrder(
                         "uk_rooms_cinema_name",
-                        "uk_seats_room_number",
-                        "uk_showtimes_room_start",
+                        "uk_seats_room_legacy_number",
                         "uk_show_seats_showtime_seat",
                         "uk_show_seats_showtime_number");
     }
@@ -241,7 +239,8 @@ class InventoryFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                               'idx_showtimes_room_status_start',
                               'idx_show_seats_showtime_status',
                               'idx_show_seats_booking',
-                              'idx_show_seats_expired_hold'
+                              'idx_show_seats_expired_hold',
+                              'idx_showtimes_room_start'
                           )
                         """,
                         String.class);
@@ -255,6 +254,7 @@ class InventoryFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
                         "idx_showtimes_room_status_start",
                         "idx_show_seats_showtime_status",
                         "idx_show_seats_booking",
-                        "idx_show_seats_expired_hold");
+                        "idx_show_seats_expired_hold",
+                        "idx_showtimes_room_start");
     }
 }

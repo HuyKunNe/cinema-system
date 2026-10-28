@@ -2,13 +2,9 @@ package com.cinema.user.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
 
-import javax.sql.DataSource;
+import jakarta.persistence.EntityManagerFactory;
 
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationInfo;
@@ -17,9 +13,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
-import jakarta.persistence.EntityManagerFactory;
+import javax.sql.DataSource;
 
 class UserFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
 
@@ -64,18 +64,18 @@ class UserFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    void flywaySchemaHistoryShouldContainSuccessfulMigrations() {
-        Integer count =
-                jdbcTemplate.queryForObject(
+    void flywayShouldContainSchemaAndAuthoritySeed() {
+        List<String> versions =
+                jdbcTemplate.queryForList(
                         """
-                        SELECT COUNT(*)
+                        SELECT version
                         FROM flyway_schema_history
-                        WHERE version IN ('1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11')
-                          AND success = TRUE
+                        WHERE success = TRUE
+                        ORDER BY installed_rank
                         """,
-                        Integer.class);
+                        String.class);
 
-        assertThat(count).isEqualTo(11);
+        assertThat(versions).containsExactly("1", "2");
     }
 
     @Test

@@ -1,6 +1,0 @@
-ALTER TABLE cinemas
-    ADD COLUMN phone VARCHAR(32) NULL,
-    ADD COLUMN email VARCHAR(254) NULL,
-    ADD COLUMN opening_hours VARCHAR(150) NULL,
-    ADD COLUMN directions VARCHAR(1000) NULL,
-    ADD COLUMN time_zone VARCHAR(64) NULL;

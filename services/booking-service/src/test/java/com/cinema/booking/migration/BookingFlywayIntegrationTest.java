@@ -249,17 +249,17 @@ class BookingFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    void flywaySchemaHistoryShouldContainSuccessfulVersionsOneAndTwo() {
-        Integer count =
-                jdbcTemplate.queryForObject(
+    void flywayShouldContainFreshBaseline() {
+        List<String> versions =
+                jdbcTemplate.queryForList(
                         """
-                        SELECT COUNT(*)
+                        SELECT version
                         FROM flyway_schema_history
-                        WHERE version IN ('1', '2')
-                          AND success = TRUE
+                        WHERE success = TRUE
+                        ORDER BY installed_rank
                         """,
-                        Integer.class);
+                        String.class);
 
-        assertThat(count).isEqualTo(2);
+        assertThat(versions).containsExactly("1");
     }
 }

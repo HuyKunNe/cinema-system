@@ -44,31 +44,22 @@ class PaymentFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
 
         assertThat(migrationInfo.all()).filteredOn(info -> info.getState().isFailed()).isEmpty();
 
-        assertThat(migrationInfo.applied()).hasSize(7);
+        assertThat(migrationInfo.applied()).hasSize(1);
     }
 
     @Test
-    void flywayHistoryShouldContainSuccessfulVersions() {
-
-        Integer count =
-                jdbcTemplate.queryForObject(
+    void flywayShouldContainFreshBaseline() {
+        List<String> versions =
+                jdbcTemplate.queryForList(
                         """
-                        SELECT COUNT(*)
+                        SELECT version
                         FROM flyway_schema_history
-                        WHERE version IN (
-                            '1',
-                            '2',
-                            '3',
-                            '4',
-                            '5',
-                            '6',
-                            '7'
-                        )
-                          AND success = TRUE
+                        WHERE success = TRUE
+                        ORDER BY installed_rank
                         """,
-                        Integer.class);
+                        String.class);
 
-        assertThat(count).isEqualTo(7);
+        assertThat(versions).containsExactly("1");
     }
 
     @Test

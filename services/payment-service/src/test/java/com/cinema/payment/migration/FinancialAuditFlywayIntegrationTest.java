@@ -19,14 +19,18 @@ class FinancialAuditFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
     @Autowired private JdbcTemplate jdbcTemplate;
 
     @Test
-    void flywayShouldApplyFinancialAuditMigration() {
+    void flywayShouldContainFreshBaseline() {
+        List<String> versions =
+                jdbcTemplate.queryForList(
+                        """
+                        SELECT version
+                        FROM flyway_schema_history
+                        WHERE success = TRUE
+                        ORDER BY installed_rank
+                        """,
+                        String.class);
 
-        assertThat(flyway.info().pending()).isEmpty();
-
-        assertThat(flyway.info().applied())
-                .anySatisfy(
-                        migration ->
-                                assertThat(migration.getVersion().getVersion()).isEqualTo("6"));
+        assertThat(versions).containsExactly("1");
     }
 
     @Test

@@ -124,18 +124,17 @@ class BookingProcessedEventFlywayIntegrationTest extends AbstractMySqlIntegratio
     }
 
     @Test
-    void flywayShouldContainSuccessfulVersionFive() {
-
-        Integer count =
-                jdbcTemplate.queryForObject(
+    void flywayShouldContainFreshBaseline() {
+        List<String> versions =
+                jdbcTemplate.queryForList(
                         """
-                        SELECT COUNT(*)
+                        SELECT version
                         FROM flyway_schema_history
-                        WHERE version = '5'
-                          AND success = TRUE
+                        WHERE success = TRUE
+                        ORDER BY installed_rank
                         """,
-                        Integer.class);
+                        String.class);
 
-        assertThat(count).isEqualTo(1);
+        assertThat(versions).containsExactly("1");
     }
 }
