@@ -105,4 +105,16 @@ public interface ShowSeatRepository extends JpaRepository<ShowSeat, UUID> {
             order by showSeat.id asc
             """)
     List<UUID> findIdsByShowtimeId(@Param("showtimeId") UUID showtimeId);
+
+    @Query(
+            """
+            select showSeat
+            from ShowSeat showSeat
+            where showSeat.showtime.id = :showtimeId
+              and showSeat.seatNumber in :seatNumbers
+            order by showSeat.seatNumber asc
+            """)
+    List<ShowSeat> findAllForQuote(
+            @Param("showtimeId") UUID showtimeId,
+            @Param("seatNumbers") Collection<String> seatNumbers);
 }

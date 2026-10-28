@@ -848,6 +848,12 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_INVALID_SHOWTIME_BATCH",
                     "A showtime batch must contain between 1 and 50 non-null items");
 
+    public static final InventoryErrorCode INVALID_SHOWTIME_SEAT_QUOTE =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_INVALID_SHOWTIME_SEAT_QUOTE",
+                    "Select between 1 and 100 distinct seat numbers");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

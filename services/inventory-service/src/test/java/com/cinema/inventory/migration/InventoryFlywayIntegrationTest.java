@@ -18,13 +18,28 @@ class InventoryFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
 
     private static final List<String> EXPECTED_TABLES =
             List.of(
+                    "cinema_amenities",
+                    "cinema_pricing_policies",
+                    "cinema_pricing_policy_versions",
                     "cinemas",
+                    "outbox_events",
+                    "pricing_fare_cells",
+                    "pricing_fare_scopes",
+                    "pricing_fare_seat_types",
+                    "pricing_policy_version_cinemas",
+                    "pricing_ticket_groups",
+                    "pricing_time_bands",
+                    "processed_events",
+                    "room_layout_elements",
+                    "room_layout_matrix_cells",
+                    "room_layout_seats",
+                    "room_layouts",
+                    "room_supported_content_formats",
                     "rooms",
                     "seats",
-                    "showtimes",
                     "show_seats",
-                    "processed_events",
-                    "outbox_events");
+                    "showtime_batch_requests",
+                    "showtimes");
 
     @Autowired private Flyway flyway;
 
@@ -38,7 +53,7 @@ class InventoryFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
 
         assertThat(migrationInfo.all()).filteredOn(info -> info.getState().isFailed()).isEmpty();
 
-        assertThat(migrationInfo.applied()).isNotEmpty();
+        assertThat(migrationInfo.applied()).hasSize(1);
 
         assertThat(migrationInfo.applied())
                 .extracting(MigrationInfo::getVersion)
@@ -46,18 +61,18 @@ class InventoryFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    void flywaySchemaHistoryShouldContainSuccessfulVersionOne() {
-        Integer count =
-                jdbcTemplate.queryForObject(
+    void flywayShouldContainFreshBaseline() {
+        List<String> versions =
+                jdbcTemplate.queryForList(
                         """
-                        SELECT COUNT(*)
+                        SELECT version
                         FROM flyway_schema_history
-                        WHERE version = '1'
-                          AND success = TRUE
+                        WHERE success = TRUE
+                        ORDER BY installed_rank
                         """,
-                        Integer.class);
+                        String.class);
 
-        assertThat(count).isEqualTo(1);
+        assertThat(versions).containsExactly("1");
     }
 
     @Test
@@ -65,19 +80,12 @@ class InventoryFlywayIntegrationTest extends AbstractMySqlIntegrationTest {
         List<String> tables =
                 jdbcTemplate.queryForList(
                         """
-                            SELECT table_name
-                            FROM information_schema.tables
-                            WHERE table_schema = DATABASE()
-                            AND table_name IN (
-                                'cinemas',
-                                'rooms',
-                                'seats',
-                                'showtimes',
-                                'show_seats',
-                                'processed_events',
-                                'outbox_events'
-                            )
-                            ORDER BY table_name
+                        SELECT table_name
+                        FROM information_schema.tables
+                        WHERE table_schema = DATABASE()
+                          AND table_type = 'BASE TABLE'
+                          AND table_name <> 'flyway_schema_history'
+                        ORDER BY table_name
                         """,
                         String.class);
 
