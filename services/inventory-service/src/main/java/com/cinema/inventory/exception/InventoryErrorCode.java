@@ -672,7 +672,9 @@ public final class InventoryErrorCode implements ErrorCode {
             new InventoryErrorCode(
                     ErrorCategory.VALIDATION,
                     "INVENTORY_COUPLE_FIXED_FARE_CONFLICT",
-                    "Non-holiday couple fares must remain fixed within each experience and format");
+                    "Non-holiday couple fares must remain equal across "
+                            + "time bands within the same ticket group, "
+                            + "experience and content format");
 
     public static final InventoryErrorCode PRICING_MATRIX_DAY_GROUP_LOCKED =
             new InventoryErrorCode(

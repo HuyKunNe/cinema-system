@@ -4,13 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import org.junit.jupiter.api.Test;
-
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.inventory.entity.FareMatrixCell.Key;
 import com.cinema.inventory.entity.FareMatrixCell.Value;
@@ -18,163 +11,137 @@ import com.cinema.inventory.enums.ContentFormat;
 import com.cinema.inventory.enums.FareCellState;
 import com.cinema.inventory.enums.PricingDayGroup;
 import com.cinema.inventory.enums.PricingExperienceType;
-import com.cinema.inventory.enums.PricingTimeBand;
 import com.cinema.inventory.enums.SeatType;
-import com.cinema.inventory.enums.TicketCategory;
 import com.cinema.inventory.exception.InventoryErrorCode;
+
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 class FareMatrixRulesTest {
 
+    private static final UUID MORNING = UUID.randomUUID();
+    private static final UUID EVENING = UUID.randomUUID();
+    private static final UUID REGULAR = UUID.randomUUID();
+    private static final UUID MEMBER = UUID.randomUUID();
+
     @Test
-    void holidayShouldRejectDifferentCategoryFaresIncludingZero() {
-        for (String childAmount : List.of("240000", "0")) {
-            Value adult =
-                    priced(
-                            ContentFormat.TWO_D,
-                            PricingTimeBand.BEFORE_17,
-                            TicketCategory.ADULT,
-                            "260000");
+    void nonHolidayShouldAllowDifferentPricesBetweenCustomerGroups() {
+        for (var day : nonHolidayDays()) {
+            for (var experience : PricingExperienceType.values()) {
+                var values =
+                        fares(
+                                priced(experience, ContentFormat.TWO_D, MORNING, REGULAR, "180000"),
+                                priced(experience, ContentFormat.TWO_D, EVENING, REGULAR, "180000"),
+                                priced(experience, ContentFormat.TWO_D, MORNING, MEMBER, "160000"),
+                                priced(experience, ContentFormat.TWO_D, EVENING, MEMBER, "160000"));
 
-            Value child =
-                    priced(
-                            ContentFormat.TWO_D,
-                            PricingTimeBand.BEFORE_17,
-                            TicketCategory.CHILD,
-                            childAmount);
-
-            ValidationException exception =
-                    assertThrows(
-                            ValidationException.class,
-                            () ->
-                                    FareMatrixRules.validateUniformFares(
-                                            PricingDayGroup.HOLIDAY,
-                                            Map.of(
-                                                    adult.key(), adult,
-                                                    child.key(), child)));
-
-            assertThat(exception.getErrorCode())
-                    .isSameAs(InventoryErrorCode.COUPLE_CATEGORY_FARE_CONFLICT);
+                assertDoesNotThrow(() -> FareMatrixRules.validateUniformFares(day, values));
+            }
         }
     }
 
     @Test
-    void holidayShouldAllowNotApplicableCategory() {
-        Value adult =
-                priced(
-                        ContentFormat.TWO_D,
-                        PricingTimeBand.BEFORE_17,
-                        TicketCategory.ADULT,
-                        "260000");
+    void nonHolidayShouldRejectDifferentTimeBandPricesWithinSameGroup() {
+        for (var day : nonHolidayDays()) {
+            for (var experience : PricingExperienceType.values()) {
+                for (String eveningPrice : List.of("190000", "0")) {
+                    var values =
+                            fares(
+                                    priced(
+                                            experience,
+                                            ContentFormat.TWO_D,
+                                            MORNING,
+                                            MEMBER,
+                                            "160000"),
+                                    priced(
+                                            experience,
+                                            ContentFormat.TWO_D,
+                                            EVENING,
+                                            MEMBER,
+                                            eveningPrice));
 
-        Value child =
-                new Value(
-                        key(ContentFormat.TWO_D, PricingTimeBand.BEFORE_17, TicketCategory.CHILD),
-                        FareCellState.NOT_APPLICABLE,
-                        null);
+                    ValidationException exception =
+                            assertThrows(
+                                    ValidationException.class,
+                                    () -> FareMatrixRules.validateUniformFares(day, values));
 
-        assertDoesNotThrow(
-                () ->
-                        FareMatrixRules.validateUniformFares(
-                                PricingDayGroup.HOLIDAY,
-                                Map.of(
-                                        adult.key(), adult,
-                                        child.key(), child)));
+                    assertThat(exception.getErrorCode())
+                            .isSameAs(InventoryErrorCode.COUPLE_FIXED_FARE_CONFLICT);
+                }
+            }
+        }
     }
 
     @Test
-    void holidayShouldKeepFormatsAndTimeBandsIndependent() {
-        Value morning2d =
-                priced(
-                        ContentFormat.TWO_D,
-                        PricingTimeBand.BEFORE_17,
-                        TicketCategory.ADULT,
-                        "260000");
+    void holidayShouldAllowDifferentGroupsAndTimeBandPrices() {
+        for (var experience : PricingExperienceType.values()) {
+            var values =
+                    fares(
+                            priced(experience, ContentFormat.TWO_D, MORNING, REGULAR, "260000"),
+                            priced(experience, ContentFormat.TWO_D, EVENING, REGULAR, "280000"),
+                            priced(experience, ContentFormat.TWO_D, MORNING, MEMBER, "220000"),
+                            priced(experience, ContentFormat.TWO_D, EVENING, MEMBER, "240000"));
 
-        Value evening2d =
-                priced(
-                        ContentFormat.TWO_D,
-                        PricingTimeBand.FROM_17,
-                        TicketCategory.ADULT,
-                        "280000");
-
-        Value morning3d =
-                priced(
-                        ContentFormat.THREE_D,
-                        PricingTimeBand.BEFORE_17,
-                        TicketCategory.ADULT,
-                        "310000");
-
-        Value evening3d =
-                priced(
-                        ContentFormat.THREE_D,
-                        PricingTimeBand.FROM_17,
-                        TicketCategory.ADULT,
-                        "330000");
-
-        assertDoesNotThrow(
-                () ->
-                        FareMatrixRules.validateUniformFares(
-                                PricingDayGroup.HOLIDAY,
-                                Map.of(
-                                        morning2d.key(), morning2d,
-                                        evening2d.key(), evening2d,
-                                        morning3d.key(), morning3d,
-                                        evening3d.key(), evening3d)));
+            assertDoesNotThrow(
+                    () -> FareMatrixRules.validateUniformFares(PricingDayGroup.HOLIDAY, values));
+        }
     }
 
     @Test
-    void nonHolidayShouldStillRejectDifferentTimeBandFares() {
-        Value morning =
-                priced(
-                        ContentFormat.TWO_D,
-                        PricingTimeBand.BEFORE_17,
-                        TicketCategory.ADULT,
-                        "200000");
+    void formatsShouldHaveIndependentPrices() {
+        for (var day : nonHolidayDays()) {
+            for (var experience : PricingExperienceType.values()) {
+                var values =
+                        fares(
+                                priced(experience, ContentFormat.TWO_D, MORNING, MEMBER, "160000"),
+                                priced(experience, ContentFormat.TWO_D, EVENING, MEMBER, "160000"),
+                                priced(
+                                        experience,
+                                        ContentFormat.THREE_D,
+                                        MORNING,
+                                        MEMBER,
+                                        "210000"),
+                                priced(
+                                        experience,
+                                        ContentFormat.THREE_D,
+                                        EVENING,
+                                        MEMBER,
+                                        "210000"));
 
-        Value evening =
-                priced(
-                        ContentFormat.TWO_D,
-                        PricingTimeBand.FROM_17,
-                        TicketCategory.ADULT,
-                        "210000");
-
-        ValidationException exception =
-                assertThrows(
-                        ValidationException.class,
-                        () ->
-                                FareMatrixRules.validateUniformFares(
-                                        PricingDayGroup.WEEKDAY,
-                                        Map.of(
-                                                morning.key(), morning,
-                                                evening.key(), evening)));
-
-        assertThat(exception.getErrorCode())
-                .isSameAs(InventoryErrorCode.COUPLE_FIXED_FARE_CONFLICT);
+                assertDoesNotThrow(() -> FareMatrixRules.validateUniformFares(day, values));
+            }
+        }
     }
 
-    private Value priced(
+    private static List<PricingDayGroup> nonHolidayDays() {
+        return List.of(PricingDayGroup.WEEKDAY, PricingDayGroup.WEEKEND);
+    }
+
+    private static Value priced(
+            PricingExperienceType experience,
             ContentFormat format,
-            PricingTimeBand timeBand,
-            TicketCategory category,
+            UUID timeBandId,
+            UUID ticketGroupId,
             String amount) {
 
         return new Value(
-                key(format, timeBand, category), FareCellState.PRICED, new BigDecimal(amount));
+                new Key(experience, format, timeBandId, ticketGroupId, SeatType.COUPLE),
+                FareCellState.PRICED,
+                new BigDecimal(amount));
     }
 
-    private Key key(ContentFormat format, PricingTimeBand timeBand, TicketCategory category) {
+    private static Map<Key, Value> fares(Value... values) {
+        Map<Key, Value> result = new HashMap<>();
 
-        UUID timeBandId =
-                UUID.fromString(
-                        timeBand == PricingTimeBand.BEFORE_17
-                                ? "019a0c12-1000-7000-8000-000000000001"
-                                : "019a0c12-1000-7000-8000-000000000002");
+        for (Value value : values) {
+            result.put(value.key(), value);
+        }
 
-        UUID ticketGroupId =
-                UUID.fromString(
-                        "019a0c12-1000-7000-8000-%012d".formatted(100 + category.ordinal()));
-
-        return new Key(
-                PricingExperienceType.STANDARD, format, timeBandId, ticketGroupId, SeatType.COUPLE);
+        return result;
     }
 }

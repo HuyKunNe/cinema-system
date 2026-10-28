@@ -18,12 +18,10 @@ public final class FareMatrixRules {
 
     private FareMatrixRules() {}
 
-    public static void validateUniformFares(
-            PricingDayGroup dayGroup,
-            Map<Key, Value> values) {
+    public static void validateUniformFares(PricingDayGroup dayGroup, Map<Key, Value> values) {
 
-        Map<UniformGroup, Value> premiumGroups = new HashMap<>();
-        Map<UniformGroup, Value> coupleGroups = new HashMap<>();
+        Map<PremiumGroup, Value> premiumGroups = new HashMap<>();
+        Map<CoupleGroup, Value> coupleGroups = new HashMap<>();
 
         for (Value value : values.values()) {
             if (value.state() != FareCellState.PRICED) {
@@ -32,13 +30,12 @@ public final class FareMatrixRules {
 
             Key key = value.key();
 
-            if (key.experienceType() == PricingExperienceType.PREMIUM_CINEMA) {
-                UniformGroup group =
-                        new UniformGroup(
-                                key.experienceType(),
-                                key.contentFormat(),
-                                key.timeBandId(),
-                                key.seatType());
+            // COUPLE has its own customer-group pricing rule.
+            if (key.experienceType() == PricingExperienceType.PREMIUM_CINEMA
+                    && key.seatType() != SeatType.COUPLE) {
+
+                PremiumGroup group =
+                        new PremiumGroup(key.contentFormat(), key.timeBandId(), key.seatType());
 
                 requireSameFare(
                         premiumGroups,
@@ -47,32 +44,20 @@ public final class FareMatrixRules {
                         InventoryErrorCode.PREMIUM_CATEGORY_FARE_CONFLICT);
             }
 
-            if (key.seatType() == SeatType.COUPLE) {
-                boolean holiday = dayGroup == PricingDayGroup.HOLIDAY;
+            if (key.seatType() == SeatType.COUPLE && dayGroup != PricingDayGroup.HOLIDAY) {
 
-                UniformGroup group =
-                        new UniformGroup(
-                                key.experienceType(),
-                                key.contentFormat(),
-                                holiday ? key.timeBandId() : null,
-                                SeatType.COUPLE);
+                CoupleGroup group =
+                        new CoupleGroup(
+                                key.experienceType(), key.contentFormat(), key.ticketGroupId());
 
                 requireSameFare(
-                        coupleGroups,
-                        group,
-                        value,
-                        holiday
-                                ? InventoryErrorCode.COUPLE_CATEGORY_FARE_CONFLICT
-                                : InventoryErrorCode.COUPLE_FIXED_FARE_CONFLICT);
+                        coupleGroups, group, value, InventoryErrorCode.COUPLE_FIXED_FARE_CONFLICT);
             }
         }
     }
 
-    private static void requireSameFare(
-            Map<UniformGroup, Value> groups,
-            UniformGroup group,
-            Value candidate,
-            InventoryErrorCode errorCode) {
+    private static <K> void requireSameFare(
+            Map<K, Value> groups, K group, Value candidate, InventoryErrorCode errorCode) {
 
         Value previous = groups.putIfAbsent(group, candidate);
 
@@ -81,9 +66,11 @@ public final class FareMatrixRules {
         }
     }
 
-    private record UniformGroup(
+    private record PremiumGroup(ContentFormat contentFormat, UUID timeBandId, SeatType seatType) {}
+
+    private record CoupleGroup(
             PricingExperienceType experienceType,
             ContentFormat contentFormat,
-            UUID timeBandId,
-            SeatType seatType) {}
+            UUID ticketGroupId) {}
 }
+
