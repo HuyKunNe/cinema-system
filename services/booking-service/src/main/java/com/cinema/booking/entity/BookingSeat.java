@@ -91,51 +91,17 @@ public class BookingSeat {
         this(bookingId, showtimeId, seatNumber, null);
     }
 
-    public void completeSnapshot(
-            UUID inventorySeatId, String seatType, BigDecimal price, UUID appliedTicketGroupId) {
+    public BookingSeat(
+            UUID bookingId, UUID showtimeId, String seatNumber, UUID requestedTicketGroupId) {
 
-        completeSnapshot(inventorySeatId, seatType, price, appliedTicketGroupId, null);
-    }
+        validateBookingId(bookingId);
+        validateShowtimeId(showtimeId);
+        validateSeatNumber(seatNumber);
 
-    public void completeSnapshot(
-            UUID inventorySeatId,
-            String seatType,
-            BigDecimal price,
-            UUID appliedTicketGroupId,
-            String appliedTicketGroupName) {
-
-        if (hasAnySnapshotValue()) {
-            throw new ConflictException(BookingErrorCode.SEAT_SNAPSHOT_ALREADY_COMPLETED);
-        }
-
-        validateInventorySeatId(inventorySeatId);
-        validateSeatType(seatType);
-        validatePrice(price);
-
-        if (requestedTicketGroupId != null
-                && !requestedTicketGroupId.equals(appliedTicketGroupId)) {
-
-            throw new ConflictException(BookingErrorCode.RESERVATION_RESULT_MISMATCH);
-        }
-
-        String normalizedGroupName = null;
-
-        if (appliedTicketGroupName != null) {
-            normalizedGroupName = appliedTicketGroupName.trim();
-
-            if (appliedTicketGroupId == null
-                    || normalizedGroupName.isBlank()
-                    || normalizedGroupName.length() > 120) {
-
-                throw new ValidationException(BookingErrorCode.EVENT_PAYLOAD_INVALID);
-            }
-        }
-
-        this.inventorySeatId = inventorySeatId;
-        this.seatType = seatType.trim().toUpperCase(Locale.ROOT);
-        this.price = price;
-        this.ticketGroupId = appliedTicketGroupId;
-        this.ticketGroupName = normalizedGroupName;
+        this.bookingId = bookingId;
+        this.showtimeId = showtimeId;
+        this.seatNumber = normalizeSeatNumber(seatNumber);
+        this.requestedTicketGroupId = requestedTicketGroupId;
     }
 
     public UUID getId() {
@@ -197,6 +163,16 @@ public class BookingSeat {
     public void completeSnapshot(
             UUID inventorySeatId, String seatType, BigDecimal price, UUID appliedTicketGroupId) {
 
+        completeSnapshot(inventorySeatId, seatType, price, appliedTicketGroupId, null);
+    }
+
+    public void completeSnapshot(
+            UUID inventorySeatId,
+            String seatType,
+            BigDecimal price,
+            UUID appliedTicketGroupId,
+            String appliedTicketGroupName) {
+
         if (hasAnySnapshotValue()) {
             throw new ConflictException(BookingErrorCode.SEAT_SNAPSHOT_ALREADY_COMPLETED);
         }
@@ -211,10 +187,24 @@ public class BookingSeat {
             throw new ConflictException(BookingErrorCode.RESERVATION_RESULT_MISMATCH);
         }
 
+        String normalizedGroupName = null;
+
+        if (appliedTicketGroupName != null) {
+            normalizedGroupName = appliedTicketGroupName.trim();
+
+            if (appliedTicketGroupId == null
+                    || normalizedGroupName.isBlank()
+                    || normalizedGroupName.length() > 120) {
+
+                throw new ValidationException(BookingErrorCode.EVENT_PAYLOAD_INVALID);
+            }
+        }
+
         this.inventorySeatId = inventorySeatId;
         this.seatType = seatType.trim().toUpperCase(Locale.ROOT);
         this.price = price;
         this.ticketGroupId = appliedTicketGroupId;
+        this.ticketGroupName = normalizedGroupName;
     }
 
     private boolean hasAnySnapshotValue() {
