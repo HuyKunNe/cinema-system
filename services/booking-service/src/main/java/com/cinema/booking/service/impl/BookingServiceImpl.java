@@ -26,6 +26,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -79,7 +80,13 @@ public class BookingServiceImpl implements BookingService {
 
         List<String> sortedSeatNumbers = normalizedSeatNumbers.stream().sorted().toList();
 
-        String fingerprint = requestFingerprint.generate(request.showtimeId(), sortedSeatNumbers);
+        BigDecimal expectedTotalAmount = validateExpectedTotalAmount(request.expectedTotalAmount());
+
+        String fingerprint =
+                expectedTotalAmount == null
+                        ? requestFingerprint.generate(request.showtimeId(), sortedSeatNumbers)
+                        : requestFingerprint.generate(
+                                request.showtimeId(), sortedSeatNumbers, expectedTotalAmount);
 
         return bookingRepository
                 .findByUserIdAndClientRequestId(userId, normalizedClientRequestId)
@@ -91,7 +98,8 @@ public class BookingServiceImpl implements BookingService {
                                         request.showtimeId(),
                                         normalizedClientRequestId,
                                         fingerprint,
-                                        sortedSeatNumbers));
+                                        sortedSeatNumbers,
+                                        expectedTotalAmount));
     }
 
     @Override
@@ -144,19 +152,43 @@ public class BookingServiceImpl implements BookingService {
             UUID showtimeId,
             String clientRequestId,
             String fingerprint,
-            List<String> normalizedSeatNumbers) {
+            List<String> normalizedSeatNumbers,
+            BigDecimal expectedTotalAmount) {
 
         try {
+            if (expectedTotalAmount == null) {
+                return bookingCreationService.createNew(
+                        userId, showtimeId, clientRequestId, fingerprint, normalizedSeatNumbers);
+            }
+
             return bookingCreationService.createNew(
-                    userId, showtimeId, clientRequestId, fingerprint, normalizedSeatNumbers);
+                    userId,
+                    showtimeId,
+                    clientRequestId,
+                    fingerprint,
+                    normalizedSeatNumbers,
+                    expectedTotalAmount);
 
         } catch (DataIntegrityViolationException exception) {
-
             return bookingRepository
                     .findByUserIdAndClientRequestId(userId, clientRequestId)
                     .map(booking -> resolveExisting(booking, fingerprint))
                     .orElseThrow(() -> exception);
         }
+    }
+
+    private static BigDecimal validateExpectedTotalAmount(BigDecimal amount) {
+
+        if (amount == null) {
+            return null;
+        }
+
+        if (amount.signum() < 0 || amount.scale() > 2 || amount.precision() - amount.scale() > 17) {
+
+            throw new ValidationException(BookingErrorCode.INVALID_EXPECTED_TOTAL_AMOUNT);
+        }
+
+        return amount.stripTrailingZeros();
     }
 
     private BookingResponse resolveExisting(Booking booking, String requestFingerprint) {

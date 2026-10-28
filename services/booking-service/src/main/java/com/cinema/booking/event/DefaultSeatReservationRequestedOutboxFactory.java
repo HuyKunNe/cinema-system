@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -32,7 +33,10 @@ public class DefaultSeatReservationRequestedOutboxFactory
 
     @Override
     public OutboxEventEntity create(
-            Booking booking, List<BookingSeat> bookingSeats, OffsetDateTime occurredAt) {
+            Booking booking,
+            List<BookingSeat> bookingSeats,
+            OffsetDateTime occurredAt,
+            BigDecimal expectedTotalAmount) {
 
         SeatReservationRequestedPayload payload =
                 new SeatReservationRequestedPayload(
@@ -41,7 +45,8 @@ public class DefaultSeatReservationRequestedOutboxFactory
                         booking.getShowtimeId(),
                         requestedSeats(bookingSeats),
                         occurredAt,
-                        booking.getExpiresAt());
+                        booking.getExpiresAt(),
+                        expectedTotalAmount);
 
         UUID eventId = UuidGenerator.next();
 
@@ -60,6 +65,13 @@ public class DefaultSeatReservationRequestedOutboxFactory
                 null,
                 serialize(payload),
                 occurredAt);
+    }
+
+    @Override
+    public OutboxEventEntity create(
+            Booking booking, List<BookingSeat> bookingSeats, OffsetDateTime occurredAt) {
+
+        return create(booking, bookingSeats, occurredAt, null);
     }
 
     private List<RequestedSeatPayload> requestedSeats(List<BookingSeat> bookingSeats) {

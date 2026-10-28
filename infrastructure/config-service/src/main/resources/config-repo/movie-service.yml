@@ -84,6 +84,6 @@ info:
 cinema:
   security:
     oauth2:
-      issuer-uri: ${CINEMA_AUTH_ISSUER}
-      jwk-set-uri: ${CINEMA_AUTH_JWK_SET_URI}
+      issuer-uri: ${CINEMA_AUTH_ISSUER:http://localhost:8082}
+      jwk-set-uri: ${CINEMA_AUTH_JWK_SET_URI:http://localhost:8082/oauth2/jwks}
       audience: ${CINEMA_AUTH_AUDIENCE:cinema-api}

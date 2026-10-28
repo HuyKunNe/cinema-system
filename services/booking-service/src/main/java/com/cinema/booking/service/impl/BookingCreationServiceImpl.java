@@ -15,6 +15,7 @@ import com.cinema.common.outbox.service.OutboxService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -62,7 +63,8 @@ public class BookingCreationServiceImpl implements BookingCreationService {
             UUID showtimeId,
             String clientRequestId,
             String requestFingerprint,
-            List<String> normalizedSeatNumbers) {
+            List<String> normalizedSeatNumbers,
+            BigDecimal expectedTotalAmount) {
 
         OffsetDateTime now = OffsetDateTime.now(clock);
 
@@ -84,10 +86,30 @@ public class BookingCreationServiceImpl implements BookingCreationService {
 
         List<BookingSeat> savedSeats = bookingSeatRepository.saveAll(bookingSeats);
 
-        OutboxEventEntity outboxEvent = outboxFactory.create(savedBooking, savedSeats, now);
-
+        OutboxEventEntity outboxEvent =
+                expectedTotalAmount == null
+                        ? outboxFactory.create(savedBooking, savedSeats, now)
+                        : outboxFactory.create(savedBooking, savedSeats, now, expectedTotalAmount);
         outboxService.save(outboxEvent);
 
         return bookingMapper.toResponse(savedBooking, savedSeats);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse createNew(
+            UUID userId,
+            UUID showtimeId,
+            String clientRequestId,
+            String requestFingerprint,
+            List<String> normalizedSeatNumbers) {
+
+        return createNew(
+                userId,
+                showtimeId,
+                clientRequestId,
+                requestFingerprint,
+                normalizedSeatNumbers,
+                null);
     }
 }

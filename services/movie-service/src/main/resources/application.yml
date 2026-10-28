@@ -84,11 +84,18 @@ logging:
     com.netflix.discovery: INFO
     org.hibernate.SQL: DEBUG
 cinema:
+  security:
+    oauth2:
+      issuer-uri: ${CINEMA_AUTH_ISSUER:http://localhost:8082}
+      jwk-set-uri: ${CINEMA_AUTH_JWK_SET_URI:http://localhost:8082/oauth2/jwks}
+      audience: ${CINEMA_AUTH_AUDIENCE:cinema-api}
+
   movie:
     catalog:
       default-size: ${MOVIE_CATALOG_DEFAULT_SIZE:8}
       max-size: ${MOVIE_CATALOG_MAX_SIZE:100}
       max-movie-ids: ${MOVIE_CATALOG_MAX_MOVIE_IDS:100}
+
     hero:
       default-limit: ${MOVIE_HERO_DEFAULT_LIMIT:4}
       max-limit: ${MOVIE_HERO_MAX_LIMIT:10}

@@ -5,6 +5,7 @@ import com.cinema.common.exception.exception.InternalServerException;
 
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -28,6 +29,32 @@ public class BookingRequestFingerprint {
                         + FIELD_SEPARATOR
                         + String.join(
                                 SEAT_SEPARATOR, normalizedSeatNumbers.stream().sorted().toList());
+
+        try {
+            MessageDigest messageDigest = MessageDigest.getInstance(ALGORITHM);
+
+            byte[] digest = messageDigest.digest(canonicalRequest.getBytes(StandardCharsets.UTF_8));
+
+            return HexFormat.of().formatHex(digest);
+
+        } catch (NoSuchAlgorithmException exception) {
+            throw new InternalServerException(
+                    BookingErrorCode.REQUEST_FINGERPRINT_GENERATION_FAILED, exception);
+        }
+    }
+
+    public String generate(
+            UUID showtimeId, List<String> normalizedSeatNumbers, BigDecimal expectedTotalAmount) {
+
+        if (expectedTotalAmount == null) {
+            return generate(showtimeId, normalizedSeatNumbers);
+        }
+
+        String canonicalRequest =
+                generate(showtimeId, normalizedSeatNumbers)
+                        + FIELD_SEPARATOR
+                        + "expectedTotalAmount="
+                        + expectedTotalAmount.stripTrailingZeros().toPlainString();
 
         try {
             MessageDigest messageDigest = MessageDigest.getInstance(ALGORITHM);

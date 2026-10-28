@@ -49,7 +49,7 @@ class GatewayConfigurationContractTest {
                 2,
                 "inventory-service",
                 "lb://inventory-service",
-                "Path=/api/v1/cinemas/**,/api/v1/rooms/**,/api/v1/showtimes/**,/api/v1/seats/**,/api/v1/show-seats/**");
+                "Path=/api/v1/cinemas/**,/api/v1/rooms/**,/api/v1/showtimes/**,/api/v1/seats/**,/api/v1/show-seats/**,/api/v1/room-layouts,/api/v1/room-layouts/**");
 
         assertRoute(3, "booking-service", "lb://booking-service", "Path=/api/v1/bookings/**");
 

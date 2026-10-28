@@ -308,6 +308,13 @@ public final class BookingErrorCode implements ErrorCode {
                     "BOOKING_NOT_PAYMENT_FAILED",
                     "Booking is not payment failed");
 
+    public static final BookingErrorCode INVALID_EXPECTED_TOTAL_AMOUNT =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_INVALID_EXPECTED_TOTAL_AMOUNT",
+                    "Expected total amount must be nonnegative with "
+                            + "at most 17 integer digits and 2 decimal places");
+
     private final ErrorCategory category;
 
     private final String code;

@@ -4,6 +4,7 @@ import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
 import com.cinema.common.outbox.entity.OutboxEventEntity;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -11,4 +12,10 @@ public interface SeatReservationRequestedOutboxFactory {
 
     OutboxEventEntity create(
             Booking booking, List<BookingSeat> bookingSeats, OffsetDateTime occurredAt);
+
+    OutboxEventEntity create(
+            Booking booking,
+            List<BookingSeat> bookingSeats,
+            OffsetDateTime occurredAt,
+            BigDecimal expectedTotalAmount);
 }

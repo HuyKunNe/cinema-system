@@ -23,6 +23,7 @@ import com.cinema.inventory.service.SeatReservationRequestedConsumerService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -155,6 +156,24 @@ public class SeatReservationRequestedConsumerServiceImpl
                     message);
         }
 
+        if (payload.expectedTotalAmount() != null) {
+            BigDecimal actualTotal =
+                    showSeats.stream()
+                            .map(ShowSeat::getPrice)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            if (actualTotal.compareTo(payload.expectedTotalAmount()) != 0) {
+
+                return reject(
+                        payload,
+                        SeatReservationRejectionReason.PRICE_CHANGED,
+                        "Seat prices differ from the accepted quote",
+                        List.of(),
+                        now,
+                        message);
+            }
+        }
+
         List<String> foundSeatNumbers =
                 showSeats.stream()
                         .map(ShowSeat::getSeatNumber)
@@ -244,7 +263,8 @@ public class SeatReservationRequestedConsumerServiceImpl
         if (payload.requestedAt() == null
                 || payload.holdExpiresAt() == null
                 || payload.seats() == null
-                || payload.seats().isEmpty()) {
+                || payload.seats().isEmpty()
+                || !isValidExpectedTotalAmount(payload.expectedTotalAmount())) {
 
             return ReservationRequestAssessment.rejected(
                     SeatReservationRejectionReason.INVALID_REQUEST,
@@ -367,6 +387,14 @@ public class SeatReservationRequestedConsumerServiceImpl
     private String normalizeSeatNumber(String seatNumber) {
 
         return seatNumber.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private static boolean isValidExpectedTotalAmount(BigDecimal amount) {
+
+        return amount == null
+                || (amount.signum() >= 0
+                        && amount.scale() <= 2
+                        && amount.precision() - amount.scale() <= 17);
     }
 
     private record ReservationRequestAssessment(
