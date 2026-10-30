@@ -79,6 +79,10 @@ public class GatewaySecurityConfiguration {
                                                 "/api/v1/bookings/management",
                                                 "/api/v1/bookings/management/**")
                                         .hasRole("ADMIN")
+                                        .pathMatchers(
+                                                "/api/v1/payments/management",
+                                                "/api/v1/payments/management/**")
+                                        .hasRole("ADMIN")
                                         .pathMatchers("/api/**")
                                         .authenticated()
                                         .anyExchange()

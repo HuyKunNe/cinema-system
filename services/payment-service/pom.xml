@@ -107,6 +107,12 @@
 
         <dependency>
             <groupId>com.cinema</groupId>
+            <artifactId>common-mapper</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.cinema</groupId>
             <artifactId>common-openapi</artifactId>
             <version>${project.version}</version>
         </dependency>

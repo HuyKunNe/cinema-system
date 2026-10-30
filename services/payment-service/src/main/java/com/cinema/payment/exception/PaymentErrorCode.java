@@ -505,6 +505,11 @@ public final class PaymentErrorCode implements ErrorCode {
                     "PAYMENT_RECONCILIATION_TRANSACTION_NOT_PENDING",
                     "Reconciliation payment transaction is not pending provider result");
 
+    public static final PaymentErrorCode INVALID_MANAGEMENT_QUERY =
+            validation(
+                    "PAYMENT_INVALID_MANAGEMENT_QUERY",
+                    "Invalid payment management identifiers or pagination");
+
     private static PaymentErrorCode validation(String code, String message) {
 
         return new PaymentErrorCode(ErrorCategory.VALIDATION, code, message);

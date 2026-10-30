@@ -8,6 +8,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplicat
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authorization.AuthorityAuthorizationManager;
+import org.springframework.security.authorization.AuthorizationManagers;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -67,6 +69,15 @@ public class PaymentSecurityConfig {
                                         .hasAuthority(PAYMENT_RECONCILE_AUTHORITY)
                                         .requestMatchers(HttpMethod.GET, "/api/v1/payments/*/audit")
                                         .hasAuthority(PAYMENT_AUDIT_AUTHORITY)
+                                        .requestMatchers(
+                                                "/api/v1/payments/management",
+                                                "/api/v1/payments/management/**")
+                                        .access(
+                                                AuthorizationManagers.allOf(
+                                                        AuthorityAuthorizationManager.hasRole(
+                                                                "ADMIN"),
+                                                        AuthorityAuthorizationManager.hasAuthority(
+                                                                PAYMENT_READ_AUTHORITY)))
                                         .requestMatchers(HttpMethod.GET, "/api/v1/payments/*")
                                         .hasAuthority(PAYMENT_READ_AUTHORITY)
                                         .anyRequest()
