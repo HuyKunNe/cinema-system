@@ -5,10 +5,13 @@ import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.response.model.PageResponse;
 import com.cinema.payment.controller.response.PaymentManagementResponse;
+import com.cinema.payment.controller.response.PaymentTransactionManagementResponse;
 import com.cinema.payment.entity.Payment;
+import com.cinema.payment.entity.PaymentTransaction;
 import com.cinema.payment.exception.PaymentErrorCode;
 import com.cinema.payment.mapper.PaymentManagementMapper;
 import com.cinema.payment.repository.PaymentRepository;
+import com.cinema.payment.repository.PaymentTransactionRepository;
 import com.cinema.payment.service.PaymentManagementReadService;
 
 import org.springframework.data.domain.Page;
@@ -26,12 +29,17 @@ public class PaymentManagementReadServiceImpl implements PaymentManagementReadSe
 
     private final PaymentRepository paymentRepository;
 
+    private final PaymentTransactionRepository paymentTransactionRepository;
+
     private final PaymentManagementMapper paymentManagementMapper;
 
     public PaymentManagementReadServiceImpl(
-            PaymentRepository paymentRepository, PaymentManagementMapper paymentManagementMapper) {
+            PaymentRepository paymentRepository,
+            PaymentTransactionRepository paymentTransactionRepository,
+            PaymentManagementMapper paymentManagementMapper) {
 
         this.paymentRepository = paymentRepository;
+        this.paymentTransactionRepository = paymentTransactionRepository;
         this.paymentManagementMapper = paymentManagementMapper;
     }
 
@@ -44,10 +52,7 @@ public class PaymentManagementReadServiceImpl implements PaymentManagementReadSe
         }
 
         requireUuidV7(bookingId);
-
-        if (page < 0 || size < 1 || size > 100) {
-            throw invalidQuery();
-        }
+        validatePagination(page, size);
 
         PageRequest pageRequest =
                 PageRequest.of(
@@ -63,11 +68,7 @@ public class PaymentManagementReadServiceImpl implements PaymentManagementReadSe
     @Override
     public PaymentManagementResponse findById(UUID paymentId) {
 
-        if (paymentId == null) {
-            throw new ValidationException(PaymentErrorCode.PAYMENT_ID_REQUIRED);
-        }
-
-        requireUuidV7(paymentId);
+        validatePaymentId(paymentId);
 
         Payment payment =
                 paymentRepository
@@ -76,6 +77,43 @@ public class PaymentManagementReadServiceImpl implements PaymentManagementReadSe
                                 () -> new NotFoundException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
         return paymentManagementMapper.toResponse(payment);
+    }
+
+    @Override
+    public PageResponse<PaymentTransactionManagementResponse> findTransactionsByPaymentId(
+            UUID paymentId, int page, int size) {
+
+        validatePaymentId(paymentId);
+        validatePagination(page, size);
+
+        if (!paymentRepository.existsById(paymentId)) {
+            throw new NotFoundException(PaymentErrorCode.PAYMENT_NOT_FOUND);
+        }
+
+        PageRequest pageRequest =
+                PageRequest.of(
+                        page, size, Sort.by(Sort.Order.desc("requestedAt"), Sort.Order.desc("id")));
+
+        Page<PaymentTransaction> transactions =
+                paymentTransactionRepository.findAllByPaymentId(paymentId, pageRequest);
+
+        return PageResponseMapper.map(transactions.map(paymentManagementMapper::toResponse));
+    }
+
+    private static void validatePaymentId(UUID paymentId) {
+
+        if (paymentId == null) {
+            throw new ValidationException(PaymentErrorCode.PAYMENT_ID_REQUIRED);
+        }
+
+        requireUuidV7(paymentId);
+    }
+
+    private static void validatePagination(int page, int size) {
+
+        if (page < 0 || size < 1 || size > 100) {
+            throw invalidQuery();
+        }
     }
 
     private static void requireUuidV7(UUID value) {

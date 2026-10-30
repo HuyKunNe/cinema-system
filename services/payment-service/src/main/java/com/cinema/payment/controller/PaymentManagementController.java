@@ -5,6 +5,7 @@ import com.cinema.common.response.model.ApiResponse;
 import com.cinema.common.response.model.PageResponse;
 import com.cinema.common.validation.annotation.UuidV7;
 import com.cinema.payment.controller.response.PaymentManagementResponse;
+import com.cinema.payment.controller.response.PaymentTransactionManagementResponse;
 import com.cinema.payment.service.PaymentManagementReadService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -73,6 +74,21 @@ public class PaymentManagementController {
             @PathVariable("paymentId") @UuidV7 UUID paymentId) {
 
         PaymentManagementResponse response = paymentManagementReadService.findById(paymentId);
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(ResponseFactory.success(response));
+    }
+
+    @GetMapping("/{paymentId}/transactions")
+    public ResponseEntity<ApiResponse<PageResponse<PaymentTransactionManagementResponse>>>
+            listPaymentTransactionsForAdmin(
+                    @PathVariable("paymentId") @UuidV7 UUID paymentId,
+                    @RequestParam(name = "page", defaultValue = "0") @Min(0) int page,
+                    @RequestParam(name = "size", defaultValue = "20") @Min(1) @Max(100) int size) {
+
+        PageResponse<PaymentTransactionManagementResponse> response =
+                paymentManagementReadService.findTransactionsByPaymentId(paymentId, page, size);
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
