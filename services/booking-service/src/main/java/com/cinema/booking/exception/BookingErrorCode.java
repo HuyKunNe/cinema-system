@@ -321,6 +321,12 @@ public final class BookingErrorCode implements ErrorCode {
                     "BOOKING_INVALID_SEAT_SELECTION",
                     "Supply exactly one valid seatNumbers or seats list");
 
+    public static final BookingErrorCode INVALID_MANAGEMENT_QUERY =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_INVALID_MANAGEMENT_QUERY",
+                    "Invalid booking management filters, identifiers or pagination");
+
     private final ErrorCategory category;
 
     private final String code;

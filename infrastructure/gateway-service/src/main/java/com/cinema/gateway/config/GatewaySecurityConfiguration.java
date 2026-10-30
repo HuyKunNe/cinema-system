@@ -75,6 +75,10 @@ public class GatewaySecurityConfiguration {
                                         .hasAuthority("inventory:manage")
                                         .pathMatchers(HttpMethod.GET, PUBLIC_CATALOG_ENDPOINTS)
                                         .permitAll()
+                                        .pathMatchers(
+                                                "/api/v1/bookings/management",
+                                                "/api/v1/bookings/management/**")
+                                        .hasRole("ADMIN")
                                         .pathMatchers("/api/**")
                                         .authenticated()
                                         .anyExchange()

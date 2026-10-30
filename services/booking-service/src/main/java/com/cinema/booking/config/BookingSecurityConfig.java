@@ -44,6 +44,10 @@ public class BookingSecurityConfig {
                                         .permitAll()
                                         .requestMatchers("/actuator/health", "/actuator/info")
                                         .permitAll()
+                                        .requestMatchers(
+                                                "/api/v1/bookings/management",
+                                                "/api/v1/bookings/management/**")
+                                        .hasRole("ADMIN")
                                         .requestMatchers(BOOKING_ENDPOINTS)
                                         .authenticated()
                                         .anyRequest()

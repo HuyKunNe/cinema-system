@@ -24,7 +24,12 @@ import java.util.UUID;
         name = "bookings",
         indexes = {
             @Index(name = "idx_bookings_user_created", columnList = "user_id, created_at"),
-            @Index(name = "idx_bookings_status_expiration", columnList = "status, expires_at")
+            @Index(name = "idx_bookings_status_expiration", columnList = "status, expires_at"),
+            @Index(name = "idx_bookings_created", columnList = "created_at, id"),
+            @Index(name = "idx_bookings_status_created", columnList = "status, created_at, id"),
+            @Index(
+                    name = "idx_bookings_showtime_created",
+                    columnList = "showtime_id, created_at, id")
         },
         uniqueConstraints = {
             @UniqueConstraint(
