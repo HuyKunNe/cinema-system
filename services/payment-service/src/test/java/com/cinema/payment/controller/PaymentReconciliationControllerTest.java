@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.cinema.payment.config.PaymentTimeConfiguration;
 import com.cinema.payment.enums.FinancialAuditActorType;
 import com.cinema.payment.enums.PaymentTransactionStatus;
 import com.cinema.payment.enums.ReconciliationResolution;
@@ -24,6 +25,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -39,6 +41,7 @@ import java.util.UUID;
 @WebMvcTest(PaymentReconciliationController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
+@Import(PaymentTimeConfiguration.class)
 class PaymentReconciliationControllerTest {
 
     private static final UUID CASE_ID = UUID.fromString("019c1234-5555-7abc-8def-0123456789ab");
@@ -95,13 +98,13 @@ class PaymentReconciliationControllerTest {
                                         """
                                                 .formatted(CORRELATION_ID)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.reconciliationCaseId").value(CASE_ID.toString()))
-                .andExpect(jsonPath("$.paymentId").value(PAYMENT_ID.toString()))
-                .andExpect(jsonPath("$.paymentTransactionId").value(TRANSACTION_ID.toString()))
-                .andExpect(jsonPath("$.reconciliationStatus").value("RESOLVED"))
-                .andExpect(jsonPath("$.resolution").value("REFUND_SUCCEEDED"))
-                .andExpect(jsonPath("$.refundStatus").value("SUCCEEDED"))
-                .andExpect(jsonPath("$.transactionStatus").value("SUCCEEDED"));
+                .andExpect(jsonPath("$.data.reconciliationCaseId").value(CASE_ID.toString()))
+                .andExpect(jsonPath("$.data.paymentId").value(PAYMENT_ID.toString()))
+                .andExpect(jsonPath("$.data.paymentTransactionId").value(TRANSACTION_ID.toString()))
+                .andExpect(jsonPath("$.data.reconciliationStatus").value("RESOLVED"))
+                .andExpect(jsonPath("$.data.resolution").value("REFUND_SUCCEEDED"))
+                .andExpect(jsonPath("$.data.refundStatus").value("SUCCEEDED"))
+                .andExpect(jsonPath("$.data.transactionStatus").value("SUCCEEDED"));
 
         OffsetDateTime afterRequest = OffsetDateTime.now(ZoneOffset.UTC);
 
@@ -171,11 +174,11 @@ class PaymentReconciliationControllerTest {
                                         """
                                                 .formatted(CORRELATION_ID)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.reconciliationCaseId").value(CASE_ID.toString()))
-                .andExpect(jsonPath("$.reconciliationStatus").value("REJECTED"))
-                .andExpect(jsonPath("$.resolution").doesNotExist())
-                .andExpect(jsonPath("$.refundStatus").value("PENDING"))
-                .andExpect(jsonPath("$.transactionStatus").value("PENDING_PROVIDER"));
+                .andExpect(jsonPath("$.data.reconciliationCaseId").value(CASE_ID.toString()))
+                .andExpect(jsonPath("$.data.reconciliationStatus").value("REJECTED"))
+                .andExpect(jsonPath("$.data.resolution").doesNotExist())
+                .andExpect(jsonPath("$.data.refundStatus").value("PENDING"))
+                .andExpect(jsonPath("$.data.transactionStatus").value("PENDING_PROVIDER"));
 
         OffsetDateTime afterRequest = OffsetDateTime.now(ZoneOffset.UTC);
 
@@ -250,9 +253,21 @@ class PaymentReconciliationControllerTest {
     }
 
     @Test
-    void rejectShouldRejectMissingCorrelationId() throws Exception {
+    void rejectShouldGenerateCorrelationIdWhenOmitted() throws Exception {
 
         Authentication authentication = new UsernamePasswordAuthenticationToken("admin-123", "n/a");
+
+        when(reconciliationAdminService.reject(any(ReconciliationRejectRequest.class)))
+                .thenReturn(
+                        new ReconciliationOperationResult(
+                                CASE_ID,
+                                PAYMENT_ID,
+                                TRANSACTION_ID,
+                                ReconciliationStatus.REJECTED,
+                                null,
+                                RefundStatus.PENDING,
+                                PaymentTransactionStatus.PENDING_PROVIDER,
+                                RESOLVED_AT));
 
         mockMvc.perform(
                         post("/api/v1/payments/reconciliation-cases/{caseId}/reject", CASE_ID)
@@ -264,9 +279,20 @@ class PaymentReconciliationControllerTest {
                                           "reason": "Insufficient provider evidence"
                                         }
                                         """))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.reconciliationStatus").value("REJECTED"));
 
-        verifyNoInteractions(reconciliationAdminService);
+        ArgumentCaptor<ReconciliationRejectRequest> requestCaptor =
+                ArgumentCaptor.forClass(ReconciliationRejectRequest.class);
+
+        verify(reconciliationAdminService).reject(requestCaptor.capture());
+
+        ReconciliationRejectRequest capturedRequest = requestCaptor.getValue();
+
+        assertThat(capturedRequest.correlationId()).isNotNull();
+        assertThat(capturedRequest.correlationId().version()).isEqualTo(7);
+        assertThat(capturedRequest.actorId()).isEqualTo("admin-123");
+        assertThat(capturedRequest.reason()).isEqualTo("Insufficient provider evidence");
     }
 
     @Test
