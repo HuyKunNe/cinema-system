@@ -1,7 +1,6 @@
 package com.cinema.payment.controller.response;
 
 import com.cinema.payment.enums.PaymentTransactionStatus;
-import com.cinema.payment.enums.PaymentTransactionType;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -32,7 +31,10 @@ public record PaymentTransactionManagementResponse(
         UUID id,
         UUID paymentId,
         String provider,
-        PaymentTransactionType transactionType,
+        @Schema(
+                        allowableValues = {"CHARGE"},
+                        description = "Transaction type. Always CHARGE.")
+                String transactionType,
         @Schema(
                         description =
                                 "Stored operation attempt number. "

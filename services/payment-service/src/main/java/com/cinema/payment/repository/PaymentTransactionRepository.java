@@ -1,6 +1,7 @@
 package com.cinema.payment.repository;
 
 import com.cinema.payment.entity.PaymentTransaction;
+import com.cinema.payment.enums.PaymentTransactionType;
 
 import jakarta.persistence.LockModeType;
 
@@ -122,5 +123,6 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
             nativeQuery = true)
     List<PaymentTransaction> findReadyRefundTransactions(@Param("batchSize") int batchSize);
 
-    Page<PaymentTransaction> findAllByPaymentId(UUID paymentId, Pageable pageable);
+    Page<PaymentTransaction> findAllByPaymentIdAndTransactionType(
+            UUID paymentId, PaymentTransactionType transactionType, Pageable pageable);
 }

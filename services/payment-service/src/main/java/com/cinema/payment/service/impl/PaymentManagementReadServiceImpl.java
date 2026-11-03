@@ -8,6 +8,7 @@ import com.cinema.payment.controller.response.PaymentManagementResponse;
 import com.cinema.payment.controller.response.PaymentTransactionManagementResponse;
 import com.cinema.payment.entity.Payment;
 import com.cinema.payment.entity.PaymentTransaction;
+import com.cinema.payment.enums.PaymentTransactionType;
 import com.cinema.payment.exception.PaymentErrorCode;
 import com.cinema.payment.mapper.PaymentManagementMapper;
 import com.cinema.payment.repository.PaymentRepository;
@@ -95,7 +96,8 @@ public class PaymentManagementReadServiceImpl implements PaymentManagementReadSe
                         page, size, Sort.by(Sort.Order.desc("requestedAt"), Sort.Order.desc("id")));
 
         Page<PaymentTransaction> transactions =
-                paymentTransactionRepository.findAllByPaymentId(paymentId, pageRequest);
+                paymentTransactionRepository.findAllByPaymentIdAndTransactionType(
+                        paymentId, PaymentTransactionType.CHARGE, pageRequest);
 
         return PageResponseMapper.map(transactions.map(paymentManagementMapper::toResponse));
     }

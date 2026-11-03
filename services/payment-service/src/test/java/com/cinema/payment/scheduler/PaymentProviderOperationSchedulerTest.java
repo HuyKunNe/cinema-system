@@ -6,7 +6,6 @@ import static org.mockito.Mockito.when;
 
 import com.cinema.payment.provider.model.PaymentProviderOperationBatchResult;
 import com.cinema.payment.service.PaymentProviderOperationWorker;
-import com.cinema.payment.service.RefundPaymentProviderOperationWorker;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,32 +18,23 @@ class PaymentProviderOperationSchedulerTest {
 
     @Mock private PaymentProviderOperationWorker operationWorker;
 
-    @Mock private RefundPaymentProviderOperationWorker refundWorker;
-
     private PaymentProviderOperationScheduler scheduler;
 
     @BeforeEach
     void setUp() {
 
-        scheduler = new PaymentProviderOperationScheduler(operationWorker, refundWorker);
+        scheduler = new PaymentProviderOperationScheduler(operationWorker);
     }
 
     @Test
     void shouldProcessOneBoundedBatch() {
 
-        PaymentProviderOperationBatchResult batchResult =
-                new PaymentProviderOperationBatchResult(3, 2, 1);
-
-        when(operationWorker.processNextBatch()).thenReturn(batchResult);
-
-        when(refundWorker.processNextBatch())
-                .thenReturn(PaymentProviderOperationBatchResult.empty());
+        when(operationWorker.processNextBatch())
+                .thenReturn(new PaymentProviderOperationBatchResult(3, 2, 1));
 
         scheduler.processNextBatch();
 
         verify(operationWorker).processNextBatch();
-
-        verify(refundWorker).processNextBatch();
     }
 
     @Test
@@ -53,14 +43,9 @@ class PaymentProviderOperationSchedulerTest {
         when(operationWorker.processNextBatch())
                 .thenReturn(PaymentProviderOperationBatchResult.empty());
 
-        when(refundWorker.processNextBatch())
-                .thenReturn(PaymentProviderOperationBatchResult.empty());
-
         assertThatCode(scheduler::processNextBatch).doesNotThrowAnyException();
 
         verify(operationWorker).processNextBatch();
-
-        verify(refundWorker).processNextBatch();
     }
 
     @Test
@@ -69,61 +54,8 @@ class PaymentProviderOperationSchedulerTest {
         when(operationWorker.processNextBatch())
                 .thenThrow(new IllegalStateException("simulated claim failure"));
 
-        when(refundWorker.processNextBatch())
-                .thenReturn(PaymentProviderOperationBatchResult.empty());
-
         assertThatCode(scheduler::processNextBatch).doesNotThrowAnyException();
 
         verify(operationWorker).processNextBatch();
-
-        verify(refundWorker).processNextBatch();
-    }
-
-    @Test
-    void shouldProcessChargeAndRefundBatches() {
-
-        when(operationWorker.processNextBatch())
-                .thenReturn(new PaymentProviderOperationBatchResult(1, 1, 0));
-
-        when(refundWorker.processNextBatch())
-                .thenReturn(new PaymentProviderOperationBatchResult(1, 1, 0));
-
-        scheduler.processNextBatch();
-
-        verify(operationWorker).processNextBatch();
-
-        verify(refundWorker).processNextBatch();
-    }
-
-    @Test
-    void chargeFailureShouldNotPreventRefundProcessing() {
-
-        when(operationWorker.processNextBatch())
-                .thenThrow(new RuntimeException("forced charge failure"));
-
-        when(refundWorker.processNextBatch())
-                .thenReturn(PaymentProviderOperationBatchResult.empty());
-
-        scheduler.processNextBatch();
-
-        verify(operationWorker).processNextBatch();
-
-        verify(refundWorker).processNextBatch();
-    }
-
-    @Test
-    void refundFailureShouldNotEscapeSchedulerExecution() {
-
-        when(operationWorker.processNextBatch())
-                .thenReturn(PaymentProviderOperationBatchResult.empty());
-
-        when(refundWorker.processNextBatch())
-                .thenThrow(new RuntimeException("forced refund failure"));
-
-        assertThatCode(scheduler::processNextBatch).doesNotThrowAnyException();
-
-        verify(operationWorker).processNextBatch();
-
-        verify(refundWorker).processNextBatch();
     }
 }

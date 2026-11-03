@@ -61,46 +61,49 @@ public class GatewaySecurityConfiguration {
                 .logout(ServerHttpSecurity.LogoutSpec::disable)
                 .requestCache(ServerHttpSecurity.RequestCacheSpec::disable)
                 .securityContextRepository(NoOpServerSecurityContextRepository.getInstance())
-                .authorizeExchange(
-                        authorize ->
-                                authorize
-                                        .pathMatchers(HttpMethod.OPTIONS, "/**")
-                                        .permitAll()
-                                        .pathMatchers("/actuator/health", "/actuator/info")
-                                        .permitAll()
-                                        .pathMatchers(PRICING_MANAGEMENT_ENDPOINTS)
-                                        .hasAuthority("inventory:manage")
-                                        .pathMatchers(
-                                                HttpMethod.GET, INVENTORY_MANAGEMENT_READ_ENDPOINTS)
-                                        .hasAuthority("inventory:manage")
-                                        .pathMatchers(HttpMethod.GET, PUBLIC_CATALOG_ENDPOINTS)
-                                        .permitAll()
-                                        .pathMatchers(
-                                                "/api/v1/bookings/management",
-                                                "/api/v1/bookings/management/**")
-                                        .hasRole("ADMIN")
-                                        .pathMatchers(
-                                                "/api/v1/payments/management",
-                                                "/api/v1/payments/management/**")
-                                        .hasRole("ADMIN")
-                                        .pathMatchers("/api/**")
-                                        .authenticated()
-                                        .anyExchange()
-                                        .denyAll())
-                .exceptionHandling(
-                        exceptionHandling ->
-                                exceptionHandling
-                                        .authenticationEntryPoint(authenticationEntryPoint)
-                                        .accessDeniedHandler(accessDeniedHandler))
-                .oauth2ResourceServer(
-                        resourceServer ->
-                                resourceServer
-                                        .authenticationEntryPoint(authenticationEntryPoint)
-                                        .accessDeniedHandler(accessDeniedHandler)
-                                        .jwt(
-                                                jwt ->
-                                                        jwt.jwtAuthenticationConverter(
-                                                                reactiveJwtAuthenticationConverter)))
+                .authorizeExchange(authorize ->
+                        authorize
+                                .pathMatchers(HttpMethod.OPTIONS, "/**")
+                                .permitAll()
+                                .pathMatchers("/actuator/health", "/actuator/info")
+                                .permitAll()
+                                .pathMatchers(PRICING_MANAGEMENT_ENDPOINTS)
+                                .hasAuthority("inventory:manage")
+                                .pathMatchers(HttpMethod.GET, INVENTORY_MANAGEMENT_READ_ENDPOINTS)
+                                .hasAuthority("inventory:manage")
+                                .pathMatchers(HttpMethod.GET, PUBLIC_CATALOG_ENDPOINTS)
+                                .permitAll()
+                                .pathMatchers(
+                                        "/api/v1/bookings/management",
+                                        "/api/v1/bookings/management/**")
+                                .hasRole("ADMIN")
+                                .pathMatchers(
+                                        "/api/v1/payments/*/refunds",
+                                        "/api/v1/payments/*/refunds/**",
+                                        "/api/v1/payments/reconciliation-cases",
+                                        "/api/v1/payments/reconciliation-cases/**",
+                                        "/api/v1/payments/management/reconciliation-cases",
+                                        "/api/v1/payments/management/reconciliation-cases/**")
+                                .denyAll()
+                                .pathMatchers(
+                                        "/api/v1/payments/management",
+                                        "/api/v1/payments/management/**")
+                                .hasRole("ADMIN")
+                                .pathMatchers("/api/**")
+                                .authenticated()
+                                .anyExchange()
+                                .denyAll())
+                .exceptionHandling(exceptionHandling ->
+                        exceptionHandling
+                                .authenticationEntryPoint(authenticationEntryPoint)
+                                .accessDeniedHandler(accessDeniedHandler))
+                .oauth2ResourceServer(resourceServer ->
+                        resourceServer
+                                .authenticationEntryPoint(authenticationEntryPoint)
+                                .accessDeniedHandler(accessDeniedHandler)
+                                .jwt(jwt ->
+                                        jwt.jwtAuthenticationConverter(
+                                                reactiveJwtAuthenticationConverter)))
                 .build();
     }
 }

@@ -26,10 +26,6 @@ public class PaymentSecurityConfig {
 
     private static final String PAYMENT_WEBHOOK_ENDPOINT = "/api/v1/payments/webhooks/*";
 
-    private static final String PAYMENT_REFUND_AUTHORITY = "payment:refund";
-
-    private static final String PAYMENT_RECONCILE_AUTHORITY = "payment:reconcile";
-
     private static final String PAYMENT_AUDIT_AUTHORITY = "payment:audit";
 
     private static final String[] SWAGGER_ENDPOINTS = {
@@ -47,54 +43,48 @@ public class PaymentSecurityConfig {
         http.csrf(csrf -> csrf.disable())
                 .sessionManagement(
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(
-                        authorize ->
-                                authorize
-                                        .requestMatchers(HttpMethod.OPTIONS, "/**")
-                                        .permitAll()
-                                        .requestMatchers(SWAGGER_ENDPOINTS)
-                                        .permitAll()
-                                        .requestMatchers("/actuator/health", "/actuator/info")
-                                        .permitAll()
-                                        .requestMatchers(
-                                                HttpMethod.POST, "/api/v1/payments/webhooks/*")
-                                        .permitAll()
-                                        .requestMatchers(
-                                                HttpMethod.POST, "/api/v1/payments/*/refunds")
-                                        .hasAuthority(PAYMENT_REFUND_AUTHORITY)
-                                        .requestMatchers(
-                                                HttpMethod.POST,
-                                                "/api/v1/payments/reconciliation-cases/*/resolve",
-                                                "/api/v1/payments/reconciliation-cases/*/reject")
-                                        .hasAuthority(PAYMENT_RECONCILE_AUTHORITY)
-                                        .requestMatchers(HttpMethod.GET, "/api/v1/payments/*/audit")
-                                        .hasAuthority(PAYMENT_AUDIT_AUTHORITY)
-                                        .requestMatchers(
-                                                "/api/v1/payments/management",
-                                                "/api/v1/payments/management/**")
-                                        .access(
-                                                AuthorizationManagers.allOf(
-                                                        AuthorityAuthorizationManager.hasRole(
-                                                                "ADMIN"),
-                                                        AuthorityAuthorizationManager.hasAuthority(
-                                                                PAYMENT_READ_AUTHORITY)))
-                                        .requestMatchers(HttpMethod.GET, "/api/v1/payments/*")
-                                        .hasAuthority(PAYMENT_READ_AUTHORITY)
-                                        .anyRequest()
-                                        .denyAll())
-                .exceptionHandling(
-                        exceptions ->
-                                exceptions
-                                        .authenticationEntryPoint(authenticationEntryPoint)
-                                        .accessDeniedHandler(accessDeniedHandler))
-                .oauth2ResourceServer(
-                        oauth2 ->
-                                oauth2.authenticationEntryPoint(authenticationEntryPoint)
-                                        .accessDeniedHandler(accessDeniedHandler)
-                                        .jwt(
-                                                jwt ->
-                                                        jwt.jwtAuthenticationConverter(
-                                                                jwtAuthenticationConverter)));
+                .authorizeHttpRequests(authorize ->
+                        authorize
+                                .requestMatchers(HttpMethod.OPTIONS, "/**")
+                                .permitAll()
+                                .requestMatchers(SWAGGER_ENDPOINTS)
+                                .permitAll()
+                                .requestMatchers("/actuator/health", "/actuator/info")
+                                .permitAll()
+                                .requestMatchers(HttpMethod.POST, "/api/v1/payments/webhooks/*")
+                                .permitAll()
+                                .requestMatchers(
+                                        "/api/v1/payments/*/refunds",
+                                        "/api/v1/payments/*/refunds/**",
+                                        "/api/v1/payments/reconciliation-cases",
+                                        "/api/v1/payments/reconciliation-cases/**",
+                                        "/api/v1/payments/management/reconciliation-cases",
+                                        "/api/v1/payments/management/reconciliation-cases/**")
+                                .denyAll()
+                                .requestMatchers(HttpMethod.GET, "/api/v1/payments/*/audit")
+                                .hasAuthority(PAYMENT_AUDIT_AUTHORITY)
+                                .requestMatchers(
+                                        "/api/v1/payments/management",
+                                        "/api/v1/payments/management/**")
+                                .access(
+                                        AuthorizationManagers.allOf(
+                                                AuthorityAuthorizationManager.hasRole("ADMIN"),
+                                                AuthorityAuthorizationManager.hasAuthority(
+                                                        PAYMENT_READ_AUTHORITY)))
+                                .requestMatchers(HttpMethod.GET, "/api/v1/payments/*")
+                                .hasAuthority(PAYMENT_READ_AUTHORITY)
+                                .anyRequest()
+                                .denyAll())
+                .exceptionHandling(exceptions ->
+                        exceptions
+                                .authenticationEntryPoint(authenticationEntryPoint)
+                                .accessDeniedHandler(accessDeniedHandler))
+                .oauth2ResourceServer(oauth2 ->
+                        oauth2.authenticationEntryPoint(authenticationEntryPoint)
+                                .accessDeniedHandler(accessDeniedHandler)
+                                .jwt(jwt ->
+                                        jwt.jwtAuthenticationConverter(
+                                                jwtAuthenticationConverter)));
 
         return http.build();
     }

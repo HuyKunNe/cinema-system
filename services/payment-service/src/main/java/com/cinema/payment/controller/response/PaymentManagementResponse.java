@@ -1,7 +1,6 @@
 package com.cinema.payment.controller.response;
 
 import com.cinema.payment.enums.PaymentStatus;
-import com.cinema.payment.enums.RefundStatus;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -21,7 +20,6 @@ import java.util.UUID;
             "currency",
             "provider",
             "status",
-            "refundStatus",
             "providerReference",
             "failureCode",
             "holdExpiresAt",
@@ -41,7 +39,6 @@ public record PaymentManagementResponse(
         String currency,
         String provider,
         PaymentStatus status,
-        RefundStatus refundStatus,
         @Schema(nullable = true) String providerReference,
         @Schema(nullable = true) String failureCode,
         OffsetDateTime holdExpiresAt,
