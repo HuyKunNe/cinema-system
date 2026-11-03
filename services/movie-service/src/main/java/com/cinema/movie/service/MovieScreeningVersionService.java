@@ -4,6 +4,7 @@ import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.movie.dto.request.CreateMovieScreeningVersionRequest;
+import com.cinema.movie.dto.request.SaveMovieScreeningVersionRequest;
 import com.cinema.movie.dto.request.UpdateMovieScreeningVersionActiveRequest;
 import com.cinema.movie.dto.response.MovieScreeningVersionResponse;
 import com.cinema.movie.entity.Movie;
@@ -15,10 +16,13 @@ import com.cinema.movie.repository.MovieScreeningVersionRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -60,10 +64,8 @@ public class MovieScreeningVersionService {
         MovieScreeningVersion version =
                 versionRepository
                         .findByIdAndMovie_Id(versionId, movieId)
-                        .orElseThrow(
-                                () ->
-                                        new NotFoundException(
-                                                MovieErrorCode.SCREENING_VERSION_NOT_FOUND));
+                        .orElseThrow(() ->
+                                new NotFoundException(MovieErrorCode.SCREENING_VERSION_NOT_FOUND));
 
         return mapper.toResponse(version);
     }
@@ -120,10 +122,8 @@ public class MovieScreeningVersionService {
         MovieScreeningVersion version =
                 versionRepository
                         .findForUpdate(movieId, versionId)
-                        .orElseThrow(
-                                () ->
-                                        new NotFoundException(
-                                                MovieErrorCode.SCREENING_VERSION_NOT_FOUND));
+                        .orElseThrow(() ->
+                                new NotFoundException(MovieErrorCode.SCREENING_VERSION_NOT_FOUND));
 
         if (!request.expectedVersion().equals(version.getVersion())) {
             throw new ConflictException(MovieErrorCode.SCREENING_VERSION_CONFLICT);
@@ -134,6 +134,93 @@ public class MovieScreeningVersionService {
         versionRepository.flush();
 
         return mapper.toResponse(version);
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void applyMovieEdits(UUID movieId, List<SaveMovieScreeningVersionRequest> requests) {
+
+        if (requests == null || requests.isEmpty()) {
+            return;
+        }
+
+        Movie movie = lockMovie(movieId);
+        Set<UUID> requestedIds = new HashSet<>();
+
+        for (SaveMovieScreeningVersionRequest request : requests) {
+            if (request == null || request.active() == null) {
+                throw new ValidationException(MovieErrorCode.INVALID_SCREENING_VERSION);
+            }
+
+            MovieScreeningVersion candidate =
+                    new MovieScreeningVersion(
+                            movie,
+                            request.contentFormat(),
+                            request.audioLanguage(),
+                            request.presentationType(),
+                            request.subtitleLanguage());
+
+            if (request.id() == null) {
+                if (request.expectedVersion() != null) {
+                    throw new ValidationException(MovieErrorCode.INVALID_SCREENING_VERSION);
+                }
+
+                var existing =
+                        versionRepository
+                                .findByMovie_IdAndContentFormatAndAudioLanguageAndPresentationTypeAndSubtitleLanguage(
+                                        movieId,
+                                        candidate.getContentFormat(),
+                                        candidate.getAudioLanguage(),
+                                        candidate.getPresentationType(),
+                                        Objects.toString(candidate.getSubtitleLanguage(), ""));
+
+                if (existing.isPresent()) {
+                    if (existing.get().isActive() != request.active()) {
+                        throw new ConflictException(MovieErrorCode.SCREENING_VERSION_CONFLICT);
+                    }
+
+                    continue;
+                }
+
+                candidate.changeActive(request.active());
+                versionRepository.save(candidate);
+                continue;
+            }
+
+            if (request.expectedVersion() == null
+                    || request.expectedVersion() < 0
+                    || !requestedIds.add(request.id())) {
+
+                throw new ValidationException(MovieErrorCode.INVALID_SCREENING_VERSION);
+            }
+
+            MovieScreeningVersion existing =
+                    versionRepository
+                            .findForUpdate(movieId, request.id())
+                            .orElseThrow(() ->
+                                    new NotFoundException(
+                                            MovieErrorCode.SCREENING_VERSION_NOT_FOUND));
+
+            if (!request.expectedVersion().equals(existing.getVersion())) {
+                throw new ConflictException(MovieErrorCode.SCREENING_VERSION_CONFLICT);
+            }
+
+            if (!sameDefinition(existing, candidate)) {
+                throw new ConflictException(MovieErrorCode.SCREENING_VERSION_IMMUTABLE);
+            }
+
+            existing.changeActive(request.active());
+        }
+
+        versionRepository.flush();
+    }
+
+    private static boolean sameDefinition(
+            MovieScreeningVersion existing, MovieScreeningVersion candidate) {
+
+        return existing.getContentFormat() == candidate.getContentFormat()
+                && existing.getPresentationType() == candidate.getPresentationType()
+                && existing.getAudioLanguage().equals(candidate.getAudioLanguage())
+                && Objects.equals(existing.getSubtitleLanguage(), candidate.getSubtitleLanguage());
     }
 
     private Movie lockMovie(UUID movieId) {

@@ -3,11 +3,14 @@ package com.cinema.movie.mapper;
 import com.cinema.movie.dto.request.CreateMovieRequest;
 import com.cinema.movie.dto.request.UpdateMovieRequest;
 import com.cinema.movie.dto.response.MovieResponse;
+import com.cinema.movie.dto.response.MovieScreeningVersionResponse;
 import com.cinema.movie.entity.Movie;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
+
+import java.util.List;
 
 @Mapper(config = MovieMapperConfig.class, uses = GenreMapper.class)
 public interface MovieMapper {
@@ -25,7 +28,11 @@ public interface MovieMapper {
     @Mapping(target = "heroEndsAt", ignore = true)
     Movie toEntity(CreateMovieRequest request);
 
+    @Mapping(target = "screeningVersions", ignore = true)
     MovieResponse toResponse(Movie movie);
+
+    @Mapping(target = "screeningVersions", source = "screeningVersions")
+    MovieResponse toResponse(Movie movie, List<MovieScreeningVersionResponse> screeningVersions);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "version", ignore = true)

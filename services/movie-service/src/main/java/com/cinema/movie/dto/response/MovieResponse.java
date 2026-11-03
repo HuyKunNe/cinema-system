@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -24,13 +25,8 @@ public record MovieResponse(
         Long version,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
-        @JsonInclude(JsonInclude.Include.ALWAYS)
-                @Schema(
-                        nullable = true,
-                        description = "Landscape artwork URL. Null when unavailable.")
-                String backdropUrl,
-        @JsonInclude(JsonInclude.Include.ALWAYS)
-                @Schema(
-                        nullable = true,
-                        description = "Confirmed age classification. Null when unknown.")
-                AgeRating ageRating) {}
+        @JsonInclude(JsonInclude.Include.ALWAYS) @Schema(nullable = true) String backdropUrl,
+        @JsonInclude(JsonInclude.Include.ALWAYS) @Schema(nullable = true) AgeRating ageRating,
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+                @Schema(nullable = true, requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                List<MovieScreeningVersionResponse> screeningVersions) {}

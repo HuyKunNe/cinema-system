@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 
 import jakarta.validation.Valid;
@@ -44,15 +45,27 @@ public class MovieController {
         this.movieService = movieService;
     }
 
+    @ApiResponse(
+            responseCode = "201",
+            description = "Movie with its screening versions",
+            content = @Content(schema = @Schema(implementation = MovieResponse.class)))
+    @SecurityRequirement(
+            name = "oauth2",
+            scopes = {"movie:manage"})
     @PostMapping
-    public ResponseEntity<MovieResponse> createMovie(@Valid @RequestBody CreateMovieRequest request) {
+    public ResponseEntity<MovieResponse> createMovie(
+            @Valid @RequestBody CreateMovieRequest request) {
+
         MovieResponse response = movieService.create(request);
 
         return ResponseEntity.created(URI.create("/api/v1/movies/" + response.id())).body(response);
     }
 
+    @SecurityRequirements
     @GetMapping("/{id}")
-    public ResponseEntity<MovieResponse> findMovieById(@PathVariable("id") UUID id) {
+    public ResponseEntity<MovieResponse> findMovieById(
+            @PathVariable("id") UUID id) {
+
         return ResponseEntity.ok(movieService.findById(id));
     }
 
@@ -97,8 +110,8 @@ public class MovieController {
             @Parameter(
                             description =
                                     "Catalog order. Release-date sorts put null dates last. Title"
-                                        + " order uses the database collation. All orders use"
-                                        + " ascending movie ID as the final tie-breaker.")
+                                            + " order uses the database collation. All orders use"
+                                            + " ascending movie ID as the final tie-breaker.")
                     @RequestParam(value = "sort", defaultValue = "RELEASE_DESC")
                     MovieCatalogSort sort) {
 
@@ -111,9 +124,12 @@ public class MovieController {
         return ResponseEntity.ok(movieService.findAll());
     }
 
+    @SecurityRequirement(name = "oauth2", scopes = {"movie:manage"})
     @PutMapping("/{id}")
     public ResponseEntity<MovieResponse> updateMovie(
-            @PathVariable("id") UUID id, @Valid @RequestBody UpdateMovieRequest request) {
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody UpdateMovieRequest request) {
+
         return ResponseEntity.ok(movieService.update(id, request));
     }
 

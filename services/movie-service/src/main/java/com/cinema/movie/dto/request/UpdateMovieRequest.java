@@ -2,6 +2,9 @@ package com.cinema.movie.dto.request;
 
 import com.cinema.movie.entity.MovieStatus;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -9,6 +12,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -25,4 +29,6 @@ public record UpdateMovieRequest(
         @Size(max = 500) String posterUrl,
         @Size(max = 500, message = "Trailer URL must not exceed 500 characters") String trailerUrl,
         @NotNull(message = "Movie status is required") MovieStatus status,
-        @NotEmpty(message = "At least one genre is required") Set<UUID> genreIds) {}
+        @NotEmpty(message = "At least one genre is required") Set<UUID> genreIds,
+        @Valid @Schema(nullable = true, requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                List<@NotNull SaveMovieScreeningVersionRequest> screeningVersions) {}

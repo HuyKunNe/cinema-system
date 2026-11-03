@@ -69,6 +69,11 @@ public enum MovieErrorCode implements ErrorCode {
             "Movie has screening versions and cannot be deleted",
             ErrorCategory.BUSINESS),
 
+    SCREENING_VERSION_IMMUTABLE(
+            "MOVIE_SCREENING_VERSION_IMMUTABLE",
+            "Screening version definition is immutable; add a new version instead",
+            ErrorCategory.BUSINESS),
+
     INVALID_CATALOG_MOVIE_IDS(
             "INVALID_CATALOG_MOVIE_IDS",
             "Catalog movie ID filter contains null IDs or exceeds the supported limit",

@@ -1,20 +1,5 @@
 package com.cinema.movie.service.impl;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.cinema.common.api.mapper.PageResponseMapper;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
@@ -34,7 +19,24 @@ import com.cinema.movie.mapper.MovieMapper;
 import com.cinema.movie.repository.GenreRepository;
 import com.cinema.movie.repository.MovieRepository;
 import com.cinema.movie.service.MovieCatalogMovieIdFilter;
+import com.cinema.movie.service.MovieScreeningVersionService;
 import com.cinema.movie.service.MovieService;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -44,6 +46,7 @@ public class MovieServiceImpl implements MovieService {
     private final GenreRepository genreRepository;
     private final MovieMapper movieMapper;
     private final MovieCatalogProperties movieCatalogProperties;
+    private final MovieScreeningVersionService screeningVersionService;
     private static final int MAX_TRAILER_URL_LENGTH = 500;
     private static final int MAX_BACKDROP_URL_LENGTH = 500;
 
@@ -51,17 +54,25 @@ public class MovieServiceImpl implements MovieService {
             MovieRepository movieRepository,
             GenreRepository genreRepository,
             MovieMapper movieMapper,
-            MovieCatalogProperties movieCatalogProperties) {
+            MovieCatalogProperties movieCatalogProperties,
+            MovieScreeningVersionService screeningVersionService) {
 
         this.movieRepository = movieRepository;
         this.genreRepository = genreRepository;
         this.movieMapper = movieMapper;
         this.movieCatalogProperties = movieCatalogProperties;
+        this.screeningVersionService = screeningVersionService;
     }
 
     @Override
     @Transactional
     public MovieResponse create(CreateMovieRequest request) {
+
+        if (request.screeningVersions() != null && request.screeningVersions().isEmpty()) {
+
+            throw new ValidationException(MovieErrorCode.INVALID_SCREENING_VERSION);
+        }
+
         String normalizedTitle = request.title().trim();
         String normalizedTrailerUrl = normalizeTrailerUrl(request.trailerUrl());
 
@@ -75,14 +86,22 @@ public class MovieServiceImpl implements MovieService {
         movie.setTrailerUrl(normalizedTrailerUrl);
         movie.setGenres(resolveGenres(request.genreIds()));
 
-        Movie savedMovie = movieRepository.save(movie);
+        Movie savedMovie = movieRepository.saveAndFlush(movie);
 
-        return movieMapper.toResponse(savedMovie);
+        if (request.screeningVersions() != null) {
+            for (var screeningVersion : request.screeningVersions()) {
+                screeningVersionService.create(savedMovie.getId(), screeningVersion);
+            }
+        }
+
+        return toDetailedResponse(savedMovie);
     }
 
     @Override
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public MovieResponse findById(UUID id) {
-        return movieMapper.toResponse(findMovie(id));
+
+        return toDetailedResponse(findMovie(id));
     }
 
     @Override
@@ -158,16 +177,15 @@ public class MovieServiceImpl implements MovieService {
                 movies.stream().collect(Collectors.toMap(Movie::getId, movie -> movie));
 
         Page<MovieResponse> responses =
-                selectedMovieIds.map(
-                        movieId -> {
-                            Movie movie = moviesById.get(movieId);
+                selectedMovieIds.map(movieId -> {
+                    Movie movie = moviesById.get(movieId);
 
-                            if (movie == null) {
-                                throw new NotFoundException(MovieErrorCode.MOVIE_NOT_FOUND);
-                            }
+                    if (movie == null) {
+                        throw new NotFoundException(MovieErrorCode.MOVIE_NOT_FOUND);
+                    }
 
-                            return movieMapper.toResponse(movie);
-                        });
+                    return movieMapper.toResponse(movie);
+                });
 
         return PageResponseMapper.map(responses);
     }
@@ -182,13 +200,15 @@ public class MovieServiceImpl implements MovieService {
     @Transactional
     public MovieResponse update(UUID id, UpdateMovieRequest request) {
 
-        Movie movie = findMovie(id);
+        Movie movie =
+                movieRepository
+                        .findByIdForUpdate(id)
+                        .orElseThrow(() -> new NotFoundException(MovieErrorCode.MOVIE_NOT_FOUND));
 
         String normalizedTitle = request.title().trim();
         String normalizedTrailerUrl = normalizeTrailerUrl(request.trailerUrl());
 
         if (movieRepository.existsByTitleIgnoreCaseAndIdNot(normalizedTitle, id)) {
-
             throw new ConflictException(MovieErrorCode.INVALID_MOVIE_TITLE);
         }
 
@@ -198,7 +218,11 @@ public class MovieServiceImpl implements MovieService {
         movie.setTrailerUrl(normalizedTrailerUrl);
         movie.setGenres(resolveGenres(request.genreIds()));
 
-        return movieMapper.toResponse(movie);
+        screeningVersionService.applyMovieEdits(id, request.screeningVersions());
+
+        movieRepository.flush();
+
+        return toDetailedResponse(movie);
     }
 
     @Override
@@ -266,6 +290,11 @@ public class MovieServiceImpl implements MovieService {
         }
 
         return normalized;
+    }
+
+    private MovieResponse toDetailedResponse(Movie movie) {
+
+        return movieMapper.toResponse(movie, screeningVersionService.list(movie.getId(), null));
     }
 
     private String normalizeTrailerUrl(String value) {
