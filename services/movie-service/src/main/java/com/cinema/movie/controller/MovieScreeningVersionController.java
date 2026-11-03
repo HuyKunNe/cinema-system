@@ -5,12 +5,20 @@ import com.cinema.movie.dto.request.UpdateMovieScreeningVersionActiveRequest;
 import com.cinema.movie.dto.response.MovieScreeningVersionResponse;
 import com.cinema.movie.service.MovieScreeningVersionService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,35 +35,128 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/movies/{movieId}/screening-versions")
+@ApiResponses({
+    @ApiResponse(
+            responseCode = "400",
+            content =
+                    @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema =
+                                    @Schema(
+                                            implementation =
+                                                    com.cinema.common.response.model.ApiResponse
+                                                            .class))),
+    @ApiResponse(
+            responseCode = "404",
+            description = "Movie or screening version not found",
+            content =
+                    @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema =
+                                    @Schema(
+                                            implementation =
+                                                    com.cinema.common.response.model.ApiResponse
+                                                            .class)))
+})
 public class MovieScreeningVersionController {
 
     private final MovieScreeningVersionService service;
 
-    public MovieScreeningVersionController(
-            MovieScreeningVersionService service) {
+    public MovieScreeningVersionController(MovieScreeningVersionService service) {
 
         this.service = service;
     }
 
+    @Operation(
+            operationId = "listMovieScreeningVersions",
+            summary = "List screening versions belonging to a movie")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Screening versions, including an empty array",
+            content =
+                    @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            array =
+                                    @ArraySchema(
+                                            schema =
+                                                    @Schema(
+                                                            implementation =
+                                                                    MovieScreeningVersionResponse
+                                                                            .class))))
     @GetMapping
     @SecurityRequirements
     public ResponseEntity<List<MovieScreeningVersionResponse>> listMovieScreeningVersions(
             @PathVariable("movieId") UUID movieId,
-            @RequestParam(name = "active", required = false)
-            Boolean active) {
+            @Parameter(description = "Optional active-state filter; omit to return all versions.")
+                    @RequestParam(name = "active", required = false)
+                    Boolean active) {
 
         return ResponseEntity.ok(service.list(movieId, active));
     }
 
+    @Operation(
+            operationId = "getMovieScreeningVersion",
+            summary = "Get a screening version belonging to a movie")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Screening version",
+            content =
+                    @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = MovieScreeningVersionResponse.class)))
     @GetMapping("/{versionId}")
     @SecurityRequirements
     public ResponseEntity<MovieScreeningVersionResponse> getMovieScreeningVersion(
-            @PathVariable("movieId") UUID movieId,
-            @PathVariable("versionId") UUID versionId) {
+            @PathVariable("movieId") UUID movieId, @PathVariable("versionId") UUID versionId) {
 
         return ResponseEntity.ok(service.get(movieId, versionId));
     }
 
+    @Operation(operationId = "createMovieScreeningVersion", summary = "Create a screening version")
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "201",
+                description = "New active screening version created",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                schema =
+                                        @Schema(
+                                                implementation =
+                                                        MovieScreeningVersionResponse.class))),
+        @ApiResponse(
+                responseCode = "200",
+                description = "Existing screening version, including an inactive version",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                schema =
+                                        @Schema(
+                                                implementation =
+                                                        MovieScreeningVersionResponse.class))),
+        @ApiResponse(
+                responseCode = "401",
+                description = "SECURITY_AUTHENTICATION_REQUIRED",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                schema =
+                                        @Schema(
+                                                implementation =
+                                                        com.cinema.common.response.model.ApiResponse
+                                                                .class))),
+        @ApiResponse(
+                responseCode = "403",
+                description = "SECURITY_ACCESS_DENIED: movie:manage permission is required",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                schema =
+                                        @Schema(
+                                                implementation =
+                                                        com.cinema.common.response.model.ApiResponse
+                                                                .class)))
+    })
     @PostMapping
     @SecurityRequirement(
             name = "oauth2",
@@ -67,16 +168,63 @@ public class MovieScreeningVersionController {
         var result = service.create(movieId, request);
         var response = result.response();
 
-        return ResponseEntity
-                .status(result.created() ? HttpStatus.CREATED : HttpStatus.OK)
-                .location(URI.create(
-                        "/api/v1/movies/"
-                                + movieId
-                                + "/screening-versions/"
-                                + response.id()))
+        URI location =
+                URI.create("/api/v1/movies/" + movieId + "/screening-versions/" + response.id());
+
+        return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.OK)
+                .location(location)
                 .body(response);
     }
 
+    @Operation(
+            operationId = "updateMovieScreeningVersionActive",
+            summary = "Activate or deactivate a screening version")
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "200",
+                description = "Screening version with its current revision",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                schema =
+                                        @Schema(
+                                                implementation =
+                                                        MovieScreeningVersionResponse.class))),
+        @ApiResponse(
+                responseCode = "409",
+                description =
+                        "MOVIE_SCREENING_VERSION_CONFLICT: reload the version before updating",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                schema =
+                                        @Schema(
+                                                implementation =
+                                                        com.cinema.common.response.model.ApiResponse
+                                                                .class))),
+        @ApiResponse(
+                responseCode = "401",
+                description = "SECURITY_AUTHENTICATION_REQUIRED",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                schema =
+                                        @Schema(
+                                                implementation =
+                                                        com.cinema.common.response.model.ApiResponse
+                                                                .class))),
+        @ApiResponse(
+                responseCode = "403",
+                description = "SECURITY_ACCESS_DENIED: movie:manage permission is required",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                schema =
+                                        @Schema(
+                                                implementation =
+                                                        com.cinema.common.response.model.ApiResponse
+                                                                .class)))
+    })
     @PutMapping("/{versionId}/active")
     @SecurityRequirement(
             name = "oauth2",
@@ -84,10 +232,8 @@ public class MovieScreeningVersionController {
     public ResponseEntity<MovieScreeningVersionResponse> updateMovieScreeningVersionActive(
             @PathVariable("movieId") UUID movieId,
             @PathVariable("versionId") UUID versionId,
-            @Valid
-            @RequestBody UpdateMovieScreeningVersionActiveRequest request) {
+            @Valid @RequestBody UpdateMovieScreeningVersionActiveRequest request) {
 
-        return ResponseEntity.ok(
-                service.updateActive(movieId, versionId, request));
+        return ResponseEntity.ok(service.updateActive(movieId, versionId, request));
     }
 }

@@ -16,8 +16,6 @@ import com.cinema.common.security.config.SecurityConfiguration;
 import com.cinema.common.security.config.ServletSecurityConfiguration;
 import com.cinema.payment.controller.PaymentAuditController;
 import com.cinema.payment.controller.PaymentProviderWebhookController;
-import com.cinema.payment.controller.PaymentReconciliationController;
-import com.cinema.payment.controller.PaymentRefundController;
 import com.cinema.payment.controller.response.FinancialAuditRecordResponse;
 import com.cinema.payment.enums.FinancialAuditAction;
 import com.cinema.payment.enums.FinancialAuditActorType;
@@ -62,8 +60,6 @@ import java.util.UUID;
         controllers = {
             PaymentSecurityIntegrationTest.PaymentSecurityProbeController.class,
             PaymentProviderWebhookController.class,
-            PaymentRefundController.class,
-            PaymentReconciliationController.class,
             PaymentAuditController.class
         })
 @ActiveProfiles("test")
