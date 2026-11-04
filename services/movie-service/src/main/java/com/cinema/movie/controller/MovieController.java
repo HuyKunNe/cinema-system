@@ -45,13 +45,6 @@ public class MovieController {
         this.movieService = movieService;
     }
 
-    @Operation(
-            operationId = "createMovie",
-            summary = "Create a movie with screening versions",
-            description =
-                    "Requires movie:manage. screeningVersions is required and must contain at "
-                            + "least one unique definition. Missing format fields default to "
-                            + "STANDARD projection in 2D.")
     @ApiResponse(
             responseCode = "201",
             description = "Movie with its screening versions",
@@ -132,13 +125,6 @@ public class MovieController {
     }
 
     @SecurityRequirement(name = "oauth2", scopes = {"movie:manage"})
-    @Operation(
-            operationId = "replaceMovie",
-            summary = "Replace a movie and its screening-version state",
-            description =
-                    "Requires movie:manage. Send every persisted screening version with its id "
-                        + "and expectedVersion. Definitions are immutable; only active may change. "
-                        + "New versions omit id and expectedVersion.")
     @PutMapping("/{id}")
     public ResponseEntity<MovieResponse> updateMovie(
             @PathVariable("id") UUID id,
