@@ -1,7 +1,7 @@
 # Database Design
 
-Version: R27.6
-Last updated: 2026-09-10
+Version: R27 plus screening projection technology
+Last updated: 2026-11-04
 
 This document defines the authoritative database ownership, schema design rules,
 table responsibilities, relationships, constraints, indexing strategy, and
@@ -290,6 +290,7 @@ Movie Service owns:
 movies
 genres
 movie_genres
+movie_screening_versions
 ```
 
 It may also own technical tables such as:
@@ -431,6 +432,32 @@ approved business operation explicitly removes its relationships first.
 
 Movie Service must return a business exception for attempts to delete an
 in-use genre.
+
+---
+
+## Movie Screening Versions Table
+
+`movie_screening_versions` stores immutable screening definitions owned by a
+movie. `content_format` represents only the image format (`TWO_D` or `THREE_D`).
+`projection_technology` separately represents `STANDARD`, `IMAX`, `FOUR_DX`, or
+`SCREEN_X`. Audio language, presentation type, and subtitle language remain part
+of the definition so one movie can keep multiple localized versions.
+
+The complete identity is unique across:
+
+```text
+movie_id
+content_format
+projection_technology
+audio_language
+presentation_type
+subtitle_language
+```
+
+Existing rows are migrated to `STANDARD`. Definition columns are immutable after
+creation; only active state changes, protected by the entity revision. Movie create
+and replace operations persist the movie and its screening versions in one local
+transaction.
 
 ---
 
@@ -1816,6 +1843,8 @@ movies.slug
 genres.name
 genres.slug
 movie_genres(movie_id, genre_id)
+movie_screening_versions(movie_id, content_format, projection_technology,
+audio_language, presentation_type, subtitle_language)
 users.email
 users.username
 users.normalized_email
@@ -2224,6 +2253,7 @@ A stale candidate ID must produce a no-op, not an invalid release.
 | `movies`                          | Movie Service          |
 | `genres`                          | Movie Service          |
 | `movie_genres`                    | Movie Service          |
+| `movie_screening_versions`        | Movie Service          |
 | `users`                           | User Service           |
 | `user_profiles`                   | User Service           |
 | `user_credentials`                | User Service           |

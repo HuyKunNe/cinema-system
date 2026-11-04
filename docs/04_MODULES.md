@@ -355,8 +355,12 @@ rules.
 - Public Movie and Genre reads
 - `movie:manage` enforcement for Movie and Genre mutations
 - Independent servlet JWT validation
+- Transactional movie creation and replacement with at least one screening version
+- Immutable screening-version definitions across image format, projection technology,
+  audio language, presentation type, and subtitle language
+- Independent 2D/3D `ContentFormat` and STANDARD/IMAX/FOUR_DX/SCREEN_X projection technology
 
-Owns movies, genres, movie lifecycle, and movie-query APIs.
+Owns movies, genres, screening versions, movie lifecycle, and movie-query APIs.
 
 ## inventory-service
 
@@ -370,6 +374,8 @@ Owns movies, genres, movie lifecycle, and movie-query APIs.
 - Deterministically ordered `PESSIMISTIC_WRITE` acquisition
 - Hold-ownership re-check after locking
 - Conditional, idempotent `HELD -> AVAILABLE` release
+- Immutable showtime snapshots of Movie-owned screening versions
+- Room compatibility checks for both 2D/3D format and projection technology
 
 Owns cinemas, rooms, seats, showtimes, show-seat inventory, seat state
 transitions, and seat concurrency control. No other service may directly

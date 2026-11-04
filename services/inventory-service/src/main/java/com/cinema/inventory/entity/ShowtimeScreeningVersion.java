@@ -3,6 +3,7 @@ package com.cinema.inventory.entity;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.inventory.enums.ContentFormat;
 import com.cinema.inventory.enums.PresentationType;
+import com.cinema.inventory.enums.ProjectionTechnology;
 import com.cinema.inventory.exception.InventoryErrorCode;
 
 import jakarta.persistence.Column;
@@ -28,6 +29,10 @@ public class ShowtimeScreeningVersion {
     @Column(name = "content_format", length = 20, updatable = false)
     private ContentFormat contentFormat;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "projection_technology", length = 30, updatable = false)
+    private ProjectionTechnology projectionTechnology;
+
     @Column(name = "audio_language", length = 100, updatable = false)
     private String audioLanguage;
 
@@ -44,6 +49,7 @@ public class ShowtimeScreeningVersion {
             UUID id,
             Long version,
             ContentFormat contentFormat,
+            ProjectionTechnology projectionTechnology,
             String audioLanguage,
             PresentationType presentationType,
             String subtitleLanguage) {
@@ -55,6 +61,7 @@ public class ShowtimeScreeningVersion {
                 || version == null
                 || version < 0
                 || contentFormat == null
+                || projectionTechnology == null
                 || presentationType == null
                 || audio.isEmpty()
                 || audio.length() > 100
@@ -73,9 +80,28 @@ public class ShowtimeScreeningVersion {
         this.id = id;
         this.version = version;
         this.contentFormat = contentFormat;
+        this.projectionTechnology = projectionTechnology;
         this.audioLanguage = audio;
         this.presentationType = presentationType;
         this.subtitleLanguage = subtitle.isEmpty() ? null : subtitle;
+    }
+
+    public ShowtimeScreeningVersion(
+            UUID id,
+            Long version,
+            ContentFormat contentFormat,
+            String audioLanguage,
+            PresentationType presentationType,
+            String subtitleLanguage) {
+
+        this(
+                id,
+                version,
+                contentFormat,
+                ProjectionTechnology.STANDARD,
+                audioLanguage,
+                presentationType,
+                subtitleLanguage);
     }
 
     public UUID getId() {
@@ -88,6 +114,10 @@ public class ShowtimeScreeningVersion {
 
     public ContentFormat getContentFormat() {
         return contentFormat;
+    }
+
+    public ProjectionTechnology getProjectionTechnology() {
+        return projectionTechnology;
     }
 
     public String getAudioLanguage() {

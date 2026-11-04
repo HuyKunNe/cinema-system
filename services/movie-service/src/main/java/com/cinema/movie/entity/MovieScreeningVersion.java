@@ -25,6 +25,10 @@ public class MovieScreeningVersion extends BaseEntity {
     @Column(name = "content_format", nullable = false, updatable = false, length = 20)
     private ContentFormat contentFormat;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "projection_technology", nullable = false, updatable = false, length = 30)
+    private ProjectionTechnology projectionTechnology;
+
     @Column(name = "audio_language", nullable = false, updatable = false, length = 100)
     private String audioLanguage;
 
@@ -43,6 +47,7 @@ public class MovieScreeningVersion extends BaseEntity {
     public MovieScreeningVersion(
             Movie movie,
             ContentFormat contentFormat,
+            ProjectionTechnology projectionTechnology,
             String audioLanguage,
             PresentationType presentationType,
             String subtitleLanguage) {
@@ -50,6 +55,7 @@ public class MovieScreeningVersion extends BaseEntity {
         if (movie == null
                 || movie.getId() == null
                 || contentFormat == null
+                || projectionTechnology == null
                 || presentationType == null
                 || audioLanguage == null) {
 
@@ -76,9 +82,26 @@ public class MovieScreeningVersion extends BaseEntity {
 
         this.movie = movie;
         this.contentFormat = contentFormat;
+        this.projectionTechnology = projectionTechnology;
         this.audioLanguage = normalizedAudio;
         this.presentationType = presentationType;
         this.subtitleLanguage = normalizedSubtitle;
+    }
+
+    public MovieScreeningVersion(
+            Movie movie,
+            ContentFormat contentFormat,
+            String audioLanguage,
+            PresentationType presentationType,
+            String subtitleLanguage) {
+
+        this(
+                movie,
+                contentFormat,
+                ProjectionTechnology.STANDARD,
+                audioLanguage,
+                presentationType,
+                subtitleLanguage);
     }
 
     public Movie getMovie() {
@@ -87,6 +110,10 @@ public class MovieScreeningVersion extends BaseEntity {
 
     public ContentFormat getContentFormat() {
         return contentFormat;
+    }
+
+    public ProjectionTechnology getProjectionTechnology() {
+        return projectionTechnology;
     }
 
     public String getAudioLanguage() {

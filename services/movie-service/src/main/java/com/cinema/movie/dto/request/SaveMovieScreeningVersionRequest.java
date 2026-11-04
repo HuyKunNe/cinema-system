@@ -2,6 +2,7 @@ package com.cinema.movie.dto.request;
 
 import com.cinema.movie.entity.ContentFormat;
 import com.cinema.movie.entity.PresentationType;
+import com.cinema.movie.entity.ProjectionTechnology;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -14,11 +15,13 @@ import java.util.UUID;
 
 @Schema(
         requiredProperties = {
-            "contentFormat",
             "audioLanguage",
             "presentationType",
             "active"
-        })
+        },
+        description =
+                "A complete movie-edit item. Definition fields are immutable for persisted IDs. "
+                        + "Image format and projection technology default to 2D and STANDARD.")
 public record SaveMovieScreeningVersionRequest(
         @Schema(
                         nullable = true,
@@ -32,7 +35,12 @@ public record SaveMovieScreeningVersionRequest(
                                 "Required for an existing version. "
                                         + "Omit for a new version.")
                 Long expectedVersion,
-        @NotNull ContentFormat contentFormat,
+        @Schema(defaultValue = "2D") ContentFormat contentFormat,
+        @Schema(
+                        defaultValue = "STANDARD",
+                        description =
+                                "Projection technology: STANDARD, IMAX, FOUR_DX or SCREEN_X.")
+                ProjectionTechnology projectionTechnology,
         @NotBlank @Size(max = 100) String audioLanguage,
         @NotNull PresentationType presentationType,
         @Size(max = 100)
@@ -42,4 +50,33 @@ public record SaveMovieScreeningVersionRequest(
                                 "Required and nonblank for SUBTITLED. "
                                         + "Otherwise omit, send null or a blank string.")
                 String subtitleLanguage,
-        @NotNull Boolean active) {}
+        @NotNull Boolean active) {
+
+    public SaveMovieScreeningVersionRequest {
+        contentFormat = contentFormat == null ? ContentFormat.TWO_D : contentFormat;
+        projectionTechnology =
+                projectionTechnology == null
+                        ? ProjectionTechnology.STANDARD
+                        : projectionTechnology;
+    }
+
+    public SaveMovieScreeningVersionRequest(
+            UUID id,
+            Long expectedVersion,
+            ContentFormat contentFormat,
+            String audioLanguage,
+            PresentationType presentationType,
+            String subtitleLanguage,
+            Boolean active) {
+
+        this(
+                id,
+                expectedVersion,
+                contentFormat,
+                ProjectionTechnology.STANDARD,
+                audioLanguage,
+                presentationType,
+                subtitleLanguage,
+                active);
+    }
+}

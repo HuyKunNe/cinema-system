@@ -223,6 +223,7 @@ public class ShowtimeCreationService {
                         cachedVersion.getId(),
                         cachedVersion.getVersion(),
                         cachedVersion.getContentFormat(),
+                        cachedVersion.getProjectionTechnology(),
                         cachedVersion.getAudioLanguage(),
                         cachedVersion.getPresentationType(),
                         cachedVersion.getSubtitleLanguage());
@@ -301,6 +302,11 @@ public class ShowtimeCreationService {
 
         if (!formats.contains(screeningVersion.getContentFormat())) {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_FORMAT_NOT_SUPPORTED);
+        }
+
+        if (!screeningVersion.getProjectionTechnology().isSupportedBy(room.getRoomType())) {
+            throw new ConflictException(
+                    InventoryErrorCode.SHOWTIME_PROJECTION_TECHNOLOGY_NOT_SUPPORTED);
         }
 
         var layout = layoutService.resolveForNewShowtime(room.getId(), request.roomLayoutId());

@@ -30,5 +30,13 @@ public record UpdateMovieRequest(
         @Size(max = 500, message = "Trailer URL must not exceed 500 characters") String trailerUrl,
         @NotNull(message = "Movie status is required") MovieStatus status,
         @NotEmpty(message = "At least one genre is required") Set<UUID> genreIds,
-        @Valid @Schema(nullable = true, requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+        @Valid
+                @NotEmpty(message = "Provide the complete screening-version list")
+                @Schema(
+                        nullable = false,
+                        requiredMode = Schema.RequiredMode.REQUIRED,
+                        description =
+                                "Complete screening-version list. Include every persisted version "
+                                    + "with its id and expectedVersion, plus any new versions without "
+                                    + "an id. At least one item is required.")
                 List<@NotNull SaveMovieScreeningVersionRequest> screeningVersions) {}

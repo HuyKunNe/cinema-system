@@ -165,6 +165,9 @@ validation does not replace downstream authorization.
 ## Movie Service
 
 - Movie and genre management
+- Transactional movie create/update with a required, complete screening-version list
+- Separate 2D/3D image formats and STANDARD/IMAX/FOUR_DX/SCREEN_X projection technologies
+- Immutable localized screening definitions with active-state lifecycle control
 - MySQL persistence and Flyway migrations
 - Validation, mapping, API response, OpenAPI, and test integration
 

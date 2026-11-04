@@ -45,6 +45,31 @@ Current status:
 
 # Unreleased
 
+## 2026-11-04
+
+### Screening Projection Technology
+
+#### Changed
+
+- Require at least one screening version in movie create and replace requests.
+- Require movie replacement to submit the complete persisted screening-version set.
+- Keep screening definitions immutable and preserve ID plus `expectedVersion` semantics.
+- Separate 2D/3D image format from STANDARD, IMAX, FOUR_DX, and SCREEN_X projection
+  technology.
+- Reject duplicate full screening identities after string normalization.
+- Snapshot projection technology into Inventory showtimes and validate it against room type.
+
+#### Migration
+
+- Movie V2 backfills existing screening versions to STANDARD and replaces the unique key.
+- Inventory V2 backfills existing non-legacy showtime snapshots to STANDARD and updates the
+  snapshot check constraint.
+- Applied V1 baselines remain unchanged.
+
+#### Verification status
+
+- Automated tests were not run for this requested change.
+
 ## 2026-10-27
 
 ### Draft Pricing Configuration Editing

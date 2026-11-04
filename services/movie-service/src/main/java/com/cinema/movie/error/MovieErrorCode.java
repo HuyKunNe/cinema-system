@@ -54,6 +54,21 @@ public enum MovieErrorCode implements ErrorCode {
             "Movie screening version data is invalid",
             ErrorCategory.VALIDATION),
 
+    SCREENING_VERSIONS_REQUIRED(
+            "MOVIE_SCREENING_VERSIONS_REQUIRED",
+            "Provide at least one movie screening version",
+            ErrorCategory.VALIDATION),
+
+    SCREENING_VERSION_SET_INCOMPLETE(
+            "MOVIE_SCREENING_VERSION_SET_INCOMPLETE",
+            "Movie updates must include every persisted screening version",
+            ErrorCategory.VALIDATION),
+
+    SCREENING_VERSION_ALREADY_EXISTS(
+            "MOVIE_SCREENING_VERSION_ALREADY_EXISTS",
+            "An identical movie screening version already exists",
+            ErrorCategory.BUSINESS),
+
     SCREENING_VERSION_NOT_FOUND(
             "MOVIE_SCREENING_VERSION_NOT_FOUND",
             "Movie screening version not found",

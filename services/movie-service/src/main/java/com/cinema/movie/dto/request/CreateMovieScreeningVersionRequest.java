@@ -2,6 +2,7 @@ package com.cinema.movie.dto.request;
 
 import com.cinema.movie.entity.ContentFormat;
 import com.cinema.movie.entity.PresentationType;
+import com.cinema.movie.entity.ProjectionTechnology;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -10,14 +11,23 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 @Schema(
-        requiredProperties = {"contentFormat", "audioLanguage", "presentationType"},
+        requiredProperties = {"audioLanguage", "presentationType"},
         description =
                 "Screening-version definition. SUBTITLED requires a nonblank subtitleLanguage."
                     + " DUBBED and NO_SUBTITLES require an omitted, null or blank"
-                    + " subtitleLanguage.")
+                    + " subtitleLanguage. Defaults to STANDARD projection in 2D.")
 public record CreateMovieScreeningVersionRequest(
-        @NotNull @Schema(description = "Content format. Wire values are 2D and 3D.", example = "2D")
+        @Schema(
+                        description = "Image format. Wire values are 2D and 3D.",
+                        defaultValue = "2D",
+                        example = "2D")
                 ContentFormat contentFormat,
+        @Schema(
+                        description =
+                                "Projection technology: STANDARD, IMAX, FOUR_DX or SCREEN_X.",
+                        defaultValue = "STANDARD",
+                        example = "STANDARD")
+                ProjectionTechnology projectionTechnology,
         @NotBlank
                 @Size(max = 100)
                 @Schema(
@@ -41,4 +51,27 @@ public record CreateMovieScreeningVersionRequest(
                                         + "For DUBBED or NO_SUBTITLES, omit this property "
                                         + "or send null or a blank string.",
                         example = "Tiếng Việt")
-                String subtitleLanguage) {}
+                String subtitleLanguage) {
+
+    public CreateMovieScreeningVersionRequest {
+        contentFormat = contentFormat == null ? ContentFormat.TWO_D : contentFormat;
+        projectionTechnology =
+                projectionTechnology == null
+                        ? ProjectionTechnology.STANDARD
+                        : projectionTechnology;
+    }
+
+    public CreateMovieScreeningVersionRequest(
+            ContentFormat contentFormat,
+            String audioLanguage,
+            PresentationType presentationType,
+            String subtitleLanguage) {
+
+        this(
+                contentFormat,
+                ProjectionTechnology.STANDARD,
+                audioLanguage,
+                presentationType,
+                subtitleLanguage);
+    }
+}

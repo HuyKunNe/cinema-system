@@ -31,6 +31,9 @@ public record CreateMovieRequest(
         @NotNull(message = "Movie status is required") MovieStatus status,
         @NotEmpty(message = "At least one genre is required") Set<UUID> genreIds,
         @Valid
-                @Size(min = 1, message = "Provide at least one screening version")
-                @Schema(nullable = true, requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                @NotEmpty(message = "Provide at least one screening version")
+                @Schema(
+                        nullable = false,
+                        requiredMode = Schema.RequiredMode.REQUIRED,
+                        description = "At least one screening version is required.")
                 List<@NotNull CreateMovieScreeningVersionRequest> screeningVersions) {}

@@ -562,6 +562,12 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_SHOWTIME_FORMAT_NOT_SUPPORTED",
                     "Room does not support the selected screening version format");
 
+    public static final InventoryErrorCode SHOWTIME_PROJECTION_TECHNOLOGY_NOT_SUPPORTED =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_SHOWTIME_PROJECTION_TECHNOLOGY_NOT_SUPPORTED",
+                    "Room does not support the selected projection technology");
+
     public static final InventoryErrorCode MOVIE_CATALOG_UNAVAILABLE =
             new InventoryErrorCode(
                     ErrorCategory.SYSTEM,

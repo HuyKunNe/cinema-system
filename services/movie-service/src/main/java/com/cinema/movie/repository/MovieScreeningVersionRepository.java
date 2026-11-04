@@ -3,6 +3,7 @@ package com.cinema.movie.repository;
 import com.cinema.movie.entity.ContentFormat;
 import com.cinema.movie.entity.MovieScreeningVersion;
 import com.cinema.movie.entity.PresentationType;
+import com.cinema.movie.entity.ProjectionTechnology;
 
 import jakarta.persistence.LockModeType;
 
@@ -26,12 +27,23 @@ public interface MovieScreeningVersionRepository
     Optional<MovieScreeningVersion> findByIdAndMovie_Id(UUID id, UUID movieId);
 
     Optional<MovieScreeningVersion>
-            findByMovie_IdAndContentFormatAndAudioLanguageAndPresentationTypeAndSubtitleLanguage(
+            findByMovie_IdAndContentFormatAndProjectionTechnologyAndAudioLanguageAndPresentationTypeAndSubtitleLanguage(
                     UUID movieId,
                     ContentFormat contentFormat,
+                    ProjectionTechnology projectionTechnology,
                     String audioLanguage,
                     PresentationType presentationType,
                     String subtitleLanguage);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            """
+            select screeningVersion
+            from MovieScreeningVersion screeningVersion
+            where screeningVersion.movie.id = :movieId
+            order by screeningVersion.createdAt asc, screeningVersion.id asc
+            """)
+    List<MovieScreeningVersion> findAllForUpdate(@Param("movieId") UUID movieId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query(

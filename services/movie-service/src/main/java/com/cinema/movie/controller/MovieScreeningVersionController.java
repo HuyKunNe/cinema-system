@@ -112,7 +112,13 @@ public class MovieScreeningVersionController {
         return ResponseEntity.ok(service.get(movieId, versionId));
     }
 
-    @Operation(operationId = "createMovieScreeningVersion", summary = "Create a screening version")
+    @Operation(
+            operationId = "createMovieScreeningVersion",
+            summary = "Create a screening version",
+            description =
+                    "Creates an immutable definition. An identical movie, image format, "
+                            + "projection technology, audio language, presentation type and "
+                            + "subtitle language combination is rejected.")
     @ApiResponses({
         @ApiResponse(
                 responseCode = "201",
@@ -125,15 +131,16 @@ public class MovieScreeningVersionController {
                                                 implementation =
                                                         MovieScreeningVersionResponse.class))),
         @ApiResponse(
-                responseCode = "200",
-                description = "Existing screening version, including an inactive version",
+                responseCode = "409",
+                description = "MOVIE_SCREENING_VERSION_ALREADY_EXISTS",
                 content =
                         @Content(
                                 mediaType = MediaType.APPLICATION_JSON_VALUE,
                                 schema =
                                         @Schema(
                                                 implementation =
-                                                        MovieScreeningVersionResponse.class))),
+                                                        com.cinema.common.response.model.ApiResponse
+                                                                .class))),
         @ApiResponse(
                 responseCode = "401",
                 description = "SECURITY_AUTHENTICATION_REQUIRED",

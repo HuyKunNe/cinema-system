@@ -6,6 +6,7 @@ import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.inventory.entity.ShowtimeScreeningVersion;
 import com.cinema.inventory.enums.ContentFormat;
 import com.cinema.inventory.enums.PresentationType;
+import com.cinema.inventory.enums.ProjectionTechnology;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.exception.MovieCatalogUnavailableException;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -117,6 +118,9 @@ public class MovieCatalogClient {
                     response.id(),
                     response.version(),
                     ContentFormat.fromCode(response.contentFormat()),
+                    response.projectionTechnology() == null
+                            ? ProjectionTechnology.STANDARD
+                            : ProjectionTechnology.valueOf(response.projectionTechnology()),
                     response.audioLanguage(),
                     PresentationType.valueOf(response.presentationType()),
                     response.subtitleLanguage());
@@ -188,6 +192,7 @@ public class MovieCatalogClient {
             UUID id,
             UUID movieId,
             String contentFormat,
+            String projectionTechnology,
             String audioLanguage,
             String presentationType,
             String subtitleLanguage,

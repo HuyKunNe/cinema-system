@@ -68,9 +68,8 @@ public class MovieServiceImpl implements MovieService {
     @Transactional
     public MovieResponse create(CreateMovieRequest request) {
 
-        if (request.screeningVersions() != null && request.screeningVersions().isEmpty()) {
-
-            throw new ValidationException(MovieErrorCode.INVALID_SCREENING_VERSION);
+        if (request.screeningVersions() == null || request.screeningVersions().isEmpty()) {
+            throw new ValidationException(MovieErrorCode.SCREENING_VERSIONS_REQUIRED);
         }
 
         String normalizedTitle = request.title().trim();
@@ -88,10 +87,8 @@ public class MovieServiceImpl implements MovieService {
 
         Movie savedMovie = movieRepository.saveAndFlush(movie);
 
-        if (request.screeningVersions() != null) {
-            for (var screeningVersion : request.screeningVersions()) {
-                screeningVersionService.create(savedMovie.getId(), screeningVersion);
-            }
+        for (var screeningVersion : request.screeningVersions()) {
+            screeningVersionService.create(savedMovie.getId(), screeningVersion);
         }
 
         return toDetailedResponse(savedMovie);

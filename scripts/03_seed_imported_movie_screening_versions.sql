@@ -1,6 +1,6 @@
 -- Add a sample screening version for movies from import scripts 01 and 02.
 -- Local sample configuration:
--- TWO_D / Ngôn ngữ gốc / NO_SUBTITLES / active.
+-- STANDARD / TWO_D / Ngôn ngữ gốc / NO_SUBTITLES / active.
 -- This configuration is not verified CGV screening-version metadata.
 --
 -- MySQL 8.0.16+.
@@ -127,6 +127,7 @@ INSERT INTO movie_screening_versions (
     id,
     movie_id,
     content_format,
+    projection_technology,
     audio_language,
     presentation_type,
     subtitle_language,
@@ -159,6 +160,7 @@ SELECT
     ),
     m.id,
     'TWO_D',
+    'STANDARD',
     'Ngôn ngữ gốc',
     'NO_SUBTITLES',
     '',
