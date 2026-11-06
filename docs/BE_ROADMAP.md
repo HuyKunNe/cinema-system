@@ -48,6 +48,8 @@ Roadmap này không thay thế `docs/10_ROADMAP.md`. P0.1 đã đồng bộ tr�
 
 ### P0.3 — Chốt contract dùng chung cho FE
 
+**Trạng thái:** IN PROGRESS / VERIFY — rà soát source tại `34fafae`, snapshot/client FE chỉ đọc; bổ sung [contract và ví dụ tích hợp](19_FE_API_CONTRACT.md) cho Admin movie/showtime, User quote/booking và Admin payment reads. Bổ sung OpenAPI response 409 đã có trong source của API tạo screening version; không đổi operationId, endpoint, payload hoặc quyền. Runtime OpenAPI, tính duy nhất operationId trên toàn spec và các luồng còn lại chưa xác minh. P0.2 tiếp tục chờ các cổng kiểm tra được chủ dự án cho phép; lượt P0.3 này không đóng P0.2.
+
 - Đối chiếu controller, DTO, entity, migration và runtime OpenAPI.
 - Giữ `operationId` duy nhất, có tên nghiệp vụ rõ ràng.
 - Ghi breaking changes, migration và thứ tự triển khai FE/API client.

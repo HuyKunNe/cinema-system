@@ -595,6 +595,7 @@ startup model and required environment variables.
 | `docs/12_DEPENDENCY_RULES.md`   | Compile-time and runtime boundaries                |
 | `docs/13_SEQUENCE_DIAGRAMS.md`  | Approved interaction flows                         |
 | `docs/14_DEPLOYMENT.md`         | Local and deployment guidance                      |
+| `docs/19_FE_API_CONTRACT.md`    | Source-reviewed FE contracts, examples and remaining runtime gaps |
 | `docs/decisions/`               | Architecture Decision Records                      |
 
 The roadmap defines completion. The changelog records history. Accepted ADRs

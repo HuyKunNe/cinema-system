@@ -1075,6 +1075,13 @@ changes are needed. P0.2 is not closed.
 
 This is maintenance of the completed Inventory implementation. It does not reopen R24 or start R28.
 
+P0.3 source contract review may proceed while P0.2 execution gates await owner
+authorization. Its current findings and illustrative Admin/User payloads are in
+[FE API contract](19_FE_API_CONTRACT.md). This review does not close P0.2 or
+claim runtime OpenAPI compatibility. The only P0.3 metadata correction so far
+documents the existing duplicate-screening-version 409 response; no endpoint,
+operation ID, authorization rule or migration was changed.
+
 #### Completed ShowSeat behavior
 
 The following booking transitions are implemented:

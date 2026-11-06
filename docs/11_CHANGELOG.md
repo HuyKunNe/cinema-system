@@ -50,6 +50,29 @@ Current status:
 
 ## 2026-11-06
 
+### P0.3 — FE Contract Source Review
+
+- Reviewed BE source at `34fafae` against read-only FE snapshots, generated
+  movie/booking clients, Axios mutator and Admin showtime create caller.
+- Added `19_FE_API_CONTRACT.md` with authorization and response-shape mappings,
+  operation-ID evidence, illustrative movie create/replace, showtime creation,
+  grouped quote, booking and Admin payment read requests/responses, plus the
+  existing projection migration rollout dependencies.
+- Documented that the Movie snapshot metadata has unfilled provenance fields,
+  Inventory metadata declares an older revision, and Orval reads runtime specs
+  rather than those stored snapshots. Neither snapshot certifies this branch.
+- Added the missing OpenAPI 409 response for standalone screening-version
+  creation. Source already throws `MOVIE_SCREENING_VERSION_ALREADY_EXISTS` for
+  duplicate full identities, including inactive matches. No runtime behavior,
+  operation ID, route, DTO, permission or migration changed.
+- Recorded the direct-service/Gateway POST quote authorization distinction and
+  the ADR-010/current-success-body discrepancy without altering either contract.
+- Recorded remaining runtime/whole-spec and account/layout/pricing review work;
+  P0.3 remains open and P0.2 still awaits its verification gates. The matrix
+  COUPLE cell-span discrepancy is retained for P2, without implementing it here.
+- Tests, builds, automated checks, runtime spec export and FE regeneration were
+  not run. No runtime verification or P0.2/P0.3 closure is claimed.
+
 ### P0.2 — Inventory Lifecycle-Release Verification Coverage
 
 #### Added and changed in source

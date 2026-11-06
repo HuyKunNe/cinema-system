@@ -125,6 +125,19 @@ public class MovieScreeningVersionController {
                                                 implementation =
                                                         MovieScreeningVersionResponse.class))),
         @ApiResponse(
+                responseCode = "409",
+                description =
+                        "MOVIE_SCREENING_VERSION_ALREADY_EXISTS: a version with the same full "
+                                + "screening identity already exists, including inactive versions",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                schema =
+                                        @Schema(
+                                                implementation =
+                                                        com.cinema.common.response.model.ApiResponse
+                                                                .class))),
+        @ApiResponse(
                 responseCode = "401",
                 description = "SECURITY_AUTHENTICATION_REQUIRED",
                 content =
