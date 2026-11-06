@@ -1,7 +1,15 @@
 # Configurable Pricing Policy Versions
 
-Status: Requirements confirmed; implementation pending.
+Status: Implemented in source; runtime verification pending.
 Confirmed: 2026-10-27.
+Source review: 2026-11-06 against `4e58548`.
+
+`ReplacePricingConfigurationRequest`, `PricingPolicyConfigurationService`,
+`ReplaceFareMatrixRequest` and `FareMatrixService` already use version-owned
+definition IDs. Current Inventory V1 contains their persistence structures.
+See the [FE contract supplement](20_FE_ACCOUNT_LAYOUT_PRICING_CONTRACT.md) for
+current routes, request/response examples and open verification limits. This
+review changes documentation only and does not close P0.3 or P3.
 
 ## Scope
 
@@ -10,8 +18,9 @@ Each pricing policy version owns its time bands and ticket groups.
 Time bands and ticket groups are configurable data.
 Their identities must not depend on display names or fixed Java enums.
 
-The existing fixed-enum implementation remains the runtime baseline
-until the migration and API changes are implemented.
+The old fixed-enum API is not the current source contract. Current requests and
+responses use version-owned time-band and ticket-group IDs; historical mapping
+notes below describe the original transition, not a verified runtime deployment.
 
 ## Time bands
 
@@ -127,6 +136,9 @@ Keep exact final prices.
 - Enter 2D and 3D prices independently.
 - Do not derive one format's amounts from another.
 - Preserve the agreed couple-seat pricing rules.
+- Each COUPLE amount is the whole-pair price and may differ across ticket groups,
+  time bands, formats and experiences; current uniform premium validations
+  explicitly exclude COUPLE.
 - Preserve the existing premium-room category constraints.
 - Generalize those validations across the configured groups and bands.
 
@@ -152,6 +164,11 @@ Publishing another revision does not switch existing showtimes.
 
 ## Existing data migration
 
+Historical transition design: these mappings do not mean the current checkout
+contains separate V19/V20 migrations. It contains a V1 Inventory baseline plus V2
+projection snapshots. Inspect a deployment's actual Flyway history before any
+upgrade; never edit an applied baseline or recreate old migrations from this text.
+
 Preserve existing policy and version identifiers.
 
 For each existing version:
@@ -173,9 +190,9 @@ Do not:
 - convert an unconfigured cell to zero;
 - silently map an unknown group or band to the default.
 
-## API and frontend changes required
+## API and frontend contract
 
-The implementation must replace enum-based fare references with identifiers.
+Current source uses identifier-based fare references instead of enum categories.
 
 API responses must provide enough definition data for FE to render:
 
@@ -189,8 +206,9 @@ FE must render columns and band selectors from those responses.
 
 Generated clients must be regenerated after the new contract is available.
 
-The existing fixed-enum APIs cannot represent arbitrary groups or bands.
-A deployment must explicitly handle that contract change.
+Historical fixed-enum clients cannot represent arbitrary groups or bands.
+A deployment must explicitly handle this contract change and export the specs
+from the actual service revision. Generated clients alone do not verify rollout.
 
 ## Showtime and booking integration
 

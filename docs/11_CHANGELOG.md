@@ -50,6 +50,30 @@ Current status:
 
 ## 2026-11-06
 
+### P0.3 — Account, Layout and Pricing Source Contract Continuation
+
+- Reviewed `4e58548` with a clean starting working tree. Extended the source
+  contract reference with `20_FE_ACCOUNT_LAYOUT_PRICING_CONTRACT.md` and linked
+  it from `19_FE_API_CONTRACT.md`.
+- Documented raw profile responses, full-field replacement/clearing semantics,
+  bodyless privileged account actions, `user:manage` enforcement and audit actor
+  ownership. Current account controllers do not expose Admin user list/search.
+- Identified User Service's session/form-login/CSRF boundary and absence of a
+  Bearer Resource Server chain for those routes. FE's generated functions and
+  token-adding Axios mutator do not establish compatibility. Recorded the
+  authentication integration choice for P5.1/P5.2 without changing security.
+- Added source-backed matrix create/save/publish examples, sparse empty-cell
+  preservation, seat IDs, numbering validation, revision/version distinction and
+  conflict reload behavior. Kept the COUPLE one-cell target discrepancy for P2.
+- Added pricing configuration and fare-matrix replacement examples, definition
+  identity and deletion semantics, pair-unit prices, draft/concurrency guards and
+  the limits of coverage flags. Corrected the stale pending/fixed-enum baseline
+  descriptions in `18_PRICING_CONFIGURATION.md`; no P3 implementation was added.
+- Noted current baseline migrations and null omission in response serialization.
+- No source code, API, DTO, OpenAPI metadata, security or migration changed in
+  this continuation. FE was inspected read only. Tests, builds, automated checks,
+  runtime spec export and FE regeneration were skipped; P0.2/P0.3 remain open.
+
 ### P0.3 — FE Contract Source Review
 
 - Reviewed BE source at `34fafae` against read-only FE snapshots, generated

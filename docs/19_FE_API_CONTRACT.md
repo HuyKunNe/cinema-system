@@ -4,6 +4,12 @@ Reviewed against BE `main` at `34fafae` on 2026-11-06, plus the P0.3 OpenAPI
 metadata change described below. This is a source-based integration reference,
 not an exported OpenAPI specification or a runtime acceptance result.
 
+The continuation against `4e58548` covers account authentication/profile, Admin
+account actions, matrix layouts and configurable pricing in the
+[account/layout/pricing supplement](20_FE_ACCOUNT_LAYOUT_PRICING_CONTRACT.md).
+It records an unresolved User Service session-versus-Bearer integration gap;
+generated User functions alone are not proof of usable SPA authentication.
+
 ## Evidence and limits
 
 - BE controllers, DTOs, services, enums, security configurations, response/error
@@ -31,6 +37,8 @@ found in the shared response/API modules. Changing these bodies would affect
 existing clients and is outside this P0.3 change.
 
 `ApiResponse<T>` contains `success`, `timestamp`, `data`, and `error`.
+Null properties may be omitted by the shared Jackson configuration unless a DTO
+explicitly overrides inclusion. Examples below are response excerpts.
 `PageResponse<T>` contains `content` and `page`; `PageInfo` contains `page`,
 `size`, `totalElements`, `totalPages`, `first`, and `last`.
 Domain errors handled by `GlobalExceptionHandler` use `ApiResponse` with an
@@ -338,10 +346,10 @@ This review does not modify FE or certify runtime/schema compatibility.
 
 - Fetch runtime specs with known source provenance when runtime inspection is
   available; review whole-spec operation IDs and the emitted 409 schema.
-- Complete account/profile, Admin user management and remaining Inventory
-  layout/pricing contract examples against their current source and runtime
-  specs. Existing references are [User design](15_USER_SERVICE_DESIGN.md) and
-  [pricing configuration](18_PRICING_CONFIGURATION.md).
+- Reconcile the account/layout/pricing source review and examples in the
+  [supplement](20_FE_ACCOUNT_LAYOUT_PRICING_CONTRACT.md) with runtime specs and
+  the supported account authentication topology. User list/search APIs are not
+  provided by the current account controllers and are not added here.
 - Track the source/target matrix discrepancy under P2: current seat-map
   documentation declares COUPLE `columnSpan=2`, whereas BE roadmap P2 targets
   one cell per couple seat. P0.3 does not change that business contract or ask
