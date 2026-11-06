@@ -1,8 +1,13 @@
 package com.cinema.inventory.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 
 import com.cinema.common.core.id.UuidGenerator;
+import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.outbox.model.OutboxEventMessage;
 import com.cinema.common.outbox.repository.OutboxRepository;
 import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
@@ -16,7 +21,9 @@ import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.ShowSeatStatus;
 import com.cinema.inventory.event.InventoryEventContract;
 import com.cinema.inventory.event.payload.BookingCancelledPayload;
+import com.cinema.inventory.event.payload.BookingConfirmedPayload;
 import com.cinema.inventory.event.payload.BookingExpiredPayload;
+import com.cinema.inventory.event.payload.ConfirmedSeatPayload;
 import com.cinema.inventory.repository.CinemaRepository;
 import com.cinema.inventory.repository.ProcessedEventRepository;
 import com.cinema.inventory.repository.RoomRepository;
@@ -24,6 +31,7 @@ import com.cinema.inventory.repository.SeatRepository;
 import com.cinema.inventory.repository.ShowSeatRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.BookingCancelledConsumerService;
+import com.cinema.inventory.service.BookingConfirmedConsumerService;
 import com.cinema.inventory.service.BookingExpiredConsumerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -32,7 +40,12 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -60,6 +73,10 @@ class BookingLifecycleReleaseConsumerMySqlIntegrationTest extends AbstractMySqlI
 
     @Autowired private BookingExpiredConsumerService bookingExpiredConsumerService;
 
+    @Autowired private BookingConfirmedConsumerService bookingConfirmedConsumerService;
+
+    @Autowired private PlatformTransactionManager transactionManager;
+
     @Autowired private CinemaRepository cinemaRepository;
 
     @Autowired private RoomRepository roomRepository;
@@ -68,7 +85,7 @@ class BookingLifecycleReleaseConsumerMySqlIntegrationTest extends AbstractMySqlI
 
     @Autowired private ShowtimeRepository showtimeRepository;
 
-    @Autowired private ShowSeatRepository showSeatRepository;
+    @MockitoSpyBean private ShowSeatRepository showSeatRepository;
 
     @Autowired private ProcessedEventRepository processedEventRepository;
 
@@ -366,6 +383,260 @@ class BookingLifecycleReleaseConsumerMySqlIntegrationTest extends AbstractMySqlI
                 .isTrue();
 
         assertThat(outboxRepository.count()).isZero();
+    }
+
+    @ParameterizedTest
+    @EnumSource(LifecycleEvent.class)
+    void confirmationAfterCandidateLookupShouldPreserveBookedSeats(LifecycleEvent event)
+            throws Exception {
+
+        CountDownLatch candidatesSelected = new CountDownLatch(1);
+        CountDownLatch continueRelease = new CountDownLatch(1);
+        pauseAfterCandidateLookup(candidatesSelected, continueRelease);
+
+        OutboxEventMessage lifecycle = lifecycleMessage(event);
+        OutboxEventMessage confirmation = bookingConfirmedMessage();
+        Future<?> release =
+                executorService.submit(() -> handleLifecycle(event, lifecycle, false));
+
+        try {
+            assertThat(candidatesSelected.await(10, TimeUnit.SECONDS)).isTrue();
+            assertThat(
+                            bookingConfirmedConsumerService
+                                    .handle(context.bookingId().toString(), confirmation)
+                                    .status())
+                    .isEqualTo(BookingConfirmedConsumerService.Status.BOOKED);
+        } finally {
+            continueRelease.countDown();
+        }
+
+        release.get(30, TimeUnit.SECONDS);
+        handleLifecycle(event, lifecycle, true);
+        entityManager.clear();
+
+        assertThat(loadShowSeats())
+                .hasSize(2)
+                .allSatisfy(
+                        seat -> {
+                            assertThat(seat.getStatus()).isEqualTo(ShowSeatStatus.BOOKED);
+                            assertThat(seat.getHeldByBookingId()).isNull();
+                            assertThat(seat.getHoldExpiresAt()).isNull();
+                        });
+        assertLifecycleMarker(event, lifecycle);
+        assertThat(
+                        processedEventRepository.existsByEventIdAndConsumerName(
+                                confirmation.eventId(),
+                                InventoryEventContract.BOOKING_CONFIRMED_CONSUMER))
+                .isTrue();
+        // Lifecycle release is a successful no-op when confirmation won.
+        assertThat(processedEventRepository.count()).isEqualTo(2);
+        assertThat(outboxRepository.count()).isZero();
+    }
+
+    @ParameterizedTest
+    @EnumSource(LifecycleEvent.class)
+    void lifecycleHoldingLocksShouldRejectConcurrentConfirmation(LifecycleEvent event)
+            throws Exception {
+
+        CountDownLatch releaseLocked = new CountDownLatch(1);
+        CountDownLatch continueRelease = new CountDownLatch(1);
+        CountDownLatch confirmationAttemptingLock = new CountDownLatch(1);
+
+        doAnswer(
+                        invocation -> {
+                            Object seats = invocation.callRealMethod();
+                            releaseLocked.countDown();
+                            assertThat(continueRelease.await(10, TimeUnit.SECONDS)).isTrue();
+                            return seats;
+                        })
+                .when(showSeatRepository)
+                .findAllByShowtimeIdAndIdsForUpdate(eq(context.showtimeId()), anyCollection());
+
+        doAnswer(
+                        invocation -> {
+                            confirmationAttemptingLock.countDown();
+                            return invocation.callRealMethod();
+                        })
+                .when(showSeatRepository)
+                .findAllByShowtimeIdAndSeatNumbersForUpdate(
+                        eq(context.showtimeId()), anyCollection());
+
+        OutboxEventMessage lifecycle = lifecycleMessage(event);
+        OutboxEventMessage confirmation = bookingConfirmedMessage();
+        Future<?> release =
+                executorService.submit(() -> handleLifecycle(event, lifecycle, false));
+        Future<?> confirm;
+
+        try {
+            assertThat(releaseLocked.await(10, TimeUnit.SECONDS)).isTrue();
+            confirm =
+                    executorService.submit(
+                            () ->
+                                    bookingConfirmedConsumerService.handle(
+                                            context.bookingId().toString(), confirmation));
+            assertThat(confirmationAttemptingLock.await(10, TimeUnit.SECONDS)).isTrue();
+        } finally {
+            continueRelease.countDown();
+        }
+
+        release.get(30, TimeUnit.SECONDS);
+        assertThatThrownBy(() -> confirm.get(30, TimeUnit.SECONDS))
+                .hasCauseInstanceOf(ConflictException.class);
+        handleLifecycle(event, lifecycle, true);
+        entityManager.clear();
+
+        assertReleased();
+        assertLifecycleMarker(event, lifecycle);
+        assertThat(
+                        processedEventRepository.existsByEventIdAndConsumerName(
+                                confirmation.eventId(),
+                                InventoryEventContract.BOOKING_CONFIRMED_CONSUMER))
+                .isFalse();
+        assertThat(processedEventRepository.count()).isEqualTo(1);
+        assertThat(outboxRepository.count()).isZero();
+    }
+
+    @ParameterizedTest
+    @EnumSource(LifecycleEvent.class)
+    void reassignmentAfterCandidateLookupShouldPreserveNewBookingHold(LifecycleEvent event)
+            throws Exception {
+
+        CountDownLatch candidatesSelected = new CountDownLatch(1);
+        CountDownLatch continueRelease = new CountDownLatch(1);
+        pauseAfterCandidateLookup(candidatesSelected, continueRelease);
+
+        OutboxEventMessage lifecycle = lifecycleMessage(event);
+        UUID newBookingId = UuidGenerator.next();
+        OffsetDateTime newExpiry = HOLD_EXPIRES_AT.plusMinutes(5);
+        Future<?> release =
+                executorService.submit(() -> handleLifecycle(event, lifecycle, false));
+
+        try {
+            assertThat(candidatesSelected.await(10, TimeUnit.SECONDS)).isTrue();
+            new TransactionTemplate(transactionManager)
+                    .executeWithoutResult(
+                            status -> {
+                                List<ShowSeat> seats =
+                                        showSeatRepository
+                                                .findAllByShowtimeIdAndSeatNumbersForUpdate(
+                                                        context.showtimeId(), List.of("H7", "H8"));
+                                seats.forEach(
+                                        seat -> {
+                                            seat.release(context.bookingId());
+                                            seat.hold(newBookingId, newExpiry, EVENT_AT);
+                                        });
+                                showSeatRepository.saveAllAndFlush(seats);
+                            });
+        } finally {
+            continueRelease.countDown();
+        }
+
+        release.get(30, TimeUnit.SECONDS);
+        handleLifecycle(event, lifecycle, true);
+        entityManager.clear();
+
+        assertThat(loadShowSeats())
+                .hasSize(2)
+                .allSatisfy(
+                        seat -> {
+                            assertThat(seat.getStatus()).isEqualTo(ShowSeatStatus.HELD);
+                            assertThat(seat.getHeldByBookingId()).isEqualTo(newBookingId);
+                            assertThat(seat.getHoldExpiresAt()).isEqualTo(newExpiry);
+                        });
+        assertLifecycleMarker(event, lifecycle);
+        assertThat(processedEventRepository.count()).isEqualTo(1);
+        assertThat(outboxRepository.count()).isZero();
+    }
+
+    private void pauseAfterCandidateLookup(
+            CountDownLatch candidatesSelected, CountDownLatch continueRelease) {
+
+        doAnswer(
+                        invocation -> {
+                            // Keep the real scalar query and transaction; pause before row locking.
+                            Object ids = invocation.callRealMethod();
+                            assertThat((List<?>) ids).hasSize(2);
+                            candidatesSelected.countDown();
+                            assertThat(continueRelease.await(10, TimeUnit.SECONDS)).isTrue();
+                            return ids;
+                        })
+                .when(showSeatRepository)
+                .findIdsByShowtimeIdAndBookingId(context.showtimeId(), context.bookingId());
+    }
+
+    private OutboxEventMessage lifecycleMessage(LifecycleEvent event) {
+        return event == LifecycleEvent.CANCELLED
+                ? bookingCancelledMessage(UuidGenerator.next())
+                : bookingExpiredMessage(UuidGenerator.next());
+    }
+
+    private void handleLifecycle(
+            LifecycleEvent event, OutboxEventMessage message, boolean duplicate) {
+        if (event == LifecycleEvent.CANCELLED) {
+            assertThat(
+                            bookingCancelledConsumerService
+                                    .handle(context.bookingId().toString(), message)
+                                    .status())
+                    .isEqualTo(
+                            duplicate
+                                    ? BookingCancelledConsumerService.Status.DUPLICATE
+                                    : BookingCancelledConsumerService.Status.RELEASED);
+        } else {
+            assertThat(
+                            bookingExpiredConsumerService
+                                    .handle(context.bookingId().toString(), message)
+                                    .status())
+                    .isEqualTo(
+                            duplicate
+                                    ? BookingExpiredConsumerService.Status.DUPLICATE
+                                    : BookingExpiredConsumerService.Status.RELEASED);
+        }
+    }
+
+    private void assertLifecycleMarker(LifecycleEvent event, OutboxEventMessage message) {
+        String consumer =
+                event == LifecycleEvent.CANCELLED
+                        ? InventoryEventContract.BOOKING_CANCELLED_CONSUMER
+                        : InventoryEventContract.BOOKING_EXPIRED_CONSUMER;
+        assertThat(
+                        processedEventRepository.existsByEventIdAndConsumerName(
+                                message.eventId(), consumer))
+                .isTrue();
+    }
+
+    private OutboxEventMessage bookingConfirmedMessage() {
+        BookingConfirmedPayload payload =
+                new BookingConfirmedPayload(
+                        context.bookingId(),
+                        context.userId(),
+                        context.showtimeId(),
+                        UuidGenerator.next(),
+                        List.of(
+                                new ConfirmedSeatPayload("H7", "STANDARD", STANDARD_PRICE),
+                                new ConfirmedSeatPayload("H8", "VIP", VIP_PRICE)),
+                        STANDARD_PRICE.add(VIP_PRICE),
+                        InventoryEventContract.CURRENCY_VND,
+                        EVENT_AT);
+        return new OutboxEventMessage(
+                UuidGenerator.next(),
+                context.bookingId(),
+                InventoryEventContract.BOOKING_AGGREGATE_TYPE,
+                InventoryEventContract.BOOKING_CONFIRMED,
+                InventoryEventContract.BOOKING_CONFIRMED_VERSION,
+                EVENT_AT,
+                InventoryEventContract.BOOKING_PRODUCER,
+                UuidGenerator.next(),
+                UuidGenerator.next(),
+                objectMapper.valueToTree(payload));
+    }
+
+    private List<ShowSeat> loadShowSeats() {
+        return showSeatRepository.findAllByShowtime_IdOrderBySeatNumberAsc(context.showtimeId());
+    }
+
+    private enum LifecycleEvent {
+        CANCELLED,
+        EXPIRED
     }
 
     private List<CancelledOutcome> executeCancelledConcurrently(

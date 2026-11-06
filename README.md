@@ -78,7 +78,23 @@ Current maintenance checkpoint:
 
 R28 Notification Service is intentionally deferred. It is not the active implementation checkpoint.
 
-R27.10.8 financial administration HTTP/security boundary is complete:
+P0.1 documentation synchronization was completed by source review on 2026-11-06
+against `main` at `ac09155`. The next work item is **P0.2**, continuing the
+Inventory maintenance checkpoint. Source implementation is present, but closure
+still requires execution of the newly added direct MySQL
+confirmation-versus-cancellation/expiration race tests and the other pending
+verification gates. See
+`docs/10_ROADMAP.md#post-r27-inventory-lifecycle-release-hardening` for the
+invariants, evidence and remaining criteria. No automated checks were run for
+this documentation review.
+
+The R27 verification notes below record historical acceptance, not verification
+of subsequent changes. Commit `ae85063` removed the refund HTTP API,
+reconciliation administration HTTP APIs and scheduled refund processing.
+Internal refund/reconciliation code remains; these APIs are not current FE
+capabilities. Restoring them requires a separately approved scope.
+
+R27.10.8 historically completed the financial administration HTTP/security boundary:
 
 - authenticated full-refund request endpoint;
 - reconciliation resolve and reject endpoints;
@@ -118,7 +134,8 @@ Verified Saga integration and concurrency now includes:
 - cross-service correlation and causation propagation;
 - full Saga concurrency regression verification.
 
-The next checkpoint is R27.13 — Remaining Payment stabilization and closure.
+R27.13 subsequently completed Payment stabilization and closure. The active
+checkpoint remains Inventory lifecycle-release lock hardening (P0.2).
 
 > See `docs/10_ROADMAP.md` for authoritative checkpoint scope and exit criteria.
 
@@ -469,7 +486,8 @@ sequence-diagram documents.
 
 R27 Payment Service is complete.
 
-Implemented and verified:
+Historically implemented and verified at R27 closure (subject to the post-R27
+changes described in Current Status above):
 
 - independent OAuth2 Resource Server security;
 - Flyway-owned Payment persistence;
@@ -599,12 +617,12 @@ resolve durable architectural decisions.
 - R25.12 profile and account lifecycle APIs, ownership enforcement and privileged auditing
 - R25.13–R25.15 Gateway integration, security verification and User Service closure
 - R26.1–R26.13 Booking Service implementation, concurrency verification and closure
+- R27.1–R27.13 Payment Service implementation and historical closure
 
 ## Current maintenance
 
-- Inventory lifecycle-release lock hardening
-- Unit and MySQL concurrency verification
-- Documentation synchronization
+- Inventory lifecycle-release lock hardening (P0.2); verification remains open
+- Pending coverage and verification gates are listed in `docs/10_ROADMAP.md`
 
 ## Deferred
 

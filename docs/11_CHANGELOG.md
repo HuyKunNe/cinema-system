@@ -1,8 +1,10 @@
 # Changelog
 
 **Version:** 0.9
-**Current baseline:** R1–R27 completed; R28 next
-**Last reviewed:** 2026-09-18
+**Current baseline:** R1–R27 historically completed; post-R27 changes tracked below
+**Current checkpoint:** Inventory lifecycle-release lock hardening (P0.2), in progress
+**Deferred:** R28 Notification Service
+**Last reviewed:** 2026-11-06
 
 ---
 
@@ -39,11 +41,64 @@ Current status:
 | R26 Booking         | Completed |
 | R27.1–R27.13        | Completed |
 | R27 Payment Service | completed |
-| R28                 | Next      |
+| Inventory lifecycle-release hardening | In progress |
+| R28                 | Deferred  |
 
 ---
 
 # Unreleased
+
+## 2026-11-06
+
+### P0.2 — Inventory Lifecycle-Release Verification Coverage
+
+#### Added and changed in source
+
+- Added six parameterized MySQL cases (cancellation and expiration): confirmation
+  after candidate-ID lookup preserves all booked seats; lifecycle locking first
+  rejects confirmation and rolls back its marker; reassignment after candidate
+  lookup preserves the new booking's holds. Latches coordinate repository calls
+  while retaining real database queries, row locks and consumer transactions.
+- Assert duplicate lifecycle replay, complete seat-set state, hold metadata,
+  processed markers and no lifecycle `seat-released` Outbox event.
+- Extended both lifecycle rollback tests with a one-time persistence failure,
+  retry of the identical event and duplicate replay after successful retry.
+- Added repository-slice coverage for candidate showtime/booking scoping and ID
+  order, and stable-ID locking of stale candidates across mutable states while
+  excluding other showtimes and unrequested seats.
+
+#### Verification status
+
+- Tests were authored only: no compilation, tests, build or automated checks
+  were run, as requested. P0.2 and all execution gates remain open.
+- No production code, HTTP/OpenAPI contract, security or migration changes.
+- Existing service ownership, event payloads and FE contracts are unchanged.
+
+### P0.1 — Documentation State Synchronization
+
+- Reviewed `main` at `ac09155` against source, Inventory migrations, controller/
+  DTO OpenAPI metadata and the local read-only `cinematic-web` generated movie
+  client. Movie create/update already carry required `screeningVersions`;
+  no separate version-creation API is needed for this synchronization.
+- Aligned README and roadmaps on one active checkpoint: Inventory lifecycle-
+  release lock hardening (P0.2). R28 remains deferred.
+- Recorded stable-ID locking, post-lock ownership checks and shared transaction
+  boundaries already present in the lifecycle consumers. Listed evidence and
+  open criteria in `10_ROADMAP.md#post-r27-inventory-lifecycle-release-hardening`.
+- Identified missing direct MySQL confirmation-versus-cancellation/expiration
+  race coverage. Existing confirmation/release race coverage uses the explicit
+  `seat-release-requested` consumer. Existing lifecycle duplicate/convergence
+  and rollback tests still require execution; P0.2 remains open.
+- Corrected stale current-capability claims: commit `ae85063` (2026-11-03)
+  removed refund HTTP APIs, reconciliation administration HTTP APIs and scheduled
+  refund processing. Internal support remains. Historical R27 acceptance entries
+  below are preserved and do not certify the current branch.
+
+#### Verification status
+
+- Source and documentation review only; no HTTP/API, migration or security change.
+- Runtime OpenAPI was not fetched. Tests, builds and all automated checks were
+  skipped at the owner's request. Historical passing checks are not re-run results.
 
 ## 2026-11-04
 

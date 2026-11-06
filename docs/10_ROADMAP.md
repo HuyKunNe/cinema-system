@@ -1,8 +1,9 @@
 # Project Roadmap
 
 **Version:** R27 Completed
-**Current target:** R28 — Notification Service
-**Last updated:** 2026-09-18
+**Current target:** Post-R27 Inventory lifecycle-release lock hardening (P0.2)
+**Deferred:** R28 — Notification Service
+**Last updated:** 2026-11-06
 
 ---
 
@@ -947,6 +948,12 @@ No public DTO or database migration changes are required.
 
 Status: **IN PROGRESS**
 
+This records unfinished post-R27 follow-up work, not the selected maintenance
+checkpoint. Continue it in the P3 work items after the preceding P0/P1/P2 items;
+the active checkpoint remains Inventory lifecycle-release hardening (P0.2).
+The lists below retain the previously recorded pricing scope and are not a new
+source-verification result from P0.1.
+
 Implemented in source:
 
 - version-specific cinema scopes;
@@ -1000,6 +1007,11 @@ It does not start R28 Notification Service.
 
 Status: **IN PROGRESS**
 
+P0.1 documentation synchronization: **DONE** by source review on 2026-11-06
+against `main` at `ac09155`. `docs/BE_ROADMAP.md` supplies the work-item order;
+P0.2 continues this maintenance checkpoint. No runtime verification or P0.2
+closure is claimed by this review.
+
 Scope:
 
 - replace mutable-predicate lifecycle locking with stable ShowSeat ID lookup;
@@ -1009,6 +1021,57 @@ Scope:
 - preserve idempotent cancellation and expiration release;
 - verify confirmation-versus-release concurrency on MySQL;
 - synchronize architecture, event, database and sequence documentation.
+
+#### Source evidence and invariants
+
+- `BookingCancelledConsumerServiceImpl` and `BookingExpiredConsumerServiceImpl`
+  resolve candidate IDs by showtime and booking, sort IDs, then call
+  `ShowSeatRepository.findAllByShowtimeIdAndIdsForUpdate`. The repository uses
+  `PESSIMISTIC_WRITE` with `order by showSeat.id`; the locking predicate does
+  not depend on mutable hold ownership or status.
+- After locking, only `isHeldBy(bookingId)` seats may transition from `HELD` to
+  `AVAILABLE`. Already released seats, `BOOKED` seats and seats now held by a
+  different booking must remain unchanged.
+- Each consumer is transactional. `ProcessedEventRegistrationServiceImpl`
+  requires the caller's transaction (`MANDATORY`); the Inventory V1 baseline
+  enforces unique `(event_id, consumer_name)` markers. Seat changes and the
+  marker must commit or roll back together so a failed event can be retried.
+- Duplicate cancellation/expiration and cancellation-versus-expiration must
+  converge without a second mutation. Lifecycle release does not emit
+  `seat-released`; that event belongs to explicit payment-failure compensation.
+
+#### Open closure criteria for P0.2
+
+1. Execute and assess the new parameterized cases in
+   `BookingLifecycleReleaseConsumerMySqlIntegrationTest` for both cancellation
+   and expiration. Latches coordinate real repository calls and transactions:
+   confirmation commits after candidate lookup; lifecycle owns the locks before
+   confirmation attempts them; another booking acquires the holds before
+   lifecycle locks stale IDs. Assertions cover the complete seat set, hold
+   ownership, duplicate replay, processed markers and absence of lifecycle
+   Outbox events. The existing `InventoryConfirmationReleaseRaceIntegrationTest`
+   remains separate coverage of explicit `seat-release-requested` compensation.
+2. Execute the existing focused consumer unit tests and `ShowSeatRepositoryTest`;
+   verify stable-ID selection, ordered locks, post-lock filtering and no-op
+   handling. Two new repository cases cover candidate scoping/order and locking
+   stale candidates without filtering on mutable status/ownership. These are
+   repository-slice cases, not MySQL concurrency evidence.
+3. Execute `BookingLifecycleReleaseConsumerMySqlIntegrationTest` for duplicate
+   and cancellation/expiration concurrency, and
+   `BookingLifecycleReleaseConsumerRollbackIntegrationTest` for both consumers'
+   seat/processed-marker rollback. The rollback tests now inject a one-time
+   persistence failure, retry the identical event, then replay it again to check
+   idempotency. Re-run the related confirmation/explicit release race coverage
+   after any hardening change.
+4. Complete full Inventory and root Maven verification, then reconcile affected
+   architecture, event, database and sequence documentation with the results.
+
+All execution gates remain pending. Tests, builds and automated checks were
+explicitly skipped for both P0.1 and this P0.2 increment. The new tests have not
+been compiled or executed. Production locking and transaction code is unchanged;
+no additional production code defect is asserted from static inspection alone.
+Assess the direct lifecycle race results before deciding which P0.2 production
+changes are needed. P0.2 is not closed.
 
 This is maintenance of the completed Inventory implementation. It does not reopen R24 or start R28.
 
@@ -1684,11 +1747,19 @@ R26 Booking Service is complete.
 
 ---
 
-## 🚧 R27 — Payment Service
+## ✅ R27 — Payment Service
 
-**Status:** IMPLEMENTATION
+**Status:** COMPLETED (historical R27 acceptance)
 
-Payment Service will own:
+The scope and progress notes below record R27 history. They do not make R27 an
+active checkpoint or guarantee that every historical API is still exposed.
+Commit `ae85063` subsequently removed refund and reconciliation administration
+HTTP APIs and scheduled refund processing; internal support remains in source.
+These APIs are outside the current FE scope. Later changes, including screening
+projection technology (`c2489a6`), retain their own pending verification status
+in the changelog and do not inherit the historical R27 verification result.
+
+Payment Service owns:
 
 - payment attempts;
 - provider references;
@@ -1830,7 +1901,7 @@ R27.9 completed Inventory confirmation and compensation consumption:
 - Kafka ingress for confirmation, explicit release, cancellation and expiration;
 - bounded retry and sanitized dead-letter verification.
 
-R27.10 is the active checkpoint. It adds refund, reconciliation, permission and
+R27.10 historically added refund, reconciliation, permission and
 financial-audit controls without changing Payment data ownership or introducing
 cross-service database access.
 
@@ -2120,11 +2191,15 @@ R27      — DONE
 
 Payment Service is complete.
 
-The next active business-service round is:
+The active maintenance checkpoint is Inventory lifecycle-release lock hardening
+(P0.2). No new business-service round is active.
 
-R28 — Notification Service
+R28 — Notification Service is deferred.
 
-## ⏳ R28 — Notification Service
+## ⏸ R28 — Notification Service (Deferred)
+
+No Notification service scaffolding, APIs or events are authorized by this
+roadmap. The scope below is retained for a future explicit reopening decision.
 
 Notification Service will own:
 

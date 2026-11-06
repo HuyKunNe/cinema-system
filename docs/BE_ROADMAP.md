@@ -1,6 +1,6 @@
 # Backend Roadmap — Cinema Booking System
 
-**Cập nhật theo trạng thái repo đến:** 2026-11-04  
+**Cập nhật theo trạng thái repo đến:** 2026-11-06 (đối chiếu source `main` tại `ac09155`)  
 **Repository:** https://github.com/HuyKunNe/cinema-system  
 **Phạm vi:** Backend phục vụ Admin FE và User FE; không bao gồm triển khai Notification Service R28 đang được hoãn.
 
@@ -12,18 +12,21 @@
 - **BLOCKED:** phụ thuộc contract hoặc quyết định chưa hoàn thành.
 - **PLANNED:** chưa bắt đầu.
 
-Roadmap này không thay thế `docs/10_ROADMAP.md`. Cần đồng bộ tài liệu BE trước khi dùng các mã P dưới đây làm checkpoint chính thức.
+Roadmap này không thay thế `docs/10_ROADMAP.md`. P0.1 đã đồng bộ trạng thái tài liệu; checkpoint đang hoạt động là Inventory lifecycle-release lock hardening, tiếp tục theo P0.2. Chưa đóng các cổng xác minh runtime.
 
 ## Trạng thái đầu vào
 
 - README ghi R1–R27 hoàn thành, Inventory lifecycle-release lock hardening đang thực hiện và R28 Notification được hoãn.
-- `docs/10_ROADMAP.md` còn ghi R28 là mục tiêu tiếp theo và lần cập nhật tháng 9/2026. Nội dung này chưa phản ánh quyết định hoãn R28.
+- P0.1 đã sửa các mô tả cũ ghi R28 là bước tiếp theo và R27/R27.10/R27.13 còn đang chạy. README, roadmap và changelog cùng ghi Inventory hardening đang thực hiện, R28 Deferred.
+- R27 là mốc hoàn tất lịch sử. Commit `ae85063` đã bỏ API refund, API quản trị reconciliation và xử lý refund theo lịch; không coi các mô tả R27 cũ là contract FE hiện tại.
 - Commit `c2489a68` ngày 2026-11-04 tách công nghệ chiếu khỏi định dạng 2D/3D. Changelog ghi kiểm tra tự động chưa chạy.
 - Các API tạo/sửa phim đã được thiết kế để mang `screeningVersions` lồng trong request phim. Không chuyển việc này thành một bước tạo phiên bản riêng sau khi tạo phim.
 
 ## P0 — Khóa trạng thái và thứ tự công việc
 
 ### P0.1 — Đồng bộ trạng thái tài liệu
+
+**Trạng thái:** DONE — rà soát source/tài liệu ngày 2026-11-06; không xác nhận runtime. Tiêu chí Inventory còn mở và bằng chứng source được ghi tại `docs/10_ROADMAP.md`, mục “Post-R27 Inventory lifecycle-release hardening”.
 
 - Đối chiếu README, `docs/10_ROADMAP.md`, `docs/11_CHANGELOG.md` và trạng thái thực của working tree/main.
 - Ghi rõ Inventory lifecycle-release lock hardening còn mở những tiêu chí nào.
@@ -33,6 +36,8 @@ Roadmap này không thay thế `docs/10_ROADMAP.md`. Cần đồng bộ tài li�
 **Hoàn tất khi:** README, roadmap và changelog cùng chỉ một checkpoint BE đang hoạt động.
 
 ### P0.2 — Đóng hardening Inventory hiện hành
+
+**Trạng thái:** IN PROGRESS / VERIFY — đã bổ sung test MySQL cho hai thứ tự cạnh tranh confirmation–lifecycle và hold đổi chủ sau bước lấy ID, test repository cho truy vấn ID/khóa, và retry cùng event sau rollback. Chưa biên dịch/chạy test, build hoặc kiểm tra tự động theo yêu cầu chủ dự án; chưa đóng P0.2. Code nghiệp vụ, API và migration giữ nguyên.
 
 - Đọc phạm vi cụ thể của lifecycle-release lock hardening từ code và tài liệu hiện tại.
 - Hoàn tất các invariant cạnh tranh và rollback còn thiếu.

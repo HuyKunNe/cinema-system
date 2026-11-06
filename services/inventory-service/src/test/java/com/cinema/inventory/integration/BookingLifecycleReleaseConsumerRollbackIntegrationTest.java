@@ -44,6 +44,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 class BookingLifecycleReleaseConsumerRollbackIntegrationTest extends AbstractMySqlIntegrationTest {
 
@@ -94,9 +95,13 @@ class BookingLifecycleReleaseConsumerRollbackIntegrationTest extends AbstractMyS
     void cancellationPersistenceFailureShouldRollbackSeatsAndProcessedMarker() {
 
         OutboxEventMessage message = bookingCancelledMessage();
+        AtomicBoolean failNextSave = new AtomicBoolean(true);
 
         doAnswer(
                         invocation -> {
+                            if (!failNextSave.getAndSet(false)) {
+                                return invocation.callRealMethod();
+                            }
                             List<ShowSeat> mutatedSeats = invocation.getArgument(0);
 
                             assertThat(mutatedSeats)
@@ -136,15 +141,33 @@ class BookingLifecycleReleaseConsumerRollbackIntegrationTest extends AbstractMyS
         assertThat(processedEventRepository.count()).isZero();
 
         assertThat(outboxRepository.count()).isZero();
+
+        assertThat(
+                        bookingCancelledConsumerService
+                                .handle(context.bookingId().toString(), message)
+                                .status())
+                .isEqualTo(BookingCancelledConsumerService.Status.RELEASED);
+        assertReleased();
+        assertThat(
+                        bookingCancelledConsumerService
+                                .handle(context.bookingId().toString(), message)
+                                .status())
+                .isEqualTo(BookingCancelledConsumerService.Status.DUPLICATE);
+        assertThat(processedEventRepository.count()).isEqualTo(1);
+        assertThat(outboxRepository.count()).isZero();
     }
 
     @Test
     void expirationPersistenceFailureShouldRollbackSeatsAndProcessedMarker() {
 
         OutboxEventMessage message = bookingExpiredMessage();
+        AtomicBoolean failNextSave = new AtomicBoolean(true);
 
         doAnswer(
                         invocation -> {
+                            if (!failNextSave.getAndSet(false)) {
+                                return invocation.callRealMethod();
+                            }
                             List<ShowSeat> mutatedSeats = invocation.getArgument(0);
 
                             assertThat(mutatedSeats)
@@ -183,6 +206,34 @@ class BookingLifecycleReleaseConsumerRollbackIntegrationTest extends AbstractMyS
         assertThat(processedEventRepository.count()).isZero();
 
         assertThat(outboxRepository.count()).isZero();
+
+        assertThat(
+                        bookingExpiredConsumerService
+                                .handle(context.bookingId().toString(), message)
+                                .status())
+                .isEqualTo(BookingExpiredConsumerService.Status.RELEASED);
+        assertReleased();
+        assertThat(
+                        bookingExpiredConsumerService
+                                .handle(context.bookingId().toString(), message)
+                                .status())
+                .isEqualTo(BookingExpiredConsumerService.Status.DUPLICATE);
+        assertThat(processedEventRepository.count()).isEqualTo(1);
+        assertThat(outboxRepository.count()).isZero();
+    }
+
+    private void assertReleased() {
+        entityManager.clear();
+        assertThat(
+                        showSeatRepository.findAllByShowtime_IdOrderBySeatNumberAsc(
+                                context.showtimeId()))
+                .hasSize(2)
+                .allSatisfy(
+                        seat -> {
+                            assertThat(seat.getStatus()).isEqualTo(ShowSeatStatus.AVAILABLE);
+                            assertThat(seat.getHeldByBookingId()).isNull();
+                            assertThat(seat.getHoldExpiresAt()).isNull();
+                        });
     }
 
     private TestContext createHeldInventory() {

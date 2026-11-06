@@ -341,6 +341,75 @@ class ShowSeatRepositoryTest {
                 });
     }
 
+    @Test
+    void lifecycleCandidateLookupShouldFilterByShowtimeAndBooking() {
+        UUID bookingId = UUID.randomUUID();
+        OffsetDateTime now = SHOWTIME_START.minusHours(1);
+        Showtime otherShowtime = showtimeRepository.saveAndFlush(
+                new Showtime(
+                        UUID.randomUUID(),
+                        room,
+                        SHOWTIME_START.plusDays(1),
+                        SHOWTIME_START.plusDays(1).plusHours(2)));
+        ShowSeat first = showSeat(saveSeat("C1", "C", SeatType.STANDARD));
+        ShowSeat second = showSeat(saveSeat("C2", "C", SeatType.STANDARD));
+        ShowSeat otherBooking = showSeat(saveSeat("C3", "C", SeatType.STANDARD));
+        ShowSeat otherShow = new ShowSeat(otherShowtime, first.getSeat(), DEFAULT_PRICE);
+        first.hold(bookingId, now.plusMinutes(5), now);
+        second.hold(bookingId, now.plusMinutes(5), now);
+        otherBooking.hold(UUID.randomUUID(), now.plusMinutes(5), now);
+        otherShow.hold(bookingId, now.plusMinutes(5), now);
+        showSeatRepository.saveAllAndFlush(List.of(first, second, otherBooking, otherShow));
+        entityManager.clear();
+
+        List<UUID> expected = List.of(first.getId(), second.getId()).stream().sorted().toList();
+
+        assertThat(showSeatRepository.findIdsByShowtimeIdAndBookingId(showtime.getId(), bookingId))
+                .containsExactlyElementsOf(expected);
+    }
+
+    @Test
+    void lifecycleLockLookupShouldKeepStaleCandidatesAndExcludeOtherShowtimes() {
+        UUID bookingId = UUID.randomUUID();
+        OffsetDateTime now = SHOWTIME_START.minusHours(1);
+        ShowSeat booked = showSeat(saveSeat("D1", "D", SeatType.STANDARD));
+        booked.hold(bookingId, now.plusMinutes(5), now);
+        booked.book(bookingId);
+        ShowSeat available = showSeat(saveSeat("D2", "D", SeatType.STANDARD));
+        ShowSeat differentHold = showSeat(saveSeat("D3", "D", SeatType.STANDARD));
+        differentHold.hold(UUID.randomUUID(), now.plusMinutes(5), now);
+        ShowSeat unrequested = showSeat(saveSeat("D4", "D", SeatType.STANDARD));
+        Showtime otherShowtime = showtimeRepository.saveAndFlush(
+                new Showtime(
+                        UUID.randomUUID(),
+                        room,
+                        SHOWTIME_START.plusDays(1),
+                        SHOWTIME_START.plusDays(1).plusHours(2)));
+        ShowSeat otherShow = new ShowSeat(otherShowtime, booked.getSeat(), DEFAULT_PRICE);
+        showSeatRepository.saveAllAndFlush(
+                List.of(booked, available, differentHold, unrequested, otherShow));
+        entityManager.clear();
+
+        List<UUID> expected =
+                List.of(booked.getId(), available.getId(), differentHold.getId())
+                        .stream().sorted().toList();
+        List<ShowSeat> locked = showSeatRepository.findAllByShowtimeIdAndIdsForUpdate(
+                showtime.getId(),
+                List.of(
+                        differentHold.getId(),
+                        otherShow.getId(),
+                        available.getId(),
+                        booked.getId()));
+
+        assertThat(locked).extracting(ShowSeat::getId).containsExactlyElementsOf(expected);
+        assertThat(locked)
+                .extracting(ShowSeat::getStatus)
+                .containsExactlyInAnyOrder(
+                        ShowSeatStatus.BOOKED,
+                        ShowSeatStatus.AVAILABLE,
+                        ShowSeatStatus.HELD);
+    }
+
     private Seat saveSeat(
             String seatNumber,
             String rowLabel,

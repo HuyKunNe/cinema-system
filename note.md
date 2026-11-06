@@ -84,6 +84,10 @@ $env:CINEMA_AUTH_JWK_SET_URI = "http://localhost:8082/oauth2/jwks"
 $env:CINEMA_AUTH_AUDIENCE = "cinema-api"
 $env:KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
 $env:INVENTORY_KAFKA_ENABLED = "true"
+$env:INVENTORY_MOVIE_CLIENT_ID = "inventory-movie-catalog"
+$env:INVENTORY_MOVIE_CLIENT_SECRET = "78f2282e1c1f9ca024444399e2e1687320df85f1afc54640aa23f6985dbe3992"
+$env:INVENTORY_MOVIE_TOKEN_URI = "http://localhost:8082/oauth2/token"
+$env:INVENTORY_MOVIE_BASE_URL = "http://localhost:8081"
 .\mvnw.cmd -pl services/inventory-service spring-boot:run
 
 ## Booking Service
@@ -152,8 +156,8 @@ Bạn là technical pair-programming assistant cho dự án Cinema System. Hãy 
 
 "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
 
-"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -h localhost -P 3306 -u root -p --default-character-set=utf8mb4 < "E:\Learning\cinema-system\scripts\01_import_now_showing.sql"
+"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -h localhost -P 3306 -u root -p --default-character-set=utf8mb4 < "E:\java\cinema-system\scripts\01_import_now_showing.sql"
 
-"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -h localhost -P 3306 -u root -p --default-character-set=utf8mb4 < "E:\Learning\cinema-system\scripts\02_import_upcoming.sql"
+"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -h localhost -P 3306 -u root -p --default-character-set=utf8mb4 < "E:\java\cinema-system\scripts\02_import_upcoming.sql"
 
-"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -h localhost -P 3306 -u root -p --default-character-set=utf8mb4 < "E:\Learning\cinema-system\scripts\03_seed_imported_movie_screening_versions.sql"
+"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -h localhost -P 3306 -u root -p --default-character-set=utf8mb4 < "E:\java\cinema-system\scripts\03_seed_imported_movie_screening_versions.sql"

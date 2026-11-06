@@ -1005,7 +1005,7 @@ Booking Service performs:
 3. Insert one `BOOKING_EXPIRED` outbox event.
 4. Commit the Booking database transaction.
 
-Booking Service does not also insert `SEAT_RELEASE_REQUESTED`. The future Inventory `booking-expired` consumer restores only applicable held inventory.
+Booking Service does not also insert `SEAT_RELEASE_REQUESTED`. The implemented Inventory `booking-expired` consumer restores only applicable held inventory.
 
 Expiration processing must be idempotent and safe when multiple scheduler instances run concurrently.
 
