@@ -50,6 +50,29 @@ Current status:
 
 ## 2026-11-10
 
+### Inventory — Delete layout and pricing drafts
+
+- Added version-checked DELETE operations for room layouts and cinema pricing
+  policy versions. Existing inventory:manage HTTP boundaries apply. Return 204
+  without a body; reject non-DRAFT resources, stale versions, wrong pricing scope
+  and any showtime references. Added no Swagger annotations or FE changes.
+- Added transactional InventoryDraftDeletionService with existing layout-write
+  locks and policy-then-version pricing locks. Current-version conflicts reuse
+  VersionConflictException and the shared 409 response contract.
+- Added MySQL V3 boolean deletion flags. Retain dependent rows, revision numbers,
+  creation fingerprints and clientRequestId keys; hide deleted drafts from read
+  APIs and reject write/publication or idempotent-create resurrection. Keep prior
+  migrations, all foreign keys/indexes and published data unchanged.
+- Added unexecuted service and MVC/security regression cases. Documented complete
+  routes, shared-cinema deletion scope, repeat DELETE 404 behavior, FE follow-up,
+  additive migration rollout and rollback visibility limitations in
+  21_DRAFT_DELETION_API.md. No database commands or tests were executed.
+- Compile-only checks passed: offline Maven Inventory reactor `-DskipTests compile`
+  and `-DskipTests test-compile`, plus static deletion-path review and
+  `git diff --check`. The successful builds used approved Maven-cache access after
+  a sandbox AccessDeniedException. No HTTP, JPQL/migration execution or runtime
+  concurrency verification is claimed.
+
 ### P2.3 — Return observed layout version on stale writes
 
 - Preserved the uncommitted P1.3 identity fix. Reviewed P1.4 source: projection

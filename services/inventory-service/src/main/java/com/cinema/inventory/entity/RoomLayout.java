@@ -1,6 +1,7 @@
 package com.cinema.inventory.entity;
 
 import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
 import com.cinema.inventory.enums.RoomLayoutStatus;
@@ -44,6 +45,9 @@ public class RoomLayout extends BaseEntity {
 
     @Column(name = "content_revision", nullable = false)
     private long contentRevision = 0L;
+
+    @Column(name = "deleted", nullable = false)
+    private boolean deleted;
 
     @Column(name = "row_count")
     private Integer rowCount;
@@ -120,9 +124,21 @@ public class RoomLayout extends BaseEntity {
     }
 
     public void requireDraft() {
+        requireNotDeleted();
         if (status != RoomLayoutStatus.DRAFT) {
             throw new ConflictException(InventoryErrorCode.ROOM_LAYOUT_NOT_DRAFT);
         }
+    }
+
+    public void requireNotDeleted() {
+        if (deleted) {
+            throw new NotFoundException(InventoryErrorCode.ROOM_LAYOUT_NOT_FOUND);
+        }
+    }
+
+    public void deleteDraft() {
+        requireDraft();
+        deleted = true;
     }
 
     public void markContentChanged() {

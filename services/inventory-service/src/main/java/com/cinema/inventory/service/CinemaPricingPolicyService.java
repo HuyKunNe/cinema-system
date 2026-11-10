@@ -100,6 +100,7 @@ public class CinemaPricingPolicyService {
                                                     InventoryErrorCode
                                                             .PRICING_POLICY_DATA_INCONSISTENT));
 
+            firstRevision.requireNotDeleted();
             return new CreateResult(false, mapper.toResponse(firstRevision));
         }
 

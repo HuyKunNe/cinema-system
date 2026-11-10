@@ -31,8 +31,10 @@ public interface CinemaPricingPolicyVersionRepository
                 from CinemaPricingPolicyVersion candidate
                 join candidate.cinemas applicable
                 where candidate.policy.id = policy.id
+                  and candidate.deleted = false
                   and applicable.id = :cinemaId
             )
+              and revision.deleted = false
             order by revision.name asc, policy.id asc
             """)
     List<CinemaPricingPolicyVersion> findLatestForCinema(@Param("cinemaId") UUID cinemaId);
@@ -44,6 +46,7 @@ public interface CinemaPricingPolicyVersionRepository
             join fetch revision.policy policy
             join fetch revision.cinemas
             where policy.id = :policyId
+              and revision.deleted = false
               and exists (
                   select candidate.id
                   from CinemaPricingPolicyVersion candidate
@@ -63,6 +66,7 @@ public interface CinemaPricingPolicyVersionRepository
             join fetch revision.policy policy
             join fetch revision.cinemas
             where revision.id = :versionId
+              and revision.deleted = false
               and policy.id = :policyId
               and exists (
                   select candidate.id

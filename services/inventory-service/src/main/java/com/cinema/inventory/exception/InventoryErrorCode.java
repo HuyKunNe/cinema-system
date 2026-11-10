@@ -862,6 +862,18 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_INVALID_SHOWTIME_SEAT_QUOTE",
                     "Select between 1 and 100 distinct seat numbers");
 
+    public static final InventoryErrorCode ROOM_LAYOUT_IN_USE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_ROOM_LAYOUT_IN_USE",
+                    "A room layout referenced by a showtime cannot be deleted");
+
+    public static final InventoryErrorCode PRICING_POLICY_VERSION_IN_USE =
+            new InventoryErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_VERSION_IN_USE",
+                    "A pricing version referenced by a showtime cannot be deleted");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

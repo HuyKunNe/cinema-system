@@ -92,6 +92,7 @@ public class RoomLayoutServiceImpl implements RoomLayoutService {
                                         new NotFoundException(
                                                 InventoryErrorCode.ROOM_LAYOUT_NOT_FOUND));
 
+        layout.requireNotDeleted();
         return roomLayoutMapper.toResponse(layout);
     }
 

@@ -18,6 +18,10 @@ import java.util.UUID;
 
 public interface ShowtimeRepository extends JpaRepository<Showtime, UUID> {
 
+    boolean existsByRoomLayout_Id(UUID layoutId);
+
+    boolean existsByPricingPolicyVersion_Id(UUID versionId);
+
     List<Showtime> findAllByRoom_IdOrderByStartsAtAsc(UUID roomId);
 
     List<Showtime> findAllByMovieIdOrderByStartsAtAsc(UUID movieId);

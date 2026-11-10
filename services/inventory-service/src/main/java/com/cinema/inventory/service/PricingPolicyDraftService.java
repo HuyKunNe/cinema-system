@@ -89,6 +89,7 @@ public class PricingPolicyDraftService {
 
         if (existing.isPresent()) {
             CinemaPricingPolicyVersion revision = existing.get();
+            revision.requireNotDeleted();
 
             if (!sourceVersionId.equals(revision.getDraftSourceVersionId())) {
 

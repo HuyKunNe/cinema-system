@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -24,6 +25,7 @@ import com.cinema.inventory.service.RoomLayoutContentService;
 import com.cinema.inventory.service.RoomLayoutDraftCopyService;
 import com.cinema.inventory.service.RoomLayoutPublicationService;
 import com.cinema.inventory.service.RoomLayoutService;
+import com.cinema.inventory.service.InventoryDraftDeletionService;
 
 import jakarta.validation.Valid;
 
@@ -35,17 +37,28 @@ public class RoomLayoutController {
     private final RoomLayoutContentService roomLayoutContentService;
     private final RoomLayoutPublicationService roomLayoutPublicationService;
     private final RoomLayoutDraftCopyService roomLayoutDraftCopyService;
+    private final InventoryDraftDeletionService draftDeletionService;
 
     public RoomLayoutController(
             RoomLayoutService roomLayoutService,
             RoomLayoutContentService roomLayoutContentService,
             RoomLayoutPublicationService roomLayoutPublicationService,
-            RoomLayoutDraftCopyService roomLayoutDraftCopyService) {
+            RoomLayoutDraftCopyService roomLayoutDraftCopyService,
+            InventoryDraftDeletionService draftDeletionService) {
 
         this.roomLayoutService = roomLayoutService;
         this.roomLayoutContentService = roomLayoutContentService;
         this.roomLayoutPublicationService = roomLayoutPublicationService;
         this.roomLayoutDraftCopyService = roomLayoutDraftCopyService;
+        this.draftDeletionService = draftDeletionService;
+    }
+
+    @DeleteMapping("/{layoutId}")
+    public ResponseEntity<Void> deleteRoomLayoutDraft(
+            @PathVariable("layoutId") UUID layoutId,
+            @RequestParam("expectedVersion") Long expectedVersion) {
+        draftDeletionService.deleteRoomLayoutDraft(layoutId, expectedVersion);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping

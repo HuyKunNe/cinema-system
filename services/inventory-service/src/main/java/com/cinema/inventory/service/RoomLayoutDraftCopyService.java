@@ -59,6 +59,8 @@ public class RoomLayoutDraftCopyService {
                 .orElseThrow(() -> new NotFoundException(
                         InventoryErrorCode.ROOM_LAYOUT_NOT_FOUND));
 
+        source.requireNotDeleted();
+
         if (!request.expectedVersion().equals(source.getVersion())) {
             throw new VersionConflictException(
                     InventoryErrorCode.ROOM_LAYOUT_VERSION_CONFLICT, source.getVersion());

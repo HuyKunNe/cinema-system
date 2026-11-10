@@ -62,6 +62,8 @@ public class ShowtimeLayoutService {
                                         new NotFoundException(
                                                 InventoryErrorCode.ROOM_LAYOUT_NOT_FOUND));
 
+        layout.requireNotDeleted();
+
         if (!layout.getRoom().getId().equals(roomId)) {
             throw new ValidationException(InventoryErrorCode.SHOWTIME_LAYOUT_ROOM_MISMATCH);
         }

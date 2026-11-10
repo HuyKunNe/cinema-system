@@ -1,6 +1,7 @@
 package com.cinema.inventory.entity;
 
 import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
 import com.cinema.inventory.enums.PricingDayGroup;
@@ -78,6 +79,9 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
 
     @Column(name = "cinema_scope_revision", nullable = false)
     private long cinemaScopeRevision = 0;
+
+    @Column(name = "deleted", nullable = false)
+    private boolean deleted;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -187,9 +191,21 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
     }
 
     public void requireDraft() {
+        requireNotDeleted();
         if (status != PricingPolicyVersionStatus.DRAFT) {
             throw new ConflictException(InventoryErrorCode.PRICING_POLICY_NOT_DRAFT);
         }
+    }
+
+    public void requireNotDeleted() {
+        if (deleted) {
+            throw new NotFoundException(InventoryErrorCode.PRICING_POLICY_VERSION_NOT_FOUND);
+        }
+    }
+
+    public void deleteDraft() {
+        requireDraft();
+        deleted = true;
     }
 
     public void replaceDraftMatrixDefinition(Set<FareMatrixScope> scopes, Set<SeatType> seatTypes) {
@@ -218,7 +234,7 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
     }
 
     public boolean appliesTo(UUID cinemaId) {
-        return getCinemaIds().contains(cinemaId);
+        return !deleted && getCinemaIds().contains(cinemaId);
     }
 
     public void replaceDraftCinemas(Set<Cinema> requestedCinemas) {

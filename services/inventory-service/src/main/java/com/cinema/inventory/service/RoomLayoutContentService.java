@@ -69,6 +69,7 @@ public class RoomLayoutContentService {
                                         new NotFoundException(
                                                 InventoryErrorCode.ROOM_LAYOUT_NOT_FOUND));
 
+        layout.requireNotDeleted();
         return readContent(layout);
     }
 

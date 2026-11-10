@@ -118,6 +118,7 @@ DTOs, not `ApiResponse` envelopes.
 | `PUT /api/v1/room-layouts/{layoutId}/content` | `replaceRoomLayoutContent` | `200`, refreshed content |
 | `POST /api/v1/room-layouts/{layoutId}/publish` | `publishRoomLayout` | `200`, metadata |
 | `POST /api/v1/room-layouts/{layoutId}/drafts` | `createRoomLayoutDraftFromPublished` | `201`, copied matrix draft content |
+| `DELETE /api/v1/room-layouts/{layoutId}?expectedVersion={version}` | `deleteRoomLayoutDraft` (handler name) | `204`, DRAFT only |
 
 Create an empty default 6x6 matrix with
 `POST /api/v1/room-layouts` and `{"roomId":"019a5a00-0000-7000-8000-000000000004"}`.
@@ -222,6 +223,13 @@ uses STANDARD and does not change that rule. Metadata canvas dimensions remain
 compatibility values in the current entity; matrix editing does not submit them.
 
 ## Pricing configuration and fare-matrix writes
+
+Draft deletion is now available via
+`DELETE /api/v1/cinemas/{cinemaId}/pricing-policies/{policyId}/versions/{versionId}?expectedVersion={version}`.
+It returns `204` for a current DRAFT, applies to the entire shared version, and
+does not delete published history. Layout/pricing deletion visibility, idempotency
+and MySQL V3 rollout are specified in [Draft deletion API](21_DRAFT_DELETION_API.md).
+No FE implementation or runtime export has been performed.
 
 Let `V` denote `/api/v1/cinemas/{cinemaId}/pricing-policies/{policyId}/versions/{versionId}`
 in the table below. These routes require `inventory:manage` at both Gateway and

@@ -152,6 +152,17 @@ không tự đổi span, tọa độ, sức chứa hoặc dữ liệu layout cũ
 
 ### P2.3 — Thiết kế API đọc/ghi
 
+**Bổ sung theo yêu cầu chủ dự án từ `51133a4`:** thêm DELETE nháp layout và pricing
+version, bắt buộc expectedVersion và inventory:manage. Xóa mềm để giữ revision,
+khóa clientRequestId và các liên kết; chặn sửa/publish/đọc lại bản đã xóa. Bản không
+phải DRAFT hoặc còn được showtime tham chiếu không được xóa. Chi tiết endpoint,
+phạm vi bảng giá nhiều rạp và MySQL V3 tại [Draft deletion API](21_DRAFT_DELETION_API.md).
+Chưa chạy test/migration hoặc xác minh HTTP; không đóng checkpoint.
+
+Biên dịch Inventory cùng dependencies ở `-DskipTests compile` và
+`-DskipTests test-compile` đã thành công; chỉ biên dịch mã kiểm thử, không thực thi
+test. Runtime JPQL, migration, HTTP và cạnh tranh delete/publish vẫn chưa xác minh.
+
 **Tiếp tục ngày 2026-11-10:** bổ sung `error.currentVersion` cho lỗi 409 version
 conflict ở replace content, publish và copy published layout. Dùng version của
 entity đã đọc/khóa khi kiểm tra expectedVersion; không truy vấn database từ handler

@@ -17,7 +17,9 @@ import jakarta.persistence.LockModeType;
 
 public interface RoomLayoutRepository extends JpaRepository<RoomLayout, UUID> {
 
-    List<RoomLayout> findAllByRoom_IdOrderByLayoutVersionDesc(UUID roomId);
+    @Query("select layout from RoomLayout layout where layout.room.id = :roomId "
+            + "and layout.deleted = false order by layout.layoutVersion desc")
+    List<RoomLayout> findAllByRoom_IdOrderByLayoutVersionDesc(@Param("roomId") UUID roomId);
 
     Optional<RoomLayout> findByIdAndRoom_Id(UUID layoutId, UUID roomId);
 
