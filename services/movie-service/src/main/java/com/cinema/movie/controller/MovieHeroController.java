@@ -30,7 +30,7 @@ public class MovieHeroController {
     }
 
     @GetMapping("/hero")
-    public ResponseEntity<List<MovieResponse>> findHero(
+    public ResponseEntity<List<MovieResponse>> getHeroMovies(
             @RequestParam(value = "limit", required = false)
             Integer limit,
 
@@ -41,7 +41,7 @@ public class MovieHeroController {
     }
 
     @PatchMapping("/{movieId}/hero")
-    public ResponseEntity<MovieHeroConfigurationResponse> updateHero(
+    public ResponseEntity<MovieHeroConfigurationResponse> updateMovieHero(
             @PathVariable("movieId") UUID movieId,
             @Valid @RequestBody UpdateMovieHeroRequest request) {
 

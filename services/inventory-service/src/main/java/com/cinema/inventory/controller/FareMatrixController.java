@@ -29,7 +29,7 @@ public class FareMatrixController {
     }
 
     @GetMapping
-    public ResponseEntity<FareMatrixResponse> get(
+    public ResponseEntity<FareMatrixResponse> getPricingFareMatrix(
             @PathVariable("cinemaId") UUID cinemaId,
             @PathVariable("policyId") UUID policyId,
             @PathVariable("versionId") UUID versionId) {
@@ -38,7 +38,7 @@ public class FareMatrixController {
     }
 
     @PutMapping
-    public ResponseEntity<FareMatrixResponse> replace(
+    public ResponseEntity<FareMatrixResponse> replacePricingFareMatrix(
             @PathVariable("cinemaId") UUID cinemaId,
             @PathVariable("policyId") UUID policyId,
             @PathVariable("versionId") UUID versionId,

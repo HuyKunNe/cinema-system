@@ -12,6 +12,17 @@ Explicit schema names, required/nullable overrides, descriptions and examples ma
 therefore differ in the next export. Jackson and validation annotations remain;
 runtime JSON and validation rules have not been changed by this cleanup.
 
+**Handler-name continuation from `f2d950e`:** Renamed 28 Movie/Inventory handler
+methods to the operation names previously supplied by annotations. All 28 names
+match existing generated FE functions. Generic methods such as `get`, `replace`,
+`createDraft` and `publish` now carry business names such as `getPricingFareMatrix`,
+`replacePricingPolicyConfiguration`, `createRoomLayoutDraft` and `publishRoomLayout`.
+No Swagger annotations were restored. Static inspection found no duplicate public
+method names across current service REST controllers; handler bodies and all other
+Java bytes in the changed files are preserved. This supports Springdoc's default
+method-name inference but does not certify runtime operation IDs, schema naming,
+or FE regeneration. Existing response/schema metadata warnings above still apply.
+
 Reviewed against BE `main` at `34fafae` on 2026-11-06, plus the P0.3 OpenAPI
 metadata change described below. This is a source-based integration reference,
 not an exported OpenAPI specification or a runtime acceptance result.

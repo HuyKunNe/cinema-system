@@ -98,7 +98,7 @@ public class SeatController {
     }
 
     @PatchMapping("/{seatId}/active")
-    public ResponseEntity<SeatActiveStateResponse> updateActive(
+    public ResponseEntity<SeatActiveStateResponse> updateSeatActiveState(
             @PathVariable("seatId") UUID seatId,
             @Valid @RequestBody UpdateSeatActiveRequest request) {
 

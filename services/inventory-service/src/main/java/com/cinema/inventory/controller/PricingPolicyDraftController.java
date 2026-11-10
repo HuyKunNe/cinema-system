@@ -29,7 +29,7 @@ public class PricingPolicyDraftController {
     }
 
     @PostMapping("/{policyId}/versions/{sourceVersionId}/draft")
-    public ResponseEntity<CinemaPricingPolicyVersionResponse> createDraft(
+    public ResponseEntity<CinemaPricingPolicyVersionResponse> createPricingPolicyDraftFromPublished(
             @PathVariable("cinemaId") UUID cinemaId,
             @PathVariable("policyId") UUID policyId,
             @PathVariable("sourceVersionId") UUID sourceVersionId,

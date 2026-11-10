@@ -6,6 +6,12 @@ earlier reviewed source, not guaranteed names in a new runtime export. Reconcile
 generated FE names before adopting a new specification. Runtime session/CSRF,
 permissions, payloads and database behavior are unchanged.
 
+The continuation from `f2d950e` renames layout/pricing controller methods to the
+previously documented operation names, matching existing generated FE functions
+without annotations. This is source compatibility evidence only; runtime exports
+and schema compatibility still need verification. Account handler names are
+unchanged, and the session-versus-Bearer integration gap below remains open.
+
 Reviewed against BE `main` at `4e58548` on 2026-11-06. This supplements
 [the FE contract reference](19_FE_API_CONTRACT.md). Examples use synthetic IDs
 and values; response examples are excerpts, not captured HTTP responses. Replace

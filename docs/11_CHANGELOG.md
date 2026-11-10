@@ -50,6 +50,23 @@ Current status:
 
 ## 2026-11-10
 
+### P0.3 — Preserve operation names without controller annotations
+
+- Reviewed checkout `f2d950e` with a clean working tree. Renamed 28 public handler
+  methods in 13 Movie/Inventory controllers to the operation IDs previously
+  declared by annotations, preserving existing generated FE function names.
+- Covered catalog/hero/metadata, pricing policies/configuration/fare matrices,
+  layout draft/read/replace/publish operations, published room seat maps and
+  physical/show-seat availability administration. Added no Swagger annotations.
+- Static comparison confirmed all 28 names exist in the read-only FE client,
+  no duplicate public method names among current service REST controllers, and
+  no changes to handler bodies, HTTP mappings, validation or other Java bytes.
+  Reviewed source references; existing controller tests invoke the affected
+  handlers through MockMvc mappings rather than the renamed Java methods.
+- No changes to payloads, permissions, OAuth/OIDC, Kafka, MySQL or migrations.
+  No tests, builds, runtime applications, spec exports or database commands ran.
+  Runtime OpenAPI/client verification and P0.2/P0.3 closure remain pending.
+
 ### Remove model Swagger annotations
 
 - Removed `@Schema` and its imports from 41 request/response model files across

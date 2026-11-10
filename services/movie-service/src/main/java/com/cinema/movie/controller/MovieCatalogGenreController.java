@@ -27,7 +27,7 @@ public class MovieCatalogGenreController {
     @GetMapping(
             value = "/genres",
             produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<GenreResponse>> findGenres(
+    public ResponseEntity<List<GenreResponse>> getMovieCatalogGenres(
             @RequestParam(value = "status", required = false) MovieStatus status,
                     @RequestParam(value = "movieIds", required = false)
                     List<UUID> movieIds) {

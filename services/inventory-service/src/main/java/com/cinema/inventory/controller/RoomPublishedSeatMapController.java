@@ -24,7 +24,7 @@ public class RoomPublishedSeatMapController {
     }
 
     @GetMapping("/published-seat-map")
-    public ResponseEntity<RoomPublishedSeatMapResponse> getSeatMap(
+    public ResponseEntity<RoomPublishedSeatMapResponse> getRoomPublishedSeatMap(
             @RequestParam("roomId") UUID roomId,
             @RequestParam(name = "layoutId", required = false) UUID layoutId) {
 

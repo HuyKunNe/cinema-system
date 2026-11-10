@@ -53,7 +53,7 @@ public class MovieController {
     }
 
     @GetMapping("/catalog")
-    public ResponseEntity<PageResponse<MovieResponse>> findCatalog(
+    public ResponseEntity<PageResponse<MovieResponse>> getMovieCatalog(
             @RequestParam(value = "status", required = false) MovieStatus status,
             @RequestParam(value = "genre", required = false) UUID genreId,
             @RequestParam(value = "page", defaultValue = "0") int page,
@@ -81,7 +81,7 @@ public class MovieController {
     }
 
     @PutMapping("/{id}/metadata")
-    public ResponseEntity<MovieResponse> updateMetadata(
+    public ResponseEntity<MovieResponse> updateMovieMetadata(
             @PathVariable("id") UUID id, @Valid @RequestBody UpdateMovieMetadataRequest request) {
 
         return ResponseEntity.ok(movieService.updateMetadata(id, request));

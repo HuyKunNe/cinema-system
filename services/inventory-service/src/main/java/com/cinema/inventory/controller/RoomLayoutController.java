@@ -49,7 +49,7 @@ public class RoomLayoutController {
     }
 
     @PostMapping
-    public ResponseEntity<RoomLayoutResponse> createDraft(
+    public ResponseEntity<RoomLayoutResponse> createRoomLayoutDraft(
             @Valid @RequestBody CreateRoomLayoutRequest request) {
 
         RoomLayoutResponse response = roomLayoutService.createDraft(request);
@@ -60,7 +60,7 @@ public class RoomLayoutController {
     }
 
     @PostMapping("/{layoutId}/drafts")
-    public ResponseEntity<RoomLayoutContentResponse> createDraftFromPublished(
+    public ResponseEntity<RoomLayoutContentResponse> createRoomLayoutDraftFromPublished(
             @PathVariable("layoutId") UUID layoutId,
             @Valid @RequestBody CopyPublishedRoomLayoutRequest request) {
 
@@ -75,21 +75,21 @@ public class RoomLayoutController {
     }
 
     @GetMapping("/{layoutId}")
-    public ResponseEntity<RoomLayoutResponse> getById(
+    public ResponseEntity<RoomLayoutResponse> getRoomLayoutById(
             @PathVariable("layoutId") UUID layoutId) {
 
         return ResponseEntity.ok(roomLayoutService.getById(layoutId));
     }
 
     @GetMapping
-    public ResponseEntity<List<RoomLayoutResponse>> getByRoomId(
+    public ResponseEntity<List<RoomLayoutResponse>> getRoomLayoutsByRoom(
             @RequestParam("roomId") UUID roomId) {
 
         return ResponseEntity.ok(roomLayoutService.getByRoomId(roomId));
     }
 
     @GetMapping("/{layoutId}/content")
-    public ResponseEntity<RoomLayoutContentResponse> getContent(
+    public ResponseEntity<RoomLayoutContentResponse> getRoomLayoutContent(
             @PathVariable("layoutId") UUID layoutId) {
 
         return ResponseEntity.ok(
@@ -97,7 +97,7 @@ public class RoomLayoutController {
     }
 
     @PutMapping("/{layoutId}/content")
-    public ResponseEntity<RoomLayoutContentResponse> replaceContent(
+    public ResponseEntity<RoomLayoutContentResponse> replaceRoomLayoutContent(
             @PathVariable("layoutId") UUID layoutId,
             @Valid @RequestBody ReplaceRoomLayoutContentRequest request) {
 
@@ -106,7 +106,7 @@ public class RoomLayoutController {
     }
 
     @PostMapping("/{layoutId}/publish")
-    public ResponseEntity<RoomLayoutResponse> publish(
+    public ResponseEntity<RoomLayoutResponse> publishRoomLayout(
             @PathVariable("layoutId") UUID layoutId,
             @Valid @RequestBody PublishRoomLayoutRequest request) {
 

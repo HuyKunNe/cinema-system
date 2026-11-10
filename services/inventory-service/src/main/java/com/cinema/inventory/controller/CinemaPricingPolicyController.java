@@ -32,7 +32,7 @@ public class CinemaPricingPolicyController {
     }
 
     @PostMapping
-    public ResponseEntity<CinemaPricingPolicyVersionResponse> create(
+    public ResponseEntity<CinemaPricingPolicyVersionResponse> createCinemaPricingPolicy(
             @PathVariable("cinemaId") UUID cinemaId,
             @Valid @RequestBody CreateCinemaPricingPolicyRequest request) {
 
@@ -54,21 +54,21 @@ public class CinemaPricingPolicyController {
     }
 
     @GetMapping
-    public ResponseEntity<List<CinemaPricingPolicyVersionResponse>> listLatest(
+    public ResponseEntity<List<CinemaPricingPolicyVersionResponse>> listLatestCinemaPricingPolicies(
             @PathVariable("cinemaId") UUID cinemaId) {
 
         return ResponseEntity.ok(service.listLatest(cinemaId));
     }
 
     @GetMapping("/{policyId}/versions")
-    public ResponseEntity<List<CinemaPricingPolicyVersionResponse>> listVersions(
+    public ResponseEntity<List<CinemaPricingPolicyVersionResponse>> listCinemaPricingPolicyVersions(
             @PathVariable("cinemaId") UUID cinemaId, @PathVariable("policyId") UUID policyId) {
 
         return ResponseEntity.ok(service.listVersions(cinemaId, policyId));
     }
 
     @GetMapping("/{policyId}/versions/{versionId}")
-    public ResponseEntity<CinemaPricingPolicyVersionResponse> get(
+    public ResponseEntity<CinemaPricingPolicyVersionResponse> getCinemaPricingPolicyVersion(
             @PathVariable("cinemaId") UUID cinemaId,
             @PathVariable("policyId") UUID policyId,
             @PathVariable("versionId") UUID versionId) {
@@ -77,7 +77,7 @@ public class CinemaPricingPolicyController {
     }
 
     @PutMapping("/{policyId}/versions/{versionId}")
-    public ResponseEntity<CinemaPricingPolicyVersionResponse> replaceDraft(
+    public ResponseEntity<CinemaPricingPolicyVersionResponse> replaceCinemaPricingPolicyDraft(
             @PathVariable("cinemaId") UUID cinemaId,
             @PathVariable("policyId") UUID policyId,
             @PathVariable("versionId") UUID versionId,

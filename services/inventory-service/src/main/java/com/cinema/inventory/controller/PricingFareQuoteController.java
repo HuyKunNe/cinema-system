@@ -27,7 +27,7 @@ public class PricingFareQuoteController {
     }
 
     @PostMapping("/quote")
-    public ResponseEntity<PricingFareQuoteResponse> quote(
+    public ResponseEntity<PricingFareQuoteResponse> quotePricingFare(
             @PathVariable("cinemaId") UUID cinemaId,
             @PathVariable("policyId") UUID policyId,
             @PathVariable("versionId") UUID versionId,

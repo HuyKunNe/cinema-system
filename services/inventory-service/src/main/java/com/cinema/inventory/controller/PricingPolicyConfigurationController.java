@@ -29,7 +29,7 @@ public class PricingPolicyConfigurationController {
     }
 
     @PutMapping
-    public ResponseEntity<FareMatrixResponse> replace(
+    public ResponseEntity<FareMatrixResponse> replacePricingPolicyConfiguration(
             @PathVariable("cinemaId") UUID cinemaId,
             @PathVariable("policyId") UUID policyId,
             @PathVariable("versionId") UUID versionId,

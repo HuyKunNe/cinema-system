@@ -30,7 +30,7 @@ public class PricingPolicyPublicationController {
     }
 
     @GetMapping("/fare-matrix/validation")
-    public ResponseEntity<FareMatrixValidationResponse> validate(
+    public ResponseEntity<FareMatrixValidationResponse> validatePricingPolicyFareMatrix(
             @PathVariable("cinemaId") UUID cinemaId,
             @PathVariable("policyId") UUID policyId,
             @PathVariable("versionId") UUID versionId) {
@@ -39,7 +39,7 @@ public class PricingPolicyPublicationController {
     }
 
     @PostMapping("/publish")
-    public ResponseEntity<CinemaPricingPolicyVersionResponse> publish(
+    public ResponseEntity<CinemaPricingPolicyVersionResponse> publishPricingPolicyVersion(
             @PathVariable("cinemaId") UUID cinemaId,
             @PathVariable("policyId") UUID policyId,
             @PathVariable("versionId") UUID versionId,
