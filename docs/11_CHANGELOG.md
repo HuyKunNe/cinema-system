@@ -50,6 +50,30 @@ Current status:
 
 ## 2026-11-10
 
+### Inventory — Safe Movie catalog failure diagnostics
+
+- Follow-up runtime evidence identifies OAuth token acquisition failure with
+  invalid_token_response during MOVIE_SCHEDULING. Inspected the installed Spring
+  Security 6.5.11 client/converter implementation; no converter mismatch asserted.
+  Added bounded known-type tokenFailure classification and safe nested HTTP status
+  extraction, with unexecuted regression cases for wrapped HTTP/transport/timeout/
+  TLS/conversion causes. Keep authentication configuration and secret values intact.
+
+- Investigated the supplied create-showtime failure from checkout `0726a0b`.
+  Read-only public GETs returned valid movie/version data, matching 95-minute
+  duration, healthy default local services and authorization-server metadata.
+  These checks do not prove the service-client OAuth path; no root cause is asserted.
+- Added bounded MovieCatalogClient WARN diagnostics for operation, failure reason,
+  numeric upstream status and allowlisted OAuth code. Exclude upstream bodies,
+  headers, URLs, exception causes/messages, tokens and credentials. Preserve public
+  unavailable responses, 404/domain behavior and cached-token eviction on 401.
+- Added unexecuted diagnostic/redaction regression sources and
+  23_MOVIE_CATALOG_DIAGNOSTICS.md. No POST replay, token request, secret inspection,
+  application restart, test execution or database commands were performed.
+- Inventory reactor `-DskipTests test-compile` succeeded. Static log-field,
+  allowlist, 404/cache behavior and whitespace checks passed. The original runtime
+  failure remains unresolved until the updated process emits its bounded reason.
+
 ### P3.2 — Paged and filtered showtime management
 
 - Reviewed clean checkout `0ec5532` and read-only Admin FE query code. Added
