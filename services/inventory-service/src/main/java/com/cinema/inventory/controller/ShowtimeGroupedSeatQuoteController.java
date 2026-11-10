@@ -4,9 +4,6 @@ import com.cinema.inventory.dto.request.QuoteShowtimeSeatsRequest;
 import com.cinema.inventory.dto.response.ShowtimeGroupedSeatQuoteResponse;
 import com.cinema.inventory.service.ShowtimeGroupedSeatQuoteService;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
-
 import jakarta.validation.Valid;
 
 import org.springframework.http.CacheControl;
@@ -30,14 +27,6 @@ public class ShowtimeGroupedSeatQuoteController {
         this.service = service;
     }
 
-    @Operation(
-            operationId = "quoteShowtimeSeats",
-            summary = "Quote selected seats using their requested ticket groups",
-            description =
-                    "Resolve published fares for each selected seat. "
-                            + "The quote does not reserve seats or verify "
-                            + "customer eligibility for a ticket group.")
-    @SecurityRequirements
     @PostMapping("/{showtimeId}/seat-quote")
     public ResponseEntity<ShowtimeGroupedSeatQuoteResponse> quoteShowtimeSeats(
             @PathVariable("showtimeId") UUID showtimeId,

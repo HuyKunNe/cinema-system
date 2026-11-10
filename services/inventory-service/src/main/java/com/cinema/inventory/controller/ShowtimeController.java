@@ -6,14 +6,6 @@ import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
 import com.cinema.inventory.dto.response.ShowtimeResponse;
 import com.cinema.inventory.service.ShowtimeService;
 
-import io.swagger.v3.oas.annotations.media.ArraySchema;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
-
 import jakarta.validation.Valid;
 
 import org.springframework.format.annotation.DateTimeFormat;
@@ -44,19 +36,6 @@ public class ShowtimeController {
         this.showtimeService = showtimeService;
     }
 
-    @ApiResponse(
-            responseCode = "409",
-            description =
-                    "Layout selection required, selected layout is not published, "
-                            + "room or cinema inactive, schedule overlap "
-                            + "or seat-generation conflict",
-            content =
-                    @Content(
-                            schema =
-                                    @Schema(
-                                            implementation =
-                                                    com.cinema.common.response.model.ApiResponse
-                                                            .class)))
     @PostMapping
     public ResponseEntity<ShowtimeResponse> createShowtime(
             @Valid @RequestBody CreateShowtimeRequest request) {
@@ -67,9 +46,6 @@ public class ShowtimeController {
                 .body(response);
     }
 
-    @SecurityRequirement(
-            name = "oauth2",
-            scopes = {"showtime:manage"})
     @PostMapping("/batch")
     public ResponseEntity<List<ShowtimeResponse>> createShowtimeBatch(
             @Valid @RequestBody CreateShowtimeBatchRequest request) {
@@ -77,30 +53,6 @@ public class ShowtimeController {
         return ResponseEntity.status(HttpStatus.CREATED).body(showtimeService.createBatch(request));
     }
 
-    @SecurityRequirements
-    @ApiResponses({
-        @ApiResponse(
-                responseCode = "200",
-                description = "Matching showtimes, or an empty array",
-                content =
-                        @Content(
-                                array =
-                                        @ArraySchema(
-                                                schema =
-                                                        @Schema(
-                                                                implementation =
-                                                                        ShowtimeResponse.class)))),
-        @ApiResponse(
-                responseCode = "400",
-                description = "Invalid query parameters or time range",
-                content =
-                        @Content(
-                                schema =
-                                        @Schema(
-                                                implementation =
-                                                        com.cinema.common.response.model.ApiResponse
-                                                                .class)))
-    })
     @GetMapping("/bookable")
     public ResponseEntity<List<ShowtimeResponse>> getBookableShowtimes(
             @RequestParam("cinemaId") UUID cinemaId,

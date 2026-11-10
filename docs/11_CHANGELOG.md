@@ -48,6 +48,34 @@ Current status:
 
 # Unreleased
 
+## 2026-11-10
+
+### Remove model Swagger annotations
+
+- Removed `@Schema` and its imports from 41 request/response model files across
+  Booking, Inventory, Movie and Payment, including nested record components.
+- Preserved all other Java tokens, including validation, Jackson and persistence
+  annotations. Existing controller changes remain intact. OpenAPI configuration
+  classes and dependencies remain in place.
+- Schema names, required/nullable overrides, descriptions and examples are now
+  inferred without model annotations. Compare exported schemas before regenerating
+  FE clients; runtime serialization, validation and MySQL are unchanged.
+- Static token comparison and `git diff --check` passed. No tests, builds,
+  applications or database commands were run for this model cleanup.
+
+### Remove controller Swagger annotations
+
+- Removed Swagger/OpenAPI annotations and unused imports from Movie, Inventory,
+  Booking and Payment controllers, as requested by the owner. Removed the seven
+  account operation annotations added during the interrupted P0.3 increment;
+  User controllers return to their original source.
+- Kept HTTP mappings, validation, authorization, handler bodies, OAuth/OIDC,
+  Kafka contracts and MySQL configuration/schema unchanged. FE remains read only.
+- Explicit operation IDs and other controller documentation overrides are no
+  longer supplied; generated client names may change on the next runtime export.
+  Marked the prior contract references as historical for this metadata.
+- No tests, applications or database commands were run for this removal.
+
 ## 2026-11-06
 
 ### P0.3 — Account, Layout and Pricing Source Contract Continuation

@@ -4,9 +4,6 @@ import com.cinema.inventory.dto.request.QuotePricingFareRequest;
 import com.cinema.inventory.dto.response.PricingFareQuoteResponse;
 import com.cinema.inventory.service.PricingFareQuoteService;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
@@ -20,9 +17,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/cinemas/{cinemaId}/pricing-policies/" + "{policyId}/versions/{versionId}")
-@SecurityRequirement(
-        name = "oauth2",
-        scopes = {"inventory:manage"})
 public class PricingFareQuoteController {
 
     private final PricingFareQuoteService service;
@@ -32,7 +26,6 @@ public class PricingFareQuoteController {
         this.service = service;
     }
 
-    @Operation(operationId = "quotePricingFare")
     @PostMapping("/quote")
     public ResponseEntity<PricingFareQuoteResponse> quote(
             @PathVariable("cinemaId") UUID cinemaId,

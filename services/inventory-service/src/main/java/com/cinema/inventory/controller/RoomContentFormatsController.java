@@ -4,8 +4,6 @@ import com.cinema.inventory.dto.request.ReplaceRoomContentFormatsRequest;
 import com.cinema.inventory.dto.response.RoomContentFormatsResponse;
 import com.cinema.inventory.service.RoomContentFormatsService;
 
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
@@ -36,9 +34,6 @@ public class RoomContentFormatsController {
     }
 
     @PutMapping
-    @SecurityRequirement(
-            name = "oauth2",
-            scopes = {"inventory:manage"})
     public ResponseEntity<RoomContentFormatsResponse> replaceRoomContentFormats(
             @PathVariable("roomId") UUID roomId,
             @Valid @RequestBody ReplaceRoomContentFormatsRequest request) {

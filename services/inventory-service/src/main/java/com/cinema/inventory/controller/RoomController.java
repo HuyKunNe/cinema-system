@@ -5,8 +5,6 @@ import com.cinema.inventory.dto.request.UpdateRoomRequest;
 import com.cinema.inventory.dto.response.RoomResponse;
 import com.cinema.inventory.service.RoomService;
 
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
@@ -57,9 +55,6 @@ public class RoomController {
     }
 
     @GetMapping("/management")
-    @SecurityRequirement(
-            name = "oauth2",
-            scopes = {"inventory:manage"})
     public ResponseEntity<List<RoomResponse>> getManagedRooms(
             @RequestParam("cinemaId") UUID cinemaId,
             @RequestParam(name = "active", required = false) Boolean active) {

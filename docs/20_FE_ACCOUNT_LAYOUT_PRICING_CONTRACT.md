@@ -1,5 +1,11 @@
 # Account, layout and pricing contracts — P0.3 source review
 
+**2026-11-10 update:** Controller Swagger/OpenAPI annotations have been removed
+at the owner's request. Explicit operation IDs in this reference describe the
+earlier reviewed source, not guaranteed names in a new runtime export. Reconcile
+generated FE names before adopting a new specification. Runtime session/CSRF,
+permissions, payloads and database behavior are unchanged.
+
 Reviewed against BE `main` at `4e58548` on 2026-11-06. This supplements
 [the FE contract reference](19_FE_API_CONTRACT.md). Examples use synthetic IDs
 and values; response examples are excerpts, not captured HTTP responses. Replace

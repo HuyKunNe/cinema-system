@@ -4,8 +4,6 @@ import com.cinema.inventory.enums.PricingDayGroup;
 import com.cinema.inventory.enums.PricingPolicyVersionStatus;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
-import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -23,8 +21,5 @@ public record CinemaPricingPolicyVersionResponse(
         Long version,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
-        @Schema(nullable = true) OffsetDateTime publishedAt,
-        @Schema(
-                        nullable = true,
-                        description = "Validated JWT subject that first published this version.")
+        OffsetDateTime publishedAt,
                 String publishedBy) {}

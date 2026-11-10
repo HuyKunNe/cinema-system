@@ -3,9 +3,6 @@ package com.cinema.inventory.controller;
 import com.cinema.inventory.dto.response.ShowtimeSeatQuoteResponse;
 import com.cinema.inventory.service.ShowtimeSeatQuoteService;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
-
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,14 +25,6 @@ public class ShowtimeSeatQuoteController {
         this.service = service;
     }
 
-    @Operation(
-            operationId = "getShowtimeSeatQuote",
-            summary = "Quote currently available seats",
-            description =
-                    "Return stored seat prices and their total. "
-                            + "Availability is checked when reading; "
-                            + "the quote does not reserve seats.")
-    @SecurityRequirements
     @GetMapping("/{showtimeId}/seat-quote")
     public ResponseEntity<ShowtimeSeatQuoteResponse> getShowtimeSeatQuote(
             @PathVariable("showtimeId") UUID showtimeId,

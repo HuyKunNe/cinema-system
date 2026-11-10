@@ -2,8 +2,6 @@ package com.cinema.movie.dto.request;
 
 import com.cinema.movie.entity.MovieStatus;
 
-import io.swagger.v3.oas.annotations.media.Schema;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -32,8 +30,4 @@ public record CreateMovieRequest(
         @NotEmpty(message = "At least one genre is required") Set<UUID> genreIds,
         @Valid
                 @NotEmpty(message = "Provide at least one screening version")
-                @Schema(
-                        nullable = false,
-                        requiredMode = Schema.RequiredMode.REQUIRED,
-                        description = "At least one screening version is required.")
                 List<@NotNull CreateMovieScreeningVersionRequest> screeningVersions) {}

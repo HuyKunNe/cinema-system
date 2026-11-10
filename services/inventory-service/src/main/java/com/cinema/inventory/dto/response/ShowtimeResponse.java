@@ -3,8 +3,6 @@ package com.cinema.inventory.dto.response;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
-import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -20,36 +18,15 @@ public record ShowtimeResponse(
         ShowtimeStatus status,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
-        @Schema(
-                        nullable = true,
-                        description = "Published layout pinned when the showtime was created.")
                 UUID roomLayoutId,
         @JsonInclude(JsonInclude.Include.ALWAYS)
-                @Schema(
-                        nullable = true,
-                        description =
-                                "Screening version snapshot pinned at creation. "
-                                        + "Null for legacy showtimes.")
                 ShowtimeScreeningVersionResponse screeningVersion,
         @JsonInclude(JsonInclude.Include.ALWAYS)
-                @Schema(
-                        nullable = true,
-                        description = "Pinned scheduling details. Null for legacy showtimes.")
                 ShowtimeSchedulingResponse scheduling,
         Long version,
         @JsonInclude(JsonInclude.Include.ALWAYS)
-                @Schema(
-                        nullable = true,
-                        description =
-                                "Policy owning the selected pricing version. "
-                                        + "Null while no pricing version is assigned.")
                 UUID pricingPolicyId,
         @JsonInclude(JsonInclude.Include.ALWAYS)
-                @Schema(
-                        nullable = true,
-                        description =
-                                "Exact pricing policy version selected for the showtime. "
-                                        + "Null while no pricing version is assigned.")
                 UUID pricingPolicyVersionId) {
 
     public ShowtimeResponse(

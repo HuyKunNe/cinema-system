@@ -8,10 +8,6 @@ import com.cinema.payment.controller.response.PaymentManagementResponse;
 import com.cinema.payment.controller.response.PaymentTransactionManagementResponse;
 import com.cinema.payment.service.PaymentManagementReadService;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
-
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 
@@ -29,10 +25,6 @@ import java.util.UUID;
 @Validated
 @RestController
 @RequestMapping("/api/v1/payments/management")
-@SecurityRequirement(
-        name = "oauth2",
-        scopes = {"payment:read"})
-@Tag(name = "Payment management")
 public class PaymentManagementController {
 
     private final PaymentManagementReadService paymentManagementReadService;
@@ -42,14 +34,6 @@ public class PaymentManagementController {
         this.paymentManagementReadService = paymentManagementReadService;
     }
 
-    @Operation(
-            operationId = "listBookingPaymentsForAdmin",
-            summary = "List payment attempts for a booking",
-            description =
-                    "Requires the ADMIN role and payment:read permission. "
-                            + "Results are ordered by paymentAttempt descending, "
-                            + "then id descending. "
-                            + "An empty page means no matching payment record exists.")
     @GetMapping("/by-booking/{bookingId}")
     public ResponseEntity<ApiResponse<PageResponse<PaymentManagementResponse>>>
             listBookingPaymentsForAdmin(
@@ -65,10 +49,6 @@ public class PaymentManagementController {
                 .body(ResponseFactory.success(response));
     }
 
-    @Operation(
-            operationId = "getPaymentForAdmin",
-            summary = "Get payment details for administrators",
-            description = "Requires the ADMIN role and payment:read permission.")
     @GetMapping("/{paymentId}")
     public ResponseEntity<ApiResponse<PaymentManagementResponse>> getPaymentForAdmin(
             @PathVariable("paymentId") @UuidV7 UUID paymentId) {

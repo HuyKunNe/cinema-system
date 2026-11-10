@@ -1,5 +1,17 @@
 # FE API contract — P0.3 source review
 
+**2026-11-10 update:** Swagger/OpenAPI annotations have been removed from BE
+controllers at the owner's request. Explicit operation IDs, response descriptions,
+tags and security metadata listed below are historical source-review evidence.
+Springdoc now infers controller operations without those overrides. Before
+regenerating FE clients, compare the exported specification and generated names;
+HTTP mappings, payloads, runtime authorization and response handling are unchanged.
+
+The same cleanup removes model/DTO `@Schema` annotations, including nested records.
+Explicit schema names, required/nullable overrides, descriptions and examples may
+therefore differ in the next export. Jackson and validation annotations remain;
+runtime JSON and validation rules have not been changed by this cleanup.
+
 Reviewed against BE `main` at `34fafae` on 2026-11-06, plus the P0.3 OpenAPI
 metadata change described below. This is a source-based integration reference,
 not an exported OpenAPI specification or a runtime acceptance result.

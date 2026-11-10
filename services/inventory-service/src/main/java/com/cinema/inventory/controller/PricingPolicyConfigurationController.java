@@ -4,9 +4,6 @@ import com.cinema.inventory.dto.request.ReplacePricingConfigurationRequest;
 import com.cinema.inventory.dto.response.FareMatrixResponse;
 import com.cinema.inventory.service.PricingPolicyConfigurationService;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
@@ -22,9 +19,6 @@ import java.util.UUID;
 @RequestMapping(
         "/api/v1/cinemas/{cinemaId}/pricing-policies/"
                 + "{policyId}/versions/{versionId}/configuration")
-@SecurityRequirement(
-        name = "oauth2",
-        scopes = {"inventory:manage"})
 public class PricingPolicyConfigurationController {
 
     private final PricingPolicyConfigurationService service;
@@ -34,7 +28,6 @@ public class PricingPolicyConfigurationController {
         this.service = service;
     }
 
-    @Operation(operationId = "replacePricingPolicyConfiguration")
     @PutMapping
     public ResponseEntity<FareMatrixResponse> replace(
             @PathVariable("cinemaId") UUID cinemaId,

@@ -9,10 +9,6 @@ import com.cinema.common.response.model.PageResponse;
 import com.cinema.common.validation.annotation.UuidV5OrV7;
 import com.cinema.common.validation.annotation.UuidV7;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
-
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 
@@ -32,8 +28,6 @@ import java.util.UUID;
 @Validated
 @RestController
 @RequestMapping("/api/v1/bookings/management")
-@SecurityRequirement(name = "oauth2")
-@Tag(name = "Booking management")
 public class BookingManagementController {
 
     private final BookingManagementReadService bookingManagementReadService;
@@ -43,14 +37,6 @@ public class BookingManagementController {
         this.bookingManagementReadService = bookingManagementReadService;
     }
 
-    @Operation(
-            operationId = "listBookingsForAdmin",
-            summary = "List bookings for administrators",
-            description =
-                    "Requires the ADMIN role. "
-                            + "Filters are combined with AND. "
-                            + "createdFrom is inclusive; createdTo is exclusive. "
-                            + "Results are ordered by createdAt descending, then id descending.")
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<BookingResponse>>> listBookingsForAdmin(
             @RequestParam(name = "status", required = false) BookingStatus status,
@@ -74,10 +60,6 @@ public class BookingManagementController {
                 .body(ResponseFactory.success(response));
     }
 
-    @Operation(
-            operationId = "getBookingForAdmin",
-            summary = "Get booking details for administrators",
-            description = "Requires the ADMIN role.")
     @GetMapping("/{bookingId}")
     public ResponseEntity<ApiResponse<BookingResponse>> getBookingForAdmin(
             @PathVariable("bookingId") @UuidV7 UUID bookingId) {

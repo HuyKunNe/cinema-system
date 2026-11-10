@@ -4,8 +4,6 @@ import com.cinema.inventory.entity.RoomLayoutGeometry;
 import com.cinema.inventory.enums.RoomLayoutElementKind;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import io.swagger.v3.oas.annotations.media.Schema;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMin;
@@ -18,16 +16,6 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-@Schema(
-        description =
-                """
-                Replaces draft content.
-                Supply matrix for matrix layouts or empty legacy drafts.
-                Legacy drafts containing seats or elements cannot be converted.
-                Supply seats and elements for legacy geometry layouts.
-                The two representations are mutually exclusive.
-                expectedVersion refers to layout.version.
-                """)
 public record ReplaceRoomLayoutContentRequest(
         @NotNull @PositiveOrZero Long expectedVersion,
         List<@NotNull @Valid RoomLayoutSeatInput> seats,
@@ -43,7 +31,6 @@ public record ReplaceRoomLayoutContentRequest(
     }
 
     @JsonIgnore
-    @Schema(hidden = true)
     @AssertTrue(
             message =
                     """

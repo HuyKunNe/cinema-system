@@ -4,9 +4,6 @@ import com.cinema.inventory.dto.request.CreatePricingPolicyDraftRequest;
 import com.cinema.inventory.dto.response.CinemaPricingPolicyVersionResponse;
 import com.cinema.inventory.service.PricingPolicyDraftService;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
@@ -22,9 +19,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/cinemas/{cinemaId}/pricing-policies")
-@SecurityRequirement(
-        name = "oauth2",
-        scopes = {"inventory:manage"})
 public class PricingPolicyDraftController {
 
     private final PricingPolicyDraftService service;
@@ -33,7 +27,6 @@ public class PricingPolicyDraftController {
 
         this.service = service;
     }
-    @Operation(operationId = "createPricingPolicyDraftFromPublished")
 
     @PostMapping("/{policyId}/versions/{sourceVersionId}/draft")
     public ResponseEntity<CinemaPricingPolicyVersionResponse> createDraft(

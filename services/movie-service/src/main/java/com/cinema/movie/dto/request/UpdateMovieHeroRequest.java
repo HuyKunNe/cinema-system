@@ -7,37 +7,20 @@ import java.util.Set;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSetter;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 
 public class UpdateMovieHeroRequest {
 
-    @Schema(
-            requiredMode = Schema.RequiredMode.NOT_REQUIRED,
-            description = "Omit to preserve the current value. Null is invalid.")
     private Boolean heroEnabled;
 
     @Min(0)
-    @Schema(
-            requiredMode = Schema.RequiredMode.NOT_REQUIRED,
-            minimum = "0",
-            description = "Lower values appear first. Omit to preserve. Null is invalid.")
     private Integer heroPriority;
 
-    @Schema(
-            requiredMode = Schema.RequiredMode.NOT_REQUIRED,
-            nullable = true,
-            description = "Offset timestamp. Omit to preserve; null removes the lower bound.")
     private OffsetDateTime heroStartsAt;
 
-    @Schema(
-            requiredMode = Schema.RequiredMode.NOT_REQUIRED,
-            nullable = true,
-            description = "Offset timestamp. Omit to preserve; null removes the upper bound.")
     private OffsetDateTime heroEndsAt;
 
     @JsonIgnore
-    @Schema(hidden = true)
     private final Set<String> provided = new HashSet<>();
 
     public Boolean getHeroEnabled() {

@@ -4,8 +4,6 @@ import com.cinema.booking.enums.BookingStatus;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -30,14 +28,6 @@ public record BookingResponse(
 
     @JsonProperty("seatCount")
     @JsonInclude(JsonInclude.Include.ALWAYS)
-    @Schema(
-            nullable = true,
-            requiredMode = Schema.RequiredMode.REQUIRED,
-            accessMode = Schema.AccessMode.READ_ONLY,
-            description =
-                    "Number of selected inventory seats. "
-                            + "A COUPLE seat counts as one inventory seat. "
-                            + "Null when the seat list is unavailable.")
     public Integer getSeatCount() {
 
         return seats == null ? null : seats.size();
@@ -45,14 +35,6 @@ public record BookingResponse(
 
     @JsonProperty("capacity")
     @JsonInclude(JsonInclude.Include.ALWAYS)
-    @Schema(
-            nullable = true,
-            requiredMode = Schema.RequiredMode.REQUIRED,
-            accessMode = Schema.AccessMode.READ_ONLY,
-            description =
-                    "Total number of people accommodated by the selected seats. "
-                            + "Each COUPLE seat contributes two people. "
-                            + "Null when any seat-type snapshot is unavailable or unsupported.")
     public Integer getCapacity() {
 
         if (seats == null) {

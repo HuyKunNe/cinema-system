@@ -48,6 +48,12 @@ Roadmap này không thay thế `docs/10_ROADMAP.md`. P0.1 đã đồng bộ tr�
 
 ### P0.3 — Chốt contract dùng chung cho FE
 
+**Điều chỉnh ngày 2026-11-10 theo yêu cầu chủ dự án:** bỏ annotation Swagger/OpenAPI
+trong controller; không bổ sung lại `@Operation`, `@ApiResponse` hoặc metadata tương
+đương tại controller. Springdoc tự suy ra operation; các tên explicit trong tài liệu
+review cũ là bằng chứng lịch sử. Cần đối chiếu spec export và tên client FE khi
+generate lại. Không thay đổi HTTP mapping, validation, security hoặc MySQL.
+
 **Trạng thái:** IN PROGRESS / VERIFY — rà soát source tại `34fafae`, snapshot/client FE chỉ đọc; bổ sung [contract và ví dụ tích hợp](19_FE_API_CONTRACT.md) cho Admin movie/showtime, User quote/booking và Admin payment reads. Bổ sung OpenAPI response 409 đã có trong source của API tạo screening version; không đổi operationId, endpoint, payload hoặc quyền. Runtime OpenAPI, tính duy nhất operationId trên toàn spec và các luồng còn lại chưa xác minh. P0.2 tiếp tục chờ các cổng kiểm tra được chủ dự án cho phép; lượt P0.3 này không đóng P0.2.
 
 **Tiếp tục tại `4e58548`:** đã rà soát source và bổ sung [account/layout/pricing](20_FE_ACCOUNT_LAYOUT_PRICING_CONTRACT.md), đồng bộ tài liệu pricing vốn còn ghi implementation pending. Ghi nhận User API đang dùng session/CSRF, chưa có Resource Server chain cho Bearer trên các route account; đây là gap tích hợp cần chốt theo P5.1/P5.2. Không đổi security hoặc tự tạo API user search. Phần nguồn và ví dụ đã bổ sung; vẫn chờ runtime OpenAPI, operationId toàn spec và xác minh HTTP khi được phép. P0.3 chưa đóng.

@@ -5,9 +5,6 @@ import com.cinema.inventory.dto.request.UpdateCinemaRequest;
 import com.cinema.inventory.dto.response.CinemaResponse;
 import com.cinema.inventory.service.CinemaService;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
@@ -34,11 +31,7 @@ public class CinemaController {
         this.cinemaService = cinemaService;
     }
 
-    @Operation(operationId = "createCinema")
     @PostMapping
-    @SecurityRequirement(
-            name = "oauth2",
-            scopes = {"inventory:manage"})
     public ResponseEntity<CinemaResponse> createCinema(@Valid @RequestBody CreateCinemaRequest request) {
 
         CinemaResponse response = cinemaService.create(request);
@@ -61,9 +54,6 @@ public class CinemaController {
     }
 
     @GetMapping("/management")
-    @SecurityRequirement(
-            name = "oauth2",
-            scopes = {"inventory:manage"})
     public ResponseEntity<List<CinemaResponse>> getManagedCinemas(
             @RequestParam(name = "city", required = false) String city,
             @RequestParam(name = "active", required = false) Boolean active) {
@@ -72,9 +62,6 @@ public class CinemaController {
     }
 
     @PutMapping("/{cinemaId}")
-    @SecurityRequirement(
-            name = "oauth2",
-            scopes = {"inventory:manage"})
     public ResponseEntity<CinemaResponse> updateCinema(
             @PathVariable("cinemaId") UUID cinemaId,
             @Valid @RequestBody UpdateCinemaRequest request) {

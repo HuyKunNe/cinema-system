@@ -4,9 +4,6 @@ import com.cinema.inventory.dto.request.ReplaceCinemaAmenitiesRequest;
 import com.cinema.inventory.dto.response.CinemaAmenitiesResponse;
 import com.cinema.inventory.service.CinemaAmenitiesService;
 
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
-
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
@@ -32,7 +29,6 @@ public class CinemaAmenitiesController {
     }
 
     @GetMapping
-    @SecurityRequirements
     public ResponseEntity<CinemaAmenitiesResponse> getCinemaAmenities(
             @PathVariable("cinemaId") UUID cinemaId) {
 
@@ -40,9 +36,6 @@ public class CinemaAmenitiesController {
     }
 
     @PutMapping
-    @SecurityRequirement(
-            name = "oauth2",
-            scopes = {"inventory:manage"})
     public ResponseEntity<CinemaAmenitiesResponse> replaceCinemaAmenities(
             @PathVariable("cinemaId") UUID cinemaId,
             @Valid @RequestBody ReplaceCinemaAmenitiesRequest request) {

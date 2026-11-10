@@ -4,8 +4,6 @@ import com.cinema.inventory.dto.request.ReplaceShowtimePricingRequest;
 import com.cinema.inventory.dto.response.ShowtimeResponse;
 import com.cinema.inventory.service.ShowtimePricingService;
 
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
@@ -19,9 +17,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/showtimes")
-@SecurityRequirement(
-        name = "oauth2",
-        scopes = {"showtime:manage"})
 public class ShowtimePricingController {
 
     private final ShowtimePricingService service;

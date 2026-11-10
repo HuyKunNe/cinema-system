@@ -9,15 +9,6 @@ import com.cinema.movie.dto.response.MovieResponse;
 import com.cinema.movie.entity.MovieStatus;
 import com.cinema.movie.service.MovieService;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
-
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
@@ -45,13 +36,6 @@ public class MovieController {
         this.movieService = movieService;
     }
 
-    @ApiResponse(
-            responseCode = "201",
-            description = "Movie with its screening versions",
-            content = @Content(schema = @Schema(implementation = MovieResponse.class)))
-    @SecurityRequirement(
-            name = "oauth2",
-            scopes = {"movie:manage"})
     @PostMapping
     public ResponseEntity<MovieResponse> createMovie(
             @Valid @RequestBody CreateMovieRequest request) {
@@ -61,7 +45,6 @@ public class MovieController {
         return ResponseEntity.created(URI.create("/api/v1/movies/" + response.id())).body(response);
     }
 
-    @SecurityRequirements
     @GetMapping("/{id}")
     public ResponseEntity<MovieResponse> findMovieById(
             @PathVariable("id") UUID id) {
@@ -69,49 +52,14 @@ public class MovieController {
         return ResponseEntity.ok(movieService.findById(id));
     }
 
-    @Operation(operationId = "getMovieCatalog", summary = "Get a paginated movie catalog")
-    @SecurityRequirements
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "A movie page, including empty pages"),
-        @ApiResponse(
-                responseCode = "400",
-                description = "Invalid filter or pagination parameters",
-                content =
-                        @Content(
-                                schema =
-                                        @Schema(
-                                                implementation =
-                                                        com.cinema.common.response.model.ApiResponse
-                                                                .class))),
-        @ApiResponse(
-                responseCode = "404",
-                description = "A selected movie no longer exists",
-                content =
-                        @Content(
-                                schema =
-                                        @Schema(
-                                                implementation =
-                                                        com.cinema.common.response.model.ApiResponse
-                                                                .class)))
-    })
     @GetMapping("/catalog")
     public ResponseEntity<PageResponse<MovieResponse>> findCatalog(
             @RequestParam(value = "status", required = false) MovieStatus status,
             @RequestParam(value = "genre", required = false) UUID genreId,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", required = false) Integer size,
-            @Parameter(
-                            description =
-                                    "Optional candidate movie UUIDs. Send repeated movieIds query"
-                                        + " parameters. Filtering is applied before pagination and"
-                                        + " counting. The configured input limit defaults to 100.")
                     @RequestParam(value = "movieIds", required = false)
                     List<UUID> movieIds,
-            @Parameter(
-                            description =
-                                    "Catalog order. Release-date sorts put null dates last. Title"
-                                            + " order uses the database collation. All orders use"
-                                            + " ascending movie ID as the final tie-breaker.")
                     @RequestParam(value = "sort", defaultValue = "RELEASE_DESC")
                     MovieCatalogSort sort) {
 
@@ -124,7 +72,6 @@ public class MovieController {
         return ResponseEntity.ok(movieService.findAll());
     }
 
-    @SecurityRequirement(name = "oauth2", scopes = {"movie:manage"})
     @PutMapping("/{id}")
     public ResponseEntity<MovieResponse> updateMovie(
             @PathVariable("id") UUID id,
@@ -133,46 +80,6 @@ public class MovieController {
         return ResponseEntity.ok(movieService.update(id, request));
     }
 
-    @Operation(
-            operationId = "updateMovieMetadata",
-            summary = "Replace movie metadata",
-            description =
-                    "Requires movie:manage. Both properties must be present. "
-                            + "Null clears a value. Artwork fallback is handled by the frontend.")
-    @ApiResponses({
-        @ApiResponse(
-                responseCode = "200",
-                description = "Updated movie",
-                content = @Content(schema = @Schema(implementation = MovieResponse.class))),
-        @ApiResponse(
-                responseCode = "400",
-                description = "Invalid request body or metadata",
-                content =
-                        @Content(
-                                schema =
-                                        @Schema(
-                                                implementation =
-                                                        com.cinema.common.response.model.ApiResponse
-                                                                .class))),
-        @ApiResponse(
-                responseCode = "401",
-                description = "Authentication required",
-                content = @Content),
-        @ApiResponse(
-                responseCode = "403",
-                description = "Required authority is missing",
-                content = @Content),
-        @ApiResponse(
-                responseCode = "404",
-                description = "Movie not found",
-                content =
-                        @Content(
-                                schema =
-                                        @Schema(
-                                                implementation =
-                                                        com.cinema.common.response.model.ApiResponse
-                                                                .class)))
-    })
     @PutMapping("/{id}/metadata")
     public ResponseEntity<MovieResponse> updateMetadata(
             @PathVariable("id") UUID id, @Valid @RequestBody UpdateMovieMetadataRequest request) {
