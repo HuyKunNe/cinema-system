@@ -57,6 +57,15 @@ generated User functions alone are not proof of usable SPA authentication.
 
 ## Response and authorization boundaries
 
+P3.3 continuation from `1744372`: the existing PricingFareResolver now enforces
+non-null/nonnegative PRICED amounts and the seat-type fare unit for pricing quotes,
+grouped showtime quotes, generated default prices and reservation snapshots.
+STANDARD/VIP/ACCESSIBLE use SEAT; COUPLE uses PAIR. Zero remains configured/free,
+UNCONFIGURED remains inconsistent and NOT_APPLICABLE remains unavailable. This
+does not multiply pair amounts, synchronize 2D/3D fares, change eligibility rules
+or reprice stored bookings. Legacy GET seat-quote reads ShowSeat default-group
+price snapshots; grouped POST uses the selected group's published fare resolver.
+
 Do not infer a uniform success wrapper from ADR-010 alone. Current Movie and
 the Inventory endpoints below return raw response DTOs. Booking and Payment
 management explicitly return `ApiResponse<T>`. No response-wrapping advice was

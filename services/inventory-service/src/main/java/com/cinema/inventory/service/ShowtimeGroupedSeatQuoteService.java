@@ -7,7 +7,6 @@ import com.cinema.inventory.dto.request.QuoteShowtimeSeatsRequest;
 import com.cinema.inventory.dto.response.FareMatrixResponse.CellResponse;
 import com.cinema.inventory.dto.response.ShowtimeGroupedSeatQuoteResponse;
 import com.cinema.inventory.dto.response.ShowtimeGroupedSeatQuoteResponse.SeatQuote;
-import com.cinema.inventory.enums.FareUnit;
 import com.cinema.inventory.enums.PricingPolicyVersionStatus;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.ShowtimeStatus;
@@ -128,16 +127,6 @@ public class ShowtimeGroupedSeatQuoteService {
                                             format,
                                             groupId,
                                             seat.seatType()));
-
-            FareUnit expectedUnit =
-                    seat.seatType() == SeatType.COUPLE ? FareUnit.PAIR : FareUnit.SEAT;
-
-            if (fare.amount() == null
-                    || fare.amount().signum() < 0
-                    || fare.unit() != expectedUnit) {
-
-                throw inconsistent();
-            }
 
             var group =
                     matrix.ticketGroups().stream()

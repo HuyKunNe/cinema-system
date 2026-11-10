@@ -7,6 +7,7 @@ import com.cinema.inventory.dto.response.FareMatrixResponse.CellResponse;
 import com.cinema.inventory.dto.response.FareMatrixResponse.TimeBandResponse;
 import com.cinema.inventory.enums.ContentFormat;
 import com.cinema.inventory.enums.FareCellState;
+import com.cinema.inventory.enums.FareUnit;
 import com.cinema.inventory.enums.PricingExperienceType;
 import com.cinema.inventory.enums.PricingPolicyVersionStatus;
 import com.cinema.inventory.enums.SeatType;
@@ -82,6 +83,12 @@ public final class PricingFareResolver {
 
         if (fare.state() != FareCellState.PRICED) {
             throw unavailable();
+        }
+
+        FareUnit expectedUnit = seatType == SeatType.COUPLE ? FareUnit.PAIR : FareUnit.SEAT;
+
+        if (fare.amount() == null || fare.amount().signum() < 0 || fare.unit() != expectedUnit) {
+            throw inconsistent();
         }
 
         return fare;

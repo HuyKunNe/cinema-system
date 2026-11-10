@@ -3,7 +3,6 @@ package com.cinema.inventory.service;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.inventory.dto.response.FareMatrixResponse.CellResponse;
 import com.cinema.inventory.entity.ShowSeat;
-import com.cinema.inventory.enums.FareUnit;
 import com.cinema.inventory.enums.PricingPolicyVersionStatus;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.event.payload.RequestedSeatPayload;
@@ -135,16 +134,6 @@ public class SeatReservationPricingService {
                 }
 
                 throw exception;
-            }
-
-            FareUnit expectedUnit =
-                    seat.getSeatType() == SeatType.COUPLE ? FareUnit.PAIR : FareUnit.SEAT;
-
-            if (fare.amount() == null
-                    || fare.amount().signum() < 0
-                    || fare.unit() != expectedUnit) {
-
-                throw inconsistent();
             }
 
             var group =

@@ -1,5 +1,11 @@
 # Inventory Movie catalog failure diagnostics
 
+**Owner-reported outcome:** after reviewing the User Service OAuth client bootstrap
+configuration, the owner confirmed successful showtime creation. This is manual
+confirmation of that flow, not an independently observed successful POST or
+automated verification. The earlier failure investigation is retained below as
+history; it no longer represents a currently reported unresolved incident.
+
 `INVENTORY_MOVIE_CATALOG_UNAVAILABLE` is a sanitized 503 response. Its message
 does not identify which internal call failed: Inventory verifies movie scheduling
 details first and the active screening version second, before persisting a new
@@ -21,7 +27,7 @@ These observations do **not** verify Inventory's service-client credentials,
 actual runtime endpoint overrides, cached token validity or the response received
 under Inventory's service identity. No token request or showtime POST was issued
 by the agent. No database credentials or secret values were read or requested.
-The original cause remains unconfirmed pending the diagnostic below.
+At that point, the original cause was unconfirmed pending the diagnostic below.
 
 The subsequently supplied runtime WARN confirmed operation=MOVIE_SCHEDULING,
 reason=OAUTH2_AUTHORIZATION_FAILED and oauthError=invalid_token_response. This
@@ -88,6 +94,9 @@ No credentials were rotated, registrations created or database records modified.
 
 ## Next diagnostic input and compatibility
 
+The following steps apply if this class of failure recurs; successful creation
+has since been reported by the owner as noted above.
+
 After restarting Inventory with the updated class, obtain the single WARN line
 when the normal failed operation is next observed. Share only operation, reason,
 upstreamStatus, allowlisted oauthError and tokenFailure, optionally with a correlation ID.
@@ -107,5 +116,6 @@ mvn -o "-Dmaven.repo.local=C:/Users/Administrator/.m2/repository" -pl services/i
 ```
 
 Production and test sources compile; the diagnostic has not been observed in the
-running Inventory process. Static allowlist/404/cache-eviction review and
-`git diff --check` passed. The failure is not claimed resolved by this patch.
+running Inventory process during that compile-only step. Static allowlist/404/
+cache-eviction review and `git diff --check` passed. Resolution was subsequently
+reported by the owner after the configuration review, not by the logging patch.

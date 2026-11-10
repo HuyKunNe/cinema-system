@@ -50,6 +50,26 @@ Current status:
 
 ## 2026-11-10
 
+### P3.3 — Shared fare amount/unit validation
+
+- Reviewed clean checkout `1744372`. Pricing quote, grouped showtime quote,
+  reservation snapshots and generated default ShowSeat prices already share
+  PricingFareResolver. Centralized PRICED amount and fare-unit validation there,
+  removing duplicate guards in grouped quote and reservation pricing.
+- Preserve configured zero amounts, PAIR unit/whole-pair COUPLE prices, separate
+  2D/3D/group/time-band fares and existing unavailable/inconsistent error semantics.
+  Direct pricing quotes and default-price generation now enforce the same guard.
+- Keep existing endpoints, auth, DTOs, Kafka payloads, MySQL schema, booking
+  snapshots and legacy default-price GET quote behavior unchanged. Added unexecuted
+  resolver regression cases for malformed/free/pair fares and time boundaries.
+- Record the owner's successful showtime-creation report following the User Service
+  OAuth bootstrap configuration review. This is not an independently observed
+  successful POST, an automated test result or closure of the roadmap gates.
+- Inventory reactor `-DskipTests test-compile` succeeded, compiling production and
+  regression sources only. Static review of all five resolver callers and
+  `git diff --check` passed. No tests, application calls, migrations or database
+  commands ran; P3.3/runtime and earlier execution gates remain open.
+
 ### Inventory — Safe Movie catalog failure diagnostics
 
 - Follow-up runtime evidence identifies OAuth token acquisition failure with

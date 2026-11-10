@@ -225,6 +225,20 @@ predicate của content/count giống nhau và rule quản trị đứng trướ
 
 ### P3.3 — Báo giá cho User FE
 
+**Tiếp tục từ `1744372`, ngày 2026-11-10:** rà soát PricingFareQuoteService,
+ShowtimeGroupedSeatQuoteService, SeatReservationPricingService và luồng sinh giá
+ShowSeat: các đường này đã dùng PricingFareResolver. Đưa kiểm tra amount không
+null/âm và FareUnit đúng loại ghế vào resolver chung, bỏ hai bản kiểm tra lặp ở
+grouped quote/reservation. Giá 0 vẫn hợp lệ; COUPLE giữ nguyên giá cả cặp, 2D/3D,
+nhóm vé và khung giờ resolve độc lập. Không đổi API/event/schema hoặc reprice
+snapshot cũ. GET seat-quote cũ vẫn đọc snapshot giá nhóm mặc định của ShowSeat.
+Đã bổ sung mã kiểm thử nhưng chưa chạy; xác minh runtime P3.3 vẫn mở.
+
+Biên dịch Inventory cùng dependencies bằng `-DskipTests test-compile` đã thành
+công; kiểm tra tĩnh xác nhận năm caller resolver (kể cả refresh giá suất chiếu)
+dùng cùng kiểm tra amount/unit và giữ thứ tự lỗi trạng thái. Không chạy test,
+khởi động ứng dụng hoặc ghi database.
+
 - Cung cấp giá vé cuối cùng cho suất chiếu/ghế/nhóm vé theo đúng bảng giá đã publish.
 - Tính giá ghế đôi cho cả cặp.
 - Trả rõ giá chưa cấu hình/không áp dụng; không coi bằng 0 là thiếu giá.
