@@ -50,6 +50,19 @@ Current status:
 
 ## 2026-11-10
 
+### Same-day showtime slots — Existing batch contract review
+
+- Reviewed clean checkout `8a609ed`: POST /api/v1/showtimes/batch already accepts
+  1–50 full showtime requests, atomically persists slots/seats/idempotency state,
+  and checks scheduling overlap including break time. No duplicate BE API added.
+- Read-only FE review found an existing generated batch client and multi-slot
+  planning UI, but creationRequest/canSubmit deliberately block multiple rows and
+  the mutation calls only the single-create operation. FE implementation remains
+  outside the currently authorized write scope pending user confirmation.
+- Added 24_SAME_DAY_SHOWTIME_BATCH.md with complete three-slot same-day payload,
+  idempotency/error/rollback semantics and concrete FE integration requirements.
+  No tests, builds, batch requests, database commands or FE mutations performed.
+
 ### P3.3 — Shared fare amount/unit validation
 
 - Reviewed clean checkout `1744372`. Pricing quote, grouped showtime quote,

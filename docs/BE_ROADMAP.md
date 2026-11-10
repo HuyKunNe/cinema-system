@@ -206,6 +206,13 @@ normalizeApiError hiện bỏ qua trường mới. Chưa xác minh HTTP/runtime;
 
 ### P3.2 — Hoàn thiện API suất chiếu
 
+**Yêu cầu nhiều khung giờ trong một ngày, rà soát `8a609ed`:** BE đã có
+POST /api/v1/showtimes/batch cho 1–50 suất, transaction chung, clientRequestId và
+kiểm tra trùng lịch có tính khoảng nghỉ. Client FE đã generate operation nhưng
+trang tạo đang khóa lưu khi multipleSlots. Không tạo endpoint/DTO BE trùng chức
+năng. Payload đầy đủ và các bước tích hợp tại [Same-day batch](24_SAME_DAY_SHOWTIME_BATCH.md).
+FE vẫn chỉ đọc trong phạm vi hiện tại; cần xác nhận riêng để nối giao diện.
+
 **Tiếp tục từ `0ec5532`, ngày 2026-11-10:** bổ sung
 `GET /api/v1/showtimes/management` với from/to bắt buộc, filter cinema/movie/room/
 status kết hợp và phân trang PageResponse có sẵn. Giới hạn size 1–100, thứ tự
