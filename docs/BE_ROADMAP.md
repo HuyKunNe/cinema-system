@@ -83,12 +83,27 @@ không thay thế kiểm chứng toàn runtime spec; P0.2/P0.3 vẫn mở.
 
 ### P1.2 — Bắt buộc phiên bản trong API tạo/sửa phim
 
+**Trạng thái:** DONE IN SOURCE / VERIFY — rà soát checkout `a2eb0b2` ngày
+2026-11-10: Create/UpdateMovieRequest có `@NotEmpty`, `@Valid` và phần tử
+`@NotNull`; MovieServiceImpl tạo phim/phiên bản và áp dụng danh sách sửa trong
+transaction. Không tạo API mới; chưa xác minh runtime.
+
 - Yêu cầu ít nhất một phiên bản trong request tạo và request thay thế/sửa phim.
 - Không chấp nhận danh sách null, bị lược hoặc rỗng.
 - Tạo phim và các phiên bản chiếu trong cùng transaction.
 - Giữ các endpoint đọc/kích hoạt phiên bản đang được FE dùng; không thêm endpoint trùng để tạo phiên bản sau khi lưu phim.
 
 ### P1.3 — Chặn bản ghi phiên bản trùng
+
+**Tiếp tục từ `a2eb0b2`, ngày 2026-11-10:** sửa kiểm tra tính bất biến trong
+MovieScreeningVersionService để dùng lại ScreeningVersionIdentity, cùng quy tắc
+`Locale.ROOT` như kiểm tra trùng trong request. Gửi lại ngôn ngữ chỉ khác hoa/thường
+không còn bị coi là thay định nghĩa; giữ nguyên chuỗi đã lưu, ID và expectedVersion.
+Các trường định nghĩa khác vẫn bất biến; danh sách đầy đủ và chuyển inactive vẫn
+giữ nguyên. Unique constraint MySQL V2 tiếp tục bảo vệ đầy đủ các trường định danh;
+không thay migration hoặc collation. Không coi khóa so sánh Java là bản sao đầy đủ
+của collation `utf8mb4_0900_ai_ci` (đặc biệt quy tắc dấu/Unicode). Chưa chạy test,
+build hoặc kiểm chứng database; P1.3 vẫn VERIFY, P0.2/P0.3 vẫn mở.
 
 - Kiểm tra trùng trên định danh đầy đủ: movie, format, projection technology, audio language, presentation type và subtitle language.
 - Chuẩn hóa trường chuỗi trước khi kiểm tra.
@@ -97,6 +112,13 @@ không thay thế kiểm chứng toàn runtime spec; P0.2/P0.3 vẫn mở.
 - Định nghĩa rõ phiên bản bỏ chọn được chuyển inactive như thế nào; không xóa lịch sử phiên bản đã dùng trong suất chiếu.
 
 ### P1.4 — Đồng bộ Inventory và suất chiếu
+
+**Trạng thái:** DONE IN SOURCE / VERIFY — rà soát source ngày 2026-11-10:
+ShowtimeCreationService kiểm tra format/phòng và projection technology dưới khóa
+phòng, dùng snapshot ShowtimeScreeningVersion khi tạo đơn lẻ hoặc theo batch.
+Mapper/response và Inventory V2 đã có projection technology. RoomServiceImpl và
+RoomContentFormatsService chặn đổi loại phòng/gỡ format khi còn suất chiếu chưa
+hủy. Chưa xác minh runtime; không đóng P1.
 
 - Snapshot công nghệ chiếu vào showtime để hợp đồng không đổi khi metadata phim được cập nhật.
 - Kiểm tra công nghệ/định dạng của phim có tương thích loại phòng đã chọn không.
@@ -111,6 +133,11 @@ Tài liệu FE ghi editor ma trận đang lưu state trong bộ nhớ, trong khi
 
 ### P2.1 — Chốt document và vòng đời sơ đồ
 
+**Điểm cần chốt theo source FE hiện tại:** Admin matrix editor, mapper và published
+seat map đang dành hai cột cho COUPLE, giống BE; mô tả mục tiêu một ô bên dưới
+chưa khớp cả hai checkout. Giữ quy tắc hiện hành cho đến khi chốt thay đổi đồng bộ;
+không tự đổi span, tọa độ, sức chứa hoặc dữ liệu layout cũ trong lượt P2.3 này.
+
 - Định nghĩa document chứa số hàng/cột, nhãn hàng suy ra theo vị trí, và cell rỗng hoặc ghế có số/type.
 - Mặc định ma trận mới là 6×6 với các cell rỗng.
 - Chốt semantics draft, publish, archived, revision và optimistic concurrency.
@@ -124,6 +151,16 @@ Tài liệu FE ghi editor ma trận đang lưu state trong bộ nhớ, trong khi
 - Xác định cách chuyển hoặc giữ dữ liệu geometry cũ mà không làm mất dữ liệu.
 
 ### P2.3 — Thiết kế API đọc/ghi
+
+**Tiếp tục ngày 2026-11-10:** bổ sung `error.currentVersion` cho lỗi 409 version
+conflict ở replace content, publish và copy published layout. Dùng version của
+entity đã đọc/khóa khi kiểm tra expectedVersion; không truy vấn database từ handler
+lỗi. Mở rộng ErrorBody bằng trường nullable và giữ constructor bốn tham số. Generic
+VersionConflictException thuộc common-exception, không phụ thuộc domain Inventory.
+FE hiện bỏ qua trường mới trong normalizeApiError; có thể tiếp tục xử lý theo code
+và tải lại layout, cần cập nhật FE riêng nếu muốn hiển thị currentVersion. Không
+ghi đè tự động hoặc thay đổi lock/transaction/migration. Chưa xác minh HTTP/runtime;
+P2.3 chưa đóng, P0.2/P0.3 vẫn mở.
 
 - API tải layout draft/published và toàn bộ matrix document.
 - API tạo draft, lưu toàn bộ nội dung kèm revision, publish và truy vấn trạng thái.

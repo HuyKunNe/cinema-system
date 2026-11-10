@@ -183,7 +183,14 @@ create body above and replace its `screeningVersions` value with:
 The response is `200` with the same raw DTO shape. Load every persisted version
 first, including inactive ones. Keep each ID and use its returned `version` as
 `expectedVersion`; supply new versions without either field. Definition fields
-of persisted versions are immutable. To stop offering a version, retain it with
+of persisted versions are immutable. Language comparison uses the same normalized
+identity as request duplicate detection: entity construction trims input, then
+comparison lowercases language values with `Locale.ROOT`. Case-only resubmission
+is accepted without rewriting the stored language text; ID/version checks and
+actual definition changes retain their existing conflict behavior. This Java key
+does not emulate all MySQL accent/Unicode collation rules; the existing database
+unique constraint remains authoritative for persisted uniqueness.
+To stop offering a version, retain it with
 `active: false`, rather than omit or delete it. Both movie writes require a
 non-null, non-empty list. `2D`/`3D` are wire format values; projection technology
 is a separate field. Do not derive supported combinations by Cartesian product.

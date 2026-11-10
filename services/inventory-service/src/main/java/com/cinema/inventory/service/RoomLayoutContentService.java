@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.common.exception.exception.VersionConflictException;
 import com.cinema.inventory.dto.request.ReplaceRoomLayoutContentRequest;
 import com.cinema.inventory.dto.response.RoomLayoutContentResponse;
 import com.cinema.inventory.dto.response.RoomLayoutContentResponse.RoomLayoutElementPositionResponse;
@@ -86,7 +87,8 @@ public class RoomLayoutContentService {
         layout.requireDraft();
 
         if (!request.expectedVersion().equals(layout.getVersion())) {
-            throw new ConflictException(InventoryErrorCode.ROOM_LAYOUT_VERSION_CONFLICT);
+            throw new VersionConflictException(
+                    InventoryErrorCode.ROOM_LAYOUT_VERSION_CONFLICT, layout.getVersion());
         }
 
         if (layout.isMatrixLayout()) {

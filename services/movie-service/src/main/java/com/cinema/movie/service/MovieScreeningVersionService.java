@@ -250,11 +250,8 @@ public class MovieScreeningVersionService {
     private static boolean sameDefinition(
             MovieScreeningVersion existing, MovieScreeningVersion candidate) {
 
-        return existing.getContentFormat() == candidate.getContentFormat()
-                && existing.getProjectionTechnology() == candidate.getProjectionTechnology()
-                && existing.getPresentationType() == candidate.getPresentationType()
-                && existing.getAudioLanguage().equals(candidate.getAudioLanguage())
-                && Objects.equals(existing.getSubtitleLanguage(), candidate.getSubtitleLanguage());
+        return ScreeningVersionIdentity.from(existing)
+                .equals(ScreeningVersionIdentity.from(candidate));
     }
 
     private Movie lockMovie(UUID movieId) {

@@ -22,6 +22,7 @@ import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ResourceLockedException;
 import com.cinema.common.exception.exception.ServiceUnavailableException;
 import com.cinema.common.exception.exception.UnauthorizedException;
+import com.cinema.common.exception.exception.VersionConflictException;
 import com.cinema.common.response.factory.ResponseFactory;
 import com.cinema.common.response.model.ApiResponse;
 import com.cinema.common.response.model.ErrorBody;
@@ -183,7 +184,13 @@ public class GlobalExceptionHandler {
 
         ErrorBody error =
                 new ErrorBody(
-                        errorCode.code(), errorCode.message(), errorCode.category().name(), null);
+                        errorCode.code(),
+                        errorCode.message(),
+                        errorCode.category().name(),
+                        null,
+                        exception instanceof VersionConflictException conflict
+                                ? conflict.getCurrentVersion()
+                                : null);
 
         return ResponseEntity.status(status).body(ResponseFactory.error(error));
     }

@@ -187,12 +187,37 @@ optimistic lock token. Content writes and publication use the latter as
 Publish with `{"expectedVersion":1}` using the actual latest value. Publication
 has additional readiness guards; a syntactically valid draft is not proof it
 can publish. A stale write returns `409 INVENTORY_ROOM_LAYOUT_VERSION_CONFLICT`.
-The shared error body does not include a current-version field; reload layout
-content rather than assume such a field exists or overwrite after conflict.
+For content replacement, publication and copying from published, this error now
+includes `error.currentVersion`, the optimistic version observed during the
+precondition check. It is not `layoutVersion` and is not a token to automatically
+overwrite with: reload content, reconcile the user's edits, then explicitly retry.
+The resource can change again after the error response. The existing FE error
+normalizer currently drops this additional field; adopting it requires a separate
+FE update. Existing code/message-based conflict handling remains usable.
+
+Illustrative conflict body (timestamp and null properties omitted):
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INVENTORY_ROOM_LAYOUT_VERSION_CONFLICT",
+    "message": "Room layout has changed; reload before saving",
+    "category": "BUSINESS",
+    "currentVersion": 7
+  }
+}
+```
+
+`currentVersion` is optional in the shared error model. Other errors keep their
+existing code/category/details and have no known current version; null omission
+depends on the service's Jackson configuration. This change adds no endpoint or
+Swagger annotation and does not change pricing-conflict responses.
 
 Current `SeatType`/matrix validation reserves two adjacent columns for COUPLE.
 The requested P2 target is one cell per couple seat. This is an identified
-source/target gap, not a newly accepted P2 contract. The example deliberately
+source/target gap; the current FE also reserves two columns. A coordinated
+product/FE decision is needed before changing this rule. The example deliberately
 uses STANDARD and does not change that rule. Metadata canvas dimensions remain
 compatibility values in the current entity; matrix editing does not submit them.
 

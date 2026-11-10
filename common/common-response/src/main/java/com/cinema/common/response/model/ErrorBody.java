@@ -9,7 +9,14 @@ public record ErrorBody(
 
         String category,
 
-        List<ValidationError> details
+        List<ValidationError> details,
+
+        Long currentVersion
 
 ) {
+
+    public ErrorBody(
+            String code, String message, String category, List<ValidationError> details) {
+        this(code, message, category, details, null);
+    }
 }

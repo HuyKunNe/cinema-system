@@ -50,6 +50,48 @@ Current status:
 
 ## 2026-11-10
 
+### P2.3 — Return observed layout version on stale writes
+
+- Preserved the uncommitted P1.3 identity fix. Reviewed P1.4 source: projection
+  snapshots, room capability checks and room-change guards are already present.
+- Added generic `VersionConflictException` with an observed resource version and
+  optional `ErrorBody.currentVersion`, retaining the four-argument constructor.
+  GlobalExceptionHandler keeps the existing status/code/category/details contract
+  and includes this field only when a version-aware conflict supplies its value.
+- Layout content replacement, publication and published-to-draft copy now return
+  the version observed during their existing expectedVersion checks. No query runs
+  in the error handler; locking, transaction boundaries and validation order stay
+  unchanged. A returned version never authorizes automatic overwrite.
+- Added two handler regression cases for version-aware and ordinary conflicts;
+  these test sources were not compiled or executed. Read-only FE inspection shows
+  its normalizer currently discards the additional field; code-based handling is
+  unchanged. Model/schema regeneration remains separate work.
+- No endpoints, Swagger annotations, permissions, OAuth/OIDC, Kafka or MySQL
+  configuration/migration/data changes. Current FE and BE both reserve two matrix
+  columns for COUPLE; recorded the roadmap discrepancy without changing layouts.
+- Runtime HTTP/OpenAPI, service builds and database verification remain pending.
+- Static verification: compiled seven shared exception/response source files using
+  `javac --release 21` into a temporary directory; checked all three layout version
+  failure paths occur before mutation; `git diff --check` passed. No test or service
+  application was executed. This is not a full service/reactor build.
+
+### P1.3 — Consistent screening-version identity comparison
+
+- Reviewed checkout `a2eb0b2` with a clean working tree. Existing movie create/edit
+  requests already require nonempty validated screening-version lists, with
+  transactional writes and complete persisted-ID/version checks.
+- Reused `ScreeningVersionIdentity` for persisted-definition comparisons, matching
+  the existing case-normalized request duplicate check. Case-only language input
+  no longer triggers `MOVIE_SCREENING_VERSION_IMMUTABLE`; persisted spelling is
+  preserved because existing-version edits still change only `active`.
+- Kept genuine definition-change rejection, optimistic concurrency, inactive
+  history, HTTP contracts, permissions and Inventory snapshots intact. Read FE
+  screening validation, which also lowercases its comparison key; no FE edits.
+- No MySQL driver, schema, migration, data or collation changes. Java case folding
+  does not claim complete equivalence to MySQL accent/Unicode comparison rules.
+- Static diff review only; no tests, builds, runtime services or database commands
+  ran. Runtime verification and P0.2/P0.3/P1 closure are not claimed.
+
 ### P0.3 — Preserve operation names without controller annotations
 
 - Reviewed checkout `f2d950e` with a clean working tree. Renamed 28 public handler

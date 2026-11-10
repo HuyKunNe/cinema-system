@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.common.exception.exception.VersionConflictException;
 import com.cinema.inventory.dto.request.CopyPublishedRoomLayoutRequest;
 import com.cinema.inventory.dto.request.RoomLayoutMatrixInput;
 import com.cinema.inventory.dto.request.RoomLayoutMatrixInput.MatrixSeatInput;
@@ -59,8 +60,8 @@ public class RoomLayoutDraftCopyService {
                         InventoryErrorCode.ROOM_LAYOUT_NOT_FOUND));
 
         if (!request.expectedVersion().equals(source.getVersion())) {
-            throw new ConflictException(
-                    InventoryErrorCode.ROOM_LAYOUT_VERSION_CONFLICT);
+            throw new VersionConflictException(
+                    InventoryErrorCode.ROOM_LAYOUT_VERSION_CONFLICT, source.getVersion());
         }
 
         if (source.getStatus() != RoomLayoutStatus.PUBLISHED) {
