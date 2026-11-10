@@ -71,6 +71,10 @@ public class GatewaySecurityConfiguration {
                                 .hasAuthority("inventory:manage")
                                 .pathMatchers(HttpMethod.GET, INVENTORY_MANAGEMENT_READ_ENDPOINTS)
                                 .hasAuthority("inventory:manage")
+                                .pathMatchers(HttpMethod.GET,
+                                        "/api/v1/showtimes/management",
+                                        "/api/v1/showtimes/management/**")
+                                .hasAuthority("showtime:manage")
                                 .pathMatchers(HttpMethod.GET, PUBLIC_CATALOG_ENDPOINTS)
                                 .permitAll()
                                 .pathMatchers(

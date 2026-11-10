@@ -1,8 +1,10 @@
 package com.cinema.inventory.service.impl;
 
+import com.cinema.common.api.mapper.PageResponseMapper;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.common.response.model.PageResponse;
 import com.cinema.inventory.client.MovieCatalogClient;
 import com.cinema.inventory.config.BookableShowtimeProperties;
 import com.cinema.inventory.dto.request.CreateShowtimeBatchRequest;
@@ -24,6 +26,7 @@ import com.cinema.inventory.service.ShowtimePricingService;
 import com.cinema.inventory.service.ShowtimeReleaseDateValidator;
 import com.cinema.inventory.service.ShowtimeService;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -73,6 +76,24 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         this.cinemaRepository = cinemaRepository;
         this.movieCatalogClient = movieCatalogClient;
         this.showtimePricingService = showtimePricingService;
+    }
+
+    @Override
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public PageResponse<ShowtimeResponse> getManagedShowtimes(
+            UUID cinemaId, UUID movieId, UUID roomId, ShowtimeStatus status,
+            OffsetDateTime from, OffsetDateTime to, int page, int size) {
+
+        validateTimeRange(from, to);
+
+        if (page < 0 || size < 1 || size > 100) {
+            throw new ValidationException(InventoryErrorCode.INVALID_SHOWTIME_PAGINATION);
+        }
+
+        var showtimes = showtimeRepository.findManagedShowtimes(
+                cinemaId, movieId, roomId, status, from, to, PageRequest.of(page, size));
+
+        return PageResponseMapper.map(showtimes.map(showtimeMapper::toResponse));
     }
 
     @Override

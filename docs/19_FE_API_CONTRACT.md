@@ -35,6 +35,10 @@ generated User functions alone are not proof of usable SPA authentication.
 
 ## Evidence and limits
 
+- Continuation from `0ec5532` adds the paged, permission-protected
+  [showtime management API](22_SHOWTIME_MANAGEMENT_API.md). It preserves the older
+  array endpoints used by current FE and has not been adopted by that client.
+
 - BE controllers, DTOs, services, enums, security configurations, response/error
   factories and current Flyway migrations define the behavior described here.
 - The local `cinematic-web` checkout was read only. Reviewed its OpenAPI

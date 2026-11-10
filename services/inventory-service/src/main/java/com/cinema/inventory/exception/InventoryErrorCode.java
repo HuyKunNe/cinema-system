@@ -874,6 +874,12 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_PRICING_POLICY_VERSION_IN_USE",
                     "A pricing version referenced by a showtime cannot be deleted");
 
+    public static final InventoryErrorCode INVALID_SHOWTIME_PAGINATION =
+            new InventoryErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "INVENTORY_INVALID_SHOWTIME_PAGINATION",
+                    "Showtime page must be nonnegative and size must be between 1 and 100");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

@@ -5,6 +5,8 @@ import com.cinema.inventory.enums.ShowtimeStatus;
 
 import jakarta.persistence.LockModeType;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -17,6 +19,44 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ShowtimeRepository extends JpaRepository<Showtime, UUID> {
+
+    @Query(
+            value = """
+                    select showtime
+                    from Showtime showtime
+                    join fetch showtime.room room
+                    join fetch room.cinema cinema
+                    left join fetch showtime.roomLayout
+                    left join fetch showtime.pricingPolicyVersion pricing
+                    left join fetch pricing.policy
+                    where showtime.startsAt >= :from
+                      and showtime.startsAt < :to
+                      and (:cinemaId is null or cinema.id = :cinemaId)
+                      and (:movieId is null or showtime.movieId = :movieId)
+                      and (:roomId is null or room.id = :roomId)
+                      and (:status is null or showtime.status = :status)
+                    order by showtime.startsAt asc, showtime.id asc
+                    """,
+            countQuery = """
+                    select count(showtime)
+                    from Showtime showtime
+                    join showtime.room room
+                    join room.cinema cinema
+                    where showtime.startsAt >= :from
+                      and showtime.startsAt < :to
+                      and (:cinemaId is null or cinema.id = :cinemaId)
+                      and (:movieId is null or showtime.movieId = :movieId)
+                      and (:roomId is null or room.id = :roomId)
+                      and (:status is null or showtime.status = :status)
+                    """)
+    Page<Showtime> findManagedShowtimes(
+            @Param("cinemaId") UUID cinemaId,
+            @Param("movieId") UUID movieId,
+            @Param("roomId") UUID roomId,
+            @Param("status") ShowtimeStatus status,
+            @Param("from") OffsetDateTime from,
+            @Param("to") OffsetDateTime to,
+            Pageable pageable);
 
     boolean existsByRoomLayout_Id(UUID layoutId);
 

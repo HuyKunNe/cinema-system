@@ -86,6 +86,10 @@ public class InventorySecurityConfig {
                                         .requestMatchers(
                                                 HttpMethod.GET, INVENTORY_MANAGEMENT_READ_ENDPOINTS)
                                         .hasAuthority("inventory:manage")
+                                        .requestMatchers(HttpMethod.GET,
+                                                "/api/v1/showtimes/management",
+                                                "/api/v1/showtimes/management/**")
+                                        .hasAuthority("showtime:manage")
                                         .requestMatchers(HttpMethod.GET, PUBLIC_INVENTORY_ENDPOINTS)
                                         .permitAll()
                                         .requestMatchers(HttpMethod.POST, "/api/v1/show-seats")

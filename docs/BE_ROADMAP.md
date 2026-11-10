@@ -206,6 +206,18 @@ normalizeApiError hiện bỏ qua trường mới. Chưa xác minh HTTP/runtime;
 
 ### P3.2 — Hoàn thiện API suất chiếu
 
+**Tiếp tục từ `0ec5532`, ngày 2026-11-10:** bổ sung
+`GET /api/v1/showtimes/management` với from/to bắt buộc, filter cinema/movie/room/
+status kết hợp và phân trang PageResponse có sẵn. Giới hạn size 1–100, thứ tự
+startsAt/id ổn định, khoảng thời gian [from,to). Cả Gateway và Inventory yêu cầu
+showtime:manage trước rule GET public. Không đổi các API danh sách cũ, FE hoặc
+MySQL. Contract và phạm vi xác minh tại [Showtime management API](22_SHOWTIME_MANAGEMENT_API.md).
+P3.2 chưa đóng; không khẳng định đã xác minh HTTP/MySQL hoặc hoàn tất P0.
+
+Biên dịch production/test source của Inventory và Gateway cùng dependencies bằng
+`-DskipTests test-compile` thành công; không thực thi test. Đối chiếu tĩnh xác nhận
+predicate của content/count giống nhau và rule quản trị đứng trước GET public.
+
 - Xác minh paging, filter theo cụm rạp/phim/phòng/ngày và status.
 - Tạo/sửa suất chiếu phải tham chiếu phim, phiên bản chiếu, phòng đã cấu hình và bảng giá hợp lệ.
 - Kiểm tra công nghệ phim với capability của phòng và không cho lịch bị chồng lấn.

@@ -1,14 +1,17 @@
 package com.cinema.inventory.controller;
 
+import com.cinema.common.response.model.PageResponse;
 import com.cinema.inventory.dto.request.CreateShowtimeBatchRequest;
 import com.cinema.inventory.dto.request.CreateShowtimeRequest;
 import com.cinema.inventory.dto.request.UpdateShowtimeRequest;
 import com.cinema.inventory.dto.response.ShowtimeResponse;
+import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.service.ShowtimeService;
 
 import jakarta.validation.Valid;
 
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,6 +37,24 @@ public class ShowtimeController {
 
     public ShowtimeController(ShowtimeService showtimeService) {
         this.showtimeService = showtimeService;
+    }
+
+    @GetMapping("/management")
+    public ResponseEntity<PageResponse<ShowtimeResponse>> getManagedShowtimes(
+            @RequestParam("from") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+                    OffsetDateTime from,
+            @RequestParam("to") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+                    OffsetDateTime to,
+            @RequestParam(value = "cinemaId", required = false) UUID cinemaId,
+            @RequestParam(value = "movieId", required = false) UUID movieId,
+            @RequestParam(value = "roomId", required = false) UUID roomId,
+            @RequestParam(value = "status", required = false) ShowtimeStatus status,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size) {
+
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(showtimeService.getManagedShowtimes(
+                        cinemaId, movieId, roomId, status, from, to, page, size));
     }
 
     @PostMapping

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
@@ -100,6 +101,27 @@ class GatewaySecurityConfigurationTest {
                 .isEqualTo("SECURITY_ACCESS_DENIED")
                 .jsonPath("$.error.category")
                 .isEqualTo("SECURITY");
+    }
+
+    @Test
+    void managedShowtimesShouldNotFallThroughToPublicCatalogRule() {
+        webTestClient.get().uri("/api/v1/showtimes/management")
+                .exchange().expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void managedShowtimesShouldRejectInventoryOnlyPermission() {
+        webTestClient.mutateWith(mockJwt().authorities(new SimpleGrantedAuthority("inventory:manage")))
+                .get().uri("/api/v1/showtimes/management")
+                .exchange().expectStatus().isForbidden();
+    }
+
+    @Test
+    void managedShowtimesShouldPassWithShowtimePermission() {
+        // This test profile has no downstream route; 404 means edge authorization passed.
+        webTestClient.mutateWith(mockJwt().authorities(new SimpleGrantedAuthority("showtime:manage")))
+                .get().uri("/api/v1/showtimes/management")
+                .exchange().expectStatus().isNotFound();
     }
 
     @Test

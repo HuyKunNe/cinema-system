@@ -9,12 +9,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.cinema.common.response.model.PageInfo;
+import com.cinema.common.response.model.PageResponse;
 import com.cinema.common.security.config.SecurityConfiguration;
 import com.cinema.common.security.config.ServletSecurityConfiguration;
 import com.cinema.inventory.config.InventorySecurityConfig;
+import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.service.CinemaService;
 import com.cinema.inventory.service.RoomService;
 import com.cinema.inventory.service.SeatService;
@@ -31,6 +35,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -281,6 +286,53 @@ class InventoryEndpointSecurityTest {
                 roomService,
                 seatService,
                 showtimeService);
+    }
+
+    @Test
+    void managedShowtimesShouldRejectAnonymousAccess() throws Exception {
+        mockMvc.perform(get("/api/v1/showtimes/management")
+                        .param("from", "2026-11-10T00:00:00+07:00")
+                        .param("to", "2026-11-11T00:00:00+07:00"))
+                .andExpect(status().isUnauthorized());
+        verifyNoInteractions(showtimeService);
+    }
+
+    @Test
+    void managedShowtimesShouldRejectInventoryOnlyPermission() throws Exception {
+        mockMvc.perform(get("/api/v1/showtimes/management")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("inventory:manage")))
+                        .param("from", "2026-11-10T00:00:00+07:00")
+                        .param("to", "2026-11-11T00:00:00+07:00"))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(showtimeService);
+    }
+
+    @Test
+    void managedShowtimesShouldBindFiltersAndReturnRawPageWithShowtimePermission() throws Exception {
+        UUID cinemaId = UUID.randomUUID();
+        UUID movieId = UUID.randomUUID();
+        UUID roomId = UUID.randomUUID();
+        var from = OffsetDateTime.parse("2026-11-10T00:00:00+07:00");
+        var to = from.plusDays(1);
+        when(showtimeService.getManagedShowtimes(cinemaId, movieId, roomId,
+                ShowtimeStatus.SCHEDULED, from, to, 0, 20))
+                .thenReturn(new PageResponse<>(List.of(), new PageInfo(0, 20, 0, 0, true, true)));
+
+        mockMvc.perform(get("/api/v1/showtimes/management")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("showtime:manage")))
+                        .param("from", from.toString()).param("to", to.toString())
+                        .param("cinemaId", cinemaId.toString())
+                        .param("movieId", movieId.toString())
+                        .param("roomId", roomId.toString())
+                        .param("status", "SCHEDULED"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.page.size").value(20))
+                .andExpect(jsonPath("$.page.totalElements").value(0))
+                .andExpect(jsonPath("$.success").doesNotExist());
+        verify(showtimeService).getManagedShowtimes(cinemaId, movieId, roomId,
+                ShowtimeStatus.SCHEDULED, from, to, 0, 20);
     }
 
     @Test

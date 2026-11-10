@@ -50,6 +50,26 @@ Current status:
 
 ## 2026-11-10
 
+### P3.2 — Paged and filtered showtime management
+
+- Reviewed clean checkout `0ec5532` and read-only Admin FE query code. Added
+  getManagedShowtimes at GET /api/v1/showtimes/management, reusing existing service,
+  repository, mapper and PageResponse infrastructure. Existing array APIs remain.
+- Require offset from/to bounds, use a half-open startsAt range, AND optional
+  cinema/movie/room/status filters, limit page size to 1–100 and sort by startsAt/id.
+  Read content/count with identical predicates in a read-only repeatable-read
+  transaction and fetch only to-one response associations. Return raw pages/no-store.
+- Guard the operation with showtime:manage at Gateway and Inventory before public
+  GET matchers. Keep current JWT mechanics, permissions, Swagger-free controllers,
+  event flow, MySQL schema/indexes and published snapshots unchanged.
+- Added unexecuted service and HTTP/security regression sources; documented FE
+  adoption, exact response/filter semantics and runtime verification limits in
+  22_SHOWTIME_MANAGEMENT_API.md. No FE changes, tests or database commands ran.
+- Inventory/Gateway reactor `-DskipTests test-compile` completed successfully,
+  compiling production and regression sources only. Static predicate/security-rule
+  ordering checks and `git diff --check` passed. Runtime JPQL, HTTP and MySQL query
+  behavior remain unverified; P3.2 and P0 execution gates stay open.
+
 ### P3.1 — Consistent current-version metadata for pricing conflicts
 
 - Reviewed clean checkout `1aa9715`. Extended the four existing stale-version
