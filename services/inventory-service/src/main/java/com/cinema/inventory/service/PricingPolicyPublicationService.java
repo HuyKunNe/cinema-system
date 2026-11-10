@@ -3,6 +3,7 @@ package com.cinema.inventory.service;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.common.exception.exception.VersionConflictException;
 import com.cinema.inventory.dto.request.PublishPricingPolicyRequest;
 import com.cinema.inventory.dto.response.CinemaPricingPolicyVersionResponse;
 import com.cinema.inventory.dto.response.FareMatrixValidationResponse;
@@ -101,7 +102,8 @@ public class PricingPolicyPublicationService {
         revision.requireDraft();
 
         if (!request.expectedVersion().equals(revision.getVersion())) {
-            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
+            throw new VersionConflictException(
+                    InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT, revision.getVersion());
         }
 
         var matrix = fareMatrixService.getForPublication(cinemaId, policyId, versionId);

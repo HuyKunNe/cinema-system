@@ -212,8 +212,8 @@ Illustrative conflict body (timestamp and null properties omitted):
 
 `currentVersion` is optional in the shared error model. Other errors keep their
 existing code/category/details and have no known current version; null omission
-depends on the service's Jackson configuration. This change adds no endpoint or
-Swagger annotation and does not change pricing-conflict responses.
+depends on the service's Jackson configuration. This adds no endpoint or Swagger
+annotation. Pricing version conflicts are covered by the continuation below.
 
 Current `SeatType`/matrix validation reserves two adjacent columns for COUPLE.
 The requested P2 target is one cell per couple seat. This is an identified
@@ -247,8 +247,21 @@ Inventory. Successful bodies are raw DTOs.
 version's optimistic version, not its `revision`. Writes require DRAFT and
 matching ownership/applicability. Wrong versions produce
 `409 INVENTORY_PRICING_POLICY_VERSION_CONFLICT`; non-draft edits produce
-`409 INVENTORY_PRICING_POLICY_NOT_DRAFT`. These errors do not return a replacement
-version field. Reload, reconcile and explicitly retry with the returned version.
+`409 INVENTORY_PRICING_POLICY_NOT_DRAFT`. Version conflicts now include
+`error.currentVersion` for metadata/scope replacement, configuration replacement,
+fare-matrix replacement, publication and draft deletion. This is the optimistic
+version observed from the already locked entity, not pricing `revision` or
+`fareMatrixRevision`. Non-version conflicts do not invent a current-version field.
+Reload the appropriate version/matrix, reconcile and explicitly retry; do not
+automatically resubmit with the version from an error, which can become stale.
+
+The publication service retains its existing idempotency: an already PUBLISHED
+version in the requested scope returns its current metadata, even when the request
+contains an older expectedVersion. This continuation changes only version-conflict
+metadata on paths that already rejected stale writes; it does not reorder state,
+scope or input validation. Deleted drafts remain unavailable. FE's current error
+normalizer ignores currentVersion; existing code-based conflict handling still
+works and adopting this extra field requires a separate FE change.
 
 For a draft whose complete intended definitions are one full-day band and one
 default group, `PUT V/configuration`:

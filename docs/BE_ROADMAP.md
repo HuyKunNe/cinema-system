@@ -191,6 +191,13 @@ P2.3 chưa đóng, P0.2/P0.3 vẫn mở.
 
 ### P3.1 — Đóng contract cấu hình bảng giá
 
+**Tiếp tục từ `1aa9715`, ngày 2026-11-10:** đồng bộ `error.currentVersion` cho
+409 PRICING_POLICY_VERSION_CONFLICT tại sửa metadata/phạm vi, cấu hình, fare matrix
+và publish; DELETE nháp đã có trường này. Tái sử dụng VersionConflictException,
+không thêm DTO/endpoint hoặc thay thứ tự validation, lock và transaction. Giữ hành
+vi publish lặp bản PUBLISHED trả metadata hiện tại. FE được đối chiếu chỉ đọc;
+normalizeApiError hiện bỏ qua trường mới. Chưa xác minh HTTP/runtime; P3.1 vẫn mở.
+
 - Xác minh version, draft/published, time bands, ticket groups và fare matrix hiện tại.
 - Giữ ID định nghĩa để đổi tên/thứ tự không làm mất giá.
 - Bảo đảm lỗi version conflict không cho phép ghi đè im lặng.

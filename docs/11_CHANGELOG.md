@@ -50,6 +50,25 @@ Current status:
 
 ## 2026-11-10
 
+### P3.1 — Consistent current-version metadata for pricing conflicts
+
+- Reviewed clean checkout `1aa9715`. Extended the four existing stale-version
+  branches in metadata/scope, configuration, fare-matrix and publication services
+  to reuse VersionConflictException, matching draft deletion's existing response.
+- Preserve 409 INVENTORY_PRICING_POLICY_VERSION_CONFLICT and add the optimistic
+  version observed from the locked entity as error.currentVersion. Do not query
+  persistence from the error handler or change validation/locking/write order.
+- Preserve idempotent publication of an already PUBLISHED version, deleted-draft
+  visibility, fare/definition identity, pair pricing and all success payloads.
+  No controller, Swagger annotation, permission, FE, Kafka or MySQL changes.
+- Updated the integration contract to distinguish currentVersion from revision,
+  document publication replay and require explicit reload/reconciliation rather
+  than automatic stale-write retry. FE still ignores the optional metadata field.
+- Static diff comparison confirmed the four production branches change only
+  exception metadata/imports. `git diff --check` passed. Offline Inventory reactor
+  compile succeeded with `-DskipTests` and approved cache access; no tests, runtime
+  applications, migrations or database commands ran. P3.1 runtime acceptance remains open.
+
 ### Inventory — Delete layout and pricing drafts
 
 - Added version-checked DELETE operations for room layouts and cinema pricing

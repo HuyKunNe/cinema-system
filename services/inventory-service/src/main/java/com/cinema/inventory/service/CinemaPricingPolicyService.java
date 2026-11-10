@@ -4,6 +4,7 @@ import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.InternalServerException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.common.exception.exception.VersionConflictException;
 import com.cinema.inventory.dto.request.CreateCinemaPricingPolicyRequest;
 import com.cinema.inventory.dto.request.ReplacePricingPolicyDraftRequest;
 import com.cinema.inventory.dto.response.CinemaPricingPolicyVersionResponse;
@@ -197,7 +198,8 @@ public class CinemaPricingPolicyService {
         }
 
         if (!request.expectedVersion().equals(revision.getVersion())) {
-            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT);
+            throw new VersionConflictException(
+                    InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT, revision.getVersion());
         }
 
         revision.requireDraft();
