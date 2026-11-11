@@ -9,7 +9,6 @@ import com.cinema.inventory.entity.CinemaPricingPolicyVersion;
 import com.cinema.inventory.entity.FareMatrixCell;
 import com.cinema.inventory.entity.FareMatrixCell.Key;
 import com.cinema.inventory.entity.FareMatrixCell.Value;
-import com.cinema.inventory.enums.PricingPolicyVersionStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.CinemaPricingPolicyMapper;
 import com.cinema.inventory.repository.CinemaPricingPolicyRepository;
@@ -100,7 +99,7 @@ public class PricingPolicyDraftService {
             return new CreateResult(false, mapper.toResponse(revision));
         }
 
-        if (source.getStatus() != PricingPolicyVersionStatus.PUBLISHED) {
+        if (!source.getStatus().isPublishedSnapshot()) {
             throw new ConflictException(InventoryErrorCode.PRICING_POLICY_SOURCE_NOT_PUBLISHED);
         }
 

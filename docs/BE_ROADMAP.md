@@ -191,6 +191,15 @@ P2.3 chưa đóng, P0.2/P0.3 vẫn mở.
 
 ### P3.1 — Đóng contract cấu hình bảng giá
 
+**Vòng đời phiên bản ngày 2026-11-11 (đang làm):** thêm khả năng dùng snapshot
+RETIRED cho suất chiếu đã gán, giữ chặn gán mới/quote độc lập với bản RETIRED;
+cho phép copy bản RETIRED thành draft. Publish sơ đồ mới retire bản cũ theo phòng
+với khóa phòng trước layout, chống publish draft cũ hơn bản hiện hành. Inventory
+V4 mở CHECK constraint layout cho RETIRED, không chuyển trạng thái dữ liệu cũ.
+Tự retire revision bảng giá trong publish còn chờ quyết định thu hẹp phạm vi rạp;
+chưa coi toàn bộ nghiệp vụ này hoàn tất. Chi tiết triển khai/rollout và kiểm tra
+chưa chạy tại [Published version lifecycle](25_PUBLISHED_VERSION_LIFECYCLE.md).
+
 **Tiếp tục từ `1aa9715`, ngày 2026-11-10:** đồng bộ `error.currentVersion` cho
 409 PRICING_POLICY_VERSION_CONFLICT tại sửa metadata/phạm vi, cấu hình, fare matrix
 và publish; DELETE nháp đã có trường này. Tái sử dụng VersionConflictException,
@@ -205,6 +214,16 @@ normalizeApiError hiện bỏ qua trường mới. Chưa xác minh HTTP/runtime;
 - Giá 2D và 3D nhập/resolve riêng; không tự đồng bộ giá.
 
 ### P3.2 — Hoàn thiện API suất chiếu
+
+**Tiếp tục từ `282ecab`, ngày 2026-11-11:** bổ sung `error.currentVersion`
+cho 409 `INVENTORY_SHOWTIME_VERSION_CONFLICT` ở sửa lịch và thay bảng giá suất
+chiếu. Tái sử dụng VersionConflictException và version của Showtime đã khóa;
+bao gồm nhánh phát hiện movie/room thay đổi giữa bước đọc ID và lấy khóa. Không
+thêm truy vấn từ error handler, không tự retry/ghi đè và không đổi thứ tự khóa,
+transaction, validation hay migration MySQL. FE chỉ đọc; bộ chuẩn hóa lỗi hiện
+chưa giữ currentVersion nhưng vẫn xử lý theo code và tải lại. P3.2/P0.2/P0.3
+vẫn mở; chưa xác minh HTTP/runtime. Contract và kiểm tra thủ công được bổ sung
+trong [Showtime management API](22_SHOWTIME_MANAGEMENT_API.md).
 
 **Yêu cầu nhiều khung giờ trong một ngày, rà soát `8a609ed`:** BE đã có
 POST /api/v1/showtimes/batch cho 1–50 suất, transaction chung, clientRequestId và

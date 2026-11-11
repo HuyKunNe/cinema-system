@@ -137,7 +137,7 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
     }
 
     public DraftCopy newDraft(long nextRevision, UUID clientRequestId) {
-        if (status != PricingPolicyVersionStatus.PUBLISHED) {
+        if (!status.isPublishedSnapshot()) {
             throw new ConflictException(InventoryErrorCode.PRICING_POLICY_SOURCE_NOT_PUBLISHED);
         }
 
@@ -550,6 +550,14 @@ public class CinemaPricingPolicyVersion extends BaseEntity {
 
     public PricingPolicyVersionStatus getStatus() {
         return status;
+    }
+
+    public void retire() {
+        requireNotDeleted();
+        if (status != PricingPolicyVersionStatus.PUBLISHED) {
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_VERSION_NOT_PUBLISHED);
+        }
+        status = PricingPolicyVersionStatus.RETIRED;
     }
 
     public void publish(OffsetDateTime publishedAt, String publishedBy) {

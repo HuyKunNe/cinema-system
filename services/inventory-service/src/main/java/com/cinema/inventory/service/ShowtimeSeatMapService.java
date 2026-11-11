@@ -30,7 +30,6 @@ import com.cinema.inventory.entity.RoomLayoutSeat;
 import com.cinema.inventory.entity.ShowSeat;
 import com.cinema.inventory.entity.Showtime;
 import com.cinema.inventory.enums.RoomLayoutElementKind;
-import com.cinema.inventory.enums.RoomLayoutStatus;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.ShowSeatStatus;
 import com.cinema.inventory.enums.ShowtimeStatus;
@@ -92,7 +91,7 @@ public class ShowtimeSeatMapService {
         requireConsistent(
                 roomId.equals(layout.getRoom().getId()));
 
-        if (layout.getStatus() != RoomLayoutStatus.PUBLISHED) {
+        if (!layout.getStatus().isPublishedSnapshot()) {
             throw new ConflictException(
                     InventoryErrorCode.ROOM_LAYOUT_NOT_PUBLISHED);
         }

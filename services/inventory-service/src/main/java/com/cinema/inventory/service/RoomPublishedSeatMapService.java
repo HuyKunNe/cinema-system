@@ -63,7 +63,7 @@ public class RoomPublishedSeatMapService {
         RoomLayout layout = findLayout(roomId, layoutId);
         layout.requireNotDeleted();
 
-        if (layout.getStatus() != RoomLayoutStatus.PUBLISHED) {
+        if (!layout.getStatus().isPublishedSnapshot()) {
             throw new ConflictException(
                     InventoryErrorCode.ROOM_LAYOUT_NOT_PUBLISHED);
         }

@@ -10,7 +10,6 @@ import com.cinema.inventory.dto.response.ShowtimeTicketPricesResponse.SeatFare;
 import com.cinema.inventory.dto.response.ShowtimeTicketPricesResponse.TicketGroupPrices;
 import com.cinema.inventory.enums.FareCellState;
 import com.cinema.inventory.enums.FareUnit;
-import com.cinema.inventory.enums.PricingPolicyVersionStatus;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.event.InventoryEventContract;
@@ -177,7 +176,7 @@ public class ShowtimeTicketPricesService {
 
     private static void requirePublishedMatrix(FareMatrixResponse matrix) {
 
-        if (matrix.status() != PricingPolicyVersionStatus.PUBLISHED) {
+        if (!matrix.status().isPublishedSnapshot()) {
             throw new ConflictException(InventoryErrorCode.PRICING_POLICY_VERSION_NOT_PUBLISHED);
         }
 

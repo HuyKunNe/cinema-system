@@ -20,7 +20,6 @@ import com.cinema.inventory.dto.response.RoomLayoutContentResponse;
 import com.cinema.inventory.entity.Room;
 import com.cinema.inventory.entity.RoomLayout;
 import com.cinema.inventory.entity.RoomLayoutMatrixCell;
-import com.cinema.inventory.enums.RoomLayoutStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.repository.RoomLayoutMatrixCellRepository;
 import com.cinema.inventory.repository.RoomLayoutRepository;
@@ -54,6 +53,12 @@ public class RoomLayoutDraftCopyService {
             UUID sourceLayoutId,
             CopyPublishedRoomLayoutRequest request) {
 
+        UUID roomId = layoutRepository.findRoomId(sourceLayoutId)
+                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.ROOM_LAYOUT_NOT_FOUND));
+        // Match publication/create lock ordering: room before layout.
+        Room room = roomRepository.findByIdForUpdate(roomId)
+                .orElseThrow(() -> new NotFoundException(InventoryErrorCode.ROOM_NOT_FOUND));
+
         RoomLayout source = layoutRepository
                 .findByIdForRead(sourceLayoutId)
                 .orElseThrow(() -> new NotFoundException(
@@ -66,7 +71,7 @@ public class RoomLayoutDraftCopyService {
                     InventoryErrorCode.ROOM_LAYOUT_VERSION_CONFLICT, source.getVersion());
         }
 
-        if (source.getStatus() != RoomLayoutStatus.PUBLISHED) {
+        if (!source.getStatus().isPublishedSnapshot()) {
             throw new ConflictException(
                     InventoryErrorCode.ROOM_LAYOUT_NOT_PUBLISHED);
         }
@@ -75,14 +80,6 @@ public class RoomLayoutDraftCopyService {
             throw new ConflictException(
                     InventoryErrorCode.ROOM_LAYOUT_MATRIX_CONVERSION_REQUIRED);
         }
-
-        UUID roomId = source.getRoom().getId();
-
-        // Serialize version allocation with the existing createDraft flow.
-        Room room = roomRepository
-                .findByIdForUpdate(roomId)
-                .orElseThrow(() -> new NotFoundException(
-                        InventoryErrorCode.ROOM_NOT_FOUND));
 
         RoomLayoutMatrixInput matrix = readSourceMatrix(
                 source,

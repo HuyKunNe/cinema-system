@@ -54,6 +54,10 @@ public class ShowtimeLayoutService {
 
     @Transactional
     public RoomLayout findPublishedLayout(UUID layoutId, UUID roomId) {
+        return findLayoutSnapshot(layoutId, roomId, false);
+    }
+
+    private RoomLayout findLayoutSnapshot(UUID layoutId, UUID roomId, boolean alreadyAssigned) {
         RoomLayout layout =
                 layoutRepository
                         .findByIdForRead(layoutId)
@@ -68,7 +72,8 @@ public class ShowtimeLayoutService {
             throw new ValidationException(InventoryErrorCode.SHOWTIME_LAYOUT_ROOM_MISMATCH);
         }
 
-        if (layout.getStatus() != RoomLayoutStatus.PUBLISHED) {
+        if (layout.getStatus() != RoomLayoutStatus.PUBLISHED
+                && !(alreadyAssigned && layout.getStatus().isPublishedSnapshot())) {
             throw new ConflictException(InventoryErrorCode.ROOM_LAYOUT_NOT_PUBLISHED);
         }
 
@@ -109,7 +114,7 @@ public class ShowtimeLayoutService {
 
         UUID roomId = showtime.getRoom().getId();
 
-        RoomLayout layout = findPublishedLayout(showtime.getRoomLayout().getId(), roomId);
+        RoomLayout layout = findLayoutSnapshot(showtime.getRoomLayout().getId(), roomId, true);
 
         if (layout.isMatrixLayout()) {
             return getMatrixSnapshots(layout, roomId);

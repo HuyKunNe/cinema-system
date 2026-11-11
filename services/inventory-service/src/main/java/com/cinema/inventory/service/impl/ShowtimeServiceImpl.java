@@ -4,6 +4,7 @@ import com.cinema.common.api.mapper.PageResponseMapper;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.common.exception.exception.VersionConflictException;
 import com.cinema.common.response.model.PageResponse;
 import com.cinema.inventory.client.MovieCatalogClient;
 import com.cinema.inventory.config.BookableShowtimeProperties;
@@ -215,7 +216,8 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                 || !movieId.equals(showtime.getMovieId())
                 || !roomId.equals(showtime.getRoom().getId())) {
 
-            throw new ConflictException(InventoryErrorCode.SHOWTIME_VERSION_CONFLICT);
+            throw new VersionConflictException(
+                    InventoryErrorCode.SHOWTIME_VERSION_CONFLICT, showtime.getVersion());
         }
 
         if (showtime.getStatus() != ShowtimeStatus.SCHEDULED) {

@@ -17,6 +17,16 @@ import java.util.UUID;
 public interface CinemaPricingPolicyVersionRepository
         extends JpaRepository<CinemaPricingPolicyVersion, UUID> {
 
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("select revision from CinemaPricingPolicyVersion revision where revision.id = :versionId and revision.deleted = false")
+    Optional<CinemaPricingPolicyVersion> findForAssignment(@Param("versionId") UUID versionId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select revision from CinemaPricingPolicyVersion revision where revision.policy.id = :policyId "
+            + "and revision.status = com.cinema.inventory.enums.PricingPolicyVersionStatus.PUBLISHED "
+            + "and revision.deleted = false order by revision.id")
+    List<CinemaPricingPolicyVersion> findPublishedForUpdate(@Param("policyId") UUID policyId);
+
     @EntityGraph(attributePaths = {"policy", "cinemas"})
     Optional<CinemaPricingPolicyVersion> findByPolicy_IdAndRevision(UUID policyId, long revision);
 

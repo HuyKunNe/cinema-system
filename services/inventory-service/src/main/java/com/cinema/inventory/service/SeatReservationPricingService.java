@@ -3,7 +3,6 @@ package com.cinema.inventory.service;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.inventory.dto.response.FareMatrixResponse.CellResponse;
 import com.cinema.inventory.entity.ShowSeat;
-import com.cinema.inventory.enums.PricingPolicyVersionStatus;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.event.payload.RequestedSeatPayload;
 import com.cinema.inventory.event.payload.ReservedSeatPayload;
@@ -48,7 +47,7 @@ public class SeatReservationPricingService {
 
         var selected = showtime.getPricingPolicyVersion();
 
-        if (selected == null || selected.getStatus() != PricingPolicyVersionStatus.PUBLISHED) {
+        if (selected == null || !selected.getStatus().isPublishedSnapshot()) {
 
             return Resolution.unavailable();
         }
@@ -119,7 +118,7 @@ public class SeatReservationPricingService {
                         fares.computeIfAbsent(
                                 key,
                                 ignored ->
-                                        PricingFareResolver.resolve(
+                                        PricingFareResolver.resolveForShowtime(
                                                 matrix,
                                                 localTime,
                                                 experience,

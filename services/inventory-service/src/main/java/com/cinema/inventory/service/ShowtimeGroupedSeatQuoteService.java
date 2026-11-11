@@ -7,7 +7,6 @@ import com.cinema.inventory.dto.request.QuoteShowtimeSeatsRequest;
 import com.cinema.inventory.dto.response.FareMatrixResponse.CellResponse;
 import com.cinema.inventory.dto.response.ShowtimeGroupedSeatQuoteResponse;
 import com.cinema.inventory.dto.response.ShowtimeGroupedSeatQuoteResponse.SeatQuote;
-import com.cinema.inventory.enums.PricingPolicyVersionStatus;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
@@ -84,7 +83,7 @@ public class ShowtimeGroupedSeatQuoteService {
                 fareMatrixService.get(
                         cinema.getId(), selected.getPolicy().getId(), selected.getId());
 
-        if (matrix.status() != PricingPolicyVersionStatus.PUBLISHED) {
+        if (!matrix.status().isPublishedSnapshot()) {
             throw new ConflictException(InventoryErrorCode.PRICING_POLICY_VERSION_NOT_PUBLISHED);
         }
 
@@ -120,7 +119,7 @@ public class ShowtimeGroupedSeatQuoteService {
                     resolvedFares.computeIfAbsent(
                             key,
                             ignored ->
-                                    PricingFareResolver.resolve(
+                                    PricingFareResolver.resolveForShowtime(
                                             matrix,
                                             localTime,
                                             experience,

@@ -39,7 +39,33 @@ public final class PricingFareResolver {
             UUID requestedTicketGroupId,
             SeatType seatType) {
 
-        if (matrix.status() != PricingPolicyVersionStatus.PUBLISHED) {
+        return resolve(matrix, localStartsAt, experienceType, contentFormat,
+                requestedTicketGroupId, seatType, false);
+    }
+
+    public static CellResponse resolveForShowtime(
+            FareMatrixResponse matrix,
+            LocalTime localStartsAt,
+            PricingExperienceType experienceType,
+            ContentFormat contentFormat,
+            UUID requestedTicketGroupId,
+            SeatType seatType) {
+
+        return resolve(matrix, localStartsAt, experienceType, contentFormat,
+                requestedTicketGroupId, seatType, true);
+    }
+
+    private static CellResponse resolve(
+            FareMatrixResponse matrix,
+            LocalTime localStartsAt,
+            PricingExperienceType experienceType,
+            ContentFormat contentFormat,
+            UUID requestedTicketGroupId,
+            SeatType seatType,
+            boolean alreadyAssigned) {
+
+        if (matrix.status() != PricingPolicyVersionStatus.PUBLISHED
+                && !(alreadyAssigned && matrix.status().isPublishedSnapshot())) {
             throw new ConflictException(InventoryErrorCode.PRICING_POLICY_VERSION_NOT_PUBLISHED);
         }
 

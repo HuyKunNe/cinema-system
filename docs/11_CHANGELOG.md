@@ -48,6 +48,36 @@ Current status:
 
 # Unreleased
 
+## 2026-11-11
+
+### Published version lifecycle — partial implementation
+
+- Room layout publication retires previous PUBLISHED layouts for the same room,
+  serializes through the room lock and rejects an obsolete draft. Inventory V4
+  expands layout CHECK constraints for RETIRED without changing existing rows.
+- Existing Showtimes retain access to assigned retired layout/pricing snapshots
+  across seat maps, generation, open/refresh, ticket quotes and reservation
+  pricing. New assignment/standalone fare quotes remain PUBLISHED-only.
+- Retired snapshots can be copied into drafts, but not edited/deleted/republished.
+  FE remains read-only and requires status/client coordination for deployment.
+- Automatic pricing retirement is pending the owner's decision about removing
+  cinemas from replacement scope. See 25_PUBLISHED_VERSION_LIFECYCLE.md. No test
+  execution, application startup, HTTP calls or database writes performed.
+
+### P3.2 — Showtime conflict version metadata
+
+- Schedule update and showtime pricing replacement now reuse the shared
+  VersionConflictException for INVENTORY_SHOWTIME_VERSION_CONFLICT. The shared
+  error envelope includes currentVersion observed on the locked Showtime,
+  including stale movie/room context detected after acquiring the locks.
+- Existing 409 status/code, endpoint payloads, authorization, lock ordering,
+  transactions and MySQL schema remain unchanged. No new API or migration.
+- FE was read only: its current normalizer drops currentVersion, while existing
+  code-based conflict handling remains compatible. Runtime HTTP verification
+  and P0.2/P0.3/P3.2 closure remain pending; tests were not run.
+- Inventory and reactor dependencies compiled successfully using offline Maven
+  with `-DskipTests compile`; `git diff --check` passed. No HTTP/database writes.
+
 ## 2026-11-10
 
 ### Same-day showtime slots — Existing batch contract review

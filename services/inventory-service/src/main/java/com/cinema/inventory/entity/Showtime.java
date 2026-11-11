@@ -173,8 +173,25 @@ public class Showtime extends BaseEntity {
 
         requireStatus(ShowtimeStatus.SCHEDULED);
 
+        validatePricingPolicyVersion(selectedVersion, false);
+        this.pricingPolicyVersion = selectedVersion;
+    }
+
+    /** Validate an already assigned snapshot without assigning a retired revision anew. */
+    public void validateAssignedPricingPolicyVersion() {
+        requireStatus(ShowtimeStatus.SCHEDULED);
+        if (pricingPolicyVersion == null) {
+            throw new ConflictException(InventoryErrorCode.SHOWTIME_PRICING_REQUIRED);
+        }
+        validatePricingPolicyVersion(pricingPolicyVersion, true);
+    }
+
+    private void validatePricingPolicyVersion(
+            CinemaPricingPolicyVersion selectedVersion, boolean alreadyAssigned) {
+
         if (selectedVersion != null) {
-            if (selectedVersion.getStatus() != PricingPolicyVersionStatus.PUBLISHED) {
+            if (selectedVersion.getStatus() != PricingPolicyVersionStatus.PUBLISHED
+                    && !(alreadyAssigned && selectedVersion.getStatus().isPublishedSnapshot())) {
 
                 throw new ConflictException(
                         InventoryErrorCode.PRICING_POLICY_VERSION_NOT_PUBLISHED);
@@ -190,7 +207,6 @@ public class Showtime extends BaseEntity {
             }
         }
 
-        this.pricingPolicyVersion = selectedVersion;
     }
 
     void assignRoom(Room room) {

@@ -336,7 +336,7 @@ public class ShowtimeCreationService {
         if (request.pricingPolicyVersionId() != null) {
             var selected =
                     pricingVersionRepository
-                            .findById(request.pricingPolicyVersionId())
+                            .findForAssignment(request.pricingPolicyVersionId())
                             .orElseThrow(
                                     () ->
                                             new NotFoundException(

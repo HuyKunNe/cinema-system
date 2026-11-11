@@ -3,6 +3,7 @@ package com.cinema.inventory.service;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.common.exception.exception.VersionConflictException;
 import com.cinema.inventory.dto.request.ReplaceShowtimePricingRequest;
 import com.cinema.inventory.dto.response.ShowtimeResponse;
 import com.cinema.inventory.entity.CinemaPricingPolicyVersion;
@@ -73,7 +74,8 @@ public class ShowtimePricingService {
         Showtime showtime = lockShowtime(showtimeId);
 
         if (!request.expectedVersion().equals(showtime.getVersion())) {
-            throw new ConflictException(InventoryErrorCode.SHOWTIME_VERSION_CONFLICT);
+            throw new VersionConflictException(
+                    InventoryErrorCode.SHOWTIME_VERSION_CONFLICT, showtime.getVersion());
         }
 
         requireScheduled(showtime);
@@ -85,7 +87,7 @@ public class ShowtimePricingService {
         if (request.pricingPolicyVersionId() != null) {
             selected =
                     versionRepository
-                            .findById(request.pricingPolicyVersionId())
+                            .findForAssignment(request.pricingPolicyVersionId())
                             .orElseThrow(
                                     () ->
                                             new NotFoundException(
@@ -148,7 +150,8 @@ public class ShowtimePricingService {
                                 () -> new NotFoundException(InventoryErrorCode.SHOWTIME_NOT_FOUND));
 
         if (!roomId.equals(showtime.getRoom().getId())) {
-            throw new ConflictException(InventoryErrorCode.SHOWTIME_VERSION_CONFLICT);
+            throw new VersionConflictException(
+                    InventoryErrorCode.SHOWTIME_VERSION_CONFLICT, showtime.getVersion());
         }
 
         return showtime;
@@ -192,7 +195,7 @@ public class ShowtimePricingService {
 
         var selected = showtime.getPricingPolicyVersion();
 
-        showtime.replacePricingPolicyVersion(selected);
+        showtime.validateAssignedPricingPolicyVersion();
 
         if (showtime.getRoom().getRoomType() == null
                 || showtime.getScreeningVersion() == null
@@ -228,7 +231,7 @@ public class ShowtimePricingService {
             }
 
             var fare =
-                    PricingFareResolver.resolve(
+                    PricingFareResolver.resolveForShowtime(
                             matrix, localStartsAt, experience, format, null, seatType);
 
             prices.put(seatType, fare.amount());

@@ -880,6 +880,21 @@ public final class InventoryErrorCode implements ErrorCode {
                     "INVENTORY_INVALID_SHOWTIME_PAGINATION",
                     "Showtime page must be nonnegative and size must be between 1 and 100");
 
+    public static final InventoryErrorCode ROOM_LAYOUT_PUBLICATION_SUPERSEDED =
+            new InventoryErrorCode(ErrorCategory.BUSINESS,
+                    "INVENTORY_ROOM_LAYOUT_PUBLICATION_SUPERSEDED",
+                    "A newer room layout is already published; copy it to a new draft");
+
+    public static final InventoryErrorCode PRICING_POLICY_PUBLICATION_SUPERSEDED =
+            new InventoryErrorCode(ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_PUBLICATION_SUPERSEDED",
+                    "A newer pricing revision is already published; create a new draft");
+
+    public static final InventoryErrorCode PRICING_POLICY_PUBLICATION_SCOPE_CONFLICT =
+            new InventoryErrorCode(ErrorCategory.BUSINESS,
+                    "INVENTORY_PRICING_POLICY_PUBLICATION_SCOPE_CONFLICT",
+                    "The new pricing revision must cover all cinemas of the published revisions");
+
     private final String code;
     private final String message;
     private final ErrorCategory category;

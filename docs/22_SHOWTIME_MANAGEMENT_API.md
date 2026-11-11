@@ -113,3 +113,44 @@ This compiles production and test sources without running tests or applications.
 Static checks confirmed identical content/count filter predicates and management
 authorization ahead of public rules at both layers; `git diff --check` passed.
 BUILD SUCCESS does not certify runtime JPQL, HTTP or MySQL behavior.
+
+## Showtime write conflicts (2026-11-11)
+
+`PUT /api/v1/showtimes/{showtimeId}` and
+`PUT /api/v1/showtimes/{showtimeId}/pricing` require the existing expectedVersion.
+When it differs from the locked Showtime version, the existing HTTP 409
+`INVENTORY_SHOWTIME_VERSION_CONFLICT` now includes `error.currentVersion`.
+The same metadata is included if the room/movie context read before locking
+differs from the locked entity. The version is observed at conflict detection;
+another transaction can change it later. Fetch the Showtime again and review
+before submitting another write; do not substitute the version and overwrite.
+
+The shared ErrorBody and GlobalExceptionHandler already support this field.
+No Swagger annotations, controller mappings, request/response success DTOs,
+permissions, Kafka contracts, MySQL migrations or datasource settings changed.
+FE's current error normalizer does not preserve this optional field; its
+existing error-code handling and reload behavior continue to work. No FE edits.
+
+Manual review in a development environment (not executed here):
+
+1. Read a SCHEDULED Showtime and note its version.
+2. Send either existing PUT request with valid fields and a different,
+   nonnegative expectedVersion. For schedule edits, use future timestamps and
+   the existing duration; Movie Service must be available for its validation.
+3. Confirm 409, unchanged error code, and currentVersion matching the version
+   observed by the service. Read the Showtime again to confirm schedule/pricing
+   were not changed by the rejected request.
+4. Repeat for the other PUT endpoint. Review fresh resource data before any
+   successful write; existing status, overlap and pricing validations still apply.
+
+Tests and HTTP/database checks were not executed for this change. No checkpoint
+is closed by this source review.
+
+Compile-only verification succeeded for Inventory and its reactor dependencies:
+
+```powershell
+mvn -o "-Dmaven.repo.local=C:/Users/Administrator/.m2/repository" -pl services/inventory-service -am -DskipTests compile
+```
+
+`git diff --check` passed. No tests, applications, endpoint calls or database
+commands were run. Compilation does not verify the runtime error response.

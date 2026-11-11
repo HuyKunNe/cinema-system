@@ -136,6 +136,25 @@ class PricingFareResolverTest {
                 Arguments.of(SeatType.COUPLE, BigDecimal.ONE, null));
     }
 
+    @Test
+    void retiredFaresRemainAvailableForShowtimesButNotForNewPricingQuotes() {
+        var fare = couple(ContentFormat.TWO_D, DAY, REGULAR, "180000");
+        var published = matrix(List.of(fare), BANDS, true);
+        var retired = new FareMatrixResponse(published.policyId(), published.policyVersionId(),
+                published.revision(), published.version(), published.dayGroup(),
+                PricingPolicyVersionStatus.RETIRED, published.scopes(), published.timeBands(),
+                published.ticketGroups(), published.defaultTicketGroupId(), published.seatTypes(),
+                published.requiredCellCount(), published.configuredCellCount(),
+                published.missingCellCount(), published.coverageComplete(), published.cells(),
+                published.options());
+
+        assertSame(fare, PricingFareResolver.resolveForShowtime(retired, LocalTime.NOON,
+                PricingExperienceType.STANDARD, ContentFormat.TWO_D, null, SeatType.COUPLE));
+        var error = assertThrows(ConflictException.class,
+                () -> resolve(retired, ContentFormat.TWO_D, LocalTime.NOON, null, SeatType.COUPLE));
+        assertEquals(InventoryErrorCode.PRICING_POLICY_VERSION_NOT_PUBLISHED, error.getErrorCode());
+    }
+
     private static CellResponse couple(ContentFormat format, UUID band, UUID group, String price) {
         return cell(format, band, group, SeatType.COUPLE,
                 FareCellState.PRICED, new BigDecimal(price), FareUnit.PAIR);

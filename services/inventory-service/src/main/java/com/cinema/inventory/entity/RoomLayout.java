@@ -156,4 +156,12 @@ public class RoomLayout extends BaseEntity {
         status = RoomLayoutStatus.PUBLISHED;
         publishedAt = publicationTime;
     }
+
+    public void retire() {
+        requireNotDeleted();
+        if (status != RoomLayoutStatus.PUBLISHED) {
+            throw new ConflictException(InventoryErrorCode.ROOM_LAYOUT_NOT_PUBLISHED);
+        }
+        status = RoomLayoutStatus.RETIRED;
+    }
 }

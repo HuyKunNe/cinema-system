@@ -107,7 +107,7 @@ public class ShowSeatGenerationService {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_PRICING_REQUIRED);
         }
 
-        showtime.replacePricingPolicyVersion(selected);
+        showtime.validateAssignedPricingPolicyVersion();
 
         if (showSeatRepository.existsByShowtime_Id(showtime.getId())) {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_PRICING_GENERATION_LOCKED);
@@ -149,7 +149,7 @@ public class ShowSeatGenerationService {
             }
 
             var fare =
-                    PricingFareResolver.resolve(
+                    PricingFareResolver.resolveForShowtime(
                             matrix, localStartsAt, experience, format, null, seatType);
 
             prices.put(seatType, fare.amount());
