@@ -196,8 +196,14 @@ RETIRED cho suất chiếu đã gán, giữ chặn gán mới/quote độc lập
 cho phép copy bản RETIRED thành draft. Publish sơ đồ mới retire bản cũ theo phòng
 với khóa phòng trước layout, chống publish draft cũ hơn bản hiện hành. Inventory
 V4 mở CHECK constraint layout cho RETIRED, không chuyển trạng thái dữ liệu cũ.
-Tự retire revision bảng giá trong publish còn chờ quyết định thu hẹp phạm vi rạp;
-chưa coi toàn bộ nghiệp vụ này hoàn tất. Chi tiết triển khai/rollout và kiểm tra
+**Tiếp tục từ `9a1d46d`:** nối tự retire revision bảng giá trong publish, giữ khóa
+policy trước các revision. Dùng quy tắc bảo toàn phạm vi: revision mới phải chứa
+đủ hợp các rạp của mọi revision PUBLISHED cùng policy, nếu thiếu trả 409
+PRICING_POLICY_PUBLICATION_SCOPE_CONFLICT; không tự ngừng bảng giá tại rạp bị bỏ.
+Chặn draft cũ hơn bản hiện hành bằng PRICING_POLICY_PUBLICATION_SUPERSEDED.
+Publish/retire chung transaction, giữ nguyên snapshot/giá của suất cũ và không
+retire policy khác. Không thêm migration pricing; RETIRED đã có trong MySQL.
+Đã có source; chưa đóng checkpoint hoặc xác minh runtime. Chi tiết triển khai/rollout và kiểm tra
 chưa chạy tại [Published version lifecycle](25_PUBLISHED_VERSION_LIFECYCLE.md).
 
 **Tiếp tục từ `1aa9715`, ngày 2026-11-10:** đồng bộ `error.currentVersion` cho
@@ -273,6 +279,15 @@ khởi động ứng dụng hoặc ghi database.
 ## P4 — Rà soát contract Booking và Payment cho User FE
 
 ### P4.1 — Chốt luồng giữ ghế
+
+**Tiếp tục ngày 2026-11-11:** phát hiện consumer reservation lấy khóa ghế nhưng
+chưa kiểm tra đủ tập ghế và chưa dùng helper kiểm tra owner/trạng thái. Bổ sung
+SEAT_NOT_FOUND/SEAT_UNAVAILABLE trước resolve giá hoặc hold bất kỳ ghế nào; từ
+chối toàn bộ yêu cầu khi thiếu/không dùng được ghế. Cho phép dùng lại hold của
+chính booking khi còn hạn và deadline cùng instant, giữ nguyên owner/expiry.
+Không tự reclaim hold hết hạn, không đổi event/REST/MySQL. Source Booking đã có
+cả hai reason code. Bổ sung mã kiểm thử nhưng không chạy; runtime/concurrency và
+P0.2/P4.1 vẫn mở. Chi tiết tại [FE API contract](19_FE_API_CONTRACT.md).
 
 - Xác minh lấy availability, hold, release, hết hạn và xử lý ghế bị chiếm.
 - Inventory là nguồn sự thật của trạng thái ghế theo suất chiếu.

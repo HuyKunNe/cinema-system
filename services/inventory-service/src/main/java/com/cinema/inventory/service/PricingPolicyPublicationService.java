@@ -106,6 +106,21 @@ public class PricingPolicyPublicationService {
                     InventoryErrorCode.PRICING_POLICY_VERSION_CONFLICT, revision.getVersion());
         }
 
+        // The policy lock serializes publication and draft scope changes. Lock all
+        // published revisions before checking the complete replacement scope.
+        var previous = versionRepository.findPublishedForUpdate(policyId);
+
+        if (previous.stream().anyMatch(item -> item.getRevision() >= revision.getRevision())) {
+            throw new ConflictException(InventoryErrorCode.PRICING_POLICY_PUBLICATION_SUPERSEDED);
+        }
+
+        var replacementCinemaIds = revision.getCinemaIds();
+        if (previous.stream()
+                .anyMatch(item -> !replacementCinemaIds.containsAll(item.getCinemaIds()))) {
+            throw new ConflictException(
+                    InventoryErrorCode.PRICING_POLICY_PUBLICATION_SCOPE_CONFLICT);
+        }
+
         var matrix = fareMatrixService.getForPublication(cinemaId, policyId, versionId);
 
         var validation = validationService.validate(matrix);
@@ -117,6 +132,7 @@ public class PricingPolicyPublicationService {
         revision.publish(
                 OffsetDateTime.now(clock).withOffsetSameInstant(ZoneOffset.UTC), actorSubject);
 
+        previous.forEach(CinemaPricingPolicyVersion::retire);
         versionRepository.flush();
 
         return mapper.toResponse(revision);

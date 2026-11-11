@@ -399,3 +399,57 @@ This review does not modify FE or certify runtime/schema compatibility.
   FE to convert a matrix to geometry.
 - P0.2 verification remains open. Tests, builds and automated checks are still
   skipped. R28 Notification remains deferred. No P0.3 runtime closure is claimed.
+
+## P4.1 continuation — complete seat reservation (2026-11-11)
+
+Source review found that SeatReservationRequestedConsumerServiceImpl acquired
+seat locks but did not use its existing ownership/availability helper or its
+SEAT_NOT_FOUND/SEAT_UNAVAILABLE rejection paths. Consequently an ungrouped
+request could reserve only the returned subset, or report success while some
+returned seats remained held/booked by another booking. The existing
+SeatReservationRequestedIntegrationTest already specifies missing-seat rejection
+and one winning booking under contention; those cases were not executed here.
+
+The consumer now validates the complete normalized seat set after acquiring
+PESSIMISTIC_WRITE locks and checking Showtime eligibility, before grouped pricing,
+total calculation or hold mutation:
+
+| Condition | Existing event/reason | Seat changes |
+| --- | --- | --- |
+| Any requested seat missing, including an empty lookup | seat-reservation-rejected / SEAT_NOT_FOUND | None; affectedSeats contains missing numbers. |
+| Any seat booked, unavailable, held by another booking, expired or held with a different expiry | seat-reservation-rejected / SEAT_UNAVAILABLE | None; affectedSeats contains unusable numbers. |
+| Every seat available or already held by this booking with the same unexpired deadline | Existing price/expiry/eligibility checks, then seat-reserved | Hold AVAILABLE seats; retain matching existing holds. |
+
+Hold deadlines compare instants: UTC and +07:00 representations of the same
+expiry are equivalent. A held seat without an expiry is not reusable. Expired
+holds are not reclaimed by this consumer; the existing expiry lifecycle remains
+responsible for release. No other booking's hold is overwritten.
+
+The existing processed-event marker and rejection/success Outbox records remain
+in the caller's transaction. Duplicate-event handling, the final expiry and
+Showtime eligibility checks, event versions, correlation/causation IDs, schemas
+and REST APIs are unchanged. Booking already accepts both rejection reason codes;
+no client, permission, MySQL migration or OAuth/OIDC change is required. FE and
+Booking source were not modified.
+
+Added unexecuted SeatReservationLockedSetTest source cases for missing/empty
+lookups, grouped-pricing rejection before resolution, every unusable-seat case,
+unchanged ownership on rejection and same-booking reuse with different timestamp
+offsets. No tests, applications, Kafka messages or database commands were run.
+Runtime concurrency/rollback and HTTP verification remain open; P0.2 and P4.1
+are not closed by this source fix.
+
+Manual development-environment review (not performed here): request an available
+seat together with a missing one, then with a seat held by another booking.
+Confirm each booking receives the corresponding rejection and the available
+seat is not partially held. For a fully available set, confirm one reservation
+contains all seats. Review duplicate delivery for one processed marker/Outbox
+result and matching same-booking holds for unchanged ownership/deadline.
+
+Inventory, reactor dependencies and all test sources compiled successfully with:
+
+```powershell
+mvn -o "-Dmaven.repo.local=C:/Users/Administrator/.m2/repository" -pl services/inventory-service -am -DskipTests test-compile
+```
+
+`git diff --check` passed. Compilation is not test execution or runtime evidence.

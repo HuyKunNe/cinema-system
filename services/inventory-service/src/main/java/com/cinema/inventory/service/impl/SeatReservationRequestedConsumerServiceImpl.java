@@ -162,6 +162,40 @@ public class SeatReservationRequestedConsumerServiceImpl
                     message);
         }
 
+        // Validate the complete locked set before pricing or holding any seat.
+        Set<String> foundSeatNumbers = new HashSet<>();
+        showSeats.forEach(seat -> foundSeatNumbers.add(normalizeSeatNumber(seat.getSeatNumber())));
+
+        List<String> missingSeatNumbers =
+                seatNumbers.stream().filter(number -> !foundSeatNumbers.contains(number)).toList();
+
+        if (!missingSeatNumbers.isEmpty()) {
+            return reject(
+                    payload,
+                    SeatReservationRejectionReason.SEAT_NOT_FOUND,
+                    SEAT_NOT_FOUND_MESSAGE,
+                    missingSeatNumbers,
+                    now,
+                    message);
+        }
+
+        List<String> unavailableSeatNumbers =
+                showSeats.stream()
+                        .filter(seat -> !canUseExistingOrCreateHold(seat, payload, now))
+                        .map(seat -> normalizeSeatNumber(seat.getSeatNumber()))
+                        .sorted()
+                        .toList();
+
+        if (!unavailableSeatNumbers.isEmpty()) {
+            return reject(
+                    payload,
+                    SeatReservationRejectionReason.SEAT_UNAVAILABLE,
+                    SEAT_UNAVAILABLE_MESSAGE,
+                    unavailableSeatNumbers,
+                    now,
+                    message);
+        }
+
         boolean groupedPricing =
                 payload.seats().stream().anyMatch(seat -> seat.ticketGroupId() != null);
 
@@ -353,8 +387,9 @@ public class SeatReservationRequestedConsumerServiceImpl
         }
 
         return showSeat.isHeldBy(payload.bookingId())
+                && showSeat.getHoldExpiresAt() != null
                 && !showSeat.hasExpired(now)
-                && payload.holdExpiresAt().equals(showSeat.getHoldExpiresAt());
+                && payload.holdExpiresAt().isEqual(showSeat.getHoldExpiresAt());
     }
 
     private Result reject(

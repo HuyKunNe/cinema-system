@@ -50,7 +50,24 @@ Current status:
 
 ## 2026-11-11
 
-### Published version lifecycle — partial implementation
+### P4.1 — Reject incomplete or unavailable reservation sets
+
+- SeatReservationRequestedConsumerServiceImpl now checks the entire normalized,
+  locked seat set before resolving fares or creating holds. Missing seats reject
+  with existing SEAT_NOT_FOUND; unusable seats reject with SEAT_UNAVAILABLE.
+  No partial hold or successful reservation event is produced by these paths.
+- Reuses existing ownership validation; a same-booking hold must be unexpired
+  with the same deadline instant. Equivalent timestamp offsets are accepted;
+  expiry metadata remains unchanged. Expired holds are not reclaimed here.
+- Added unexecuted regression sources covering missing/empty sets, grouped
+  pricing short-circuit, ownership/status/deadline conflicts and existing holds.
+  Booking already supports the rejection codes; no event, API, MySQL, OAuth/OIDC
+  or FE change. Runtime locking/rollback and P0.2/P4.1 verification remain open.
+- Inventory and reactor dependencies compiled successfully with
+  `-DskipTests test-compile`; `git diff --check` passed. No tests, applications,
+  endpoint calls, Kafka messages or database commands were executed.
+
+### Published version lifecycle
 
 - Room layout publication retires previous PUBLISHED layouts for the same room,
   serializes through the room lock and rejects an obsolete draft. Inventory V4
@@ -60,9 +77,19 @@ Current status:
   pricing. New assignment/standalone fare quotes remain PUBLISHED-only.
 - Retired snapshots can be copied into drafts, but not edited/deleted/republished.
   FE remains read-only and requires status/client coordination for deployment.
-- Automatic pricing retirement is pending the owner's decision about removing
-  cinemas from replacement scope. See 25_PUBLISHED_VERSION_LIFECYCLE.md. No test
-  execution, application startup, HTTP calls or database writes performed.
+- Pricing publication now atomically retires all previously PUBLISHED revisions
+  of the same policy. It preserves covered cinemas by rejecting replacement
+  scopes that omit any current cinema, and rejects drafts older than the current
+  published revision. Different policies and existing Showtime snapshots remain
+  unchanged. Existing idempotent publish behavior is preserved.
+- Added unexecuted pricing publication regression sources for scope preservation,
+  obsolete drafts, failed validation, metadata preservation and replay behavior.
+  No new pricing migration; existing MySQL constraints already accept RETIRED.
+  See 25_PUBLISHED_VERSION_LIFECYCLE.md. No test execution, application startup,
+  HTTP calls or database writes performed. Runtime verification remains pending.
+- The pricing-retirement continuation compiled Inventory, reactor dependencies
+  and all test sources successfully with offline Maven `-DskipTests test-compile`;
+  `git diff --check` passed. No checkpoint is closed by compilation alone.
 
 ### P3.2 — Showtime conflict version metadata
 
