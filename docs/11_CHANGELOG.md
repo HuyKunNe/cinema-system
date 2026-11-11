@@ -50,6 +50,18 @@ Current status:
 
 ## 2026-11-11
 
+### P5.1 — Deterministic customer booking history ordering
+
+- Customer booking history now sorts by createdAt DESC, id DESC, matching the
+  existing management ordering for tied creation timestamps. Owner scoping,
+  pagination bounds, response shape and endpoint remain unchanged.
+- No DTO, client, permission, MySQL migration/configuration or event changes.
+  This fixes tie ordering on unchanged data; offset pages can still shift when
+  records change between requests. No tests or database commands executed.
+- Booking and reactor production sources compiled with offline Maven
+  `-DskipTests compile` after approved access to the cached dependency;
+  `git diff --check` passed. No runtime verification claimed.
+
 ### P4.3 — Match provider-result deadline snapshots by instant
 
 - Payment provider-result application compares the captured command hold

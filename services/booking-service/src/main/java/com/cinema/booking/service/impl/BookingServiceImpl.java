@@ -150,7 +150,8 @@ public class BookingServiceImpl implements BookingService {
         requireUserId(userId);
 
         PageRequest pageRequest =
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+                PageRequest.of(
+                        page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
 
         Page<Booking> bookings = bookingRepository.findAllByUserId(userId, pageRequest);
 

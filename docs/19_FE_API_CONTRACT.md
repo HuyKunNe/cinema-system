@@ -539,3 +539,41 @@ mvn -o "-Dmaven.repo.local=C:/Users/Administrator/.m2/repository" -pl services/p
 
 `git diff --check` passed. Tests were not executed; compilation does not close
 the P0.2/P4.3 runtime verification gates.
+
+## P5.1 continuation — customer booking history ordering (2026-11-11)
+
+The existing `GET /api/v1/bookings?page=0&size=20` now orders by
+`createdAt DESC, id DESC`. Previously equal creation timestamps had no unique
+ordering, so their positions in offset pages were not guaranteed. The new
+ordering matches the existing management service and uses Booking's unique ID
+only as a tie-breaker; it does not replace createdAt as the primary key.
+
+The endpoint still derives the owner from CurrentUser.id() and uses
+findAllByUserId. Existing wrapped PageResponse, batched seat-snapshot loading,
+default page=0/size=20 and controller limits page>=0, size=1..100 are unchanged.
+The generated FE findAllBookings client already targets this API; no parallel
+history endpoint, new request/response type or FE modification is needed. No
+authorization, OAuth/OIDC, Kafka or MySQL schema/index/configuration changes.
+
+This is deterministic ordering for an unchanged dataset, not a snapshot across
+requests. New/deleted records between page loads can still shift offset pages;
+this change introduces no cursor contract or frozen-list guarantee.
+
+Manual review (not executed here): on a development dataset with tied createdAt
+values, compare adjacent page boundaries and repeat the same reads without
+changing the data. Confirm descending IDs within each timestamp tie, no overlap
+or skipped records at those boundaries, unchanged totals and owner-only results.
+No tests, application startup, endpoint calls or database writes were performed.
+P0.2/P5.1 runtime verification remains pending.
+
+Booking and reactor production sources compiled successfully with:
+
+```powershell
+mvn -o "-Dmaven.repo.local=C:/Users/Administrator/.m2/repository" -pl services/booking-service -am -DskipTests compile
+```
+
+The sandboxed attempt failed while reading the cached Eureka dependency; the
+same command succeeded with approved access outside the sandbox. Static review
+confirmed owner scoping and the existing controller/client contract;
+`git diff --check` passed. No tests were written or executed for this small
+ordering change; no runtime behavior or MySQL query plan is certified by compile.

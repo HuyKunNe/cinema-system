@@ -327,6 +327,15 @@ tại [FE API contract](19_FE_API_CONTRACT.md).
 
 ### P5.1 — Đối chiếu Customer account
 
+**Tiếp tục ngày 2026-11-11:** lịch sử khách hàng tại GET /api/v1/bookings trước
+đây chỉ sort createdAt DESC. Thêm id DESC làm thứ tự phụ duy nhất, đồng bộ với
+management để các booking cùng createdAt có vị trí xác định trên dữ liệu không
+đổi. Giữ truy vấn findAllByUserId, principal từ CurrentUser, giới hạn page/size
+trong controller và response phân trang hiện có. Không thêm endpoint/DTO,
+migration MySQL hoặc sửa FE. Offset pagination vẫn có thể dịch khi thêm/xóa
+dữ liệu giữa các lần đọc; không coi là snapshot xuyên request. Không chạy test;
+P0.2/P5.1 chưa đóng. Chi tiết tại [FE API contract](19_FE_API_CONTRACT.md).
+
 - Xác minh profile, booking history/detail và quyền sở hữu.
 - Chỉ bổ sung API nếu User FE không thể hoàn thành luồng bằng contract hiện có.
 
