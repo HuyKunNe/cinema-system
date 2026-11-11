@@ -169,7 +169,7 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
             throw mismatch();
         }
 
-        if (!booking.getExpiresAt().equals(payload.holdExpiresAt())) {
+        if (!booking.getExpiresAt().isEqual(payload.holdExpiresAt())) {
 
             throw mismatch();
         }

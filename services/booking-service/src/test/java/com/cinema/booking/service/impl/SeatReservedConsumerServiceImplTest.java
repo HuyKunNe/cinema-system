@@ -17,6 +17,7 @@ import com.cinema.booking.event.payload.ReservedSeatPayload;
 import com.cinema.booking.event.payload.SeatReservedPayload;
 import com.cinema.booking.event.serialization.SeatReservedPayloadReader;
 import com.cinema.booking.event.validation.SeatReservedMessageValidator;
+import com.cinema.booking.exception.BookingErrorCode;
 import com.cinema.booking.repository.BookingRepository;
 import com.cinema.booking.repository.BookingSeatRepository;
 import com.cinema.booking.service.ProcessedEventRegistrationService;
@@ -32,6 +33,8 @@ import com.cinema.common.outbox.service.OutboxService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -248,6 +251,71 @@ class SeatReservedConsumerServiceImplTest {
                 .isInstanceOf(ConflictException.class);
 
         verifyNoInteractions(bookingSeatRepository);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {-5, 7})
+    void sameExpirationInstantWithDifferentOffsetShouldCompleteReservation(int offsetHours) {
+        TestContext context = validContext();
+        SeatReservedPayload payload =
+                new SeatReservedPayload(
+                        context.bookingId(),
+                        context.showtimeId(),
+                        context.payload().seats(),
+                        context.payload().totalAmount(),
+                        context.payload().currency(),
+                        context.payload().heldAt(),
+                        EXPIRES_AT.withOffsetSameInstant(ZoneOffset.ofHours(offsetHours)));
+
+        prepareProcessing(context, payload);
+        OutboxEventEntity paymentRequestedEvent = org.mockito.Mockito.mock(OutboxEventEntity.class);
+        when(bookingRepository.save(context.booking())).thenReturn(context.booking());
+        when(paymentRequestedOutboxFactory.create(
+                        context.booking(), context.message(), REQUESTED_AT))
+                .thenReturn(paymentRequestedEvent);
+
+        SeatReservedConsumerService.Result result =
+                service.handle(context.partitionKey(), context.message());
+
+        assertThat(result.status()).isEqualTo(SeatReservedConsumerService.Status.RESERVED);
+        assertThat(context.booking().getStatus()).isEqualTo(BookingStatus.RESERVED);
+        assertThat(context.booking().getExpiresAt().equals(EXPIRES_AT)).isTrue();
+        assertThat(context.booking().getTotalAmount()).isEqualByComparingTo("210000.00");
+        assertThat(context.bookingSeats())
+                .allSatisfy(seat -> assertThat(seat.hasCompletedSnapshot()).isTrue());
+        verify(bookingSeatRepository).saveAll(context.bookingSeats());
+        verify(outboxService).save(paymentRequestedEvent);
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {-1, 1})
+    void genuinelyDifferentExpirationIsRejectedWithoutRoundingOrSnapshotMutation(long nanos) {
+        TestContext context = validContext();
+        SeatReservedPayload payload =
+                new SeatReservedPayload(
+                        context.bookingId(),
+                        context.showtimeId(),
+                        context.payload().seats(),
+                        context.payload().totalAmount(),
+                        context.payload().currency(),
+                        context.payload().heldAt(),
+                        EXPIRES_AT.plusNanos(nanos));
+        when(payloadReader.read(context.message())).thenReturn(payload);
+        prepareRegistration(context);
+        when(bookingRepository.findByIdForUpdate(context.bookingId()))
+                .thenReturn(Optional.of(context.booking()));
+
+        assertThatThrownBy(() -> service.handle(context.partitionKey(), context.message()))
+                .isInstanceOfSatisfying(ConflictException.class,
+                        error -> assertThat(error.getErrorCode())
+                                .isEqualTo(BookingErrorCode.RESERVATION_RESULT_MISMATCH));
+
+        assertThat(context.booking().getStatus()).isEqualTo(BookingStatus.PENDING);
+        assertThat(context.booking().getExpiresAt().equals(EXPIRES_AT)).isTrue();
+        assertThat(context.bookingSeats())
+                .allSatisfy(seat -> assertThat(seat.hasCompletedSnapshot()).isFalse());
+        verify(bookingRepository, never()).save(any(Booking.class));
+        verifyNoInteractions(bookingSeatRepository, paymentRequestedOutboxFactory, outboxService);
     }
 
     @Test

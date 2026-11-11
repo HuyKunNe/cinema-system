@@ -50,6 +50,37 @@ Current status:
 
 ## 2026-11-11
 
+### P4.3 — Match provider-result deadline snapshots by instant
+
+- Payment provider-result application compares the captured command hold
+  deadline with the locked Payment by instant. Equivalent offsets no longer
+  trigger PAYMENT_TRANSACTION_DATA_MISMATCH; different instants still fail
+  before applying provider state or terminal Outbox handling.
+- Preserves lease ownership/lock order, all other snapshot checks, stored hold
+  expiration and late-success RECONCILIATION_REQUIRED behavior. No rounding,
+  grace period, API/event schema, MySQL or FE changes; no refund scope added.
+- Added unexecuted regression sources for equivalent offsets with on-time/late
+  success and differing deadline instants with no state/lease mutation. No tests,
+  applications, provider/endpoint calls or database commands were executed.
+- Payment and reactor dependencies compiled successfully with
+  `-DskipTests test-compile`; `git diff --check` passed. Runtime verification
+  remains pending.
+
+### P4.2 — Match reservation deadlines by instant
+
+- Booking's seat-reserved consumer now compares the event hold deadline with
+  persisted Booking expiration by instant. Equivalent UTC/+07:00 representations
+  no longer cause RESERVATION_RESULT_MISMATCH; different instants still fail.
+- The stored deadline, snapshots, payment flow, event registration/transaction,
+  API/event schemas and MySQL configuration are unchanged. No grace period or
+  timestamp rounding added. Existing idempotency guards remain in place.
+- Added unexecuted regression source cases for equivalent offsets and different
+  deadline instants without state/snapshot/payment Outbox mutation on mismatch.
+  No tests, applications, event submissions or database commands were executed.
+- Booking and reactor dependencies compiled successfully with
+  `-DskipTests test-compile`; `git diff --check` passed. Runtime verification and
+  checkpoint closure remain pending.
+
 ### P4.1 — Reject incomplete or unavailable reservation sets
 
 - SeatReservationRequestedConsumerServiceImpl now checks the entire normalized,

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.cinema.common.core.id.UuidGenerator;
 import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.InternalServerException;
 import com.cinema.payment.entity.Payment;
 import com.cinema.payment.entity.PaymentTransaction;
 import com.cinema.payment.enums.PaymentStatus;
@@ -27,6 +28,9 @@ import com.cinema.payment.service.PaymentResultOutboxService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -244,6 +248,61 @@ class PaymentProviderResultApplicationServiceImplTest {
         assertThat(fixture.payment().getStatus()).isEqualTo(PaymentStatus.PROCESSING);
 
         verify(paymentResultOutboxService, never()).persistIfTerminal(fixture.payment());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"7, 5", "-5, 5", "7, 0", "-5, 0"})
+    void equivalentDeadlineOffsetsPreserveOnTimeAndLateSuccessRules(
+            int offsetHours, int minutesUntilExpiry) {
+        OffsetDateTime storedDeadline = NOW.plusMinutes(minutesUntilExpiry);
+        Fixture fixture = fixture(storedDeadline);
+        stubLockedEntities(fixture);
+        ClaimedProviderChargeOperation operation = withDeadline(fixture,
+                storedDeadline.withOffsetSameInstant(ZoneOffset.ofHours(offsetHours)));
+
+        AppliedProviderChargeResult result = service.apply(operation,
+                new ProviderChargeResult(ProviderOutcome.SUCCEEDED, "offset-result", null, null, null));
+
+        assertThat(result.paymentStatus()).isEqualTo(minutesUntilExpiry > 0
+                ? PaymentStatus.SUCCEEDED : PaymentStatus.RECONCILIATION_REQUIRED);
+        assertThat(result.transactionStatus()).isEqualTo(PaymentTransactionStatus.SUCCEEDED);
+        assertThat(fixture.payment().getHoldExpiresAt().equals(storedDeadline)).isTrue();
+        assertThat(fixture.transaction().getProcessingOwner()).isNull();
+        verifyLockOrder(fixture);
+        verify(paymentResultOutboxService).persistIfTerminal(fixture.payment());
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {-1, 1})
+    void aDifferentDeadlineInstantCannotApplyTheProviderResult(long nanos) {
+        OffsetDateTime storedDeadline = NOW.plusMinutes(5);
+        Fixture fixture = fixture(storedDeadline);
+        stubLockedEntities(fixture);
+        ClaimedProviderChargeOperation operation = withDeadline(fixture,
+                storedDeadline.plusNanos(nanos).withOffsetSameInstant(ZoneOffset.ofHours(7)));
+
+        assertThatThrownBy(() -> service.apply(operation,
+                new ProviderChargeResult(ProviderOutcome.SUCCEEDED, "mismatched-result", null, null, null)))
+                .isInstanceOfSatisfying(InternalServerException.class,
+                        error -> assertThat(error.getErrorCode())
+                                .isEqualTo(PaymentErrorCode.PAYMENT_TRANSACTION_DATA_MISMATCH));
+
+        assertThat(fixture.payment().getStatus()).isEqualTo(PaymentStatus.PROCESSING);
+        assertThat(fixture.payment().getHoldExpiresAt().equals(storedDeadline)).isTrue();
+        assertThat(fixture.payment().getCompletedAt()).isNull();
+        assertThat(fixture.transaction().getStatus()).isEqualTo(PaymentTransactionStatus.PROCESSING);
+        assertThat(fixture.transaction().getProcessingOwner()).isEqualTo(PROCESSING_OWNER);
+        assertThat(fixture.transaction().getCompletedAt()).isNull();
+        verify(paymentResultOutboxService, never()).persistIfTerminal(fixture.payment());
+    }
+
+    private static ClaimedProviderChargeOperation withDeadline(
+            Fixture fixture, OffsetDateTime deadline) {
+        ClaimedProviderChargeOperation original = fixture.operation();
+        ProviderChargeCommand command = original.command();
+        return new ClaimedProviderChargeOperation(original.transactionId(), original.processingOwner(),
+                original.provider(), original.idempotencyKey(), new ProviderChargeCommand(
+                        command.paymentId(), command.bookingId(), command.amount(), command.currency(), deadline));
     }
 
     private void stubLockedEntities(Fixture fixture) {

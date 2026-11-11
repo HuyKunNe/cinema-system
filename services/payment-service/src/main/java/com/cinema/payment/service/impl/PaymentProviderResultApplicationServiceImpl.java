@@ -156,7 +156,7 @@ public class PaymentProviderResultApplicationServiceImpl
                         && operation.command().amount().compareTo(transaction.getAmount()) == 0
                         && operation.command().currency().equals(payment.getCurrency())
                         && operation.command().currency().equals(transaction.getCurrency())
-                        && operation.command().holdExpiresAt().equals(payment.getHoldExpiresAt());
+                        && operation.command().holdExpiresAt().isEqual(payment.getHoldExpiresAt());
 
         if (!consistent) {
             throw new InternalServerException(PaymentErrorCode.PAYMENT_TRANSACTION_DATA_MISMATCH);

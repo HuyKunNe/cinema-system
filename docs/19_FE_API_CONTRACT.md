@@ -453,3 +453,89 @@ mvn -o "-Dmaven.repo.local=C:/Users/Administrator/.m2/repository" -pl services/i
 ```
 
 `git diff --check` passed. Compilation is not test execution or runtime evidence.
+
+## P4.2 continuation — reservation deadline instants (2026-11-11)
+
+SeatReservedConsumerServiceImpl previously compared Booking.expiresAt with the
+Inventory seat-reserved holdExpiresAt using OffsetDateTime.equals. That compares
+both the local timestamp and offset, so equivalent UTC/+07:00 representations
+could raise RESERVATION_RESULT_MISMATCH before completing the Booking snapshots.
+
+The consumer now uses isEqual to require the same instant. It does not change
+the stored deadline, extend a hold, round precision or introduce a grace period.
+Any different deadline instant still fails with the existing mismatch exception
+before reading or completing BookingSeat snapshots, saving the Booking or
+creating payment-requested. Existing event registration/transaction rollback,
+duplicate delivery, seat/group/price matching and payment-requested behavior
+remain unchanged. Event/REST schemas, MySQL migration/configuration, OAuth/OIDC,
+FE clients and service permissions are unchanged.
+
+Added unexecuted source regression cases to SeatReservedConsumerServiceImplTest:
+matching instants at +07:00/-05:00 proceed through snapshot/payment Outbox
+creation while preserving the stored deadline; genuinely different instants,
+including +/-1 nanosecond, fail without modifying Booking/snapshots or creating
+a payment request. The existing minute-level mismatch case is retained.
+
+Manual review (not executed here): in a development event flow, compare a
+booking's expiresAt with a seat-reserved deadline expressed at another offset
+but the same instant. Confirm RESERVED, unchanged expiration and the existing
+payment-requested result. A different deadline must fail with the mismatch
+exception, with no persisted snapshot/state/payment Outbox changes. Review
+duplicate delivery separately through the existing processed-event mechanism.
+No tests, applications, event submissions or database commands were run for
+this source change. P0.2 and P4.2 runtime gates remain open.
+
+Booking, reactor dependencies and all test sources compiled successfully with:
+
+```powershell
+mvn -o "-Dmaven.repo.local=C:/Users/Administrator/.m2/repository" -pl services/booking-service -am -DskipTests test-compile
+```
+
+`git diff --check` passed. No tests were executed; compile success does not prove
+runtime Kafka, transaction rollback or MySQL behavior.
+
+## P4.3 continuation — provider-result deadline snapshot (2026-11-11)
+
+PaymentProviderOperationPreparationServiceImpl captures the existing Payment
+deadline in ProviderChargeCommand before calling the provider. On result
+application, PaymentProviderResultApplicationServiceImpl locks Payment then
+PaymentTransaction, checks lease ownership and validates the immutable command
+snapshot against the stored records.
+
+The deadline comparison now requires the same instant with isEqual rather than
+OffsetDateTime.equals, which also compares the offset. A command deadline at
++07:00/-05:00 representing the stored UTC instant no longer raises
+PAYMENT_TRANSACTION_DATA_MISMATCH. IDs, provider, idempotency key, amount,
+currency and lease ownership checks are unchanged. A genuinely different
+deadline instant still fails before any result-state changes or terminal Outbox
+handling; no tolerance, rounding or hold extension is introduced.
+
+Result lateness is still evaluated by the existing Payment entity using the
+stored deadline and result clock. A success at/after hold expiration still uses
+RECONCILIATION_REQUIRED; it is not converted into an on-time success by offset
+normalization. Stale/replaced processing owners remain rejected. API/event
+schemas, terminal event publication rules, return URLs, OAuth/OIDC, MySQL
+configuration/migrations and FE are unchanged. No refund behavior is added.
+
+Added unexecuted parameterized source cases to
+PaymentProviderResultApplicationServiceImplTest for equivalent +07:00/-05:00
+deadlines before/at expiration, and real +/-1 nanosecond mismatches preserving
+payment/transaction status, lease owner and absence of terminal Outbox handling.
+The existing stale-owner and late-success regression sources remain unchanged.
+
+Manual development review (not performed here): compare a claimed command's
+deadline in a different offset with the locked Payment deadline. Verify an
+equivalent instant follows the normal on-time or late-result path, preserving
+the stored deadline. A different instant must fail with the existing mismatch
+error without applying the provider result. Runtime provider/Kafka, transaction
+rollback and MySQL concurrency verification remain pending. No tests,
+applications, provider calls, endpoint calls or database commands were executed.
+
+Payment, reactor dependencies and all test sources compiled successfully with:
+
+```powershell
+mvn -o "-Dmaven.repo.local=C:/Users/Administrator/.m2/repository" -pl services/payment-service -am -DskipTests test-compile
+```
+
+`git diff --check` passed. Tests were not executed; compilation does not close
+the P0.2/P4.3 runtime verification gates.

@@ -295,11 +295,29 @@ P0.2/P4.1 vẫn mở. Chi tiết tại [FE API contract](19_FE_API_CONTRACT.md).
 
 ### P4.2 — Chốt luồng tạo booking
 
+**Tiếp tục ngày 2026-11-11:** SeatReservedConsumerServiceImpl dùng equals trên
+OffsetDateTime khi so deadline, có thể từ chối seat-reserved cùng instant nhưng
+khác offset với expiresAt đã lưu. Đổi sang isEqual, không gia hạn/ghi lại deadline
+hay làm tròn sai lệch. Deadline khác instant vẫn trả lỗi mismatch trước hoàn tất
+snapshot hoặc tạo payment-requested. Bổ sung source regression cho offset tương
+đương và sai lệch nhỏ; không chạy test. Giữ nguyên schema/event/API và MySQL,
+không sửa FE; P0.2/P4.2 còn chờ runtime. Chi tiết tại
+[FE API contract](19_FE_API_CONTRACT.md).
+
 - Xác minh request, idempotency, giá/ghế được snapshot và lỗi conflict.
 - Không nhận giá do FE tự tính làm nguồn sự thật.
 - Ghi rõ trạng thái khi booking chờ thanh toán hoặc bị hết hạn.
 
 ### P4.3 — Chốt luồng thanh toán
+
+**Tiếp tục ngày 2026-11-11:** đổi so khớp deadline trong snapshot provider charge
+của PaymentProviderResultApplicationServiceImpl từ equals sang isEqual. Cùng
+instant nhưng khác offset không còn bị coi là PAYMENT_TRANSACTION_DATA_MISMATCH;
+deadline thực khác vẫn bị chặn trước áp dụng result/Outbox. Không đổi lease owner,
+lock order hoặc quy tắc success đến muộn thành RECONCILIATION_REQUIRED. Bổ sung
+source regression cho offset, ranh giới hết hạn và mismatch; không chạy test.
+Không đổi API/event, FE, MySQL hay mở refund. P0.2/P4.3 còn chờ runtime; chi tiết
+tại [FE API contract](19_FE_API_CONTRACT.md).
 
 - Xác minh khởi tạo thanh toán, return URL, terminal result, retry và correlation ID.
 - Giữ saga/event flow đã có; chỉ bổ sung API nếu phát hiện gap thực tế.
