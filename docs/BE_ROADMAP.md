@@ -37,7 +37,13 @@ Roadmap này không thay thế `docs/10_ROADMAP.md`. P0.1 đã đồng bộ tr�
 
 ### P0.2 — Đóng hardening Inventory hiện hành
 
-**Trạng thái:** IN PROGRESS / VERIFY — đã bổ sung test MySQL cho hai thứ tự cạnh tranh confirmation–lifecycle và hold đổi chủ sau bước lấy ID, test repository cho truy vấn ID/khóa, và retry cùng event sau rollback. Chưa biên dịch/chạy test, build hoặc kiểm tra tự động theo yêu cầu chủ dự án; chưa đóng P0.2. Code nghiệp vụ, API và migration giữ nguyên.
+**Trạng thái:** IN PROGRESS / VERIFY — đã bổ sung test MySQL cho hai thứ tự cạnh tranh confirmation–lifecycle và hold đổi chủ sau bước lấy ID, test repository cho truy vấn ID/khóa, và retry cùng event sau rollback. Source test đã biên dịch với `-DskipTests test-compile`; test chưa chạy, chưa có bằng chứng concurrency/rollback runtime, và chưa đóng P0.2. Code nghiệp vụ, API và migration giữ nguyên.
+
+**Tiếp tục ngày 2026-11-11:** biên dịch reactor đến `inventory-service` bằng
+`-DskipTests test-compile`; BUILD SUCCESS, bao gồm nguồn kiểm thử Inventory.
+Test không được thực thi, không có kết nối hoặc ghi DB. Lượt này chỉ gỡ rủi ro
+compile trước khi chạy các cổng concurrency/rollback được nêu trong
+`docs/10_ROADMAP.md`; P0.2 vẫn VERIFY, không kết luận hành vi MySQL từ compile.
 
 - Đọc phạm vi cụ thể của lifecycle-release lock hardening từ code và tài liệu hiện tại.
 - Hoàn tất các invariant cạnh tranh và rollback còn thiếu.
@@ -47,6 +53,25 @@ Roadmap này không thay thế `docs/10_ROADMAP.md`. P0.1 đã đồng bộ tr�
 **Phụ thuộc:** xác nhận phạm vi hiện tại trong README và code; không tự mở rộng sang R28.
 
 ### P0.3 — Chốt contract dùng chung cho FE
+
+**Đối chiếu runtime ngày 2026-11-11 từ `15fd453`:** đọc /v3/api-docs của năm
+service (Movie/User/Inventory/Booking/Payment), từng spec không có operationId
+thiếu/trùng. Inventory đã phát enum RETIRED nhưng batch vẫn khai báo minItems=0
+trái quy tắc tối thiểu một suất. Sửa @Size của DTO có sẵn thành min=1,
+max=MAX_SHOWTIMES, giữ validation/service guard và không thêm annotation Swagger.
+Compile thành công; process chưa reload, GET spec sau compile vẫn minItems=0.
+Không đóng xác minh runtime của thay đổi này. Actuator info không có build/git
+nên chưa chứng minh các process khớp commit checkout. GET public cinemas trả
+200; GET management showtimes và customer bookings thiếu auth trả 401. Chưa gửi
+API ghi dù đã được cho phép vì chưa có phiên xác thực dùng được và helper UI
+không kết nối. Không đọc/yêu cầu secret hoặc sửa FE. Bằng chứng và giới hạn tại
+[Runtime contract review](26_RUNTIME_CONTRACT_REVIEW.md); P0.2/P0.3 còn mở.
+
+**Tiếp tục contract batch:** bổ sung `POST /api/v1/showtimes/batch` vào bảng
+route dùng chung FE với response `201` dạng mảng có thứ tự, giới hạn 1–50 và
+permission `showtime:manage`; liên kết tới contract atomic/idempotent chi tiết
+tại `docs/24_SAME_DAY_SHOWTIME_BATCH.md`. Chỉ đồng bộ tài liệu cho API đang có;
+không đổi controller, OpenAPI annotation, DTO, quyền hoặc migration.
 
 **Điều chỉnh ngày 2026-11-10 theo yêu cầu chủ dự án:** bỏ annotation Swagger/OpenAPI
 trong controller; không bổ sung lại `@Operation`, `@ApiResponse` hoặc metadata tương
@@ -326,6 +351,16 @@ tại [FE API contract](19_FE_API_CONTRACT.md).
 ## P5 — Account và API vận hành còn thiếu
 
 ### P5.1 — Đối chiếu Customer account
+
+**Tiếp tục ngày 2026-11-11:** triển khai backend đăng ký tài khoản qua email và
+Google OIDC trong User Service. Registration chỉ lưu pending intent và gửi link;
+mật khẩu được chọn lúc xác nhận token, tránh người gửi yêu cầu chiếm trước email.
+Google yêu cầu email verified, lưu identity theo issuer/subject và ánh xạ sang
+`CinemaUserDetails` trước khi tiếp tục Authorization Code + PKCE. Flyway V3 thêm
+bảng intent và external identity; Gateway route/security mở đúng hai POST công
+khai. Source compile thành công, không chạy test hoặc migrate DB. FE form/verify,
+Google credentials/SMTP và kiểm chứng runtime còn mở. Chi tiết tại
+[User registration and Google login](27_USER_REGISTRATION_GOOGLE_LOGIN.md).
 
 **Tiếp tục ngày 2026-11-11:** lịch sử khách hàng tại GET /api/v1/bookings trước
 đây chỉ sort createdAt DESC. Thêm id DESC làm thứ tự phụ duy nhất, đồng bộ với

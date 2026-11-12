@@ -576,9 +576,11 @@ signing, JWT customization, authorization and consent persistence, refresh-token
 rotation and reuse detection, revocation, logout, account lifecycle APIs, and
 security auditing.
 
-Public self-registration, email delivery, password-reset recovery, production
-MFA, production secret-manager selection, and automated signing-key rotation
-remain outside the completed baseline unless assigned by a later roadmap round.
+The initial public registration and Google OIDC backend integration is now
+implemented in the User Service; the FE verification/registration UX and runtime
+provider/SMTP verification remain open. Password-reset recovery, production MFA,
+production secret-manager selection, and automated signing-key rotation remain
+outside the completed baseline unless assigned by a later roadmap round.
 
 ---
 

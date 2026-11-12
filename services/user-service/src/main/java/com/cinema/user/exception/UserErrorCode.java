@@ -269,9 +269,13 @@ public final class UserErrorCode implements ErrorCode {
 
     public static final UserErrorCode USER_PROFILE_NOT_FOUND =
             new UserErrorCode(
-                    ErrorCategory.RESOURCE,
-                    "USER_PROFILE_NOT_FOUND",
-                    "User profile not found");
+                    ErrorCategory.RESOURCE, "USER_PROFILE_NOT_FOUND", "User profile not found");
+
+    public static final UserErrorCode REGISTRATION_EMAIL_DELIVERY_UNAVAILABLE =
+            new UserErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "USER_REGISTRATION_EMAIL_DELIVERY_UNAVAILABLE",
+                    "Account registration email could not be delivered");
 
     final ErrorCategory category;
     private final String code;

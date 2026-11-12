@@ -468,12 +468,17 @@ Completed R25 baseline includes:
   revocation;
 - token revocation and OIDC RP-Initiated Logout;
 - current-user profile, password, account lifecycle, and administrative APIs;
+- password registration that creates a user only after single-use email-token
+  confirmation, and optional Google OIDC sign-in with issuer/subject identity
+  persistence (V3);
 - durable revocation and general security auditing;
 - concurrency, security protocol, Resource Server integration, Flyway, and MySQL
   verification.
 
-Public self-registration, email delivery, password-reset recovery, and
-production MFA remain separate future scope unless assigned by the roadmap.
+The backend registration and Google OIDC slice is described in
+[`27_USER_REGISTRATION_GOOGLE_LOGIN.md`](27_USER_REGISTRATION_GOOGLE_LOGIN.md).
+The FE registration/verification screen, password-reset recovery, and production
+MFA remain separate work.
 
 ---
 

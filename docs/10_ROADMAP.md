@@ -1306,7 +1306,9 @@ to avoid N+1 authority resolution.
 - password-hash upgrade support;
 - unit and MySQL integration tests.
 
-Status: DONE. Public registration remains a later API checkpoint.
+Status: DONE for password authentication. Public registration has since been
+implemented as an email-first verification flow; see R25.7 continuation and
+`docs/27_USER_REGISTRATION_GOOGLE_LOGIN.md`.
 
 #### ✅ R25.7 — account lifecycle and email verification
 
@@ -1318,9 +1320,11 @@ Status: DONE. Public registration remains a later API checkpoint.
 - generic invalid-token responses that do not reveal token state;
 - unit, repository, Flyway and MySQL integration tests.
 
-Status: DONE. Email delivery remains Notification Service scope. Public registration,
-password recovery and password-reset session revocation remain planned. Concurrent
-first issuance requires later user-row locking or an equivalent database invariant.
+Status: DONE for the email-verification token lifecycle. SMTP delivery is now
+used by the User Service registration flow; it does not depend on the deferred
+Notification Service. Password recovery and password-reset session revocation
+remain planned. Concurrent first issuance requires later user-row locking or an
+equivalent database invariant.
 
 #### ✅ R25.8 — Spring Authorization Server foundation
 

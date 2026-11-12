@@ -90,6 +90,7 @@ has no JSON body. Do not access `.data` uniformly on every successful endpoint.
 | `POST /api/v1/movies/{movieId}/screening-versions` | `201`, raw version; duplicate full identity is `409`, not an idempotent success | Service: `movie:manage`; retained existing API, not an extra step after movie creation |
 | `PUT /api/v1/movies/{movieId}/screening-versions/{versionId}/active` | `200`, raw version; requires `active` and `expectedVersion` | Service: `movie:manage` |
 | `POST /api/v1/showtimes` | `201`, raw `ShowtimeResponse` | Service: `showtime:manage`; authenticated write at Gateway |
+| `POST /api/v1/showtimes/batch` | `201`, raw ordered `ShowtimeResponse[]`; accepts 1–50 complete showtime requests and one `clientRequestId` | Service: `showtime:manage`; authenticated write at Gateway |
 | `GET /api/v1/showtimes/bookable` | `200`, raw array; `cinemaId`, `from`, `to`, optional `movieId` | Public GET |
 | `GET /api/v1/showtimes/{showtimeId}/seat-map` | `200`, raw `ShowtimeSeatMapResponse`; read does not reserve seats | Public GET |
 | `GET /api/v1/showtimes/{showtimeId}/seat-quote` | `200`, raw `ShowtimeSeatQuoteResponse`; repeated `seatNumbers` query parameters | Public GET; default-group quote |
@@ -97,6 +98,8 @@ has no JSON body. Do not access `.data` uniformly on every successful endpoint.
 | `POST /api/v1/bookings` | `202`, `ApiResponse<BookingResponse>`, `Location` points to the booking | Authenticated; owner derived from `CurrentUser.id()` |
 | `GET /api/v1/bookings`, `GET /api/v1/bookings/{bookingId}` | `200`, wrapped page or booking | Authenticated; service enforces ownership |
 | `POST /api/v1/bookings/{bookingId}/cancel` | `200`, wrapped booking | Authenticated owner; valid lifecycle state required |
+| `POST /api/v1/auth/registrations` | `202`, generic response; email verification intent only, no password accepted | Public; per-address resend cooldown |
+| `POST /api/v1/auth/email-verifications/confirm` | `204`; consumes email token and chosen password, creates verified `USER` account | Public; requires token possession |
 | `GET /api/v1/bookings/management/**` | Admin read operations from `BookingManagementController` | ADMIN role at service and Gateway |
 | `GET /api/v1/payments/management/by-booking/{bookingId}` | `200`, wrapped page of payment attempts | Service: ADMIN **and** `payment:read`; Gateway: ADMIN |
 | `GET /api/v1/payments/management/{paymentId}` | `200`, wrapped payment | Same as payment list |
@@ -107,6 +110,16 @@ Gateway access or introduce new permissions. Customers create bookings through
 Booking; direct ShowSeat hold/book/release APIs require `inventory:write`.
 Refund and reconciliation administration HTTP APIs were removed and explicitly
 denied in `ae85063`; their historical R27 descriptions do not authorize FE use.
+
+Registration and Google OIDC setup, payloads and remaining FE verification UI
+are documented in
+[`27_USER_REGISTRATION_GOOGLE_LOGIN.md`](27_USER_REGISTRATION_GOOGLE_LOGIN.md).
+
+For same-day multi-slot creation, use the existing atomic batch route instead
+of issuing sequential single-showtime POSTs. Reuse `clientRequestId` only for an
+identical ordered payload; the same ID with a changed payload returns 409. The
+complete request, transaction, overlap, rollback and retry contract is in
+[`24_SAME_DAY_SHOWTIME_BATCH.md`](24_SAME_DAY_SHOWTIME_BATCH.md).
 
 ## Operation IDs
 

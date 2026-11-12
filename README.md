@@ -623,6 +623,8 @@ resolve durable architectural decisions.
 ## Current maintenance
 
 - Inventory lifecycle-release lock hardening (P0.2); verification remains open
+- User Service email-first registration and optional Google OIDC backend slice;
+  FE flow and runtime/configuration verification remain open
 - Pending coverage and verification gates are listed in `docs/10_ROADMAP.md`
 
 ## Deferred

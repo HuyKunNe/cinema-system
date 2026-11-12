@@ -50,6 +50,57 @@ Current status:
 
 ## 2026-11-11
 
+### P5.1 — Start password registration and Google OIDC login
+
+- Added User Service registration intent and email-token confirmation endpoints.
+  The account and password are created only after the email owner submits the
+  token and chooses a password; responses avoid disclosing whether an email is
+  already registered. SMTP and token resend cooldown are environment-configured.
+- Added optional Google OIDC login, verified-email policy, issuer/subject mapping,
+  safe same-email linking for verified ACTIVE local accounts, and conversion to
+  the existing local principal before Authorization Code + PKCE resumes.
+- Added MySQL Flyway V3 tables and Gateway routing/anonymous POST permission.
+  Migration not run; FE remains read-only and needs registration/verification UI.
+- Added hourly cleanup of expired pending registration intents and per-address
+  resend cooldown; raw email tokens are not stored in MySQL.
+- `mvn -o "-Dmaven.repo.local=C:/Users/Administrator/.m2/repository" -pl services/user-service -am -DskipTests compile` succeeded. No tests, runtime OAuth/SMTP, API writes or SQL were run.
+- See `27_USER_REGISTRATION_GOOGLE_LOGIN.md` for requests, configuration,
+  deployment order and remaining runtime work.
+
+### P0.3 — Ghi nhận batch showtime trong contract FE chung
+
+- Bổ sung `POST /api/v1/showtimes/batch` vào bảng API Inventory: `201`, mảng
+  response theo thứ tự request, 1–50 mục và permission `showtime:manage`.
+- Liên kết retry/idempotency, atomic transaction, rollback và lỗi theo index tới
+  `24_SAME_DAY_SHOWTIME_BATCH.md`. Không thêm API, đổi quyền, DTO, OpenAPI hoặc
+  migration; không sửa FE.
+- Chỉ rà soát source/tài liệu; không chạy test, gọi API mutation hay ghi DB.
+
+### P0.2 — Compile Inventory regression sources
+
+- Ran Maven reactor `test-compile` through `inventory-service` with
+  `-DskipTests`; all 17 modules completed successfully, including Inventory test
+  source compilation. The initial sandbox attempt could not read a cached
+  dependency; rerun with approved cache access succeeded.
+- No tests executed, services restarted, API mutations sent, SQL/database
+  commands run, or data written. P0.2 MySQL concurrency, rollback and runtime
+  gates remain open.
+
+### P0.3 — Runtime spec review and nonempty showtime batch bounds
+
+- Read the five local service OpenAPI documents: no missing/duplicate operationId
+  within each spec. Observed Inventory RETIRED enums and existing management and
+  batch operations. Runtime build/git provenance remains unavailable.
+- Corrected existing CreateShowtimeBatchRequest @Size metadata to min=1 and
+  max=MAX_SHOWTIMES, matching @NotEmpty and the service's existing nonempty rule.
+  No endpoint, DTO shape, Swagger annotation, migration or FE changes.
+- Inventory and reactor sources compiled with `-DskipTests compile`;
+  `git diff --check` passed. Running Inventory still advertised minItems=0 after
+  compilation; reload and runtime re-verification remain pending.
+- Gateway public cinema GET returned 200; anonymous management/history reads
+  returned 401. No authenticated writes, tests, SQL/database commands or service
+  restarts. See 26_RUNTIME_CONTRACT_REVIEW.md for evidence and access limits.
+
 ### P5.1 — Deterministic customer booking history ordering
 
 - Customer booking history now sorts by createdAt DESC, id DESC, matching the

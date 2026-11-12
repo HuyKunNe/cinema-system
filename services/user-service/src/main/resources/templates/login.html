@@ -3,8 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
     <title>Đăng nhập | CINEMATIC</title>
-    <link rel="stylesheet" th:href="@{/css/cinema-login.css}" />
+    <link rel="stylesheet" th:href="@{/css/cinema-login.css(v=2)}" />
   </head>
 
   <body>
@@ -17,11 +18,24 @@
       </a>
     </header>
 
-    <main id="main-content" class="login-page" tabindex="-1">
-      <section class="login-card" aria-labelledby="login-title">
-        <p class="login-card__eyebrow">Tài khoản Cinematic</p>
-        <h1 id="login-title" class="login-card__title">Chào mừng trở lại</h1>
-        <p class="login-card__description">
+    <main id="main-content" class="auth-layout" tabindex="-1">
+      <aside class="auth-story" aria-label="Lumière Club">
+        <p class="auth-story__eyebrow">LUMIÈRE CLUB</p>
+        <div class="auth-story__copy">
+          <h1>Phim hay hơn<br />khi có <em>bạn.</em></h1>
+          <p>
+            Lưu vé thật tiện. Tích điểm mỗi cuộc hẹn.<br />
+            Và thêm nhiều niềm vui chờ phía trước.
+          </p>
+        </div>
+        <div class="auth-story__orbit" aria-hidden="true"><span>✦</span></div>
+        <p class="auth-story__tagline">YOUR NEXT MOVIE MOMENT.</p>
+      </aside>
+
+      <section class="auth-form-wrap" aria-labelledby="login-title">
+        <p class="auth-form-wrap__eyebrow">THÀNH VIÊN LUMIÈRE</p>
+        <h2 id="login-title">Chào bạn trở lại</h2>
+        <p class="auth-form-wrap__description">
           Đăng nhập để quản lý vé và tiếp tục đặt chỗ.
         </p>
 
@@ -31,6 +45,10 @@
 
         <div th:if="${param.logout}" class="alert alert--success" role="status">
           Bạn đã đăng xuất thành công.
+        </div>
+
+        <div th:if="${param.oauth2Error}" class="alert alert--error" role="alert">
+          Không thể xác thực tài khoản Google. Hãy kiểm tra tài khoản hoặc thử lại.
         </div>
 
         <form
@@ -81,9 +99,26 @@
           </button>
         </form>
 
+        <div th:if="${googleLoginEnabled}" class="auth-divider" aria-hidden="true">
+          <span>hoặc tiếp tục với</span>
+        </div>
+
+        <a
+          th:if="${googleLoginEnabled}"
+          class="google-button"
+          th:href="@{/oauth2/authorization/google}"
+        >
+          <span class="google-button__mark" aria-hidden="true">G</span>
+          <span>Đăng nhập với Google</span>
+        </a>
+
+        <p class="auth-register-link">
+          Chưa có tài khoản?
+          <a th:href="${registrationPageUrl}">Đăng ký</a>
+        </p>
+
         <p class="security-note">
-          Thông tin đăng nhập được xử lý trực tiếp bởi hệ thống định danh
-          Cinematic.
+          Thông tin đăng nhập được xử lý trực tiếp bởi hệ thống định danh Cinematic.
         </p>
       </section>
     </main>
@@ -95,7 +130,7 @@
       const passwordToggle = document.querySelector("#password-toggle");
       const loginForm = document.querySelector("#login-form");
       const submitButton = document.querySelector("#login-submit");
-      const submitLabel = submitButton.querySelector(".submit-button__label");
+      const submitLabel = document.querySelector(".submit-button__label");
 
       passwordToggle.addEventListener("click", () => {
         const showPassword = passwordInput.type === "password";

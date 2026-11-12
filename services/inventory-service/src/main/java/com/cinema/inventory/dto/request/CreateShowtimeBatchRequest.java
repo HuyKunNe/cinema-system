@@ -13,17 +13,14 @@ import java.util.List;
 import java.util.UUID;
 
 public record CreateShowtimeBatchRequest(
-        @NotNull
-                UUID clientRequestId,
-        @NotEmpty
-                @Size(max = 50)
+        @NotNull UUID clientRequestId,
+        @NotEmpty @Size(min = 1, max = MAX_SHOWTIMES)
                 List<@NotNull @Valid CreateShowtimeRequest> showtimes) {
 
     public static final int MAX_SHOWTIMES = 50;
 
     @JsonAnySetter
     public void rejectUnknownProperty(String property, Object value) {
-        throw new ValidationException(
-                InventoryErrorCode.INVALID_SHOWTIME_BATCH);
+        throw new ValidationException(InventoryErrorCode.INVALID_SHOWTIME_BATCH);
     }
 }

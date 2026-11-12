@@ -1,6 +1,7 @@
 package com.cinema.user.config;
 
 import com.cinema.user.oauth2.OidcLogoutRevocationSuccessHandler;
+import com.cinema.user.security.GoogleLoginSuccessHandler;
 import com.cinema.user.security.audit.impl.SecurityAuditAuthenticationFailureHandler;
 import com.cinema.user.security.audit.impl.SecurityAuditAuthenticationSuccessHandler;
 
@@ -53,39 +54,28 @@ public class AuthorizationServerSecurityConfiguration {
                         authorizationServerConfigurer,
                         authorizationServer ->
                                 authorizationServer
-                                        .oidc(
-                                                oidc ->
-                                                        oidc.logoutEndpoint(
-                                                                logout ->
-                                                                        logout
-                                                                                .logoutResponseHandler(
-                                                                                        logoutSuccessHandler)))
-                                        .authorizationServerMetadataEndpoint(
-                                                metadata ->
-                                                        metadata
-                                                                .authorizationServerMetadataCustomizer(
-                                                                        builder ->
-                                                                                builder.grantTypes(
-                                                                                        grantTypes -> {
-                                                                                            grantTypes
-                                                                                                    .clear();
-                                                                                            grantTypes
-                                                                                                    .addAll(
-                                                                                                            APPROVED_GRANT_TYPES);
-                                                                                        }))))
-                .authorizeHttpRequests(
-                        authorize ->
-                                authorize
-                                        .requestMatchers(
-                                                authorizationServerSettings
-                                                        .getAuthorizationEndpoint())
-                                        .authenticated()
-                                        .anyRequest()
-                                        .permitAll())
-                .exceptionHandling(
-                        exceptions ->
-                                exceptions.authenticationEntryPoint(
-                                        new LoginUrlAuthenticationEntryPoint("/login")));
+                                        .oidc(oidc ->
+                                                oidc.logoutEndpoint(logout ->
+                                                        logout.logoutResponseHandler(
+                                                                logoutSuccessHandler)))
+                                        .authorizationServerMetadataEndpoint(metadata ->
+                                                metadata.authorizationServerMetadataCustomizer(
+                                                        builder ->
+                                                                builder.grantTypes(grantTypes -> {
+                                                                    grantTypes.clear();
+                                                                    grantTypes.addAll(
+                                                                            APPROVED_GRANT_TYPES);
+                                                                }))))
+                .authorizeHttpRequests(authorize ->
+                        authorize
+                                .requestMatchers(
+                                        authorizationServerSettings.getAuthorizationEndpoint())
+                                .authenticated()
+                                .anyRequest()
+                                .permitAll())
+                .exceptionHandling(exceptions ->
+                        exceptions.authenticationEntryPoint(
+                                new LoginUrlAuthenticationEntryPoint("/login")));
 
         return http.build();
     }
@@ -97,48 +87,63 @@ public class AuthorizationServerSecurityConfiguration {
             AuthenticationProvider userAuthenticationProvider,
             SessionRegistry sessionRegistry,
             SecurityAuditAuthenticationSuccessHandler authenticationSuccessHandler,
-            SecurityAuditAuthenticationFailureHandler authenticationFailureHandler)
+            SecurityAuditAuthenticationFailureHandler authenticationFailureHandler,
+            GoogleLoginProperties googleLoginProperties,
+            GoogleLoginSuccessHandler googleLoginSuccessHandler)
             throws Exception {
 
         HttpSessionRequestCache requestCache = new HttpSessionRequestCache();
 
         http.cors(cors -> {})
+                .csrf(csrf ->
+                        csrf.ignoringRequestMatchers(
+                                "/api/v1/auth/registrations",
+                                "/api/v1/auth/email-verifications/confirm"))
                 .authenticationProvider(userAuthenticationProvider)
-                .authorizeHttpRequests(
-                        authorize ->
-                                authorize
-                                        .requestMatchers("/login", "/css/**", "/favicon.ico")
-                                        .permitAll()
-                                        .requestMatchers(SWAGGER_ENDPOINTS)
-                                        .permitAll()
-                                        .requestMatchers(
-                                                HttpMethod.PATCH,
-                                                "/api/v1/users/*/lock",
-                                                "/api/v1/users/*/unlock",
-                                                "/api/v1/users/*/disable",
-                                                "/api/v1/users/*/enable")
-                                        .hasAuthority("user:manage")
-                                        .requestMatchers(
-                                                "/actuator/health",
-                                                "/actuator/info",
-                                                "/error",
-                                                "/.well-known/appspecific/**")
-                                        .permitAll()
-                                        .anyRequest()
-                                        .authenticated())
+                .authorizeHttpRequests(authorize ->
+                        authorize
+                                .requestMatchers("/login", "/css/**", "/favicon.ico")
+                                .permitAll()
+                                .requestMatchers(
+                                        HttpMethod.POST,
+                                        "/api/v1/auth/registrations",
+                                        "/api/v1/auth/email-verifications/confirm")
+                                .permitAll()
+                                .requestMatchers(SWAGGER_ENDPOINTS)
+                                .permitAll()
+                                .requestMatchers(
+                                        HttpMethod.PATCH,
+                                        "/api/v1/users/*/lock",
+                                        "/api/v1/users/*/unlock",
+                                        "/api/v1/users/*/disable",
+                                        "/api/v1/users/*/enable")
+                                .hasAuthority("user:manage")
+                                .requestMatchers(
+                                        "/actuator/health",
+                                        "/actuator/info",
+                                        "/error",
+                                        "/.well-known/appspecific/**")
+                                .permitAll()
+                                .anyRequest()
+                                .authenticated())
                 .requestCache(cache -> cache.requestCache(requestCache))
-                .sessionManagement(
-                        session ->
-                                session.sessionFixation(fixation -> fixation.migrateSession())
-                                        .maximumSessions(-1)
-                                        .sessionRegistry(sessionRegistry))
-                .formLogin(
-                        form ->
-                                form.loginPage("/login")
-                                        .loginProcessingUrl("/login")
-                                        .successHandler(authenticationSuccessHandler)
-                                        .failureHandler(authenticationFailureHandler)
-                                        .permitAll());
+                .sessionManagement(session ->
+                        session.sessionFixation(fixation -> fixation.migrateSession())
+                                .maximumSessions(-1)
+                                .sessionRegistry(sessionRegistry))
+                .formLogin(form ->
+                        form.loginPage("/login")
+                                .loginProcessingUrl("/login")
+                                .successHandler(authenticationSuccessHandler)
+                                .failureHandler(authenticationFailureHandler)
+                                .permitAll());
+
+        if (googleLoginProperties.enabled()) {
+            http.oauth2Login(oauth2 ->
+                    oauth2.loginPage("/login")
+                            .successHandler(googleLoginSuccessHandler)
+                            .failureUrl("/login?oauth2Error"));
+        }
 
         return http.build();
     }

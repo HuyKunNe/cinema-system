@@ -29,6 +29,18 @@ spring:
     locations: classpath:db/migration
     validate-on-migrate: true
 
+  mail:
+    host: ${USER_MAIL_HOST:}
+    port: ${USER_MAIL_PORT:587}
+    username: ${USER_MAIL_USERNAME:}
+    password: ${USER_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${USER_MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${USER_MAIL_SMTP_STARTTLS:true}
+
 springdoc:
   api-docs:
     enabled: true
@@ -66,6 +78,22 @@ logging:
 
 cinema:
   user:
+    google:
+      enabled: ${USER_GOOGLE_LOGIN_ENABLED:false}
+      client-id: ${USER_GOOGLE_CLIENT_ID:}
+      client-secret: ${USER_GOOGLE_CLIENT_SECRET:}
+      scope:
+              - openid
+              - profile
+              - email
+      redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8082/login/oauth2/code/google}
+
+    registration:
+      email-from: ${USER_REGISTRATION_EMAIL_FROM:noreply@cinematic.local}
+      verification-url: ${USER_REGISTRATION_VERIFICATION_URL:http://localhost:5173/verify-email}
+      page-url: ${USER_REGISTRATION_PAGE_URL:http://localhost:5173/register}
+      resend-cooldown: ${USER_REGISTRATION_RESEND_COOLDOWN:1m}
+
     email-verification:
       lifetime: ${USER_EMAIL_VERIFICATION_LIFETIME:24h}
 
