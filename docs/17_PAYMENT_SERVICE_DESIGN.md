@@ -1027,6 +1027,11 @@ format and must not be wrapped when that would violate the provider contract.
 
 Payment Service uses `common-outbox` without a service-specific fork.
 
+Runtime wiring imports the shared `OutboxConfiguration` and sets
+`cinema.outbox.producer=payment-service`; `PAYMENT_OUTBOX_ENABLED` controls the
+publisher scheduler and defaults to `true`. Terminal Payment events are saved
+in the local Outbox transaction, then published asynchronously to Kafka.
+
 Required guarantees:
 
 - Payment state and result Outbox event commit atomically;
@@ -1059,6 +1064,7 @@ CINEMA_AUTH_ISSUER
 CINEMA_AUTH_JWK_SET_URI
 CINEMA_AUTH_AUDIENCE
 PAYMENT_KAFKA_ENABLED
+PAYMENT_OUTBOX_ENABLED
 PAYMENT_REQUESTED_TOPIC
 PAYMENT_REQUESTED_CONSUMER_GROUP
 PAYMENT_PROVIDER

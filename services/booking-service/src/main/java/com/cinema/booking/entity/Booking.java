@@ -1,5 +1,6 @@
 package com.cinema.booking.entity;
 
+import com.cinema.booking.enums.BookingPaymentProvider;
 import com.cinema.booking.enums.BookingStatus;
 import com.cinema.booking.exception.BookingErrorCode;
 import com.cinema.common.exception.exception.ConflictException;
@@ -56,6 +57,10 @@ public class Booking extends BaseEntity {
     private String requestFingerprint;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "payment_provider", length = 20)
+    private BookingPaymentProvider paymentProvider;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 50)
     private BookingStatus status = BookingStatus.PENDING;
 
@@ -87,6 +92,18 @@ public class Booking extends BaseEntity {
             OffsetDateTime expiresAt,
             OffsetDateTime now) {
 
+        this(userId, showtimeId, clientRequestId, requestFingerprint, null, expiresAt, now);
+    }
+
+    public Booking(
+            UUID userId,
+            UUID showtimeId,
+            String clientRequestId,
+            String requestFingerprint,
+            BookingPaymentProvider paymentProvider,
+            OffsetDateTime expiresAt,
+            OffsetDateTime now) {
+
         validateUserId(userId);
         validateShowtimeId(showtimeId);
         validateClientRequestId(clientRequestId);
@@ -97,6 +114,7 @@ public class Booking extends BaseEntity {
         this.showtimeId = showtimeId;
         this.clientRequestId = clientRequestId.trim();
         this.requestFingerprint = requestFingerprint;
+        this.paymentProvider = paymentProvider;
         this.status = BookingStatus.PENDING;
         this.expiresAt = expiresAt;
     }
@@ -115,6 +133,10 @@ public class Booking extends BaseEntity {
 
     public String getRequestFingerprint() {
         return requestFingerprint;
+    }
+
+    public BookingPaymentProvider getPaymentProvider() {
+        return paymentProvider;
     }
 
     public BookingStatus getStatus() {

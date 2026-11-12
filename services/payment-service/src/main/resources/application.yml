@@ -102,3 +102,6 @@ cinema:
         maximum-retries: ${PAYMENT_KAFKA_MAXIMUM_RETRIES:3}
     webhook:
       maximum-body-size: ${PAYMENT_PROVIDER_WEBHOOK_MAXIMUM_BODY_SIZE:64KB}
+  outbox:
+    enabled: ${PAYMENT_OUTBOX_ENABLED:true}
+    producer: payment-service

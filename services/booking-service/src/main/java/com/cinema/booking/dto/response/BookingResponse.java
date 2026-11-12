@@ -1,5 +1,6 @@
 package com.cinema.booking.dto.response;
 
+import com.cinema.booking.enums.BookingPaymentProvider;
 import com.cinema.booking.enums.BookingStatus;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -14,6 +15,7 @@ public record BookingResponse(
         UUID userId,
         UUID showtimeId,
         String clientRequestId,
+        BookingPaymentProvider paymentProvider,
         BookingStatus status,
         BigDecimal totalAmount,
         String currency,
@@ -25,6 +27,42 @@ public record BookingResponse(
         Long version,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt) {
+
+    /** Maintains source compatibility for callers created before provider selection was exposed. */
+    public BookingResponse(
+            UUID id,
+            UUID userId,
+            UUID showtimeId,
+            String clientRequestId,
+            BookingStatus status,
+            BigDecimal totalAmount,
+            String currency,
+            OffsetDateTime expiresAt,
+            OffsetDateTime confirmedAt,
+            OffsetDateTime cancelledAt,
+            String rejectionReason,
+            List<BookingSeatResponse> seats,
+            Long version,
+            OffsetDateTime createdAt,
+            OffsetDateTime updatedAt) {
+        this(
+                id,
+                userId,
+                showtimeId,
+                clientRequestId,
+                null,
+                status,
+                totalAmount,
+                currency,
+                expiresAt,
+                confirmedAt,
+                cancelledAt,
+                rejectionReason,
+                seats,
+                version,
+                createdAt,
+                updatedAt);
+    }
 
     @JsonProperty("seatCount")
     @JsonInclude(JsonInclude.Include.ALWAYS)

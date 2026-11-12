@@ -5,6 +5,7 @@ import com.cinema.booking.dto.request.BookingSeatSelectionRequest;
 import com.cinema.booking.dto.response.BookingResponse;
 import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
+import com.cinema.booking.enums.BookingPaymentProvider;
 import com.cinema.booking.event.SeatReservationRequestedOutboxFactory;
 import com.cinema.booking.mapper.BookingMapper;
 import com.cinema.booking.repository.BookingRepository;
@@ -67,22 +68,47 @@ public class BookingCreationServiceImpl implements BookingCreationService {
             List<String> normalizedSeatNumbers,
             BigDecimal expectedTotalAmount) {
 
+        return createNew(
+                userId,
+                showtimeId,
+                clientRequestId,
+                requestFingerprint,
+                normalizedSeatNumbers,
+                expectedTotalAmount,
+                null);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse createNew(
+            UUID userId,
+            UUID showtimeId,
+            String clientRequestId,
+            String requestFingerprint,
+            List<String> normalizedSeatNumbers,
+            BigDecimal expectedTotalAmount,
+            BookingPaymentProvider paymentProvider) {
+
         OffsetDateTime now = OffsetDateTime.now(clock);
 
         OffsetDateTime expiresAt = now.plus(bookingProperties.reservationExpiration());
 
         Booking booking =
                 new Booking(
-                        userId, showtimeId, clientRequestId, requestFingerprint, expiresAt, now);
+                        userId,
+                        showtimeId,
+                        clientRequestId,
+                        requestFingerprint,
+                        paymentProvider,
+                        expiresAt,
+                        now);
 
         Booking savedBooking = bookingRepository.saveAndFlush(booking);
 
         List<BookingSeat> bookingSeats =
                 normalizedSeatNumbers.stream()
-                        .map(
-                                seatNumber ->
-                                        new BookingSeat(
-                                                savedBooking.getId(), showtimeId, seatNumber))
+                        .map(seatNumber ->
+                                new BookingSeat(savedBooking.getId(), showtimeId, seatNumber))
                         .toList();
 
         List<BookingSeat> savedSeats = bookingSeatRepository.saveAll(bookingSeats);
@@ -124,25 +150,51 @@ public class BookingCreationServiceImpl implements BookingCreationService {
             List<BookingSeatSelectionRequest> normalizedSeats,
             BigDecimal expectedTotalAmount) {
 
+        return createWithSeatSelections(
+                userId,
+                showtimeId,
+                clientRequestId,
+                requestFingerprint,
+                normalizedSeats,
+                expectedTotalAmount,
+                null);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse createWithSeatSelections(
+            UUID userId,
+            UUID showtimeId,
+            String clientRequestId,
+            String requestFingerprint,
+            List<BookingSeatSelectionRequest> normalizedSeats,
+            BigDecimal expectedTotalAmount,
+            BookingPaymentProvider paymentProvider) {
+
         OffsetDateTime now = OffsetDateTime.now(clock);
 
         OffsetDateTime expiresAt = now.plus(bookingProperties.reservationExpiration());
 
         Booking booking =
                 new Booking(
-                        userId, showtimeId, clientRequestId, requestFingerprint, expiresAt, now);
+                        userId,
+                        showtimeId,
+                        clientRequestId,
+                        requestFingerprint,
+                        paymentProvider,
+                        expiresAt,
+                        now);
 
         Booking savedBooking = bookingRepository.saveAndFlush(booking);
 
         List<BookingSeat> bookingSeats =
                 normalizedSeats.stream()
-                        .map(
-                                selection ->
-                                        new BookingSeat(
-                                                savedBooking.getId(),
-                                                showtimeId,
-                                                selection.seatNumber(),
-                                                selection.ticketGroupId()))
+                        .map(selection ->
+                                new BookingSeat(
+                                        savedBooking.getId(),
+                                        showtimeId,
+                                        selection.seatNumber(),
+                                        selection.ticketGroupId()))
                         .toList();
 
         List<BookingSeat> savedSeats = bookingSeatRepository.saveAll(bookingSeats);

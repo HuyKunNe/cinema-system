@@ -341,6 +341,7 @@ single price across ticket groups, time bands or formats.
 {
   "clientRequestId": "contract-example-001",
   "showtimeId": "019a5a00-0000-7000-8000-000000000007",
+  "paymentProvider": "VNPAY",
   "expectedTotalAmount": 180000,
   "seats": [
     {
@@ -366,6 +367,9 @@ single price across ticket groups, time bands or formats.
 
 Exactly one non-empty selection list is accepted: `seatNumbers` or `seats`.
 Omit the unused property; sending it as an empty list still fails validation.
+`paymentProvider` is optional and accepts `VNPAY` or `MOMO`; when omitted,
+Payment Service uses its configured default provider. The selected provider is
+persisted with the booking and included in `payment-requested` version `2`.
 `expectedTotalAmount` is an optional comparison value, not authoritative pricing.
 Reservation and payment continuation are asynchronous. Follow the `Location`
 with the current user's booking GET; do not treat `202` as a completed hold or

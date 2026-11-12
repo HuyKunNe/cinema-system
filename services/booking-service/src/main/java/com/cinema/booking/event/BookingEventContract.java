@@ -22,7 +22,7 @@ public final class BookingEventContract {
 
     public static final String PAYMENT_REQUESTED = "payment-requested";
 
-    public static final String PAYMENT_REQUESTED_VERSION = "1";
+    public static final String PAYMENT_REQUESTED_VERSION = "2";
 
     public static final String BOOKING_CANCELLED = "booking-cancelled";
 

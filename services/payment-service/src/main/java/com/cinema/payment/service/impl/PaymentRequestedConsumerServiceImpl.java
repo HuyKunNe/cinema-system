@@ -101,7 +101,13 @@ public class PaymentRequestedConsumerServiceImpl implements PaymentRequestedCons
 
             Payment payment = existingPayment.orElseThrow();
 
-            validateDuplicateConsistency(payment, message, payload);
+            validateDuplicateConsistency(
+                    payment,
+                    message,
+                    payload,
+                    payload.paymentProvider() == null
+                            ? paymentProperties.provider()
+                            : payload.paymentProvider());
 
             return Result.existing(payment.getId());
         }
@@ -120,7 +126,9 @@ public class PaymentRequestedConsumerServiceImpl implements PaymentRequestedCons
                         payload.paymentAttempt(),
                         payload.amount(),
                         payload.currency(),
-                        paymentProperties.provider(),
+                        payload.paymentProvider() == null
+                                ? paymentProperties.provider()
+                                : payload.paymentProvider(),
                         payload.holdExpiresAt(),
                         payload.requestedAt(),
                         message.eventId(),
@@ -161,7 +169,10 @@ public class PaymentRequestedConsumerServiceImpl implements PaymentRequestedCons
     }
 
     private static void validateDuplicateConsistency(
-            Payment existing, OutboxEventMessage message, PaymentRequestedPayload payload) {
+            Payment existing,
+            OutboxEventMessage message,
+            PaymentRequestedPayload payload,
+            String effectiveProvider) {
 
         boolean consistent =
                 existing.getBookingId().equals(payload.bookingId())
@@ -169,6 +180,7 @@ public class PaymentRequestedConsumerServiceImpl implements PaymentRequestedCons
                         && existing.getPaymentAttempt().equals(payload.paymentAttempt())
                         && existing.getAmount().compareTo(payload.amount()) == 0
                         && existing.getCurrency().equals(payload.currency())
+                        && existing.getProvider().equalsIgnoreCase(effectiveProvider)
                         && sameTimestamp(existing.getHoldExpiresAt(), payload.holdExpiresAt())
                         && sameTimestamp(existing.getRequestedAt(), payload.requestedAt())
                         && existing.getCorrelationId().equals(message.correlationId());

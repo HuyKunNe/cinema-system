@@ -11,4 +11,17 @@ public record PaymentRequestedPayload(
         String currency,
         int paymentAttempt,
         OffsetDateTime holdExpiresAt,
-        OffsetDateTime requestedAt) {}
+        OffsetDateTime requestedAt,
+        String paymentProvider) {
+
+    public PaymentRequestedPayload(
+            UUID bookingId,
+            UUID userId,
+            BigDecimal amount,
+            String currency,
+            int paymentAttempt,
+            OffsetDateTime holdExpiresAt,
+            OffsetDateTime requestedAt) {
+        this(bookingId, userId, amount, currency, paymentAttempt, holdExpiresAt, requestedAt, null);
+    }
+}

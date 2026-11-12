@@ -40,7 +40,10 @@ public class DefaultPaymentRequestedOutboxFactory implements PaymentRequestedOut
                         booking.getCurrency(),
                         INITIAL_PAYMENT_ATTEMPT,
                         booking.getExpiresAt(),
-                        requestedAt);
+                        requestedAt,
+                        booking.getPaymentProvider() == null
+                                ? null
+                                : booking.getPaymentProvider().name());
 
         UUID eventId = UuidGenerator.next();
 

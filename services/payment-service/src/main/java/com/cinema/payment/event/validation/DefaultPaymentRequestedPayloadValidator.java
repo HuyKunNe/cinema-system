@@ -28,6 +28,7 @@ public class DefaultPaymentRequestedPayloadValidator implements PaymentRequested
         validateIdentifiers(message, payload);
         validateAmount(payload.amount());
         validateCurrency(payload.currency());
+        validatePaymentProvider(payload.paymentProvider());
         validateAttempt(payload.paymentAttempt());
         validateTimeWindow(payload.requestedAt(), payload.holdExpiresAt());
     }
@@ -84,6 +85,14 @@ public class DefaultPaymentRequestedPayloadValidator implements PaymentRequested
 
         if (paymentAttempt <= 0) {
             throw new ValidationException(PaymentErrorCode.PAYMENT_ATTEMPT_INVALID);
+        }
+    }
+
+    private static void validatePaymentProvider(String paymentProvider) {
+        if (paymentProvider != null
+                && !"VNPAY".equals(paymentProvider)
+                && !"MOMO".equals(paymentProvider)) {
+            throw new ValidationException(PaymentErrorCode.EVENT_PAYLOAD_INVALID);
         }
     }
 

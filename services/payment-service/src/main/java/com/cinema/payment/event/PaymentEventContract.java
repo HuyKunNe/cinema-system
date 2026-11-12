@@ -4,7 +4,9 @@ public final class PaymentEventContract {
 
     public static final String PAYMENT_REQUESTED = "payment-requested";
 
-    public static final String PAYMENT_REQUESTED_VERSION = "1";
+    public static final String PAYMENT_REQUESTED_LEGACY_VERSION = "1";
+
+    public static final String PAYMENT_REQUESTED_VERSION = "2";
 
     public static final String PAYMENT_SUCCEEDED = "payment-succeeded";
 

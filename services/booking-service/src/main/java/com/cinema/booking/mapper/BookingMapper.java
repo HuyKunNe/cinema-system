@@ -18,6 +18,7 @@ public interface BookingMapper {
     @Mapping(target = "userId", source = "booking.userId")
     @Mapping(target = "showtimeId", source = "booking.showtimeId")
     @Mapping(target = "clientRequestId", source = "booking.clientRequestId")
+    @Mapping(target = "paymentProvider", source = "booking.paymentProvider")
     @Mapping(target = "status", source = "booking.status")
     @Mapping(target = "totalAmount", source = "booking.totalAmount")
     @Mapping(target = "currency", source = "booking.currency")

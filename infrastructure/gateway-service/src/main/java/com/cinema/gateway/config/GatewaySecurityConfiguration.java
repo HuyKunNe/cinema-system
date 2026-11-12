@@ -84,6 +84,9 @@ public class GatewaySecurityConfiguration {
                                         "/api/v1/auth/email-verifications/confirm")
                                 .permitAll()
                                 .pathMatchers(
+                                        HttpMethod.POST, "/api/v1/showtimes/*/seat-quote")
+                                .permitAll()
+                                .pathMatchers(
                                         "/api/v1/bookings/management",
                                         "/api/v1/bookings/management/**")
                                 .hasRole("ADMIN")

@@ -6,6 +6,7 @@ import com.cinema.booking.dto.request.CreateBookingRequest;
 import com.cinema.booking.dto.response.BookingResponse;
 import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
+import com.cinema.booking.enums.BookingPaymentProvider;
 import com.cinema.booking.exception.BookingErrorCode;
 import com.cinema.booking.idempotency.BookingRequestFingerprint;
 import com.cinema.booking.mapper.BookingMapper;
@@ -112,19 +113,24 @@ public class BookingServiceImpl implements BookingService {
                                 ? requestFingerprint.generate(request.showtimeId(), sortedNumbers)
                                 : requestFingerprint.generate(
                                         request.showtimeId(), sortedNumbers, expectedTotalAmount);
+        BookingPaymentProvider paymentProvider = request.paymentProvider();
+        if (paymentProvider != null) {
+            fingerprint = requestFingerprint.withPaymentProvider(fingerprint, paymentProvider);
+        }
+        String finalFingerprint = fingerprint;
 
         return bookingRepository
                 .findByUserIdAndClientRequestId(userId, clientRequestId)
-                .map(booking -> resolveExisting(booking, fingerprint))
-                .orElseGet(
-                        () ->
-                                createOrResolveConcurrentRequest(
-                                        userId,
-                                        request.showtimeId(),
-                                        clientRequestId,
-                                        fingerprint,
-                                        sortedSelections,
-                                        expectedTotalAmount));
+                .map(booking -> resolveExisting(booking, finalFingerprint))
+                .orElseGet(() ->
+                        createOrResolveConcurrentRequest(
+                                userId,
+                                request.showtimeId(),
+                                clientRequestId,
+                                finalFingerprint,
+                                sortedSelections,
+                                expectedTotalAmount,
+                                paymentProvider));
     }
 
     @Override
@@ -159,12 +165,10 @@ public class BookingServiceImpl implements BookingService {
 
         List<BookingResponse> responses =
                 bookings.getContent().stream()
-                        .map(
-                                booking ->
-                                        bookingMapper.toResponse(
-                                                booking,
-                                                seatsByBookingId.getOrDefault(
-                                                        booking.getId(), List.of())))
+                        .map(booking ->
+                                bookingMapper.toResponse(
+                                        booking,
+                                        seatsByBookingId.getOrDefault(booking.getId(), List.of())))
                         .toList();
 
         Page<BookingResponse> responsePage =
@@ -179,7 +183,8 @@ public class BookingServiceImpl implements BookingService {
             String clientRequestId,
             String fingerprint,
             List<BookingSeatSelectionRequest> selections,
-            BigDecimal expectedTotalAmount) {
+            BigDecimal expectedTotalAmount,
+            BookingPaymentProvider paymentProvider) {
 
         try {
             boolean hasExplicitGroups =
@@ -192,7 +197,8 @@ public class BookingServiceImpl implements BookingService {
                         clientRequestId,
                         fingerprint,
                         selections,
-                        expectedTotalAmount);
+                        expectedTotalAmount,
+                        paymentProvider);
             }
 
             List<String> numbers =
@@ -200,11 +206,23 @@ public class BookingServiceImpl implements BookingService {
 
             if (expectedTotalAmount == null) {
                 return bookingCreationService.createNew(
-                        userId, showtimeId, clientRequestId, fingerprint, numbers);
+                        userId,
+                        showtimeId,
+                        clientRequestId,
+                        fingerprint,
+                        numbers,
+                        null,
+                        paymentProvider);
             }
 
             return bookingCreationService.createNew(
-                    userId, showtimeId, clientRequestId, fingerprint, numbers, expectedTotalAmount);
+                    userId,
+                    showtimeId,
+                    clientRequestId,
+                    fingerprint,
+                    numbers,
+                    expectedTotalAmount,
+                    paymentProvider);
 
         } catch (DataIntegrityViolationException exception) {
             return bookingRepository
@@ -320,16 +338,14 @@ public class BookingServiceImpl implements BookingService {
         }
 
         return request.seats().stream()
-                .map(
-                        seat -> {
-                            if (seat == null) {
-                                throw new ValidationException(
-                                        BookingErrorCode.INVALID_SEAT_SELECTION);
-                            }
+                .map(seat -> {
+                    if (seat == null) {
+                        throw new ValidationException(BookingErrorCode.INVALID_SEAT_SELECTION);
+                    }
 
-                            return new BookingSeatSelectionRequest(
-                                    normalizeSeatNumber(seat.seatNumber()), seat.ticketGroupId());
-                        })
+                    return new BookingSeatSelectionRequest(
+                            normalizeSeatNumber(seat.seatNumber()), seat.ticketGroupId());
+                })
                 .toList();
     }
 

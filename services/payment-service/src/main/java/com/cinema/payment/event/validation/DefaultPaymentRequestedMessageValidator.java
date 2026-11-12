@@ -34,7 +34,9 @@ public class DefaultPaymentRequestedMessageValidator implements PaymentRequested
             throw new ValidationException(PaymentErrorCode.EVENT_TYPE_INVALID);
         }
 
-        if (!PaymentEventContract.PAYMENT_REQUESTED_VERSION.equals(message.eventVersion())) {
+        if (!PaymentEventContract.PAYMENT_REQUESTED_VERSION.equals(message.eventVersion())
+                && !PaymentEventContract.PAYMENT_REQUESTED_LEGACY_VERSION.equals(
+                        message.eventVersion())) {
 
             throw new ValidationException(PaymentErrorCode.EVENT_VERSION_INVALID);
         }

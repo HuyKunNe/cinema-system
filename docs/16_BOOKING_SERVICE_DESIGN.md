@@ -377,7 +377,13 @@ currency
 paymentAttempt
 holdExpiresAt
 requestedAt
+paymentProvider (optional: VNPAY or MOMO)
 ```
+
+`paymentProvider` is selected on booking creation and remains fixed for that
+booking's payment attempt. Omission preserves the configured Payment Service
+default for older clients. New events use `payment-requested` version `2`;
+Payment Service continues to accept version `1` events already in Kafka.
 
 `holdExpiresAt` must equal the persisted `Booking.expiresAt`.
 

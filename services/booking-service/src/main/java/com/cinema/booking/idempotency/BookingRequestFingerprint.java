@@ -1,6 +1,7 @@
 package com.cinema.booking.idempotency;
 
 import com.cinema.booking.dto.request.BookingSeatSelectionRequest;
+import com.cinema.booking.enums.BookingPaymentProvider;
 import com.cinema.booking.exception.BookingErrorCode;
 import com.cinema.common.exception.exception.InternalServerException;
 
@@ -10,13 +11,30 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
-import java.util.Comparator;
 
 @Component
 public class BookingRequestFingerprint {
+
+    public String withPaymentProvider(String fingerprint, BookingPaymentProvider provider) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance(ALGORITHM);
+            return HexFormat.of()
+                    .formatHex(
+                            digest.digest(
+                                    (fingerprint
+                                                    + FIELD_SEPARATOR
+                                                    + "paymentProvider="
+                                                    + provider.name())
+                                            .getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new InternalServerException(
+                    BookingErrorCode.REQUEST_FINGERPRINT_GENERATION_FAILED, exception);
+        }
+    }
 
     private static final String ALGORITHM = "SHA-256";
 

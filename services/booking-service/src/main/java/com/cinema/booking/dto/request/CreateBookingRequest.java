@@ -1,5 +1,6 @@
 package com.cinema.booking.dto.request;
 
+import com.cinema.booking.enums.BookingPaymentProvider;
 import com.cinema.common.validation.annotation.UuidV5OrV7;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -18,16 +19,14 @@ import java.util.UUID;
 public record CreateBookingRequest(
         @NotBlank @Size(max = 100) String clientRequestId,
         @NotNull @UuidV5OrV7 UUID showtimeId,
-                List<@NotBlank @Size(max = 20) String> seatNumbers,
-        @DecimalMin("0.00")
-                @Digits(integer = 17, fraction = 2)
-                BigDecimal expectedTotalAmount,
-        @Valid
-                List<@NotNull BookingSeatSelectionRequest> seats) {
+        List<@NotBlank @Size(max = 20) String> seatNumbers,
+        @DecimalMin("0.00") @Digits(integer = 17, fraction = 2) BigDecimal expectedTotalAmount,
+        @Valid List<@NotNull BookingSeatSelectionRequest> seats,
+        BookingPaymentProvider paymentProvider) {
 
     public CreateBookingRequest(String clientRequestId, UUID showtimeId, List<String> seatNumbers) {
 
-        this(clientRequestId, showtimeId, seatNumbers, null, null);
+        this(clientRequestId, showtimeId, seatNumbers, null, null, null);
     }
 
     public CreateBookingRequest(
@@ -36,7 +35,17 @@ public record CreateBookingRequest(
             List<String> seatNumbers,
             BigDecimal expectedTotalAmount) {
 
-        this(clientRequestId, showtimeId, seatNumbers, expectedTotalAmount, null);
+        this(clientRequestId, showtimeId, seatNumbers, expectedTotalAmount, null, null);
+    }
+
+    public CreateBookingRequest(
+            String clientRequestId,
+            UUID showtimeId,
+            List<String> seatNumbers,
+            BigDecimal expectedTotalAmount,
+            List<BookingSeatSelectionRequest> seats) {
+
+        this(clientRequestId, showtimeId, seatNumbers, expectedTotalAmount, seats, null);
     }
 
     @JsonIgnore
