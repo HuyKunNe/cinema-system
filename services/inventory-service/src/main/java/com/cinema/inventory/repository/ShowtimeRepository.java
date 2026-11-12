@@ -119,7 +119,7 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, UUID> {
               and showtime.status = :status
               and showtime.startsAt >= :from
               and showtime.startsAt < :to
-              and showtime.startsAt > :now
+              and showtime.endsAt > :salesWindowCutoff
               and (:movieId is null or showtime.movieId = :movieId)
             order by showtime.startsAt asc, showtime.id asc
             """)
@@ -128,8 +128,27 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, UUID> {
             @Param("movieId") UUID movieId,
             @Param("from") OffsetDateTime from,
             @Param("to") OffsetDateTime to,
-            @Param("now") OffsetDateTime now,
+            @Param("salesWindowCutoff") OffsetDateTime salesWindowCutoff,
             @Param("status") ShowtimeStatus status);
+
+    @Query(
+            """
+            select showtime
+            from Showtime showtime
+            join fetch showtime.room room
+            join fetch room.cinema cinema
+            where showtime.status = :status
+              and showtime.startsAt <= :latestStartsAt
+              and showtime.endsAt > :salesWindowCutoff
+            order by showtime.startsAt asc, showtime.id asc
+            """)
+    List<Showtime> findScheduledForAutomaticOpening(
+            @Param("status") ShowtimeStatus status,
+            @Param("latestStartsAt") OffsetDateTime latestStartsAt,
+            @Param("salesWindowCutoff") OffsetDateTime salesWindowCutoff);
+
+    List<UUID> findIdsByStatusInAndEndsAtLessThanEqualOrderByEndsAtAscIdAsc(
+            Collection<ShowtimeStatus> statuses, OffsetDateTime endsAt);
 
     @Query(
             """
@@ -142,13 +161,13 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, UUID> {
             join room.cinema cinema
             where showtime.id = :showtimeId
               and showtime.status = :status
-              and showtime.startsAt > :now
+              and showtime.endsAt > :salesWindowCutoff
               and room.active = true
               and cinema.active = true
             """)
     boolean existsHoldEligibleShowtime(
             @Param("showtimeId") UUID showtimeId,
-            @Param("now") OffsetDateTime now,
+            @Param("salesWindowCutoff") OffsetDateTime salesWindowCutoff,
             @Param("status") ShowtimeStatus status);
 
     @Query(

@@ -4,7 +4,7 @@
 **Current baseline:** R1–R27 historically completed; post-R27 changes tracked below
 **Current checkpoint:** Inventory lifecycle-release lock hardening (P0.2), in progress
 **Deferred:** R28 Notification Service
-**Last reviewed:** 2026-11-06
+**Last reviewed:** 2026-11-12
 
 ---
 
@@ -47,6 +47,28 @@ Current status:
 ---
 
 # Unreleased
+
+## 2026-11-12
+
+### P0.2 — Align Inventory ShowSeat lock ordering
+
+- Changed the shared pessimistic-lock query for seat-number selection to return
+  rows ordered by ShowSeat ID, matching lifecycle release and explicit release
+  lock ordering.
+- Updated repository test assertions to verify ID order. Tests were not run.
+- Maven production compile was attempted and failed while reading cached
+  `eureka-client-2.0.6.jar`; MySQL concurrency and rollback behavior remain
+  unverified. No API, event, migration, or MySQL configuration changed.
+
+### Inventory — Automatic showtime ticket-sales window
+
+- Added scheduled transitions to open sales at 00:00 cinema-local time seven
+  calendar days before a showtime and close sales five minutes after `endsAt`.
+- Applied the close cutoff to showtime discovery, seat quotes, seat maps, and
+  reservation/hold eligibility so scheduler delay cannot extend sales.
+- Preserved the existing Admin manual-open endpoint as an early-open override.
+- No API shape, event contract, MySQL schema, or migration changed. Runtime and
+  MySQL behavior remain unverified; tests were not run.
 
 ## 2026-11-11
 

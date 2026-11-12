@@ -1073,6 +1073,22 @@ no additional production code defect is asserted from static inspection alone.
 Assess the direct lifecycle race results before deciding which P0.2 production
 changes are needed. P0.2 is not closed.
 
+#### 2026-11-12 source hardening continuation
+
+Static review found that lifecycle release locks candidate ShowSeat rows ordered
+by ID, while hold creation and booking confirmation used the same seat-number
+query ordered by seat label. Changed that locking query to order by ShowSeat ID,
+aligning the lock order across those operations without changing payloads, returned
+fields, API routes, or MySQL schema. Repository test assertions now check stable ID
+ordering. This is a source-level lock-order alignment, not proof of MySQL lock
+acquisition order or race resolution.
+
+The allowed production compile command
+`mvn -o "-Dmaven.repo.local=C:/Users/Administrator/.m2/repository" -pl services/inventory-service -am -DskipTests compile`
+was attempted; it failed in `maven-compiler-plugin` while reading the cached
+`eureka-client-2.0.6.jar`. Tests were not run. The MySQL concurrency and rollback
+gates below remain open, so P0.2 remains IN PROGRESS / VERIFY.
+
 This is maintenance of the completed Inventory implementation. It does not reopen R24 or start R28.
 
 P0.3 source contract review may proceed while P0.2 execution gates await owner

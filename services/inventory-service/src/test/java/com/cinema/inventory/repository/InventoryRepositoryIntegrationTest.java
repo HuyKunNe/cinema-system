@@ -231,13 +231,13 @@ class InventoryRepositoryIntegrationTest
                         START,
                         START.plusHours(2)));
 
-        showSeatRepository.save(
+        ShowSeat showSeatH8 = showSeatRepository.save(
                 new ShowSeat(
                         showtime,
                         seatH8,
                         new BigDecimal("120000.00")));
 
-        showSeatRepository.save(
+        ShowSeat showSeatH7 = showSeatRepository.save(
                 new ShowSeat(
                         showtime,
                         seatH7,
@@ -252,8 +252,9 @@ class InventoryRepositoryIntegrationTest
                         List.of("H8", "H7"));
 
         assertEquals(2, lockedSeats.size());
-        assertEquals("H7", lockedSeats.get(0).getSeatNumber());
-        assertEquals("H8", lockedSeats.get(1).getSeatNumber());
+        List<UUID> expectedShowSeatIds =
+                List.of(showSeatH8.getId(), showSeatH7.getId()).stream().sorted().toList();
+        assertEquals(expectedShowSeatIds, lockedSeats.stream().map(ShowSeat::getId).toList());
     }
 
     private InventoryFixture createFixture() {

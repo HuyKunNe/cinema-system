@@ -151,7 +151,10 @@ public class ShowtimeTicketPricesService {
 
         boolean bookable =
                 showtimeRepository.existsHoldEligibleShowtime(
-                        showtimeId, OffsetDateTime.now(clock), ShowtimeStatus.OPEN_FOR_BOOKING);
+                        showtimeId,
+                        OffsetDateTime.now(clock)
+                                .minusMinutes(ShowtimeSalesWindow.CLOSE_MINUTES_AFTER_SHOWTIME),
+                        ShowtimeStatus.OPEN_FOR_BOOKING);
 
         if (!bookable) {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_BOOKABLE);

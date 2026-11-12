@@ -153,7 +153,9 @@ public class ShowtimeGroupedSeatQuoteService {
 
         boolean bookable =
                 showtimeRepository.existsHoldEligibleShowtime(
-                        showtimeId, serverTime, ShowtimeStatus.OPEN_FOR_BOOKING);
+                        showtimeId,
+                        serverTime.minusMinutes(ShowtimeSalesWindow.CLOSE_MINUTES_AFTER_SHOWTIME),
+                        ShowtimeStatus.OPEN_FOR_BOOKING);
 
         if (!bookable) {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_BOOKABLE);

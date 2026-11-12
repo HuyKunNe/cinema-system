@@ -272,6 +272,12 @@ public class Showtime extends BaseEntity {
         this.status = ShowtimeStatus.CLOSED;
     }
 
+    public void closeSalesAutomatically() {
+        if (status == ShowtimeStatus.SCHEDULED || status == ShowtimeStatus.OPEN_FOR_BOOKING) {
+            this.status = ShowtimeStatus.CLOSED;
+        }
+    }
+
     public void cancel() {
         if (status == ShowtimeStatus.COMPLETED) {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_EDITABLE);

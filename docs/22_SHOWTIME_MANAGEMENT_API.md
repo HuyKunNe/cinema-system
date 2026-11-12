@@ -154,3 +154,26 @@ mvn -o "-Dmaven.repo.local=C:/Users/Administrator/.m2/repository" -pl services/i
 
 `git diff --check` passed. No tests, applications, endpoint calls or database
 commands were run. Compilation does not verify the runtime error response.
+
+## Automatic ticket-sales lifecycle (2026-11-12)
+
+Inventory automatically transitions eligible showtimes from `SCHEDULED` to
+`OPEN_FOR_BOOKING` at 00:00 in the cinema's configured timezone on the calendar
+date seven days before the local show date. If the scheduler was unavailable,
+it catches up while the sales window is still open. It transitions
+`OPEN_FOR_BOOKING` to `CLOSED` at `endsAt + 5 minutes`; a stale `SCHEDULED`
+showtime past that deadline is also closed. Cancellation remains unchanged, and
+automatic closure does not mark a screening `COMPLETED`.
+
+The scheduler checks every 30 seconds by default. Customer-facing availability,
+quote, and hold checks enforce the close boundary directly, so a delayed
+scheduler tick does not extend ticket sales beyond `endsAt + 5 minutes`. The
+existing Admin `PATCH /api/v1/showtimes/{showtimeId}/open` remains available as a
+manual early-open override, subject to its existing future-start and pricing
+checks. The API paths, payloads, and status enum are unchanged; status values
+change automatically over time.
+
+The opening timestamp is derived from `startsAt` and the cinema timezone;
+`endsAt` already identifies the closing instant. No new MySQL columns or
+migration are required. Runtime scheduling and database behavior have not been
+verified here.

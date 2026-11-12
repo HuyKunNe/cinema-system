@@ -36,7 +36,11 @@ public interface ShowtimeService {
 
     ShowtimeResponse openForBooking(UUID showtimeId);
 
+    ShowtimeResponse openForBookingAutomatically(UUID showtimeId);
+
     ShowtimeResponse close(UUID showtimeId);
+
+    void closeSalesAutomatically(UUID showtimeId);
 
     ShowtimeResponse cancel(UUID showtimeId);
 

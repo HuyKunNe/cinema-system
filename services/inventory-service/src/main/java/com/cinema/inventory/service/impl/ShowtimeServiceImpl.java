@@ -25,6 +25,7 @@ import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ShowtimeCreationService;
 import com.cinema.inventory.service.ShowtimePricingService;
 import com.cinema.inventory.service.ShowtimeReleaseDateValidator;
+import com.cinema.inventory.service.ShowtimeSalesWindow;
 import com.cinema.inventory.service.ShowtimeService;
 
 import org.springframework.data.domain.PageRequest;
@@ -164,7 +165,12 @@ public class ShowtimeServiceImpl implements ShowtimeService {
 
         List<Showtime> showtimes =
                 showtimeRepository.findBookableShowtimes(
-                        cinemaId, movieId, from, to, now, ShowtimeStatus.OPEN_FOR_BOOKING);
+                        cinemaId,
+                        movieId,
+                        from,
+                        to,
+                        now.minusMinutes(ShowtimeSalesWindow.CLOSE_MINUTES_AFTER_SHOWTIME),
+                        ShowtimeStatus.OPEN_FOR_BOOKING);
 
         return showtimeMapper.toResponses(showtimes);
     }
@@ -255,6 +261,16 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public ShowtimeResponse openForBooking(UUID showtimeId) {
+        return openForBooking(showtimeId, false);
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public ShowtimeResponse openForBookingAutomatically(UUID showtimeId) {
+        return openForBooking(showtimeId, true);
+    }
+
+    private ShowtimeResponse openForBooking(UUID showtimeId, boolean automatic) {
 
         UUID roomId =
                 showtimeRepository
@@ -278,7 +294,12 @@ public class ShowtimeServiceImpl implements ShowtimeService {
 
         validateRoomAvailable(room, cinema);
 
-        if (!showtime.getStartsAt().isAfter(OffsetDateTime.now(clock))) {
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        boolean outsideOpeningWindow =
+                automatic
+                        ? !ShowtimeSalesWindow.isOpenAt(showtime, now)
+                        : !showtime.getStartsAt().isAfter(now);
+        if (outsideOpeningWindow) {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_EDITABLE);
         }
 
@@ -295,6 +316,24 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         Showtime showtime = findShowtimeForUpdate(showtimeId);
         showtime.close();
         return flushAndMap(showtime);
+    }
+
+    @Override
+    @Transactional
+    public void closeSalesAutomatically(UUID showtimeId) {
+        Showtime showtime = findShowtimeForUpdate(showtimeId);
+        if (showtime.getStatus() != ShowtimeStatus.SCHEDULED
+                && showtime.getStatus() != ShowtimeStatus.OPEN_FOR_BOOKING) {
+            return;
+        }
+
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        if (now.isBefore(ShowtimeSalesWindow.closesAt(showtime))) {
+            return;
+        }
+
+        showtime.closeSalesAutomatically();
+        showtimeRepository.flush();
     }
 
     @Override

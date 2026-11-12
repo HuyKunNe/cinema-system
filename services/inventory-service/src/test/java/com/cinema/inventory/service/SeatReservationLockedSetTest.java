@@ -147,7 +147,11 @@ class SeatReservationLockedSetTest {
                 NOW.minusSeconds(1), EXPIRY);
         when(reader.read(message)).thenReturn(payload);
         when(processed.register(any(), anyString(), anyString(), anyString())).thenReturn(true);
-        when(showtimes.existsHoldEligibleShowtime(showtimeId, NOW, ShowtimeStatus.OPEN_FOR_BOOKING)).thenReturn(true);
+        when(showtimes.existsHoldEligibleShowtime(
+                        showtimeId,
+                        NOW.minusMinutes(5),
+                        ShowtimeStatus.OPEN_FOR_BOOKING))
+                .thenReturn(true);
         when(seats.findAllByShowtimeIdAndSeatNumbersForUpdate(showtimeId, List.of("H7", "H8"))).thenReturn(locked);
         when(resultEvent.getId()).thenReturn(UuidGenerator.next());
         when(rejected.create(any(), any(), any(), anyString(), anyList(), any(), any(), any())).thenReturn(resultEvent);

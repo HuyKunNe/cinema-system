@@ -15,6 +15,7 @@ import com.cinema.inventory.mapper.ShowSeatMapper;
 import com.cinema.inventory.repository.ShowSeatRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ShowSeatService;
+import com.cinema.inventory.service.ShowtimeSalesWindow;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -103,7 +104,9 @@ public class ShowSeatServiceImpl implements ShowSeatService {
 
         boolean eligible =
                 showtimeRepository.existsHoldEligibleShowtime(
-                        showSeat.getShowtime().getId(), now, ShowtimeStatus.OPEN_FOR_BOOKING);
+                        showSeat.getShowtime().getId(),
+                        now.minusMinutes(ShowtimeSalesWindow.CLOSE_MINUTES_AFTER_SHOWTIME),
+                        ShowtimeStatus.OPEN_FOR_BOOKING);
 
         if (!eligible) {
             throw new ConflictException(InventoryErrorCode.SHOWTIME_NOT_BOOKABLE);

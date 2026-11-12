@@ -37,7 +37,7 @@ public interface ShowSeatRepository extends JpaRepository<ShowSeat, UUID> {
             from ShowSeat showSeat
             where showSeat.showtime.id = :showtimeId
               and showSeat.seatNumber in :seatNumbers
-            order by showSeat.seatNumber asc
+            order by showSeat.id asc
             """)
     List<ShowSeat> findAllByShowtimeIdAndSeatNumbersForUpdate(
             @Param("showtimeId") UUID showtimeId,

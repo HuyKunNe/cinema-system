@@ -106,7 +106,7 @@ public class ShowtimeSeatMapService {
         boolean bookable = showtimeRepository
                 .existsHoldEligibleShowtime(
                         showtimeId,
-                        serverTime,
+                        serverTime.minusMinutes(ShowtimeSalesWindow.CLOSE_MINUTES_AFTER_SHOWTIME),
                         ShowtimeStatus.OPEN_FOR_BOOKING);
 
         if (layout.isMatrixLayout()) {

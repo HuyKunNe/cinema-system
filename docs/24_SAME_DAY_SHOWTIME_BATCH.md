@@ -61,7 +61,10 @@ this document has been executed.
 ## Guarantees already in source
 
 - Return 201 and a raw array of ShowtimeResponse, in request order. Returned
-  showtimes start SCHEDULED; creation does not automatically open booking.
+  showtimes start SCHEDULED; creation does not open booking immediately. The
+  automatic sales lifecycle opens them at local midnight seven calendar days
+  before their show date and closes them five minutes after `endsAt`; see
+  `22_SHOWTIME_MANAGEMENT_API.md`.
 - Validate future start, movie duration/release date, active movie version,
   room/cinema availability, room format/projection compatibility and layout/pricing
   readiness using the same create logic as a single showtime.

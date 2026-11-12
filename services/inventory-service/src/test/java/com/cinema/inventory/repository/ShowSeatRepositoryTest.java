@@ -256,10 +256,9 @@ class ShowSeatRepositoryTest {
                         List.of("A2", "A1"));
 
         assertThat(result)
-                .extracting(ShowSeat::getSeatNumber)
-                .containsExactly(
-                        "A1",
-                        "A2");
+                .extracting(ShowSeat::getId)
+                .containsExactlyElementsOf(
+                        List.of(a1.getId(), a2.getId()).stream().sorted().toList());
     }
 
     @Test

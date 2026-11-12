@@ -1,6 +1,6 @@
 # Backend Roadmap — Cinema Booking System
 
-**Cập nhật theo trạng thái repo đến:** 2026-11-06 (đối chiếu source `main` tại `ac09155`)  
+**Cập nhật theo trạng thái repo đến:** 2026-11-12
 **Repository:** https://github.com/HuyKunNe/cinema-system  
 **Phạm vi:** Backend phục vụ Admin FE và User FE; không bao gồm triển khai Notification Service R28 đang được hoãn.
 
@@ -44,6 +44,14 @@ Roadmap này không thay thế `docs/10_ROADMAP.md`. P0.1 đã đồng bộ tr�
 Test không được thực thi, không có kết nối hoặc ghi DB. Lượt này chỉ gỡ rủi ro
 compile trước khi chạy các cổng concurrency/rollback được nêu trong
 `docs/10_ROADMAP.md`; P0.2 vẫn VERIFY, không kết luận hành vi MySQL từ compile.
+
+**Tiếp tục ngày 2026-11-12:** thống nhất thứ tự truy vấn khóa ShowSeat theo ID tăng
+dần cho luồng giữ ghế/xác nhận booking với các luồng release lifecycle vốn đã khóa
+theo ID. Cập nhật assertion nguồn kiểm thử repository theo thứ tự ID. Maven compile
+được thử lại nhưng thất bại tại `maven-compiler-plugin` khi đọc
+`eureka-client-2.0.6.jar` từ cache cục bộ; chưa chạy test. Đây là hardening từ rà soát
+source, chưa chứng minh thứ tự lấy khóa hoặc race behavior trên MySQL. P0.2 vẫn VERIFY;
+các cổng concurrency, rollback và runtime còn mở.
 
 - Đọc phạm vi cụ thể của lifecycle-release lock hardening từ code và tài liệu hiện tại.
 - Hoàn tất các invariant cạnh tranh và rollback còn thiếu.

@@ -21,6 +21,7 @@ import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ProcessedEventRegistrationService;
 import com.cinema.inventory.service.SeatReservationPricingService;
 import com.cinema.inventory.service.SeatReservationRequestedConsumerService;
+import com.cinema.inventory.service.ShowtimeSalesWindow;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -150,7 +151,9 @@ public class SeatReservationRequestedConsumerServiceImpl
 
         boolean eligible =
                 showtimeRepository.existsHoldEligibleShowtime(
-                        payload.showtimeId(), now, ShowtimeStatus.OPEN_FOR_BOOKING);
+                        payload.showtimeId(),
+                        now.minusMinutes(ShowtimeSalesWindow.CLOSE_MINUTES_AFTER_SHOWTIME),
+                        ShowtimeStatus.OPEN_FOR_BOOKING);
 
         if (!eligible) {
             return reject(
@@ -242,7 +245,9 @@ public class SeatReservationRequestedConsumerServiceImpl
 
         boolean stillEligible =
                 showtimeRepository.existsHoldEligibleShowtime(
-                        payload.showtimeId(), holdAt, ShowtimeStatus.OPEN_FOR_BOOKING);
+                        payload.showtimeId(),
+                        holdAt.minusMinutes(ShowtimeSalesWindow.CLOSE_MINUTES_AFTER_SHOWTIME),
+                        ShowtimeStatus.OPEN_FOR_BOOKING);
 
         if (!stillEligible) {
             return reject(
