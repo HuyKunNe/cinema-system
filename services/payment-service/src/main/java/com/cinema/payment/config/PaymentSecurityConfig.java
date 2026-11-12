@@ -71,6 +71,9 @@ public class PaymentSecurityConfig {
                                                 AuthorityAuthorizationManager.hasRole("ADMIN"),
                                                 AuthorityAuthorizationManager.hasAuthority(
                                                         PAYMENT_READ_AUTHORITY)))
+                                .requestMatchers(
+                                        HttpMethod.GET, "/api/v1/payments/bookings/*/checkout")
+                                .authenticated()
                                 .requestMatchers(HttpMethod.GET, "/api/v1/payments/*")
                                 .hasAuthority(PAYMENT_READ_AUTHORITY)
                                 .anyRequest()

@@ -50,6 +50,18 @@ Current status:
 
 ## 2026-11-12
 
+### Payment — Expose hosted checkout URI to booking owner
+
+- Persisted provider `PENDING` charge redirect URIs on the charge transaction and
+  added `GET /api/v1/payments/bookings/{bookingId}/checkout`. The endpoint matches
+  the booking against the authenticated user and only exposes an HTTP(S) URI
+  while the latest payment/charge is pending and the booking hold remains valid.
+- Added nullable MySQL Flyway V2 column `payment_transactions.checkout_uri`;
+  existing rows remain null. No database migration was run.
+- The endpoint does not create a payment attempt. The default `MOCK` provider
+  returns success without a checkout URI; a hosted-checkout provider adapter and
+  FE navigation are still needed. No tests were run.
+
 ### User Service — Bearer support for account APIs
 
 - Added a stateless Resource Server chain for existing `/api/v1/users/**`

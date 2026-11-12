@@ -81,28 +81,29 @@ Domain errors handled by `GlobalExceptionHandler` use `ApiResponse` with an
 `error` containing `code`, `message`, `category`, and `details`. A `204` response
 has no JSON body. Do not access `.data` uniformly on every successful endpoint.
 
-| Flow / route | Body and status from source | Authorization boundary |
-| --- | --- | --- |
-| `POST /api/v1/movies` | `201`, raw `MovieResponse`; movie and versions in one transaction | Service: `movie:manage`; Gateway requires authentication for writes |
-| `PUT /api/v1/movies/{id}` | `200`, raw `MovieResponse`; full replacement including every persisted screening version | Same as create |
-| `GET /api/v1/movies/catalog` | `200`, raw `PageResponse<MovieResponse>` | Public GET at service and Gateway |
-| `GET /api/v1/movies/{movieId}/screening-versions` | `200`, raw array; omit `active` to include inactive versions | Public GET |
-| `POST /api/v1/movies/{movieId}/screening-versions` | `201`, raw version; duplicate full identity is `409`, not an idempotent success | Service: `movie:manage`; retained existing API, not an extra step after movie creation |
-| `PUT /api/v1/movies/{movieId}/screening-versions/{versionId}/active` | `200`, raw version; requires `active` and `expectedVersion` | Service: `movie:manage` |
-| `POST /api/v1/showtimes` | `201`, raw `ShowtimeResponse` | Service: `showtime:manage`; authenticated write at Gateway |
-| `POST /api/v1/showtimes/batch` | `201`, raw ordered `ShowtimeResponse[]`; accepts 1–50 complete showtime requests and one `clientRequestId` | Service: `showtime:manage`; authenticated write at Gateway |
-| `GET /api/v1/showtimes/bookable` | `200`, raw array; `cinemaId`, `from`, `to`, optional `movieId` | Public GET |
-| `GET /api/v1/showtimes/{showtimeId}/seat-map` | `200`, raw `ShowtimeSeatMapResponse`; read does not reserve seats | Public GET |
-| `GET /api/v1/showtimes/{showtimeId}/seat-quote` | `200`, raw `ShowtimeSeatQuoteResponse`; repeated `seatNumbers` query parameters | Public GET; default-group quote |
-| `POST /api/v1/showtimes/{showtimeId}/seat-quote` | `200`, raw `ShowtimeGroupedSeatQuoteResponse`; per-seat ticket groups | Direct Inventory permits anonymous POST; current Gateway requires authentication for this POST |
-| `POST /api/v1/bookings` | `202`, `ApiResponse<BookingResponse>`, `Location` points to the booking | Authenticated; owner derived from `CurrentUser.id()` |
-| `GET /api/v1/bookings`, `GET /api/v1/bookings/{bookingId}` | `200`, wrapped page or booking | Authenticated; service enforces ownership |
-| `POST /api/v1/bookings/{bookingId}/cancel` | `200`, wrapped booking | Authenticated owner; valid lifecycle state required |
-| `POST /api/v1/auth/registrations` | `202`, generic response; email verification intent only, no password accepted | Public; per-address resend cooldown |
-| `POST /api/v1/auth/email-verifications/confirm` | `204`; consumes email token and chosen password, creates verified `USER` account | Public; requires token possession |
-| `GET /api/v1/bookings/management/**` | Admin read operations from `BookingManagementController` | ADMIN role at service and Gateway |
-| `GET /api/v1/payments/management/by-booking/{bookingId}` | `200`, wrapped page of payment attempts | Service: ADMIN **and** `payment:read`; Gateway: ADMIN |
-| `GET /api/v1/payments/management/{paymentId}` | `200`, wrapped payment | Same as payment list |
+| Flow / route                                                         | Body and status from source                                                                                | Authorization boundary                                                                         |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `POST /api/v1/movies`                                                | `201`, raw `MovieResponse`; movie and versions in one transaction                                          | Service: `movie:manage`; Gateway requires authentication for writes                            |
+| `PUT /api/v1/movies/{id}`                                            | `200`, raw `MovieResponse`; full replacement including every persisted screening version                   | Same as create                                                                                 |
+| `GET /api/v1/movies/catalog`                                         | `200`, raw `PageResponse<MovieResponse>`                                                                   | Public GET at service and Gateway                                                              |
+| `GET /api/v1/movies/{movieId}/screening-versions`                    | `200`, raw array; omit `active` to include inactive versions                                               | Public GET                                                                                     |
+| `POST /api/v1/movies/{movieId}/screening-versions`                   | `201`, raw version; duplicate full identity is `409`, not an idempotent success                            | Service: `movie:manage`; retained existing API, not an extra step after movie creation         |
+| `PUT /api/v1/movies/{movieId}/screening-versions/{versionId}/active` | `200`, raw version; requires `active` and `expectedVersion`                                                | Service: `movie:manage`                                                                        |
+| `POST /api/v1/showtimes`                                             | `201`, raw `ShowtimeResponse`                                                                              | Service: `showtime:manage`; authenticated write at Gateway                                     |
+| `POST /api/v1/showtimes/batch`                                       | `201`, raw ordered `ShowtimeResponse[]`; accepts 1–50 complete showtime requests and one `clientRequestId` | Service: `showtime:manage`; authenticated write at Gateway                                     |
+| `GET /api/v1/showtimes/bookable`                                     | `200`, raw array; `cinemaId`, `from`, `to`, optional `movieId`                                             | Public GET                                                                                     |
+| `GET /api/v1/showtimes/{showtimeId}/seat-map`                        | `200`, raw `ShowtimeSeatMapResponse`; read does not reserve seats                                          | Public GET                                                                                     |
+| `GET /api/v1/showtimes/{showtimeId}/seat-quote`                      | `200`, raw `ShowtimeSeatQuoteResponse`; repeated `seatNumbers` query parameters                            | Public GET; default-group quote                                                                |
+| `POST /api/v1/showtimes/{showtimeId}/seat-quote`                     | `200`, raw `ShowtimeGroupedSeatQuoteResponse`; per-seat ticket groups                                      | Direct Inventory permits anonymous POST; current Gateway requires authentication for this POST |
+| `POST /api/v1/bookings`                                              | `202`, `ApiResponse<BookingResponse>`, `Location` points to the booking                                    | Authenticated; owner derived from `CurrentUser.id()`                                           |
+| `GET /api/v1/bookings`, `GET /api/v1/bookings/{bookingId}`           | `200`, wrapped page or booking                                                                             | Authenticated; service enforces ownership                                                      |
+| `POST /api/v1/bookings/{bookingId}/cancel`                           | `200`, wrapped booking                                                                                     | Authenticated owner; valid lifecycle state required                                            |
+| `POST /api/v1/auth/registrations`                                    | `202`, generic response; email verification intent only, no password accepted                              | Public; per-address resend cooldown                                                            |
+| `POST /api/v1/auth/email-verifications/confirm`                      | `204`; consumes email token and chosen password, creates verified `USER` account                           | Public; requires token possession                                                              |
+| `GET /api/v1/bookings/management/**`                                 | Admin read operations from `BookingManagementController`                                                   | ADMIN role at service and Gateway                                                              |
+| `GET /api/v1/payments/management/by-booking/{bookingId}`             | `200`, wrapped page of payment attempts                                                                    | Service: ADMIN **and** `payment:read`; Gateway: ADMIN                                          |
+| `GET /api/v1/payments/management/{paymentId}`                        | `200`, wrapped payment                                                                                     | Same as payment list                                                                           |
+| `GET /api/v1/payments/bookings/{bookingId}/checkout`                 | `200`, wrapped payment status and nullable `checkoutUri`                                                   | Authenticated owner; Payment Service matches both booking and current user                     |
 
 The Gateway and each service independently enforce their configured boundary.
 This review records the POST quote distinction; it does not grant anonymous
@@ -123,14 +124,14 @@ complete request, transaction, overlap, rollback and retry contract is in
 
 ## Operation IDs
 
-| Source location | Explicit operation IDs relevant to these flows |
-| --- | --- |
-| `MovieController` | `getMovieCatalog`, `updateMovieMetadata` |
-| `MovieScreeningVersionController` | `listMovieScreeningVersions`, `getMovieScreeningVersion`, `createMovieScreeningVersion`, `updateMovieScreeningVersionActive` |
-| `ShowtimeSeatMapController` | `getShowtimeSeatMap` |
-| `ShowtimeSeatQuoteController` | `getShowtimeSeatQuote` |
-| `ShowtimeGroupedSeatQuoteController` | `quoteShowtimeSeats` |
-| `PaymentManagementController` | `listBookingPaymentsForAdmin`, `getPaymentForAdmin` |
+| Source location                      | Explicit operation IDs relevant to these flows                                                                               |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `MovieController`                    | `getMovieCatalog`, `updateMovieMetadata`                                                                                     |
+| `MovieScreeningVersionController`    | `listMovieScreeningVersions`, `getMovieScreeningVersion`, `createMovieScreeningVersion`, `updateMovieScreeningVersionActive` |
+| `ShowtimeSeatMapController`          | `getShowtimeSeatMap`                                                                                                         |
+| `ShowtimeSeatQuoteController`        | `getShowtimeSeatQuote`                                                                                                       |
+| `ShowtimeGroupedSeatQuoteController` | `quoteShowtimeSeats`                                                                                                         |
+| `PaymentManagementController`        | `listBookingPaymentsForAdmin`, `getPaymentForAdmin`                                                                          |
 
 Other handlers in this review, including movie create/update, showtime create
 and customer Booking operations, do not declare explicit `operationId` values.
@@ -160,13 +161,15 @@ omitted; they are not full schemas or captured runtime output.
   "releaseDate": "2026-11-01",
   "status": "NOW_SHOWING",
   "genreIds": ["019a5a00-0000-7000-8000-000000000001"],
-  "screeningVersions": [{
-    "contentFormat": "2D",
-    "projectionTechnology": "STANDARD",
-    "audioLanguage": "en",
-    "presentationType": "SUBTITLED",
-    "subtitleLanguage": "vi"
-  }]
+  "screeningVersions": [
+    {
+      "contentFormat": "2D",
+      "projectionTechnology": "STANDARD",
+      "audioLanguage": "en",
+      "presentationType": "SUBTITLED",
+      "subtitleLanguage": "vi"
+    }
+  ]
 }
 ```
 
@@ -176,17 +179,19 @@ omitted; they are not full schemas or captured runtime output.
 {
   "id": "019a5a00-0000-7000-8000-000000000002",
   "title": "Contract Example",
-  "screeningVersions": [{
-    "id": "019a5a00-0000-7000-8000-000000000003",
-    "movieId": "019a5a00-0000-7000-8000-000000000002",
-    "contentFormat": "2D",
-    "projectionTechnology": "STANDARD",
-    "audioLanguage": "en",
-    "presentationType": "SUBTITLED",
-    "subtitleLanguage": "vi",
-    "active": true,
-    "version": 0
-  }]
+  "screeningVersions": [
+    {
+      "id": "019a5a00-0000-7000-8000-000000000003",
+      "movieId": "019a5a00-0000-7000-8000-000000000002",
+      "contentFormat": "2D",
+      "projectionTechnology": "STANDARD",
+      "audioLanguage": "en",
+      "presentationType": "SUBTITLED",
+      "subtitleLanguage": "vi",
+      "active": true,
+      "version": 0
+    }
+  ]
 }
 ```
 
@@ -194,16 +199,18 @@ For `PUT /api/v1/movies/019a5a00-0000-7000-8000-000000000002`, use the full
 create body above and replace its `screeningVersions` value with:
 
 ```json
-[{
-  "id": "019a5a00-0000-7000-8000-000000000003",
-  "expectedVersion": 0,
-  "contentFormat": "2D",
-  "projectionTechnology": "STANDARD",
-  "audioLanguage": "en",
-  "presentationType": "SUBTITLED",
-  "subtitleLanguage": "vi",
-  "active": true
-}]
+[
+  {
+    "id": "019a5a00-0000-7000-8000-000000000003",
+    "expectedVersion": 0,
+    "contentFormat": "2D",
+    "projectionTechnology": "STANDARD",
+    "audioLanguage": "en",
+    "presentationType": "SUBTITLED",
+    "subtitleLanguage": "vi",
+    "active": true
+  }
+]
 ```
 
 The response is `200` with the same raw DTO shape. Load every persisted version
@@ -291,10 +298,12 @@ For per-seat ticket groups, use
 
 ```json
 {
-  "seats": [{
-    "seatNumber": "H7",
-    "ticketGroupId": "019a5a00-0000-7000-8000-000000000008"
-  }]
+  "seats": [
+    {
+      "seatNumber": "H7",
+      "ticketGroupId": "019a5a00-0000-7000-8000-000000000008"
+    }
+  ]
 }
 ```
 
@@ -307,14 +316,16 @@ For per-seat ticket groups, use
   "capacity": 2,
   "currency": "VND",
   "totalAmount": 180000,
-  "seats": [{
-    "seatNumber": "H7",
-    "seatType": "COUPLE",
-    "capacity": 2,
-    "ticketGroupId": "019a5a00-0000-7000-8000-000000000008",
-    "unit": "PAIR",
-    "price": 180000
-  }]
+  "seats": [
+    {
+      "seatNumber": "H7",
+      "seatType": "COUPLE",
+      "capacity": 2,
+      "ticketGroupId": "019a5a00-0000-7000-8000-000000000008",
+      "unit": "PAIR",
+      "price": 180000
+    }
+  ]
 }
 ```
 
@@ -331,10 +342,12 @@ single price across ticket groups, time bands or formats.
   "clientRequestId": "contract-example-001",
   "showtimeId": "019a5a00-0000-7000-8000-000000000007",
   "expectedTotalAmount": 180000,
-  "seats": [{
-    "seatNumber": "H7",
-    "ticketGroupId": "019a5a00-0000-7000-8000-000000000008"
-  }]
+  "seats": [
+    {
+      "seatNumber": "H7",
+      "ticketGroupId": "019a5a00-0000-7000-8000-000000000008"
+    }
+  ]
 }
 ```
 
@@ -372,8 +385,12 @@ returns `200` with a wrapped page. Empty result example:
   "data": {
     "content": [],
     "page": {
-      "page": 0, "size": 20, "totalElements": 0,
-      "totalPages": 0, "first": true, "last": true
+      "page": 0,
+      "size": 20,
+      "totalElements": 0,
+      "totalPages": 0,
+      "first": true,
+      "last": true
     }
   }
 }
@@ -383,9 +400,43 @@ An empty page means no matching Payment record exists. Use the returned
 Payment IDs for management detail/transaction reads. No customer payment-init,
 refund, reconciliation or Notification endpoint is added by this reference.
 
+### Customer: read the hosted checkout URL
+
+After the booking reaches `RESERVED`, the authenticated owner may poll
+`GET /api/v1/payments/bookings/{bookingId}/checkout`. A missing Payment record
+for that user returns `404`; once created, the response is `200` even while the
+provider worker is still processing. `checkoutUri` is non-null only when the
+latest charge attempt is `PENDING_PROVIDER`, the reservation has not expired,
+and the provider returned an absolute HTTP(S) checkout URL. The response is
+`Cache-Control: no-store`; FE must not log or persist the URL and should navigate
+to it only while the reservation remains valid. This is a read endpoint; it does
+not create another payment attempt or change booking/payment status.
+
+```json
+{
+  "success": true,
+  "data": {
+    "bookingId": "019a5a00-0000-7000-8000-000000000009",
+    "paymentId": "019a5a00-0000-7000-8000-000000000010",
+    "status": "PENDING_PROVIDER",
+    "checkoutUri": "https://pay.example/checkout/session",
+    "holdExpiresAt": "2026-11-12T16:30:00Z"
+  }
+}
+```
+
+The current `MOCK` provider completes internally and returns no checkout URL.
+This contract only surfaces a URL from a configured hosted-checkout adapter; it
+does not provide that provider integration or its callback credentials.
+
 ## Migration and FE rollout
 
-No migration or wire-format change is introduced in this P0.3 increment.
+The P0.3 contract review itself introduced no migration. The separate P4.3
+checkout-read contract adds Payment V2, which only adds nullable
+`payment_transactions.checkout_uri`; existing rows remain null. Rollback, if
+needed before relying on persisted hosted sessions, is a manual
+`ALTER TABLE payment_transactions DROP COLUMN checkout_uri`; this discards any
+active provider checkout URLs. Migration and rollback have not been run.
 Existing Movie V2 adds `projection_technology` and expands the full-identity
 unique key; Inventory V2 adds and backfills showtime projection snapshots.
 Keep each service's migrations with its matching service deployment. Deploy
@@ -427,11 +478,11 @@ The consumer now validates the complete normalized seat set after acquiring
 PESSIMISTIC_WRITE locks and checking Showtime eligibility, before grouped pricing,
 total calculation or hold mutation:
 
-| Condition | Existing event/reason | Seat changes |
-| --- | --- | --- |
-| Any requested seat missing, including an empty lookup | seat-reservation-rejected / SEAT_NOT_FOUND | None; affectedSeats contains missing numbers. |
-| Any seat booked, unavailable, held by another booking, expired or held with a different expiry | seat-reservation-rejected / SEAT_UNAVAILABLE | None; affectedSeats contains unusable numbers. |
-| Every seat available or already held by this booking with the same unexpired deadline | Existing price/expiry/eligibility checks, then seat-reserved | Hold AVAILABLE seats; retain matching existing holds. |
+| Condition                                                                                      | Existing event/reason                                        | Seat changes                                          |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------- |
+| Any requested seat missing, including an empty lookup                                          | seat-reservation-rejected / SEAT_NOT_FOUND                   | None; affectedSeats contains missing numbers.         |
+| Any seat booked, unavailable, held by another booking, expired or held with a different expiry | seat-reservation-rejected / SEAT_UNAVAILABLE                 | None; affectedSeats contains unusable numbers.        |
+| Every seat available or already held by this booking with the same unexpired deadline          | Existing price/expiry/eligibility checks, then seat-reserved | Hold AVAILABLE seats; retain matching existing holds. |
 
 Hold deadlines compare instants: UTC and +07:00 representations of the same
 expiry are equivalent. A held seat without an expiry is not reusable. Expired

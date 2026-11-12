@@ -61,10 +61,9 @@ public class PaymentProviderResultApplicationServiceImpl
         PaymentTransaction transactionReference =
                 transactionRepository
                         .findById(operation.transactionId())
-                        .orElseThrow(
-                                () ->
-                                        new NotFoundException(
-                                                PaymentErrorCode.PAYMENT_TRANSACTION_NOT_FOUND));
+                        .orElseThrow(() ->
+                                new NotFoundException(
+                                        PaymentErrorCode.PAYMENT_TRANSACTION_NOT_FOUND));
 
         Payment payment =
                 paymentRepository
@@ -75,10 +74,9 @@ public class PaymentProviderResultApplicationServiceImpl
         PaymentTransaction transaction =
                 transactionRepository
                         .findByIdForUpdate(operation.transactionId())
-                        .orElseThrow(
-                                () ->
-                                        new NotFoundException(
-                                                PaymentErrorCode.PAYMENT_TRANSACTION_NOT_FOUND));
+                        .orElseThrow(() ->
+                                new NotFoundException(
+                                        PaymentErrorCode.PAYMENT_TRANSACTION_NOT_FOUND));
 
         validateOwnership(operation, transaction);
         validateSnapshot(operation, payment, transaction);
@@ -121,7 +119,8 @@ public class PaymentProviderResultApplicationServiceImpl
                         processingOwner,
                         result.providerReference(),
                         result.failureCode(),
-                        result.failureMessage());
+                        result.failureMessage(),
+                        result.redirectUri());
 
                 payment.recordPendingProvider(result.providerReference(), resultTime);
             }

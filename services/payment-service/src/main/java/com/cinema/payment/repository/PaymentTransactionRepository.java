@@ -21,6 +21,10 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
 
     List<PaymentTransaction> findAllByPaymentIdOrderByAttemptNumberAsc(UUID paymentId);
 
+    Optional<PaymentTransaction>
+            findFirstByPaymentIdAndTransactionTypeOrderByAttemptNumberDescIdDesc(
+                    UUID paymentId, PaymentTransactionType transactionType);
+
     Optional<PaymentTransaction> findByProviderAndIdempotencyKey(
             String provider, String idempotencyKey);
 

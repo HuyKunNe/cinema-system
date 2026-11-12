@@ -22,6 +22,9 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
     Optional<Payment> findByIdAndUserId(UUID paymentId, UUID userId);
 
+    Optional<Payment> findFirstByBookingIdAndUserIdOrderByPaymentAttemptDescIdDesc(
+            UUID bookingId, UUID userId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query(
             """

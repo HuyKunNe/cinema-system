@@ -24,6 +24,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
+import java.net.URI;
 import java.time.OffsetDateTime;
 import java.util.Locale;
 import java.util.UUID;
@@ -102,6 +103,9 @@ public class PaymentTransaction {
 
     @Column(name = "provider_reference", length = 255)
     private String providerReference;
+
+    @Column(name = "checkout_uri", length = 2048)
+    private String checkoutUri;
 
     @Column(name = "provider_event_id", length = 255)
     private String providerEventId;
@@ -274,6 +278,11 @@ public class PaymentTransaction {
         return providerReference;
     }
 
+    public String getCheckoutUri() {
+
+        return checkoutUri;
+    }
+
     public String getProviderEventId() {
 
         return providerEventId;
@@ -425,6 +434,7 @@ public class PaymentTransaction {
 
         status = PaymentTransactionStatus.SUCCEEDED;
         providerReference = reference.strip();
+        checkoutUri = null;
         failureCode = null;
         failureMessage = null;
         this.completedAt = completedAt;
@@ -440,6 +450,7 @@ public class PaymentTransaction {
         validateCompletionTime(completedAt);
 
         status = PaymentTransactionStatus.FAILED;
+        checkoutUri = null;
         failureCode = code.strip();
         failureMessage = normalizeFailureMessage(message);
         this.completedAt = completedAt;
@@ -450,10 +461,22 @@ public class PaymentTransaction {
     public void markPendingProvider(
             String expectedOwner, String reference, String code, String message) {
 
+        markPendingProvider(expectedOwner, reference, code, message, null);
+    }
+
+    public void markPendingProvider(
+            String expectedOwner, String reference, String code, String message, URI checkoutUri) {
+
         requireOwnedBy(expectedOwner);
+
+        String normalizedCheckoutUri = normalizeCheckoutUri(checkoutUri);
+        if (normalizedCheckoutUri != null && transactionType != PaymentTransactionType.CHARGE) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_RESULT_INVALID);
+        }
 
         status = PaymentTransactionStatus.PENDING_PROVIDER;
         providerReference = normalizeProviderReference(reference);
+        this.checkoutUri = normalizedCheckoutUri;
         failureCode = normalizeFailureCode(code);
         failureMessage = normalizeFailureMessage(message);
         completedAt = null;
@@ -505,6 +528,27 @@ public class PaymentTransaction {
         }
 
         return normalizedReference;
+    }
+
+    private static String normalizeCheckoutUri(URI checkoutUri) {
+
+        if (checkoutUri == null) {
+            return null;
+        }
+
+        String scheme = checkoutUri.getScheme();
+        if (!checkoutUri.isAbsolute()
+                || checkoutUri.getHost() == null
+                || !("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_RESULT_INVALID);
+        }
+
+        String normalizedCheckoutUri = checkoutUri.toASCIIString();
+        if (normalizedCheckoutUri.isBlank() || normalizedCheckoutUri.length() > 2048) {
+            throw new ValidationException(PaymentErrorCode.PROVIDER_RESULT_INVALID);
+        }
+
+        return normalizedCheckoutUri;
     }
 
     private static void validateFailureCode(String code) {
@@ -559,6 +603,7 @@ public class PaymentTransaction {
         status = PaymentTransactionStatus.SUCCEEDED;
         providerEventId = eventId.strip();
         providerReference = reference.strip();
+        checkoutUri = null;
         failureCode = null;
         failureMessage = null;
         this.completedAt = completedAt;
@@ -582,6 +627,7 @@ public class PaymentTransaction {
         status = PaymentTransactionStatus.FAILED;
         providerEventId = eventId.strip();
         providerReference = reference.strip();
+        checkoutUri = null;
         failureCode = code.strip();
         failureMessage = normalizeFailureMessage(message);
         this.completedAt = completedAt;

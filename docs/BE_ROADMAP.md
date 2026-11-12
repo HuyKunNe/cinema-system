@@ -343,6 +343,13 @@ không sửa FE; P0.2/P4.2 còn chờ runtime. Chi tiết tại
 
 ### P4.3 — Chốt luồng thanh toán
 
+**Tiếp tục ngày 2026-11-12:** lưu `redirectUri` từ kết quả provider `PENDING`
+trong `payment_transactions.checkout_uri` và bổ sung API đọc checkout của chính
+chủ booking. API không khởi tạo giao dịch mới; trả URL chỉ khi payment/charge
+còn `PENDING_PROVIDER` và reservation chưa hết hạn. V2 là migration MySQL bổ
+sung nullable, không sửa baseline. Provider hosted-checkout, callback thật,
+client FE và runtime vẫn cần hoàn thiện/xác minh.
+
 **Tiếp tục ngày 2026-11-11:** đổi so khớp deadline trong snapshot provider charge
 của PaymentProviderResultApplicationServiceImpl từ equals sang isEqual. Cùng
 instant nhưng khác offset không còn bị coi là PAYMENT_TRANSACTION_DATA_MISMATCH;
