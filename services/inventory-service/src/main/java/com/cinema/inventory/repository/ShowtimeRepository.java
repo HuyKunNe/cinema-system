@@ -21,7 +21,8 @@ import java.util.UUID;
 public interface ShowtimeRepository extends JpaRepository<Showtime, UUID> {
 
     @Query(
-            value = """
+            value =
+                    """
                     select showtime
                     from Showtime showtime
                     join fetch showtime.room room
@@ -37,7 +38,8 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, UUID> {
                       and (:status is null or showtime.status = :status)
                     order by showtime.startsAt asc, showtime.id asc
                     """,
-            countQuery = """
+            countQuery =
+                    """
                     select count(showtime)
                     from Showtime showtime
                     join showtime.room room
@@ -147,8 +149,17 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, UUID> {
             @Param("latestStartsAt") OffsetDateTime latestStartsAt,
             @Param("salesWindowCutoff") OffsetDateTime salesWindowCutoff);
 
+    @Query(
+            """
+            select showtime.id
+            from Showtime showtime
+            where showtime.status in :statuses
+              and showtime.endsAt <= :endsAt
+            order by showtime.endsAt asc, showtime.id asc
+            """)
     List<UUID> findIdsByStatusInAndEndsAtLessThanEqualOrderByEndsAtAscIdAsc(
-            Collection<ShowtimeStatus> statuses, OffsetDateTime endsAt);
+            @Param("statuses") Collection<ShowtimeStatus> statuses,
+            @Param("endsAt") OffsetDateTime endsAt);
 
     @Query(
             """

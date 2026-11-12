@@ -379,6 +379,13 @@ migration MySQL hoặc sửa FE. Offset pagination vẫn có thể dịch khi th
 dữ liệu giữa các lần đọc; không coi là snapshot xuyên request. Không chạy test;
 P0.2/P5.1 chưa đóng. Chi tiết tại [FE API contract](19_FE_API_CONTRACT.md).
 
+**Tiếp tục ngày 2026-11-12:** thêm Resource Server chain stateless cho User
+Service Bearer requests trên các account/admin routes hiện có. Decoder kiểm tra
+issuer, JWK set, audience và subject; profile controller lấy ID từ JWT hoặc
+session principal. Luồng Authorization Server/OIDC và session/CSRF fallback được
+giữ nguyên; không thêm API, authority, migration MySQL hoặc sửa FE. Chưa kiểm tra
+HTTP/JWK/CORS runtime; không chạy test.
+
 - Xác minh profile, booking history/detail và quyền sở hữu.
 - Chỉ bổ sung API nếu User FE không thể hoàn thành luồng bằng contract hiện có.
 

@@ -1100,10 +1100,10 @@ operation ID, authorization rule or migration was changed.
 
 The P0.3 continuation against `4e58548` adds
 [account/layout/pricing contract evidence](20_FE_ACCOUNT_LAYOUT_PRICING_CONTRACT.md).
-It records the User application's session/CSRF boundary and absence of a Bearer
-Resource Server chain on its account routes, plus current layout/pricing source
-and examples. Resolve account integration under P5.1/P5.2 without treating this
-documentation review as a security change or runtime acceptance.
+It records the User application's session/CSRF boundary and, as of 2026-11-12,
+the implementation of a Bearer Resource Server chain for account routes, plus
+current layout/pricing source and examples. HTTP/JWK/CORS runtime verification
+remains open; see P5.1 and the detailed contract note.
 
 #### Completed ShowSeat behavior
 

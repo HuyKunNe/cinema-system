@@ -50,6 +50,26 @@ Current status:
 
 ## 2026-11-12
 
+### User Service — Bearer support for account APIs
+
+- Added a stateless Resource Server chain for existing `/api/v1/users/**`
+  Bearer requests, validating issuer/JWK/audience/subject and using the shared
+  roles/permissions converter. Current-user routes now resolve the same owner
+  from either the established session principal or JWT subject.
+- Preserved Authorization Server/OIDC handling and session/CSRF behavior for
+  requests without Bearer tokens. Existing admin routes still require
+  `user:manage`; no endpoint, authority, schema, migration, or FE code changed.
+- HTTP/JWK/CORS runtime verification remains open; tests were not run.
+
+### Inventory — Fix automatic showtime close candidate projection
+
+- The closing scheduler expects UUID candidates, but the derived Spring Data
+  method returned `Showtime` entities, causing a result type mismatch at runtime.
+  Replaced it with an explicit JPQL projection selecting `showtime.id`, retaining
+  the due-status filter and deterministic end-time/ID ordering.
+- No API, MySQL schema, migration, event, or database data changed. Tests were
+  not run; scheduler runtime remains unverified.
+
 ### P0.2 — Align Inventory ShowSeat lock ordering
 
 - Changed the shared pessimistic-lock query for seat-number selection to return

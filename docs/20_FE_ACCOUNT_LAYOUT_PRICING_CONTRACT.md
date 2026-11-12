@@ -9,8 +9,9 @@ permissions, payloads and database behavior are unchanged.
 The continuation from `f2d950e` renames layout/pricing controller methods to the
 previously documented operation names, matching existing generated FE functions
 without annotations. This is source compatibility evidence only; runtime exports
-and schema compatibility still need verification. Account handler names are
-unchanged, and the session-versus-Bearer integration gap below remains open.
+and schema compatibility still need verification. The account handler names are
+unchanged. The former session-versus-Bearer gap was addressed on 2026-11-12 as
+described below; runtime verification remains open.
 
 Reviewed against BE `main` at `4e58548` on 2026-11-06. This supplements
 [the FE contract reference](19_FE_API_CONTRACT.md). Examples use synthetic IDs
@@ -18,40 +19,32 @@ and values; response examples are excerpts, not captured HTTP responses. Replace
 IDs and concurrency versions with values actually returned by the owning service.
 No runtime OpenAPI export, automated checks or FE modifications were performed.
 
-## Account: authentication is an open integration gap
+## Account: session and Bearer support
 
-`AuthorizationServerSecurityConfiguration` defines an authorization-server
-filter chain and an application chain using form login, sessions and the default
-CSRF protection. No `oauth2ResourceServer` configuration was found for the User
-application routes. `CurrentUserController` expects `CinemaUserDetails`, not a
-JWT principal. The shared security module supplies JWT mechanics, but does not
-install a Resource Server filter chain for these routes.
+As of 2026-11-12, `AuthorizationServerSecurityConfiguration` has a dedicated
+stateless Resource Server chain for Bearer requests to `/api/v1/users/**`. It
+validates the configured issuer, JWK set, audience and subject, and maps JWT
+roles/permissions with the shared converter. User profile endpoints resolve the
+authenticated ID from either the existing `CinemaUserDetails` session principal
+or the shared JWT security context utility.
 
-The generated FE user client uses `apiRequest`. Its shared Axios instance adds
-an access token, but does not explicitly configure cross-origin session cookies
-or supply a User Service CSRF token. The existence of generated functions does
-not demonstrate that Bearer-only calls can reach the User controllers. A Gateway
-JWT check does not establish the User Service session or its expected principal.
-Cookie behavior also depends on the deployment origin; it was not tested here.
+Requests without a Bearer header continue through the existing form-login,
+session and CSRF chain. The Bearer chain is stateless and disables CSRF only for
+requests it matches. It permits the existing `/me` profile operations and the
+existing admin lock/unlock/enable/disable PATCH routes with `user:manage`; other
+Bearer requests under `/api/v1/users/**` are denied. Authorization Server OIDC
+endpoints continue using their existing chain and decoder.
 
-Before claiming account integration complete, settle whether the SPA account
-APIs will accept Bearer tokens independently at User Service or use an explicitly
-supported session/CSRF path. The choice must preserve the authorization-server
-login flow, trusted actor identity and revocation behavior. This review does
-not choose or implement that security change, disable CSRF, or assume a session
-cookie can substitute for the Gateway's authentication requirement.
-
-For this service, do not promise the Resource Servers' JSON 401/403 contract:
-authentication entry points and default CSRF handling must be reviewed for the
-actual request context. Shared domain error handling applies once a request
-reaches the corresponding application handler.
+The FE's existing API client sends an access token. No FE contract or route was
+changed. The implementation has not been verified through HTTP; token/JWK
+runtime behavior, CORS preflight and browser integration remain to be checked.
 
 | Existing operation | Response | Source boundary |
 | --- | --- | --- |
-| `GET /api/v1/users/me` | `200`, raw `CurrentUserProfileResponse` | Authenticated User session; ID from `CinemaUserDetails` |
-| `PUT /api/v1/users/me` | `200`, raw profile | Same owner; session/CSRF requirements apply |
-| `PUT /api/v1/users/me/password` | `204`, no response body | Same owner; requires current and new passwords; session/CSRF requirements apply |
-| `PATCH /api/v1/users/{userId}/lock` | `204`, no body | `user:manage` in the application chain and service method security |
+| `GET /api/v1/users/me` | `200`, raw `CurrentUserProfileResponse` | Authenticated session or valid Bearer token; ID from authenticated principal |
+| `PUT /api/v1/users/me` | `200`, raw profile | Same owner; session CSRF applies, Bearer chain is stateless |
+| `PUT /api/v1/users/me/password` | `204`, no response body | Same owner; requires current and new passwords |
+| `PATCH /api/v1/users/{userId}/lock` | `204`, no body | `user:manage` in either applicable security chain and service method security |
 | `PATCH /api/v1/users/{userId}/unlock` | `204`, no body | Same privileged boundary |
 | `PATCH /api/v1/users/{userId}/disable` | `204`, no body | Same privileged boundary |
 | `PATCH /api/v1/users/{userId}/enable` | `204`, no body | Same privileged boundary |
@@ -363,7 +356,6 @@ their service-owned migrations. FE generated User functions and Admin pricing
 callers were inspected read only; their existence is not runtime verification.
 
 P0.3 still needs runtime spec provenance, whole-spec operation-ID review and
-actual HTTP/security verification when authorized. User account authentication
-integration is an explicit gap to resolve under P5.1/P5.2; COUPLE matrix semantics
-remain P2 work. P0.2 execution gates stay open and R28 remains deferred.
-No API, schema, authority or migration was changed in this documentation increment.
+actual HTTP/security verification. The account integration implementation
+adds no endpoint, schema, authority or migration; COUPLE matrix semantics remain
+P2 work. P0.2 execution gates stay open and R28 remains deferred.
