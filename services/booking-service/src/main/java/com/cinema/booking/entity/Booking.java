@@ -263,7 +263,9 @@ public class Booking extends BaseEntity {
     public void expire(OffsetDateTime now) {
 
         requireCurrentTime(now);
-        requireReserved();
+        if (status != BookingStatus.PENDING) {
+            requireReserved();
+        }
 
         if (expiresAt.isAfter(now)) {
             throw new ConflictException(BookingErrorCode.BOOKING_NOT_EXPIRED);

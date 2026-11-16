@@ -1,5 +1,16 @@
 # Booking Service Design
 
+2026-11-16 continuation: reservation expiration now covers both PENDING and
+RESERVED. The scheduler scans a separate bounded batch per state each cycle.
+The existing expiration service locks and rechecks the current state/deadline,
+then atomically persists EXPIRED and booking-expired Outbox. Terminal states
+remain unchanged; deadlines are not extended. This prevents a stalled
+reservation saga from leaving a booking pending indefinitely. Late reservation
+results cannot revive EXPIRED via reserve(), which still requires PENDING.
+Inventory continues to consume booking-expired for compensation using its
+existing ownership checks; this change does not certify late-event race behavior.
+No schema, event version or HTTP contract changes. Runtime races were not tested.
+
 **Version:** R27.8
 **Status:** Booking payment-result consumers implemented and verified
 **Last updated:** 2026-09-15

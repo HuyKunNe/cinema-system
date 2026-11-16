@@ -58,6 +58,11 @@ public class BookingExpirationScheduler {
                         BookingStatus.RESERVED, cutoff, PageRequest.of(0, batchSize));
 
         candidateIds.forEach(this::expireCandidate);
+
+        bookingRepository
+                .findExpirationCandidateIds(
+                        BookingStatus.PENDING, cutoff, PageRequest.of(0, batchSize))
+                .forEach(this::expireCandidate);
     }
 
     private void expireCandidate(UUID bookingId) {

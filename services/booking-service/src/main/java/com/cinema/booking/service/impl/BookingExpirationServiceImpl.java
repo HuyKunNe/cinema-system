@@ -72,7 +72,8 @@ public class BookingExpirationServiceImpl implements BookingExpirationService {
 
     private static boolean isExpirationDue(Booking booking, OffsetDateTime now) {
 
-        return booking.getStatus() == BookingStatus.RESERVED
+        return (booking.getStatus() == BookingStatus.RESERVED
+                        || booking.getStatus() == BookingStatus.PENDING)
                 && !booking.getExpiresAt().isAfter(now);
     }
 

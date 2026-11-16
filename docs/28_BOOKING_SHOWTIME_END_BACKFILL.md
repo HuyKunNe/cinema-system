@@ -4,6 +4,15 @@ Ngày triển khai source: 2026-11-16. Chưa chạy migration hoặc backfill ru
 
 ## Quan sát local ngày 2026-11-16
 
+Sau lô apply đầu tiên do chủ dự án chạy qua Swagger, kiểm tra DB chỉ đọc xác
+nhận 10 booking có nguồn CURRENT_SCHEDULE_BACKFILL (2 CONFIRMED, 1 CANCELLED,
+3 EXPIRED, 4 PENDING), không row backfill nào thiếu giờ/thời điểm/actor. V8
+constraint hiện đã có trong DB. Còn 3 CONFIRMED thiếu endsAt, ngoài một CONFIRMED
+đã có snapshot RESERVATION_EVENT. Chưa hoàn tất toàn bộ backfill. Response lô
+đầu trả nextCursor `01a1d300-9007-7ed8-ae24-b6c3c4884070`; tiếp tục apply từ
+cursor này, rồi kiểm tra lại số row null và kết quả query period theo owner.
+Đây là quan sát tiếp theo, thay thế số liệu trước apply ở đoạn bên dưới.
+
 Rà soát chỉ đọc: OpenAPI Booking tại port 8084 có tham số period và endpoint
 backfill. Flyway DB local ghi nhận V1–V7 thành công; đủ bốn cột giờ kết thúc/
 provenance, chưa có constraint V8. Có 13 booking thiếu endsAt, gồm 5 CONFIRMED,
