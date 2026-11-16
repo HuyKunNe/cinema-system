@@ -35,6 +35,14 @@ generated User functions alone are not proof of usable SPA authentication.
 
 ## Evidence and limits
 
+2026-11-16: `GET /api/v1/bookings` accepts optional single `status`:
+PENDING, RESERVED, CONFIRMED, REJECTED, PAYMENT_FAILED, CANCELLED or EXPIRED.
+Example: `/api/v1/bookings?status=CONFIRMED&page=0&size=10`. The authenticated
+owner and status filter apply before pagination, including total counts.
+Omission preserves the existing list. Invalid enum values fail request binding.
+This does not implement upcoming/past tabs or check-in filtering. FE clients
+were not regenerated and runtime behavior was not verified.
+
 - Continuation from `0ec5532` adds the paged, permission-protected
   [showtime management API](22_SHOWTIME_MANAGEMENT_API.md). It preserves the older
   array endpoints used by current FE and has not been adopted by that client.

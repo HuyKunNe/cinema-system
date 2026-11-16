@@ -7,6 +7,7 @@ import com.cinema.booking.dto.response.BookingResponse;
 import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
 import com.cinema.booking.enums.BookingPaymentProvider;
+import com.cinema.booking.enums.BookingStatus;
 import com.cinema.booking.exception.BookingErrorCode;
 import com.cinema.booking.idempotency.BookingRequestFingerprint;
 import com.cinema.booking.mapper.BookingMapper;
@@ -153,13 +154,24 @@ public class BookingServiceImpl implements BookingService {
     @Transactional(readOnly = true)
     public PageResponse<BookingResponse> findAll(UUID userId, int page, int size) {
 
+        return findAll(userId, page, size, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<BookingResponse> findAll(
+            UUID userId, int page, int size, BookingStatus status) {
+
         requireUserId(userId);
 
         PageRequest pageRequest =
                 PageRequest.of(
                         page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
 
-        Page<Booking> bookings = bookingRepository.findAllByUserId(userId, pageRequest);
+        Page<Booking> bookings =
+                status == null
+                        ? bookingRepository.findAllByUserId(userId, pageRequest)
+                        : bookingRepository.findAllByUserIdAndStatus(userId, status, pageRequest);
 
         Map<UUID, List<BookingSeat>> seatsByBookingId = loadSeatsByBookingId(bookings.getContent());
 

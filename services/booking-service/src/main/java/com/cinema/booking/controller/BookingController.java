@@ -2,6 +2,7 @@ package com.cinema.booking.controller;
 
 import com.cinema.booking.dto.request.CreateBookingRequest;
 import com.cinema.booking.dto.response.BookingResponse;
+import com.cinema.booking.enums.BookingStatus;
 import com.cinema.booking.service.BookingCancellationService;
 import com.cinema.booking.service.BookingService;
 import com.cinema.common.response.factory.ResponseFactory;
@@ -71,10 +72,13 @@ public class BookingController {
             @RequestParam(name = "size", defaultValue = "20")
                     @Min(value = 1, message = "Page size must be greater than zero")
                     @Max(value = 100, message = "Page size must not exceed 100")
-                    int size) {
+                    int size,
+            @RequestParam(name = "status", required = false) BookingStatus status) {
 
         PageResponse<BookingResponse> response =
-                bookingService.findAll(CurrentUser.id(), page, size);
+                status == null
+                        ? bookingService.findAll(CurrentUser.id(), page, size)
+                        : bookingService.findAll(CurrentUser.id(), page, size, status);
 
         return ResponseEntity.ok(ResponseFactory.success(response));
     }

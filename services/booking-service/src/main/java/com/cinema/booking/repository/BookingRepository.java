@@ -27,6 +27,8 @@ public interface BookingRepository
 
     Page<Booking> findAllByUserId(UUID userId, Pageable pageable);
 
+    Page<Booking> findAllByUserIdAndStatus(UUID userId, BookingStatus status, Pageable pageable);
+
     boolean existsByUserIdAndClientRequestId(UUID userId, String clientRequestId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
