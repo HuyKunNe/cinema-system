@@ -76,12 +76,36 @@ public class Booking extends BaseEntity {
     @Column(name = "showtime_ends_at")
     private OffsetDateTime showtimeEndsAt;
 
+    @Column(name = "showtime_end_source", length = 40)
+    private String showtimeEndSource;
+
+    @Column(name = "showtime_end_recorded_at")
+    private OffsetDateTime showtimeEndRecordedAt;
+
+    @Column(name = "showtime_end_recorded_by", length = 100)
+    private String showtimeEndRecordedBy;
+
+    public boolean backfillShowtimeEnd(OffsetDateTime value, OffsetDateTime now, UUID actor) {
+        if (showtimeEndsAt != null) return false;
+        java.util.Objects.requireNonNull(value);
+        java.util.Objects.requireNonNull(now);
+        java.util.Objects.requireNonNull(actor);
+        showtimeEndsAt = value;
+        showtimeEndSource = "CURRENT_SCHEDULE_BACKFILL";
+        showtimeEndRecordedAt = now;
+        showtimeEndRecordedBy = actor.toString();
+        return true;
+    }
+
     public void snapshotShowtimeEnd(OffsetDateTime value) {
         if (value == null) return;
         if (showtimeEndsAt != null && !showtimeEndsAt.isEqual(value)) {
             throw new ConflictException(BookingErrorCode.RESERVATION_RESULT_MISMATCH);
         }
         showtimeEndsAt = value;
+        showtimeEndSource = "RESERVATION_EVENT";
+        showtimeEndRecordedAt = null;
+        showtimeEndRecordedBy = null;
     }
 
     public OffsetDateTime getShowtimeEndsAt() {

@@ -89,6 +89,31 @@ giả ở FE. Các mức ưu tiên dưới đây là đề xuất, cần thống
 
 ### BE-U06 — Bộ lọc cho các tab Vé của tôi
 
+**Backfill đã được duyệt và triển khai source:** dùng endsAt hiện tại từ API
+Inventory cho booking còn null, lưu nguồn/thời điểm/admin bằng V7; API ADMIN
+có dry-run mặc định, cursor, giới hạn lô và khóa kiểm tra trước khi ghi.
+Chi tiết contract/rollout tại [hướng dẫn backfill](28_BOOKING_SHOWTIME_END_BACKFILL.md).
+Chưa chạy migration, apply backfill hay kiểm chứng runtime; kế hoạch chờ duyệt
+bên dưới là lịch sử, phương án 1 đã được chủ dự án chọn.
+
+**Kế hoạch backfill cần duyệt:** dữ liệu lịch sử thiếu showtimeEndsAt không thể
+khôi phục giờ kết thúc lúc mua chỉ từ `expiresAt` hoặc thời điểm thanh toán.
+Inventory GET showtime chỉ cung cấp lịch hiện tại. Vì vậy chưa tự backfill bằng
+giá trị này như thể đó là snapshot lịch sử. Hai phương án:
+
+1. Cho phép dùng endsAt hiện tại từ API Inventory để phân loại booking cũ,
+   đồng thời ghi nhận nguồn là lịch hiện tại, không khẳng định lịch lúc mua.
+2. Giữ null cho tới khi có nguồn lịch sử được xác minh; booking vẫn đọc được
+   trong danh sách không period nhưng không xuất hiện ở UPCOMING/PAST.
+
+Nếu chọn phương án 1, triển khai công cụ/service theo lô có dry-run, phân trang
+bằng cursor, đọc Inventory ngoài transaction Booking, kiểm tra showtimeId và
+thời gian hợp lệ. Khi ghi, khóa lại Booking, chỉ cập nhật nếu giá trị vẫn null;
+không đổi status, tiền, ghế hoặc ghi đè snapshot nhận từ event v2. Retry không
+được ghi đè; lỗi/404 từng suất được báo cáo và không chặn toàn bộ lô. Không
+query trực tiếp DB Inventory. Cần lưu dấu nguồn/thời điểm backfill nếu nghiệp
+vụ duyệt sử dụng lịch hiện tại; schema nguồn dữ liệu chưa được triển khai.
+
 **Rà soát lịch/đồng hồ:** API sửa suất hiện chỉ cho đổi lịch ở SCHEDULED
 (`ShowtimeServiceImpl.update`). Bộ lọc period dùng bean `systemClock` của
 Booking, chụp một cutoff cho content/count. Không tự thêm luồng đổi lịch suất

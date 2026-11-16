@@ -32,6 +32,11 @@ public interface BookingRepository
     Page<Booking> findAllByUserIdAndStatusIn(
             UUID userId, List<BookingStatus> statuses, Pageable pageable);
 
+    @Query(
+            "SELECT b FROM Booking b WHERE b.showtimeEndsAt IS NULL "
+                    + "AND (:afterId IS NULL OR b.id > :afterId) ORDER BY b.id ASC")
+    List<Booking> findMissingShowtimeEnds(@Param("afterId") UUID afterId, Pageable pageable);
+
     boolean existsByUserIdAndClientRequestId(UUID userId, String clientRequestId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

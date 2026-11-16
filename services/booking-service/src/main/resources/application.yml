@@ -82,6 +82,7 @@ logging:
 
 cinema:
   booking:
+    inventory-base-url: ${BOOKING_INVENTORY_BASE_URL:http://localhost:8083}
     reservation-expiration: ${BOOKING_RESERVATION_EXPIRATION:10m}
     max-seats-per-booking: ${BOOKING_MAX_SEATS_PER_BOOKING:10}
     expiration:
