@@ -14,6 +14,7 @@ import com.cinema.common.validation.annotation.UuidV7;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
 import java.util.UUID;
+import java.util.List;
 
 @Validated
 @RestController
@@ -73,12 +75,13 @@ public class BookingController {
                     @Min(value = 1, message = "Page size must be greater than zero")
                     @Max(value = 100, message = "Page size must not exceed 100")
                     int size,
-            @RequestParam(name = "status", required = false) BookingStatus status) {
+            @RequestParam(name = "status", required = false)
+                    List<@NotNull BookingStatus> statuses) {
 
         PageResponse<BookingResponse> response =
-                status == null
+                statuses == null || statuses.isEmpty()
                         ? bookingService.findAll(CurrentUser.id(), page, size)
-                        : bookingService.findAll(CurrentUser.id(), page, size, status);
+                        : bookingService.findAllByStatuses(CurrentUser.id(), page, size, statuses);
 
         return ResponseEntity.ok(ResponseFactory.success(response));
     }

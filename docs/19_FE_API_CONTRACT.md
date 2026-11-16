@@ -35,6 +35,14 @@ generated User functions alone are not proof of usable SPA authentication.
 
 ## Evidence and limits
 
+2026-11-16 continuation: the optional `status` query parameter also supports
+repeated values, for example `?status=PENDING&status=RESERVED&page=0&size=10`.
+Statuses are combined with OR inside the authenticated owner's bookings. The
+database applies this filter to both page content and total count; duplicate
+values are deduplicated. Single-value requests remain compatible. Omitted or
+empty lists return the unfiltered owner list; invalid enum values and null list
+elements are rejected. No named tab semantics are inferred from these values.
+
 2026-11-16: `GET /api/v1/bookings` accepts optional single `status`:
 PENDING, RESERVED, CONFIRMED, REJECTED, PAYMENT_FAILED, CANCELLED or EXPIRED.
 Example: `/api/v1/bookings?status=CONFIRMED&page=0&size=10`. The authenticated

@@ -162,6 +162,14 @@ public class BookingServiceImpl implements BookingService {
     public PageResponse<BookingResponse> findAll(
             UUID userId, int page, int size, BookingStatus status) {
 
+        return findAllByStatuses(userId, page, size, status == null ? List.of() : List.of(status));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<BookingResponse> findAllByStatuses(
+            UUID userId, int page, int size, List<BookingStatus> statuses) {
+
         requireUserId(userId);
 
         PageRequest pageRequest =
@@ -169,9 +177,10 @@ public class BookingServiceImpl implements BookingService {
                         page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
 
         Page<Booking> bookings =
-                status == null
+                statuses == null || statuses.isEmpty()
                         ? bookingRepository.findAllByUserId(userId, pageRequest)
-                        : bookingRepository.findAllByUserIdAndStatus(userId, status, pageRequest);
+                        : bookingRepository.findAllByUserIdAndStatusIn(
+                                userId, List.copyOf(new LinkedHashSet<>(statuses)), pageRequest);
 
         Map<UUID, List<BookingSeat>> seatsByBookingId = loadSeatsByBookingId(bookings.getContent());
 

@@ -6,6 +6,7 @@ import com.cinema.booking.enums.BookingStatus;
 import com.cinema.common.response.model.PageResponse;
 
 import java.util.UUID;
+import java.util.List;
 
 public interface BookingService {
 
@@ -16,4 +17,7 @@ public interface BookingService {
     PageResponse<BookingResponse> findAll(UUID userId, int page, int size);
 
     PageResponse<BookingResponse> findAll(UUID userId, int page, int size, BookingStatus status);
+
+    PageResponse<BookingResponse> findAllByStatuses(
+            UUID userId, int page, int size, List<BookingStatus> statuses);
 }
