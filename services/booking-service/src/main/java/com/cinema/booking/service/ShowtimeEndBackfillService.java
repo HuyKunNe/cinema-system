@@ -24,6 +24,7 @@ import java.util.UUID;
 
 @Service
 public class ShowtimeEndBackfillService {
+    private static final long BATCH_BUDGET_NANOS = Duration.ofSeconds(3).toNanos();
     private final BookingRepository repository;
     private final TransactionTemplate transaction;
     private final RestClient inventory;
@@ -40,21 +41,28 @@ public class ShowtimeEndBackfillService {
         var factory =
                 new JdkClientHttpRequestFactory(
                         HttpClient.newBuilder()
-                                .connectTimeout(Duration.ofSeconds(2))
+                                .connectTimeout(Duration.ofSeconds(1))
                                 .followRedirects(HttpClient.Redirect.NEVER)
                                 .build());
-        factory.setReadTimeout(Duration.ofSeconds(3));
+        factory.setReadTimeout(Duration.ofSeconds(2));
         this.inventory = RestClient.builder().baseUrl(baseUrl).requestFactory(factory).build();
     }
 
     public Batch run(UUID afterId, int size, boolean dryRun, UUID actor) {
+        long startedAt = System.nanoTime();
         // Repository transaction ends before HTTP calls; no Booking lock spans network IO.
         var candidates = repository.findMissingShowtimeEnds(afterId, PageRequest.of(0, size + 1));
         boolean hasMore = candidates.size() > size;
         var selected = candidates.subList(0, Math.min(size, candidates.size()));
         var rows = new ArrayList<Row>();
         Map<UUID, Lookup> cache = new HashMap<>();
+        boolean budgetLimited = false;
         for (var candidate : selected) {
+            // Always examine at least one row; resume after the last examined row.
+            if (!rows.isEmpty() && System.nanoTime() - startedAt >= BATCH_BUDGET_NANOS) {
+                budgetLimited = true;
+                break;
+            }
             var lookup = cache.computeIfAbsent(candidate.getShowtimeId(), this::lookup);
             if (lookup.endsAt() == null) {
                 rows.add(
@@ -83,8 +91,9 @@ public class ShowtimeEndBackfillService {
             rows.add(
                     new Row(candidate.getId(), candidate.getShowtimeId(), lookup.endsAt(), result));
         }
-        UUID next = hasMore && !selected.isEmpty() ? selected.getLast().getId() : null;
-        return new Batch(dryRun, next, List.copyOf(rows));
+        UUID next =
+                (hasMore || budgetLimited) && !rows.isEmpty() ? rows.getLast().bookingId() : null;
+        return new Batch(dryRun, next, List.copyOf(rows), budgetLimited);
     }
 
     private Lookup lookup(UUID id) {
@@ -120,5 +129,5 @@ public class ShowtimeEndBackfillService {
 
     public record Row(UUID bookingId, UUID showtimeId, OffsetDateTime endsAt, String result) {}
 
-    public record Batch(boolean dryRun, UUID nextCursor, List<Row> rows) {}
+    public record Batch(boolean dryRun, UUID nextCursor, List<Row> rows, boolean budgetLimited) {}
 }

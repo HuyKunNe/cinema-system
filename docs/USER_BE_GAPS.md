@@ -89,6 +89,18 @@ giả ở FE. Các mức ưu tiên dưới đây là đề xuất, cần thống
 
 ### BE-U06 — Bộ lọc cho các tab Vé của tôi
 
+**Quan sát local chỉ đọc:** DB hiện áp dụng V1–V7, chưa có constraint V8;
+OpenAPI port 8084 đã có period và API backfill. Còn 13 booking thiếu endsAt,
+trong đó 5 CONFIRMED nên không thuộc hai tab thời gian cho đến khi backfill.
+Không coi đây là lỗi phân loại bằng ngày hiện tại của FE. Chưa gọi preview/
+apply có xác thực hoặc xác minh count/content theo tài khoản. Số liệu có thể
+thay đổi sau thời điểm rà soát; không chạy test hay ghi DB trong bước này.
+
+**Bảo toàn audit:** migration V8 ràng buộc nguồn/thời điểm/actor khớp với giờ
+kết thúc bằng MySQL CHECK; không sửa V6/V7. Có SQL chỉ đọc kiểm tra row không
+nhất quán và hướng dẫn rollback constraint trong tài liệu backfill. Chưa chạy
+migration hoặc kiểm chứng constraint trên DB; không đánh dấu U06 hoàn tất.
+
 **Backfill đã được duyệt và triển khai source:** dùng endsAt hiện tại từ API
 Inventory cho booking còn null, lưu nguồn/thời điểm/admin bằng V7; API ADMIN
 có dry-run mặc định, cursor, giới hạn lô và khóa kiểm tra trước khi ghi.
