@@ -89,6 +89,20 @@ giả ở FE. Các mức ưu tiên dưới đây là đề xuất, cần thống
 
 ### BE-U06 — Bộ lọc cho các tab Vé của tôi
 
+**Rà soát lịch/đồng hồ:** API sửa suất hiện chỉ cho đổi lịch ở SCHEDULED
+(`ShowtimeServiceImpl.update`). Bộ lọc period dùng bean `systemClock` của
+Booking, chụp một cutoff cho content/count. Không tự thêm luồng đổi lịch suất
+đã mở bán; backfill lịch sử và thay đổi lịch ngoài luồng này vẫn chưa giải quyết.
+
+**Triển khai truy vấn period ngày 2026-11-16:** GET danh sách nhận tùy chọn
+`period=UPCOMING|PAST`. Hai nhóm chỉ lấy CONFIRMED có showtimeEndsAt; UPCOMING
+là end > thời gian UTC server, PAST là end <= thời gian đó. Chụp cutoff một lần
+cho content/count trong request. Bộ lọc owner, status và period thực thi trong
+DB trước pagination; status bổ sung giao với CONFIRMED nên status mâu thuẫn cho
+trang rỗng. Bỏ period giữ truy vấn cũ. Null lịch sử không thuộc hai nhóm nhưng
+vẫn hiện trong danh sách không lọc period. Đây là phân loại theo snapshot lúc
+giữ ghế, chưa xử lý đồng bộ đổi lịch/backfill hoặc check-in. Chưa đóng U06.
+
 **Tiếp tục đồng bộ snapshot:** Inventory đọc `Showtime.endsAt` khi tạo Outbox
 `seat-reserved` version 2; Booking chấp nhận version 1/2 và lưu `showtimeEndsAt`
 trong cùng transaction hoàn tất reservation. Version 2 thiếu thời gian hoặc

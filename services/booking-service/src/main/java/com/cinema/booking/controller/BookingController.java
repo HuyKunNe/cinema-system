@@ -2,6 +2,7 @@ package com.cinema.booking.controller;
 
 import com.cinema.booking.dto.request.CreateBookingRequest;
 import com.cinema.booking.dto.response.BookingResponse;
+import com.cinema.booking.enums.BookingHistoryPeriod;
 import com.cinema.booking.enums.BookingStatus;
 import com.cinema.booking.service.BookingCancellationService;
 import com.cinema.booking.service.BookingService;
@@ -27,8 +28,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
-import java.util.UUID;
 import java.util.List;
+import java.util.UUID;
 
 @Validated
 @RestController
@@ -75,13 +76,16 @@ public class BookingController {
                     @Min(value = 1, message = "Page size must be greater than zero")
                     @Max(value = 100, message = "Page size must not exceed 100")
                     int size,
-            @RequestParam(name = "status", required = false)
-                    List<@NotNull BookingStatus> statuses) {
+            @RequestParam(name = "status", required = false) List<@NotNull BookingStatus> statuses,
+            @RequestParam(name = "period", required = false) BookingHistoryPeriod period) {
 
         PageResponse<BookingResponse> response =
-                statuses == null || statuses.isEmpty()
-                        ? bookingService.findAll(CurrentUser.id(), page, size)
-                        : bookingService.findAllByStatuses(CurrentUser.id(), page, size, statuses);
+                period != null
+                        ? bookingService.findHistory(CurrentUser.id(), page, size, statuses, period)
+                        : statuses == null || statuses.isEmpty()
+                                ? bookingService.findAll(CurrentUser.id(), page, size)
+                                : bookingService.findAllByStatuses(
+                                        CurrentUser.id(), page, size, statuses);
 
         return ResponseEntity.ok(ResponseFactory.success(response));
     }

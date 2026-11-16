@@ -35,6 +35,18 @@ generated User functions alone are not proof of usable SPA authentication.
 
 ## Evidence and limits
 
+Latest source contract (2026-11-16): `GET /api/v1/bookings` now accepts optional
+`period=UPCOMING|PAST`. Example: `/api/v1/bookings?period=PAST&page=0&size=10`.
+Both periods require CONFIRMED and non-null showtimeEndsAt. UPCOMING uses end >
+server UTC cutoff; PAST uses end <= cutoff, including equality. One cutoff is
+captured per request for content/count. Owner/status/period filters are applied
+before database pagination; an additional status filter intersects CONFIRMED.
+Omit period to retain previous behavior. Unknown enum values fail binding.
+Bookings with unknown end remain accessible without period filtering. Include
+period in the FE query cache key and reset page on changes. FE is not modified.
+This uses reservation-time snapshots; schedule changes and historical backfill
+remain unresolved. Earlier notes that no period query exists describe prior steps.
+
 Reservation snapshot continuation: Inventory now emits `seat-reserved` version
 2 with `showtimeEndsAt` from its Showtime entity. Booking accepts versions 1/2,
 requires a valid end instant for v2 and persists it with the seat snapshot.

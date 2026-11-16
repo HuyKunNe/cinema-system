@@ -6,6 +6,7 @@ import com.cinema.booking.dto.request.CreateBookingRequest;
 import com.cinema.booking.dto.response.BookingResponse;
 import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingSeat;
+import com.cinema.booking.enums.BookingHistoryPeriod;
 import com.cinema.booking.enums.BookingPaymentProvider;
 import com.cinema.booking.enums.BookingStatus;
 import com.cinema.booking.exception.BookingErrorCode;
@@ -21,15 +22,21 @@ import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.response.model.PageResponse;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -54,6 +61,8 @@ public class BookingServiceImpl implements BookingService {
 
     private final BookingProperties bookingProperties;
 
+    private final Clock clock;
+
     public BookingServiceImpl(
             BookingRepository bookingRepository,
             BookingSeatRepository bookingSeatRepository,
@@ -62,12 +71,33 @@ public class BookingServiceImpl implements BookingService {
             BookingMapper bookingMapper,
             BookingProperties bookingProperties) {
 
+        this(
+                bookingRepository,
+                bookingSeatRepository,
+                bookingCreationService,
+                requestFingerprint,
+                bookingMapper,
+                bookingProperties,
+                Clock.systemUTC());
+    }
+
+    @Autowired
+    public BookingServiceImpl(
+            BookingRepository bookingRepository,
+            BookingSeatRepository bookingSeatRepository,
+            BookingCreationService bookingCreationService,
+            BookingRequestFingerprint requestFingerprint,
+            BookingMapper bookingMapper,
+            BookingProperties bookingProperties,
+            @Qualifier("systemClock") Clock clock) {
+
         this.bookingRepository = bookingRepository;
         this.bookingSeatRepository = bookingSeatRepository;
         this.bookingCreationService = bookingCreationService;
         this.requestFingerprint = requestFingerprint;
         this.bookingMapper = bookingMapper;
         this.bookingProperties = bookingProperties;
+        this.clock = clock;
     }
 
     @Override
@@ -170,17 +200,55 @@ public class BookingServiceImpl implements BookingService {
     public PageResponse<BookingResponse> findAllByStatuses(
             UUID userId, int page, int size, List<BookingStatus> statuses) {
 
+        return findHistory(userId, page, size, statuses, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<BookingResponse> findHistory(
+            UUID userId,
+            int page,
+            int size,
+            List<BookingStatus> statuses,
+            BookingHistoryPeriod period) {
+
         requireUserId(userId);
 
         PageRequest pageRequest =
                 PageRequest.of(
                         page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
 
-        Page<Booking> bookings =
-                statuses == null || statuses.isEmpty()
-                        ? bookingRepository.findAllByUserId(userId, pageRequest)
-                        : bookingRepository.findAllByUserIdAndStatusIn(
-                                userId, List.copyOf(new LinkedHashSet<>(statuses)), pageRequest);
+        Page<Booking> bookings;
+        if (period != null) {
+            OffsetDateTime cutoff = OffsetDateTime.now(clock).withOffsetSameInstant(ZoneOffset.UTC);
+            Specification<Booking> filter =
+                    (root, query, builder) -> {
+                        var end = root.<OffsetDateTime>get("showtimeEndsAt");
+                        var predicates =
+                                new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+                        predicates.add(builder.equal(root.get("userId"), userId));
+                        predicates.add(builder.equal(root.get("status"), BookingStatus.CONFIRMED));
+                        predicates.add(builder.isNotNull(end));
+                        predicates.add(
+                                period == BookingHistoryPeriod.PAST
+                                        ? builder.lessThanOrEqualTo(end, cutoff)
+                                        : builder.greaterThan(end, cutoff));
+                        if (statuses != null && !statuses.isEmpty()) {
+                            predicates.add(root.get("status").in(statuses));
+                        }
+                        return builder.and(
+                                predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+                    };
+            bookings = bookingRepository.findAll(filter, pageRequest);
+        } else {
+            bookings =
+                    statuses == null || statuses.isEmpty()
+                            ? bookingRepository.findAllByUserId(userId, pageRequest)
+                            : bookingRepository.findAllByUserIdAndStatusIn(
+                                    userId,
+                                    List.copyOf(new LinkedHashSet<>(statuses)),
+                                    pageRequest);
+        }
 
         Map<UUID, List<BookingSeat>> seatsByBookingId = loadSeatsByBookingId(bookings.getContent());
 
