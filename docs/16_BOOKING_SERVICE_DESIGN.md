@@ -1,5 +1,15 @@
 # Booking Service Design
 
+Late reservation results after EXPIRED: Booking consumers still validate the
+envelope, payload and booking association, then return IGNORED_EXPIRED while
+committing the processed-event marker. A late seat-reserved also checks the
+requested seats and total before this decision. It does not complete snapshots,
+reserve again or emit payment-requested. A late reservation rejection does not
+replace EXPIRED with REJECTED. The existing booking-expired Outbox remains the
+compensation signal for Inventory; malformed or mismatched events still fail.
+Only EXPIRED is handled this way, not every terminal state. No event/API/schema
+changes; runtime ordering and concurrency verification remain pending.
+
 2026-11-16 continuation: reservation expiration now covers both PENDING and
 RESERVED. The scheduler scans a separate bounded batch per state each cycle.
 The existing expiration service locks and rechecks the current state/deadline,

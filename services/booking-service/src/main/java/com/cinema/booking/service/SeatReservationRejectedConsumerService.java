@@ -9,10 +9,17 @@ public interface SeatReservationRejectedConsumerService {
     enum Status {
         DUPLICATE,
 
+        IGNORED_EXPIRED,
+
         REJECTED
     }
 
     record Result(Status status) {
+
+        public static Result ignoredExpired() {
+            return new Result(Status.IGNORED_EXPIRED);
+        }
+
 
         public static Result alreadyProcessed() {
 

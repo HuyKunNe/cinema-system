@@ -1,6 +1,7 @@
 package com.cinema.booking.service.impl;
 
 import com.cinema.booking.entity.Booking;
+import com.cinema.booking.enums.BookingStatus;
 import com.cinema.booking.event.BookingEventContract;
 import com.cinema.booking.event.SeatReservationRejectionReason;
 import com.cinema.booking.event.payload.SeatReservationRejectedPayload;
@@ -77,6 +78,10 @@ public class SeatReservationRejectedConsumerServiceImpl
                                 () -> new NotFoundException(BookingErrorCode.BOOKING_NOT_FOUND));
 
         validateBookingMatch(booking, payload);
+
+        if (booking.getStatus() == BookingStatus.EXPIRED) {
+            return Result.ignoredExpired();
+        }
 
         booking.reject(reason.name());
 

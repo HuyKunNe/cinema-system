@@ -1,6 +1,7 @@
 package com.cinema.booking.service.impl;
 
 import com.cinema.booking.entity.Booking;
+import com.cinema.booking.enums.BookingStatus;
 import com.cinema.booking.entity.BookingSeat;
 import com.cinema.booking.event.BookingEventContract;
 import com.cinema.booking.event.PaymentRequestedOutboxFactory;
@@ -118,6 +119,14 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
         Map<String, ReservedSeatPayload> reservedSeats = validateAndIndexReservedSeats(payload);
 
         validateRequestedSeats(bookingSeats, reservedSeats);
+
+        if (booking.getStatus() == BookingStatus.EXPIRED) {
+            BigDecimal eventSeatTotal = reservedSeats.values().stream()
+                    .map(ReservedSeatPayload::price).reduce(BigDecimal.ZERO, BigDecimal::add);
+            validateTotal(payload.totalAmount(), eventSeatTotal);
+            // The committed booking-expired event owns compensation; never revive the hold.
+            return Result.ignoredExpired();
+        }
 
         BigDecimal calculatedTotal = completeSeatSnapshots(bookingSeats, reservedSeats);
 
