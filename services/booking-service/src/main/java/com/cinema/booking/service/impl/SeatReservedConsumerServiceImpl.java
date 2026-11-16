@@ -84,7 +84,8 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
         SeatReservedPayload payload = payloadReader.read(message);
 
         validatePayloadIdentifiers(message, payload);
-        if ("2".equals(message.eventVersion()) && payload.showtimeEndsAt() == null) {
+        if (BookingEventContract.SEAT_RESERVED_SNAPSHOT_VERSION.equals(message.eventVersion())
+                && payload.showtimeEndsAt() == null) {
             throw new ValidationException(BookingErrorCode.EVENT_PAYLOAD_INVALID);
         }
         if (payload.showtimeEndsAt() != null

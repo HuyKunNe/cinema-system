@@ -108,15 +108,15 @@ giữ ghế, chưa xử lý đồng bộ đổi lịch/backfill hoặc check-in.
 trong cùng transaction hoàn tất reservation. Version 2 thiếu thời gian hoặc
 kết thúc không sau heldAt bị từ chối. Event version 1 giữ null cho booking cũ.
 Snapshot này ghi nhận lịch tại thời điểm giữ ghế; chưa đồng bộ thay đổi lịch
-sau đó, chưa backfill lịch sử, chưa triển khai truy vấn tab theo thời gian.
+sau đó, chưa backfill lịch sử. Truy vấn period đã được bổ sung ở bước tiếp theo.
 Rollout: áp dụng V6, triển khai Booking consumer trước Inventory producer.
 Chưa xác minh Kafka/runtime; không coi bước này là đóng U06.
 
 **Nền tảng persistence ngày 2026-11-16:** migration Booking V6 thêm nullable
 `showtime_ends_at` và index `(user_id, status, showtime_ends_at, id)`. Entity và
 BookingResponse expose `showtimeEndsAt`; giữ constructor response cũ tương thích.
-Chưa có cơ chế ghi giá trị này từ Inventory, do đó hiện giá trị vẫn null cho
-cả booking cũ và booking mới. Chưa thêm bộ lọc tab thời gian hoặc đóng U06.
+Ở bước persistence ban đầu chưa có cơ chế ghi giá trị. Source hiện đã bổ sung
+event version 2 và truy vấn period; booking cũ/v1 vẫn có thể giữ null. Chưa đóng U06.
 Không dùng `expiresAt` giữ ghế để suy ra giờ kết thúc phim.
 
 V6 phải áp dụng trước khi chạy Booking Service có entity mới (ddl-auto validate).
@@ -153,12 +153,12 @@ regenerate; chưa xác minh runtime. Đây chưa phải các tab theo thời gia
 
 **Rà soát phụ thuộc dữ liệu:** Inventory đã trả `startsAt`/`endsAt` qua
 `GET /api/v1/showtimes/{showtimeId}` (`ShowtimeResponse`). Booking hiện chưa có
-client/read model thời gian suất chiếu; `seat-reserved` ở cả hai service cũng
-chưa mang hai trường này. Không join DB Inventory hoặc lấy một trang Booking
-rồi lọc trong bộ nhớ để triển khai tab. Cần chọn snapshot hoặc read model đồng
-bộ lịch suất chiếu và quy tắc cập nhật khi lịch thay đổi trước khi thêm query.
+client đọc lịch Inventory; thay vào đó event seat-reserved version 2 hiện mang
+showtimeEndsAt và Booking lưu snapshot phục vụ query period. Không join DB
+Inventory hoặc lọc một trang trong bộ nhớ. Chưa có snapshot startsAt hay luồng
+đồng bộ khi lịch thay đổi sau reservation.
 Mốc kết thúc đã được chủ dự án xác nhận ngày 2026-11-16. Bộ lọc theo thời gian
-chưa được triển khai vào runtime; không coi việc cập nhật quy tắc này là đóng U06.
+đã có trong source, chưa xác minh runtime; không coi U06 đã hoàn tất.
 
 ### BE-U07 — Điểm và hạng thành viên
 

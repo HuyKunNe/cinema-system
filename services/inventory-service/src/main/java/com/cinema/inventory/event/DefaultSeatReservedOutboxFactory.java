@@ -110,7 +110,9 @@ public class DefaultSeatReservedOutboxFactory implements SeatReservedOutboxFacto
                 AggregateType.BOOKING,
                 bookingId,
                 InventoryEventContract.SEAT_RESERVED,
-                showtimeEndsAt == null ? "1" : "2",
+                showtimeEndsAt == null
+                        ? InventoryEventContract.SEAT_RESERVED_VERSION
+                        : InventoryEventContract.SEAT_RESERVED_SNAPSHOT_VERSION,
                 InventoryEventContract.SEAT_RESERVED,
                 bookingId.toString(),
                 heldAt,

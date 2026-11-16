@@ -10,6 +10,8 @@ public final class BookingEventContract {
 
     public static final String SEAT_RESERVED_VERSION = "1";
 
+    public static final String SEAT_RESERVED_SNAPSHOT_VERSION = "2";
+
     public static final String SEAT_RESERVATION_REJECTED = "seat-reservation-rejected";
 
     public static final String SEAT_RESERVATION_REJECTED_VERSION = "1";
