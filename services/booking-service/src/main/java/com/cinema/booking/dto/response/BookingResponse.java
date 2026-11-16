@@ -26,7 +26,45 @@ public record BookingResponse(
         List<BookingSeatResponse> seats,
         Long version,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt) {
+        OffsetDateTime updatedAt,
+        @JsonInclude(JsonInclude.Include.ALWAYS) OffsetDateTime showtimeEndsAt) {
+
+    public BookingResponse(
+            UUID id,
+            UUID userId,
+            UUID showtimeId,
+            String clientRequestId,
+            BookingPaymentProvider paymentProvider,
+            BookingStatus status,
+            BigDecimal totalAmount,
+            String currency,
+            OffsetDateTime expiresAt,
+            OffsetDateTime confirmedAt,
+            OffsetDateTime cancelledAt,
+            String rejectionReason,
+            List<BookingSeatResponse> seats,
+            Long version,
+            OffsetDateTime createdAt,
+            OffsetDateTime updatedAt) {
+        this(
+                id,
+                userId,
+                showtimeId,
+                clientRequestId,
+                paymentProvider,
+                status,
+                totalAmount,
+                currency,
+                expiresAt,
+                confirmedAt,
+                cancelledAt,
+                rejectionReason,
+                seats,
+                version,
+                createdAt,
+                updatedAt,
+                null);
+    }
 
     /** Maintains source compatibility for callers created before provider selection was exposed. */
     public BookingResponse(

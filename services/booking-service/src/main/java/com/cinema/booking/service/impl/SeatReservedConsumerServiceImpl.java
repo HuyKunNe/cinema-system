@@ -84,6 +84,13 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
         SeatReservedPayload payload = payloadReader.read(message);
 
         validatePayloadIdentifiers(message, payload);
+        if ("2".equals(message.eventVersion()) && payload.showtimeEndsAt() == null) {
+            throw new ValidationException(BookingErrorCode.EVENT_PAYLOAD_INVALID);
+        }
+        if (payload.showtimeEndsAt() != null
+                && !payload.showtimeEndsAt().isAfter(payload.heldAt())) {
+            throw new ValidationException(BookingErrorCode.EVENT_PAYLOAD_INVALID);
+        }
 
         boolean registered =
                 processedEventRegistrationService.register(
@@ -115,6 +122,7 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
 
         validateTotal(payload.totalAmount(), calculatedTotal);
 
+        booking.snapshotShowtimeEnd(payload.showtimeEndsAt());
         booking.reserve(payload.totalAmount(), payload.currency());
 
         bookingSeatRepository.saveAll(bookingSeats);

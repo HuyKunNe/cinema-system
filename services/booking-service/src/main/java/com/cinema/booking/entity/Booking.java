@@ -73,6 +73,21 @@ public class Booking extends BaseEntity {
     @Column(name = "expires_at", nullable = false)
     private OffsetDateTime expiresAt;
 
+    @Column(name = "showtime_ends_at")
+    private OffsetDateTime showtimeEndsAt;
+
+    public void snapshotShowtimeEnd(OffsetDateTime value) {
+        if (value == null) return;
+        if (showtimeEndsAt != null && !showtimeEndsAt.isEqual(value)) {
+            throw new ConflictException(BookingErrorCode.RESERVATION_RESULT_MISMATCH);
+        }
+        showtimeEndsAt = value;
+    }
+
+    public OffsetDateTime getShowtimeEndsAt() {
+        return showtimeEndsAt;
+    }
+
     @Column(name = "confirmed_at")
     private OffsetDateTime confirmedAt;
 

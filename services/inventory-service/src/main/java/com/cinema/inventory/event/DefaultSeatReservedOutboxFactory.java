@@ -28,8 +28,19 @@ public class DefaultSeatReservedOutboxFactory implements SeatReservedOutboxFacto
 
     private final ObjectMapper objectMapper;
 
+    private final com.cinema.inventory.repository.ShowtimeRepository showtimeRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public DefaultSeatReservedOutboxFactory(
+            ObjectMapper objectMapper,
+            com.cinema.inventory.repository.ShowtimeRepository showtimeRepository) {
+        this.objectMapper = objectMapper;
+        this.showtimeRepository = showtimeRepository;
+    }
+
     public DefaultSeatReservedOutboxFactory(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
+        this.showtimeRepository = null;
     }
 
     @Override
@@ -74,6 +85,15 @@ public class DefaultSeatReservedOutboxFactory implements SeatReservedOutboxFacto
                         .map(ReservedSeatPayload::price)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        OffsetDateTime showtimeEndsAt =
+                showtimeRepository == null
+                        ? null
+                        : showtimeRepository
+                                .findById(showtimeId)
+                                .orElseThrow(() ->
+                                        new IllegalStateException("Reserved showtime not found"))
+                                .getEndsAt();
+
         SeatReservedPayload payload =
                 new SeatReservedPayload(
                         bookingId,
@@ -82,14 +102,15 @@ public class DefaultSeatReservedOutboxFactory implements SeatReservedOutboxFacto
                         totalAmount,
                         InventoryEventContract.CURRENCY_VND,
                         heldAt,
-                        holdExpiresAt);
+                        holdExpiresAt,
+                        showtimeEndsAt);
 
         return new OutboxEventEntity(
                 UuidGenerator.next(),
                 AggregateType.BOOKING,
                 bookingId,
                 InventoryEventContract.SEAT_RESERVED,
-                InventoryEventContract.SEAT_RESERVED_VERSION,
+                showtimeEndsAt == null ? "1" : "2",
                 InventoryEventContract.SEAT_RESERVED,
                 bookingId.toString(),
                 heldAt,

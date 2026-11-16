@@ -89,21 +89,62 @@ giả ở FE. Các mức ưu tiên dưới đây là đề xuất, cần thống
 
 ### BE-U06 — Bộ lọc cho các tab Vé của tôi
 
+**Tiếp tục đồng bộ snapshot:** Inventory đọc `Showtime.endsAt` khi tạo Outbox
+`seat-reserved` version 2; Booking chấp nhận version 1/2 và lưu `showtimeEndsAt`
+trong cùng transaction hoàn tất reservation. Version 2 thiếu thời gian hoặc
+kết thúc không sau heldAt bị từ chối. Event version 1 giữ null cho booking cũ.
+Snapshot này ghi nhận lịch tại thời điểm giữ ghế; chưa đồng bộ thay đổi lịch
+sau đó, chưa backfill lịch sử, chưa triển khai truy vấn tab theo thời gian.
+Rollout: áp dụng V6, triển khai Booking consumer trước Inventory producer.
+Chưa xác minh Kafka/runtime; không coi bước này là đóng U06.
+
+**Nền tảng persistence ngày 2026-11-16:** migration Booking V6 thêm nullable
+`showtime_ends_at` và index `(user_id, status, showtime_ends_at, id)`. Entity và
+BookingResponse expose `showtimeEndsAt`; giữ constructor response cũ tương thích.
+Chưa có cơ chế ghi giá trị này từ Inventory, do đó hiện giá trị vẫn null cho
+cả booking cũ và booking mới. Chưa thêm bộ lọc tab thời gian hoặc đóng U06.
+Không dùng `expiresAt` giữ ghế để suy ra giờ kết thúc phim.
+
+V6 phải áp dụng trước khi chạy Booking Service có entity mới (ddl-auto validate).
+Không backfill giả và không sửa baseline. Khi rollback, triển khai lại service
+cũ trước; cột/index thêm có thể giữ để tránh mất dữ liệu. Chỉ drop index/cột
+sau khi xác nhận không còn code phụ thuộc và đã bảo toàn dữ liệu cần thiết.
+
+**Kiểm tra OpenAPI local ngày 2026-11-16:** đọc `localhost:8084/v3/api-docs`
+xác nhận `status` là array enum tùy chọn trên GET danh sách Booking, page/size
+có default và giới hạn đúng với controller. Chưa gọi truy vấn có xác thực để
+xác nhận nội dung/count; chưa kiểm chứng tab theo thời gian. Hướng dẫn serialize
+tham số, cache key và reset page nằm trong `19_FE_API_CONTRACT.md`.
+
 **Bổ sung source ngày 2026-11-16:** `GET /api/v1/bookings` nhận `status` tùy
-chọn (một BookingStatus). Lọc theo principal và trạng thái trước pagination,
+chọn (một hoặc nhiều BookingStatus qua tham số lặp lại). Lọc theo principal và trạng thái trước pagination,
 bao gồm tổng bản ghi. Không truyền status giữ hành vi cũ. FE client chưa
 regenerate; chưa xác minh runtime. Đây chưa phải các tab theo thời gian suất.
 
 - **Màn hình:** `#/tickets` với Sắp tới / Đã qua / Chưa hoàn tất.
-- **Hiện tại:** FindAllBookingsParams chỉ có page/size; BookingResponse chỉ có
+- **Hiện tại:** BE đã có bộ lọc status; generated client FE cần đồng bộ theo
+  OpenAPI mới. BookingResponse chỉ có
   showtimeId, không có thời gian suất chiếu hoặc trạng thái sử dụng vé.
 - **Cần BE cung cấp:** danh sách phân trang có lọc theo quy tắc tab đã thống
   nhất; tổng số bản ghi/số trang phản ánh đúng bộ lọc. Nếu hiển thị số lượng
   từng tab thì cần cách lấy số lượng chính xác tương ứng.
-- **Cần chốt:** Sắp tới/Đã qua dựa trên bắt đầu, kết thúc hay check-in; cách
-  phân loại đơn hủy, thất bại, hết hạn và suất bị thay đổi; timezone rạp.
+- **Đã chốt:** mốc chuyển sang Đã qua là lúc suất chiếu kết thúc (`endsAt`).
+  Với đơn CONFIRMED: `endsAt > now` thuộc Sắp tới (bao gồm suất đang chiếu),
+  `endsAt <= now` thuộc Đã qua. So sánh theo instant, không theo ngày lịch hoặc
+  giờ thiết bị FE; check-in không quyết định mốc chuyển tab.
+- **Còn cần xác định khi triển khai:** phân loại các trạng thái chưa CONFIRMED,
+  cách đồng bộ khi lịch suất thay đổi và xử lý booking cũ thiếu thời gian suất.
 - **Hoàn tất khi:** lọc đúng trước khi phân trang, không bỏ sót vé ở trang khác.
   FE không lọc riêng 20 đơn đang xem để giả tổng của cả tab.
+
+**Rà soát phụ thuộc dữ liệu:** Inventory đã trả `startsAt`/`endsAt` qua
+`GET /api/v1/showtimes/{showtimeId}` (`ShowtimeResponse`). Booking hiện chưa có
+client/read model thời gian suất chiếu; `seat-reserved` ở cả hai service cũng
+chưa mang hai trường này. Không join DB Inventory hoặc lấy một trang Booking
+rồi lọc trong bộ nhớ để triển khai tab. Cần chọn snapshot hoặc read model đồng
+bộ lịch suất chiếu và quy tắc cập nhật khi lịch thay đổi trước khi thêm query.
+Mốc kết thúc đã được chủ dự án xác nhận ngày 2026-11-16. Bộ lọc theo thời gian
+chưa được triển khai vào runtime; không coi việc cập nhật quy tắc này là đóng U06.
 
 ### BE-U07 — Điểm và hạng thành viên
 

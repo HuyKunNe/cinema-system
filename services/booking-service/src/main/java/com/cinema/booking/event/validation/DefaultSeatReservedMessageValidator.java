@@ -32,7 +32,8 @@ public class DefaultSeatReservedMessageValidator implements SeatReservedMessageV
             throw new ValidationException(BookingErrorCode.EVENT_TYPE_INVALID);
         }
 
-        if (!BookingEventContract.SEAT_RESERVED_VERSION.equals(message.eventVersion())) {
+        if (!BookingEventContract.SEAT_RESERVED_VERSION.equals(message.eventVersion())
+                && !"2".equals(message.eventVersion())) {
 
             throw new ValidationException(BookingErrorCode.EVENT_VERSION_INVALID);
         }

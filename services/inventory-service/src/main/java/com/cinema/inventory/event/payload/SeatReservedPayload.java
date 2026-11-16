@@ -12,7 +12,19 @@ public record SeatReservedPayload(
         BigDecimal totalAmount,
         String currency,
         OffsetDateTime heldAt,
-        OffsetDateTime holdExpiresAt) {
+        OffsetDateTime holdExpiresAt,
+        OffsetDateTime showtimeEndsAt) {
+
+    public SeatReservedPayload(
+            UUID bookingId,
+            UUID showtimeId,
+            List<ReservedSeatPayload> seats,
+            BigDecimal totalAmount,
+            String currency,
+            OffsetDateTime heldAt,
+            OffsetDateTime holdExpiresAt) {
+        this(bookingId, showtimeId, seats, totalAmount, currency, heldAt, holdExpiresAt, null);
+    }
 
     public SeatReservedPayload {
 

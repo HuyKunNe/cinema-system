@@ -35,6 +35,70 @@ generated User functions alone are not proof of usable SPA authentication.
 
 ## Evidence and limits
 
+Reservation snapshot continuation: Inventory now emits `seat-reserved` version
+2 with `showtimeEndsAt` from its Showtime entity. Booking accepts versions 1/2,
+requires a valid end instant for v2 and persists it with the seat snapshot.
+Deploy V6 and the Booking consumer before the Inventory producer. Old v1 events
+and historical bookings may retain null. Schedule changes after reservation
+are not propagated by this event; no time-tab query is implemented yet.
+
+2026-11-16 persistence preparation: BookingResponse adds nullable
+`showtimeEndsAt` (date-time). Booking migration V6 adds the matching nullable
+MySQL column and owner/status/end-time index. Inventory synchronization is not
+implemented yet, so clients must expect null for old and new bookings. No time
+tab query is exposed by this preparation. Apply V6 before starting the updated
+Booking Service; migration was not executed during this change.
+
+Booking history decision (2026-11-16): the boundary for moving a confirmed
+booking to the past tab is the showtime's `endsAt`. Upcoming includes ongoing
+screenings while `endsAt > serverNow`; past begins at `endsAt <= serverNow`.
+Compare instants on the server, not browser time or calendar date. This is an
+approved business rule, not an implemented time-filter query parameter. Booking
+currently lacks the showtime time projection needed to filter/count locally
+before pagination. Null historical times must not be treated as past or future.
+
+Runtime OpenAPI review on 2026-11-16: read-only GET of
+`http://localhost:8084/v3/api-docs` exposes `GET /api/v1/bookings` with optional
+`status` as an array whose items enumerate all seven BookingStatus values.
+It also exposes page default 0/minimum 0 and size default 20/minimum 1/maximum 100. This verifies schema exposure on that local instance only; owner-scoped
+query results, invalid requests and concurrent pagination were not exercised.
+
+For FE integration, serialize multiple values using repeated query parameters:
+
+```typescript
+const params = new URLSearchParams({ page: "0", size: "10" });
+for (const status of ["PENDING", "RESERVED"]) params.append("status", status);
+// GET /api/v1/bookings?${params.toString()} using the existing authenticated client.
+```
+
+When changing the selected statuses, reset page to 0 and include a sorted,
+deduplicated status array in the query cache key along with owner/page/size.
+Read totals from the returned page metadata. Regenerate the existing client
+from the running schema; do not create a second booking API wrapper or filter
+one returned page to simulate totals. This snippet is integration guidance;
+the FE repository was not modified.
+
+Runtime OpenAPI review on 2026-11-16: read-only GET of
+`http://localhost:8084/v3/api-docs` exposes `GET /api/v1/bookings` with optional
+`status` as an array whose items enumerate all seven BookingStatus values.
+It also exposes page default 0/minimum 0 and size default 20/minimum 1/maximum 100. This verifies schema exposure on that local instance only; owner-scoped
+query results, invalid requests and concurrent pagination were not exercised.
+
+For FE integration, serialize multiple values using repeated query parameters:
+
+```typescript
+const params = new URLSearchParams({ page: "0", size: "10" });
+for (const status of ["PENDING", "RESERVED"]) params.append("status", status);
+// GET /api/v1/bookings?${params.toString()} using the existing authenticated client.
+```
+
+When changing the selected statuses, reset page to 0 and include a sorted,
+deduplicated status array in the query cache key along with owner/page/size.
+Read totals from the returned page metadata. Regenerate the existing client
+from the running schema; do not create a second booking API wrapper or filter
+one returned page to simulate totals. This snippet is integration guidance;
+the FE repository was not modified.
+
 2026-11-16 continuation: the optional `status` query parameter also supports
 repeated values, for example `?status=PENDING&status=RESERVED&page=0&size=10`.
 Statuses are combined with OR inside the authenticated owner's bookings. The
