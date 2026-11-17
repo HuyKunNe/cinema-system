@@ -2,6 +2,14 @@
 
 Ngày: 2026-11-17. Phạm vi: main/test Java trong common, services và infrastructure; bỏ build/generated.
 
+## Căn cứ và lượt rà soát tiếp theo
+
+- AGENTS.md: giữ thay đổi hiện có, không đổi nghiệp vụ/contract, không chạy test mặc định.
+- docs/05_CODING_CONVENTIONS.md, phần exception và review checklist: lỗi dự kiến của ứng dụng, domain, cấu hình, serialization, search, storage và security phải theo common-exception. Generic exception trong production là ứng viên cần chuyển đổi, không phải mẫu được phép tiếp tục áp dụng.
+- README.md, docs/02_ARCHITECTURE.md và POM: giữ ranh giới module/service và dependency hiện tại.
+- .editorconfig yêu cầu UTF-8, LF, Java thụt 4 spaces. .vscode/settings.json chọn Google Java Format kiểu AOSP; không tự organize imports khi save. POM có property phiên bản Checkstyle/Spotless nhưng chưa có plugin kiểm tra tương ứng được kích hoạt. Không áp thêm cấu hình formatter bên ngoài.
+- Lượt rà soát tiếp theo bắt đầu khi kết quả chuẩn hóa import bên dưới đã có trong checkout. Quét lại 1.265 file không thấy FQN trong token code, wildcard hoặc import không dùng theo kiểm tra tham chiếu tên. Không sửa thêm Java trong lượt này; giữ nguyên toàn bộ thay đổi đã có.
+
 ## Kết quả import
 
 - Quét 1.265 file Java; chuẩn hóa import trong 75 file.
@@ -9,17 +17,17 @@ Ngày: 2026-11-17. Phạm vi: main/test Java trong common, services và infrastr
 - Rà lexical bỏ qua comment/string/text block: không còn FQN trong code hoặc wildcard import. Giữ tên lớp trong cấu hình, chuỗi runtime, Javadoc và assertion string.
 - Không đổi logic, dependency, API, migration, SQL hoặc annotation semantics. Giữ các thay đổi chưa commit có sẵn; test source chỉ sửa import/tên tham chiếu.
 
-| Module | File thay import |
-| --- | ---: |
-| common/common-jackson | 1 |
-| common/common-outbox | 2 |
-| common/common-security | 1 |
-| common/common-storage | 1 |
-| services/booking-service | 27 |
-| services/inventory-service | 18 |
-| services/movie-service | 1 |
-| services/payment-service | 10 |
-| services/user-service | 14 |
+| Module                     | File thay import |
+| -------------------------- | ---------------: |
+| common/common-jackson      |                1 |
+| common/common-outbox       |                2 |
+| common/common-security     |                1 |
+| common/common-storage      |                1 |
+| services/booking-service   |               27 |
+| services/inventory-service |               18 |
+| services/movie-service     |                1 |
+| services/payment-service   |               10 |
+| services/user-service      |               14 |
 
 ## Exception: giữ nguyên HTTP và response contract
 
@@ -27,23 +35,23 @@ Ngày: 2026-11-17. Phạm vi: main/test Java trong common, services và infrastr
 
 Không đổi exception chỉ vì tên IllegalArgumentException hoặc IllegalStateException. Các guard vé dưới đây chưa có ErrorCode giữ nguyên toàn bộ contract. Không tự tạo code hoặc đổi lỗi 500 thành 400/409 trong lượt này.
 
-| Vị trí trong BookingTicket.java | Ý nghĩa / quyết định |
-| --- | --- |
-| checkIn: Ticket is not issued | Tiền điều kiện trạng thái. Service hiện trả ALREADY_USED trước khi gọi domain method. Nếu muốn lỗi nghiệp vụ riêng, cần duyệt code/message/status rồi dùng ConflictException có sẵn. |
+| Vị trí trong BookingTicket.java                      | Ý nghĩa / quyết định                                                                                                                                                                           |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| checkIn: Ticket is not issued                        | Tiền điều kiện trạng thái. Service hiện trả ALREADY_USED trước khi gọi domain method. Nếu muốn lỗi nghiệp vụ riêng, cần duyệt code/message/status rồi dùng ConflictException có sẵn.           |
 | constructor: Ticket requires completed seat snapshot | Snapshot lưu trữ không nhất quán; không mặc định là lỗi input khách. RESERVATION_RESULT_MISMATCH có sẵn nhưng dùng nó sẽ đổi code/message/status hiện tại. Cần duyệt mapping invariant nội bộ. |
-| capacityFor: Unsupported ticket seat type | Loại ghế đọc từ snapshot DB. Đề xuất code SYSTEM trong BookingErrorCode cùng InternalServerException sau khi duyệt contract; không tự đổi sang lỗi request 400. |
+| capacityFor: Unsupported ticket seat type            | Loại ghế đọc từ snapshot DB. Đề xuất code SYSTEM trong BookingErrorCode cùng InternalServerException sau khi duyệt contract; không tự đổi sang lỗi request 400.                                |
 
 Common-exception có subtype phù hợp cho các mapping mới, nhưng CommonErrorCode hiện chỉ có RESOURCE_LOCKED, không có code tương ứng chính xác fallback ở trên. Common mapping dùng category của ErrorCode nên cũng không giữ nguyên category null nếu tự thêm code SYSTEM. Do yêu cầu bảo toàn contract, chưa sửa ba guard này; không thêm hệ thống exception song song.
 
-## Nhóm generic exception giữ vì thuộc kỹ thuật
+## Generic exception còn cần thống nhất mapping
 
-- common-search/common-storage: hợp đồng thư viện, object name/traversal, stream, sort/pagination; không gán thành lỗi nghiệp vụ điện ảnh.
-- common-jackson/common-kafka và ShowtimeBatchPayloadCodec: serialization, fingerprint, thuật toán. Không đổi lỗi kỹ thuật thành business error.
-- User JWT/security audit: invariant principal/context/UUID. Bootstrap, issuer/JWK, Google, OutboxProperties, cấu hình timeout và StorageAutoConfiguration: fail-fast cấu hình.
-- Utility/constant constructors: ngăn khởi tạo. Test fixture: ký JWT, JWK server, latch và mô phỏng lỗi; giữ ngữ nghĩa fixture.
-- ShowtimeBatchItemException bọc BusinessException gốc và itemIndex phục vụ handler batch hiện tại; giữ wrapper để bảo toàn response theo từng item.
+- common-search/common-storage: validation hợp đồng thư viện, object name/traversal, stream, sort/pagination là ứng viên chuyển đổi theo coding conventions. StorageException và SearchException hiện là RuntimeException riêng; không mặc định chúng đã tuân theo common-exception.
+- common-jackson/common-kafka và ShowtimeBatchPayloadCodec: serialization/fingerprint cũng cần mapping tại boundary sở hữu lỗi. Cần thống nhất mã lỗi, thông điệp và cách giữ cause; không tự gán lỗi input khách.
+- User JWT/security audit: invariant principal/context/UUID; bootstrap, issuer/JWK, Google, OutboxProperties, cấu hình timeout, StorageAutoConfiguration và tracing: cần phân biệt lỗi dự kiến với lỗi lập trình/cấu hình khởi động. Không coi chúng hợp lệ chỉ vì thuộc kỹ thuật.
+- Utility/constant constructor ngăn khởi tạo và test fixture ký JWT/JWK/latch/mô phỏng lỗi được giữ nguyên; chúng không phải response lỗi nghiệp vụ.
+- ShowtimeBatchItemException bọc BusinessException gốc và itemIndex phục vụ handler batch hiện tại; giữ wrapper để bảo toàn response theo từng item. Guard itemIndex của wrapper vẫn nằm trong danh sách rà soát.
 
-Không thay logic exception trong lượt này khi chưa có mapping bảo toàn contract. Không thêm dependency common-exception vào utility chỉ để đổi tên exception kỹ thuật.
+Không thay logic exception trong lượt này khi chưa có mapping bảo toàn contract. CommonErrorCode chỉ có RESOURCE_LOCKED; chưa có bộ mã chung biểu diễn chính xác các trường hợp trên. Việc dùng subtype có sẵn với một mã gần nghĩa có thể đổi status/code/message/category. Cần duyệt mapping theo boundary trước khi sửa; không tự thêm dependency hoặc mã lỗi. Danh sách vị trí cụ thể nằm cuối tài liệu. Một throw có thể đã được catch/translate trước khi ra API; không suy ra mọi throw đều trả HTTP 500.
 
 ## Kiểm tra
 
@@ -135,3 +143,54 @@ có thay đổi trước đó không dùng HEAD để suy ra baseline, tránh gh
 - services/user-service/src/test/java/com/cinema/user/oauth2/impl/OAuth2ClientRegistrationServiceImplTest.java
 - services/user-service/src/test/java/com/cinema/user/oauth2/token/RefreshTokenReuseServiceImplTest.java
 
+## Inventory generic throw trong production
+
+Danh sách dưới đây là điểm cần phân loại/mapping, chưa phải kết luận tất cả là lỗi nghiệp vụ. Loại constructor utility và common-test khỏi bảng. Giữ nguyên các throw cho đến khi xác định mapping tương thích tại boundary.
+
+| File                                                                                                      | Dòng | Exception                |
+| --------------------------------------------------------------------------------------------------------- | ---: | ------------------------ |
+| common/common-jackson/src/main/java/com/cinema/common/jackson/util/JsonUtils.java                         |   19 | IllegalArgumentException |
+| common/common-jackson/src/main/java/com/cinema/common/jackson/util/JsonUtils.java                         |   27 | IllegalArgumentException |
+| common/common-kafka/src/main/java/com/cinema/common/kafka/serializer/KafkaEventSerializer.java            |   22 | IllegalStateException    |
+| common/common-outbox/src/main/java/com/cinema/common/outbox/config/OutboxProperties.java                  |   21 | IllegalStateException    |
+| common/common-search/src/main/java/com/cinema/common/search/model/SearchPage.java                         |   27 | IllegalArgumentException |
+| common/common-search/src/main/java/com/cinema/common/search/model/SearchPage.java                         |   34 | IllegalArgumentException |
+| common/common-search/src/main/java/com/cinema/common/search/model/SearchPage.java                         |   41 | IllegalArgumentException |
+| common/common-search/src/main/java/com/cinema/common/search/model/SearchPage.java                         |   48 | IllegalArgumentException |
+| common/common-search/src/main/java/com/cinema/common/search/model/SearchQuery.java                        |   42 | IllegalArgumentException |
+| common/common-search/src/main/java/com/cinema/common/search/model/SearchQuery.java                        |   49 | IllegalArgumentException |
+| common/common-search/src/main/java/com/cinema/common/search/model/SearchQuery.java                        |   56 | IllegalArgumentException |
+| common/common-search/src/main/java/com/cinema/common/search/model/SearchSort.java                         |   17 | IllegalArgumentException |
+| common/common-search/src/main/java/com/cinema/common/search/service/DefaultSearchService.java             |   53 | IllegalArgumentException |
+| common/common-search/src/main/java/com/cinema/common/search/service/DefaultSearchService.java             |  131 | IllegalArgumentException |
+| common/common-storage/src/main/java/com/cinema/common/storage/config/StorageAutoConfiguration.java        |  112 | IllegalStateException    |
+| common/common-storage/src/main/java/com/cinema/common/storage/minio/MinioStorageService.java              |  274 | IllegalArgumentException |
+| common/common-storage/src/main/java/com/cinema/common/storage/minio/MinioStorageService.java              |  339 | IllegalArgumentException |
+| common/common-storage/src/main/java/com/cinema/common/storage/minio/MinioStorageService.java              |  355 | IllegalArgumentException |
+| common/common-storage/src/main/java/com/cinema/common/storage/minio/MinioStorageService.java              |  363 | IllegalArgumentException |
+| common/common-storage/src/main/java/com/cinema/common/storage/minio/MinioStorageService.java              |  379 | IllegalArgumentException |
+| common/common-storage/src/main/java/com/cinema/common/storage/model/StorageDownload.java                  |   16 | IllegalArgumentException |
+| common/common-storage/src/main/java/com/cinema/common/storage/model/StorageDownload.java                  |   23 | IllegalArgumentException |
+| common/common-storage/src/main/java/com/cinema/common/storage/model/StorageUploadRequest.java             |   18 | IllegalArgumentException |
+| common/common-storage/src/main/java/com/cinema/common/storage/model/StorageUploadRequest.java             |   25 | IllegalArgumentException |
+| common/common-storage/src/main/java/com/cinema/common/storage/model/StorageUploadRequest.java             |   32 | IllegalArgumentException |
+| common/common-tracing/src/main/java/com/cinema/common/tracing/service/DefaultTracingService.java          |  167 | IllegalArgumentException |
+| services/booking-service/src/main/java/com/cinema/booking/entity/BookingTicket.java                       |   76 | IllegalStateException    |
+| services/booking-service/src/main/java/com/cinema/booking/entity/BookingTicket.java                       |  100 | IllegalArgumentException |
+| services/booking-service/src/main/java/com/cinema/booking/entity/BookingTicket.java                       |  114 | IllegalArgumentException |
+| services/inventory-service/src/main/java/com/cinema/inventory/config/MovieCatalogClientConfiguration.java |   35 | IllegalArgumentException |
+| services/inventory-service/src/main/java/com/cinema/inventory/config/MovieCatalogClientConfiguration.java |   63 | IllegalArgumentException |
+| services/inventory-service/src/main/java/com/cinema/inventory/exception/ShowtimeBatchItemException.java   |   16 | IllegalArgumentException |
+| services/inventory-service/src/main/java/com/cinema/inventory/service/ShowtimeBatchPayloadCodec.java      |   61 | IllegalStateException    |
+| services/user-service/src/main/java/com/cinema/user/bootstrap/InventoryMovieClientBootstrap.java          |   64 | IllegalStateException    |
+| services/user-service/src/main/java/com/cinema/user/bootstrap/LocalBootstrapRunner.java                   |  250 | IllegalStateException    |
+| services/user-service/src/main/java/com/cinema/user/bootstrap/LocalBootstrapRunner.java                   |  262 | IllegalStateException    |
+| services/user-service/src/main/java/com/cinema/user/config/AuthorizationServerSecurityConfiguration.java  |  244 | IllegalStateException    |
+| services/user-service/src/main/java/com/cinema/user/config/AuthorizationServerSecurityConfiguration.java  |  247 | IllegalStateException    |
+| services/user-service/src/main/java/com/cinema/user/config/GoogleLoginConfiguration.java                  |   21 | IllegalStateException    |
+| services/user-service/src/main/java/com/cinema/user/security/jwt/CinemaJwtTokenCustomizer.java            |   61 | IllegalStateException    |
+| services/user-service/src/main/java/com/cinema/user/security/jwt/CinemaJwtTokenCustomizer.java            |   68 | IllegalStateException    |
+| services/user-service/src/main/java/com/cinema/user/security/audit/impl/SecurityAuditRecorderImpl.java    |   45 | IllegalArgumentException |
+| services/user-service/src/main/java/com/cinema/user/security/audit/impl/SecurityAuditRecorderImpl.java    |   52 | IllegalStateException    |
+
+Lượt kiểm tra tiếp theo: Maven offline với `-DskipTests test-compile` kết thúc mã 0; BUILD SUCCESS cho 29 module. Không chạy test. `git diff --check` không báo lỗi. Không đổi Java, API, MySQL, migration, dependency hoặc FE trong lượt kiểm tra tiếp theo.
