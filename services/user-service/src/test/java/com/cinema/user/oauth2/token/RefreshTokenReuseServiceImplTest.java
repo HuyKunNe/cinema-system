@@ -23,9 +23,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2RefreshToken;
 import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
@@ -178,7 +180,7 @@ class RefreshTokenReuseServiceImplTest {
                         NOW_OFFSET);
 
         verify(authorizationService, never())
-                .save(org.mockito.ArgumentMatchers.any(OAuth2Authorization.class));
+                .save(ArgumentMatchers.any(OAuth2Authorization.class));
     }
 
     @Test
@@ -260,7 +262,7 @@ class RefreshTokenReuseServiceImplTest {
                         .clientSecret("{bcrypt}encoded-secret")
                         .clientName("Cinema BFF")
                         .clientAuthenticationMethod(
-                                org.springframework.security.oauth2.core.ClientAuthenticationMethod
+                                ClientAuthenticationMethod
                                         .CLIENT_SECRET_BASIC)
                         .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                         .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)

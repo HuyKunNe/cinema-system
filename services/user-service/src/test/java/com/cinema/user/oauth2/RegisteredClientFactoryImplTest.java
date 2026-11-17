@@ -5,11 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.Clock;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.util.Set;
+import com.cinema.common.exception.exception.ValidationException;
+import com.cinema.user.oauth2.impl.RegisteredClientFactoryImpl;
+import com.cinema.user.oauth2.model.ConfidentialUserClientRegistration;
+import com.cinema.user.oauth2.model.PublicClientRegistration;
+import com.cinema.user.oauth2.model.ServiceClientRegistration;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,11 +25,12 @@ import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 
-import com.cinema.common.exception.exception.ValidationException;
-import com.cinema.user.oauth2.impl.RegisteredClientFactoryImpl;
-import com.cinema.user.oauth2.model.ConfidentialUserClientRegistration;
-import com.cinema.user.oauth2.model.PublicClientRegistration;
-import com.cinema.user.oauth2.model.ServiceClientRegistration;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.Set;
+import java.util.UUID;
 
 @ExtendWith(MockitoExtension.class)
 class RegisteredClientFactoryImplTest {
@@ -84,7 +85,7 @@ class RegisteredClientFactoryImplTest {
 
         assertThat(client.getId())
                 .satisfies(id -> assertThat(
-                        java.util.UUID.fromString(id).version())
+                        UUID.fromString(id).version())
                         .isEqualTo(7));
 
         assertThat(client.getClientIdIssuedAt())

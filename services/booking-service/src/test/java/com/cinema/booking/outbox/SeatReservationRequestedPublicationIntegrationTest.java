@@ -30,6 +30,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -213,7 +214,7 @@ class SeatReservationRequestedPublicationIntegrationTest extends AbstractMySqlIn
 
         verify(kafkaProducerService, times(2))
                 .send(
-                        org.mockito.ArgumentMatchers.eq(
+                        ArgumentMatchers.eq(
                                 BookingEventContract.SEAT_RESERVATION_REQUESTED),
                         keyCaptor.capture(),
                         eventCaptor.capture());

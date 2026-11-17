@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.time.Clock;
@@ -231,7 +232,7 @@ class BookingCreationServiceImplTest {
         when(outboxFactory.create(any(Booking.class), anyList(), eq(NOW_OFFSET)))
                 .thenReturn(outboxEvent);
 
-        org.mockito.Mockito.doThrow(failure).when(outboxService).save(outboxEvent);
+        Mockito.doThrow(failure).when(outboxService).save(outboxEvent);
 
         InternalServerException actualException =
                 assertThrows(

@@ -25,6 +25,7 @@ import com.cinema.common.exception.exception.ValidationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -91,7 +92,7 @@ class BookingServiceImplTest {
                         eq(showtimeId),
                         eq("request-1"),
                         eq(expectedFingerprint),
-                        org.mockito.ArgumentMatchers.anyList()))
+                        ArgumentMatchers.anyList()))
                 .thenReturn(expectedResponse);
 
         BookingResponse actualResponse = bookingService.create(userId, request);

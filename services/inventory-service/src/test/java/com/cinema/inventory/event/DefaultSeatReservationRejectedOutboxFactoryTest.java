@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -132,7 +133,7 @@ class DefaultSeatReservationRejectedOutboxFactoryTest {
 
         ObjectMapper failingMapper = mock(ObjectMapper.class);
 
-        when(failingMapper.writeValueAsString(org.mockito.ArgumentMatchers.any()))
+        when(failingMapper.writeValueAsString(ArgumentMatchers.any()))
                 .thenThrow(new JsonProcessingException("Serialization failure") {});
 
         DefaultSeatReservationRejectedOutboxFactory failingFactory =

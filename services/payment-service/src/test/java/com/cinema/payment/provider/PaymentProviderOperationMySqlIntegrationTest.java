@@ -45,6 +45,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Import(PaymentProviderOperationMySqlIntegrationTest.FixedClockConfiguration.class)
 @TestPropertySource(
@@ -108,7 +109,7 @@ class PaymentProviderOperationMySqlIntegrationTest extends AbstractMySqlIntegrat
         Set<String> processingOwners =
                 claimedTransactions.stream()
                         .map(PaymentTransaction::getProcessingOwner)
-                        .collect(java.util.stream.Collectors.toSet());
+                        .collect(Collectors.toSet());
 
         assertThat(processingOwners).hasSize(1);
 

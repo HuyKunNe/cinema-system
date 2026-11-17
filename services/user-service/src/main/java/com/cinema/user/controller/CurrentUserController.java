@@ -1,12 +1,12 @@
 package com.cinema.user.controller;
 
+import com.cinema.common.security.context.SecurityContextUtils;
 import com.cinema.user.dto.request.ChangeCurrentUserPasswordRequest;
 import com.cinema.user.dto.request.UpdateCurrentUserProfileRequest;
 import com.cinema.user.dto.response.CurrentUserProfileResponse;
 import com.cinema.user.security.CinemaUserDetails;
 import com.cinema.user.service.UserCredentialService;
 import com.cinema.user.service.UserProfileService;
-import com.cinema.common.security.context.SecurityContextUtils;
 
 import jakarta.validation.Valid;
 
@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/users/me")
@@ -57,7 +59,7 @@ public class CurrentUserController {
         return ResponseEntity.noContent().build();
     }
 
-    private static java.util.UUID currentUserId() {
+    private static UUID currentUserId() {
         Authentication authentication = SecurityContextUtils.getAuthentication();
         Object principal = authentication.getPrincipal();
 

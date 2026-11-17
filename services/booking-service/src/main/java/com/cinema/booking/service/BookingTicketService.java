@@ -2,17 +2,29 @@ package com.cinema.booking.service;
 
 import com.cinema.booking.entity.BookingTicket;
 import com.cinema.booking.enums.BookingStatus;
+import com.cinema.booking.event.validation.BookingTicketSnapshotValidator;
 import com.cinema.booking.exception.BookingErrorCode;
-import com.cinema.booking.repository.*;
+import com.cinema.booking.repository.BookingRepository;
+import com.cinema.booking.repository.BookingSeatRepository;
+import com.cinema.booking.repository.BookingTicketRepository;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.outbox.model.OutboxEventMessage;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.time.OffsetDateTime;
+import java.util.Base64;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+
+
 
 @Service
 public class BookingTicketService {
@@ -79,7 +91,7 @@ public class BookingTicketService {
         var bookingSeats = seats.findAllByBookingIdOrderBySeatNumberAsc(booking.getId());
         if (bookingSeats.isEmpty())
             throw new ValidationException(BookingErrorCode.SEAT_NUMBERS_REQUIRED);
-        com.cinema.booking.event.validation.BookingTicketSnapshotValidator.validate(
+        BookingTicketSnapshotValidator.validate(
                 booking, bookingSeats, event);
         for (var seat : bookingSeats)
             if (!ids.contains(seat.getId())) tickets.save(new BookingTicket(seat));
@@ -142,7 +154,7 @@ public class BookingTicketService {
                                 t.getSeatNumber(),
                                 t.getCapacity(),
                                 t.getStatus(),
-                                t.getQrPayload()))
+                                t.getQrPayload(), t.getCheckedInAt()))
                 .toList();
     }
 
@@ -167,12 +179,21 @@ public class BookingTicketService {
                 .orElseThrow(() -> new NotFoundException(BookingErrorCode.BOOKING_NOT_FOUND));
         return new LookupResponse(ticket.getId(), ticket.getBookingId(), booking.getShowtimeId(),
                 ticket.getSeatNumber(), ticket.getCapacity(), ticket.getStatus(),
-                booking.getStatus(), booking.getShowtimeEndsAt());
+                booking.getStatus(), booking.getShowtimeEndsAt(), ticket.getCheckedInAt());
     }
 
     public record LookupResponse(UUID ticketId, UUID bookingId, UUID showtimeId,
             String seatNumber, int capacity, String ticketStatus, BookingStatus bookingStatus,
-            java.time.OffsetDateTime showtimeEndsAt) {}
+            OffsetDateTime showtimeEndsAt,
+            @JsonInclude(JsonInclude.Include.ALWAYS)
+            OffsetDateTime checkedInAt) {
+        public LookupResponse(UUID ticketId, UUID bookingId, UUID showtimeId,
+                String seatNumber, int capacity, String ticketStatus, BookingStatus bookingStatus,
+                OffsetDateTime showtimeEndsAt) {
+            this(ticketId, bookingId, showtimeId, seatNumber, capacity, ticketStatus,
+                    bookingStatus, showtimeEndsAt, null);
+        }
+    }
 
     public record TicketResponse(
             UUID id,
@@ -181,5 +202,17 @@ public class BookingTicketService {
             String seatNumber,
             int capacity,
             String status,
-            String qrPayload) {}
+            String qrPayload,
+            @JsonInclude(JsonInclude.Include.ALWAYS)
+            OffsetDateTime checkedInAt) {
+        public TicketResponse(UUID id, UUID bookingId, UUID bookingSeatId, String seatNumber,
+                int capacity, String status, String qrPayload) {
+            this(id, bookingId, bookingSeatId, seatNumber, capacity, status, qrPayload, null);
+        }
+
+        @Override
+        public String toString() {
+            return "TicketResponse[id=" + id + ", status=" + status + ", qrPayload=REDACTED]";
+        }
+    }
 }

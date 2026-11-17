@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.net.http.HttpClient;
@@ -118,7 +119,7 @@ public class ShowtimeEndBackfillService {
                     failure.getStatusCode().value() == 404
                             ? "SHOWTIME_NOT_FOUND"
                             : "INVENTORY_UNAVAILABLE");
-        } catch (org.springframework.web.client.RestClientException failure) {
+        } catch (RestClientException failure) {
             return new Lookup(null, "INVENTORY_UNAVAILABLE");
         }
     }

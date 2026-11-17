@@ -27,6 +27,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 
@@ -293,9 +295,9 @@ class OAuth2ClientRegistrationServiceImplTest {
                 .clientId(PUBLIC_CLIENT_ID)
                 .clientName(PUBLIC_CLIENT_NAME)
                 .clientAuthenticationMethod(
-                        org.springframework.security.oauth2.core.ClientAuthenticationMethod.NONE)
+                        ClientAuthenticationMethod.NONE)
                 .authorizationGrantType(
-                        org.springframework.security.oauth2.core.AuthorizationGrantType
+                        AuthorizationGrantType
                                 .AUTHORIZATION_CODE)
                 .redirectUri("http://127.0.0.1:3000/callback")
                 .scope("openid")
@@ -309,10 +311,10 @@ class OAuth2ClientRegistrationServiceImplTest {
                 .clientSecret(ENCODED_CLIENT_SECRET)
                 .clientName(SERVICE_CLIENT_NAME)
                 .clientAuthenticationMethod(
-                        org.springframework.security.oauth2.core.ClientAuthenticationMethod
+                        ClientAuthenticationMethod
                                 .CLIENT_SECRET_BASIC)
                 .authorizationGrantType(
-                        org.springframework.security.oauth2.core.AuthorizationGrantType
+                        AuthorizationGrantType
                                 .CLIENT_CREDENTIALS)
                 .scope("inventory:write")
                 .build();
@@ -324,13 +326,13 @@ class OAuth2ClientRegistrationServiceImplTest {
                 .clientSecret(ENCODED_CLIENT_SECRET)
                 .clientName(CONFIDENTIAL_CLIENT_NAME)
                 .clientAuthenticationMethod(
-                        org.springframework.security.oauth2.core.ClientAuthenticationMethod
+                        ClientAuthenticationMethod
                                 .CLIENT_SECRET_BASIC)
                 .authorizationGrantType(
-                        org.springframework.security.oauth2.core.AuthorizationGrantType
+                        AuthorizationGrantType
                                 .AUTHORIZATION_CODE)
                 .authorizationGrantType(
-                        org.springframework.security.oauth2.core.AuthorizationGrantType
+                        AuthorizationGrantType
                                 .REFRESH_TOKEN)
                 .redirectUri("http://127.0.0.1:8080/login/oauth2/code/cinema")
                 .scope("openid")

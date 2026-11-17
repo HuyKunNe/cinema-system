@@ -17,7 +17,9 @@ import com.cinema.inventory.enums.PricingPolicyVersionStatus;
 import com.cinema.inventory.enums.RoomLayoutStatus;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
+
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.BeanUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
@@ -74,7 +76,7 @@ class PublishedVersionLifecycleTest {
     }
 
     private static Showtime emptyScheduledShowtime(Room room) {
-        Showtime showtime = org.springframework.beans.BeanUtils.instantiateClass(Showtime.class);
+        Showtime showtime = BeanUtils.instantiateClass(Showtime.class);
         ReflectionTestUtils.setField(showtime, "room", room);
         ReflectionTestUtils.setField(showtime, "status", ShowtimeStatus.SCHEDULED);
         return showtime;

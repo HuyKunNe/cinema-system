@@ -45,6 +45,7 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -170,7 +171,7 @@ class BookingLifecycleReleaseKafkaIntegrationTest extends AbstractMySqlIntegrati
 
         await(() -> processedEventRepository.count() == 1L);
 
-        verify(bookingCancelledConsumerService, org.mockito.Mockito.timeout(10_000).times(1))
+        verify(bookingCancelledConsumerService, Mockito.timeout(10_000).times(1))
                 .handle(eq(context.bookingId().toString()), any(OutboxEventMessage.class));
 
         entityManager.clear();
@@ -197,7 +198,7 @@ class BookingLifecycleReleaseKafkaIntegrationTest extends AbstractMySqlIntegrati
 
         publish(CANCELLED_TOPIC, context.bookingId(), message);
 
-        verify(bookingCancelledConsumerService, org.mockito.Mockito.timeout(10_000).times(2))
+        verify(bookingCancelledConsumerService, Mockito.timeout(10_000).times(2))
                 .handle(eq(context.bookingId().toString()), any(OutboxEventMessage.class));
 
         await(this::allSeatsAvailable);
@@ -224,7 +225,7 @@ class BookingLifecycleReleaseKafkaIntegrationTest extends AbstractMySqlIntegrati
 
         await(() -> processedEventRepository.count() == 1L);
 
-        verify(bookingExpiredConsumerService, org.mockito.Mockito.timeout(10_000).times(1))
+        verify(bookingExpiredConsumerService, Mockito.timeout(10_000).times(1))
                 .handle(eq(context.bookingId().toString()), any(OutboxEventMessage.class));
 
         entityManager.clear();
@@ -250,7 +251,7 @@ class BookingLifecycleReleaseKafkaIntegrationTest extends AbstractMySqlIntegrati
 
         publish(EXPIRED_TOPIC, context.bookingId(), message);
 
-        verify(bookingExpiredConsumerService, org.mockito.Mockito.timeout(10_000).times(2))
+        verify(bookingExpiredConsumerService, Mockito.timeout(10_000).times(2))
                 .handle(eq(context.bookingId().toString()), any(OutboxEventMessage.class));
 
         await(this::allSeatsAvailable);

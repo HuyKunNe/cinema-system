@@ -43,6 +43,7 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -168,7 +169,7 @@ class SeatReleaseRequestedKafkaIntegrationTest extends AbstractMySqlIntegrationT
 
         await(() -> outboxRepository.count() == 1L);
 
-        verify(consumerService, org.mockito.Mockito.timeout(10_000).times(1))
+        verify(consumerService, Mockito.timeout(10_000).times(1))
                 .handle(eq(context.bookingId().toString()), any(OutboxEventMessage.class));
 
         entityManager.clear();
@@ -207,7 +208,7 @@ class SeatReleaseRequestedKafkaIntegrationTest extends AbstractMySqlIntegrationT
 
         publish(context.bookingId(), message);
 
-        verify(consumerService, org.mockito.Mockito.timeout(10_000).times(2))
+        verify(consumerService, Mockito.timeout(10_000).times(2))
                 .handle(eq(context.bookingId().toString()), any(OutboxEventMessage.class));
 
         await(this::allSeatsAvailable);

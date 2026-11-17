@@ -11,7 +11,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
+import com.cinema.user.security.JpaUserDetailsService;
 
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -103,7 +105,7 @@ class AuthorizationServerSecurityConfigurationTest extends AbstractMySqlIntegrat
     @Test
     void shouldUseJpaUserDetailsService() {
         assertThat(userDetailsService)
-                .isInstanceOf(com.cinema.user.security.JpaUserDetailsService.class);
+                .isInstanceOf(JpaUserDetailsService.class);
     }
 
     @Test
@@ -122,6 +124,6 @@ class AuthorizationServerSecurityConfigurationTest extends AbstractMySqlIntegrat
                 .andExpect(
                         header().string(
                                         HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS,
-                                        org.hamcrest.Matchers.containsString("POST")));
+                                        Matchers.containsString("POST")));
     }
 }

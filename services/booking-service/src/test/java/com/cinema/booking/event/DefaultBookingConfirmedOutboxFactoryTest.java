@@ -20,6 +20,7 @@ import com.cinema.common.outbox.model.OutboxEventMessage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 
 import org.junit.jupiter.api.Test;
 
@@ -263,6 +264,6 @@ class DefaultBookingConfirmedOutboxFactoryTest {
                 BookingEventContract.PAYMENT_PRODUCER,
                 correlationId,
                 UuidGenerator.next(),
-                com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode());
+                JsonNodeFactory.instance.objectNode());
     }
 }

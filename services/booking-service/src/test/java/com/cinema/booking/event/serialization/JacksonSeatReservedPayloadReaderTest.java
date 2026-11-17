@@ -8,6 +8,7 @@ import com.cinema.common.core.id.UuidGenerator;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jackson.config.JacksonConfiguration;
 import com.cinema.common.outbox.model.OutboxEventMessage;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -94,7 +95,7 @@ class JacksonSeatReservedPayloadReaderTest {
         assertThrows(ValidationException.class, () -> reader.read(message));
     }
 
-    private OutboxEventMessage message(com.fasterxml.jackson.databind.JsonNode payload) {
+    private OutboxEventMessage message(JsonNode payload) {
 
         UUID bookingId = UuidGenerator.next();
 

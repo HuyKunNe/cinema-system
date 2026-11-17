@@ -14,8 +14,11 @@ import com.cinema.payment.repository.PaymentTransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InOrder;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Clock;
@@ -70,14 +73,14 @@ class RefundPaymentTransactionClaimServiceImplTest {
         verify(expiredTransaction)
                 .claim(
                         any(String.class),
-                        org.mockito.ArgumentMatchers.eq(NOW),
-                        org.mockito.ArgumentMatchers.eq(NOW.plusSeconds(30)));
+                        ArgumentMatchers.eq(NOW),
+                        ArgumentMatchers.eq(NOW.plusSeconds(30)));
 
         verify(readyTransaction)
                 .claim(
                         any(String.class),
-                        org.mockito.ArgumentMatchers.eq(NOW),
-                        org.mockito.ArgumentMatchers.eq(NOW.plusSeconds(30)));
+                        ArgumentMatchers.eq(NOW),
+                        ArgumentMatchers.eq(NOW.plusSeconds(30)));
 
         verify(transactionRepository).saveAll(List.of(expiredTransaction, readyTransaction));
 
@@ -94,7 +97,7 @@ class RefundPaymentTransactionClaimServiceImplTest {
     void expiredRefundTransactionsShouldConsumeBatchCapacityBeforeReadyRefunds() {
 
         PaymentTransaction secondExpiredTransaction =
-                org.mockito.Mockito.mock(PaymentTransaction.class);
+                Mockito.mock(PaymentTransaction.class);
 
         when(properties.batchSize()).thenReturn(2);
 
@@ -108,19 +111,19 @@ class RefundPaymentTransactionClaimServiceImplTest {
         assertThat(claimed).containsExactly(expiredTransaction, secondExpiredTransaction);
 
         verify(transactionRepository, never())
-                .findReadyRefundTransactions(org.mockito.ArgumentMatchers.anyInt());
+                .findReadyRefundTransactions(ArgumentMatchers.anyInt());
 
         verify(expiredTransaction)
                 .claim(
                         any(String.class),
-                        org.mockito.ArgumentMatchers.eq(NOW),
-                        org.mockito.ArgumentMatchers.eq(NOW.plusMinutes(1)));
+                        ArgumentMatchers.eq(NOW),
+                        ArgumentMatchers.eq(NOW.plusMinutes(1)));
 
         verify(secondExpiredTransaction)
                 .claim(
                         any(String.class),
-                        org.mockito.ArgumentMatchers.eq(NOW),
-                        org.mockito.ArgumentMatchers.eq(NOW.plusMinutes(1)));
+                        ArgumentMatchers.eq(NOW),
+                        ArgumentMatchers.eq(NOW.plusMinutes(1)));
 
         verify(transactionRepository)
                 .saveAll(List.of(expiredTransaction, secondExpiredTransaction));
@@ -158,14 +161,14 @@ class RefundPaymentTransactionClaimServiceImplTest {
 
         service.claimNextBatch();
 
-        org.mockito.ArgumentCaptor<String> ownerCaptor =
-                org.mockito.ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> ownerCaptor =
+                ArgumentCaptor.forClass(String.class);
 
         verify(readyTransaction)
                 .claim(
                         ownerCaptor.capture(),
-                        org.mockito.ArgumentMatchers.eq(NOW),
-                        org.mockito.ArgumentMatchers.eq(NOW.plusSeconds(45)));
+                        ArgumentMatchers.eq(NOW),
+                        ArgumentMatchers.eq(NOW.plusSeconds(45)));
 
         assertThat(ownerCaptor.getValue()).startsWith("payment-refund-provider-operation:");
     }

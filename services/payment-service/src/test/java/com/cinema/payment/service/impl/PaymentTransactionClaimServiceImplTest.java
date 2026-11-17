@@ -15,6 +15,7 @@ import com.cinema.payment.repository.PaymentTransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -95,7 +96,7 @@ class PaymentTransactionClaimServiceImplTest {
 
         assertThat(result).isEmpty();
 
-        verify(transactionRepository, never()).saveAll(org.mockito.ArgumentMatchers.any());
+        verify(transactionRepository, never()).saveAll(ArgumentMatchers.any());
     }
 
     @Test

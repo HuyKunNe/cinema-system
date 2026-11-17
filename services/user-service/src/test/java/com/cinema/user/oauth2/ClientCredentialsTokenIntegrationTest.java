@@ -31,6 +31,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -207,7 +208,7 @@ class ClientCredentialsTokenIntegrationTest extends AbstractMySqlIntegrationTest
         assertServiceToken(jwt, fixture.clientId());
     }
 
-    private org.springframework.test.web.servlet.ResultActions requestToken(
+    private ResultActions requestToken(
             String clientId, String rawSecret, String scopes) throws Exception {
 
         return mockMvc.perform(

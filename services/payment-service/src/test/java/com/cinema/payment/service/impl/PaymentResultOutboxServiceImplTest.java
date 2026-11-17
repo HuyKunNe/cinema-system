@@ -14,9 +14,11 @@ import com.cinema.payment.event.PaymentFailedOutboxFactory;
 import com.cinema.payment.event.PaymentSucceededOutboxFactory;
 import com.cinema.payment.exception.PaymentErrorCode;
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -102,7 +104,7 @@ class PaymentResultOutboxServiceImplTest {
 
         verify(failedOutboxFactory, never()).create(payment);
 
-        verify(outboxRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(outboxRepository, never()).save(ArgumentMatchers.any());
     }
 
     @Test
@@ -116,7 +118,7 @@ class PaymentResultOutboxServiceImplTest {
 
         verify(failedOutboxFactory, never()).create(payment);
 
-        verify(outboxRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(outboxRepository, never()).save(ArgumentMatchers.any());
     }
 
     @Test
@@ -126,7 +128,7 @@ class PaymentResultOutboxServiceImplTest {
                 .isInstanceOf(ValidationException.class)
                 .satisfies(
                         exception ->
-                                org.assertj.core.api.Assertions.assertThat(
+                                Assertions.assertThat(
                                                 ((ValidationException) exception).getErrorCode())
                                         .isEqualTo(PaymentErrorCode.PAYMENT_REQUIRED));
     }

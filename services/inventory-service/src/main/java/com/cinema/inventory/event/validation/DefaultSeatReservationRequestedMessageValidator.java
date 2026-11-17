@@ -1,5 +1,6 @@
 package com.cinema.inventory.event.validation;
 
+import com.cinema.common.exception.code.ErrorCode;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.outbox.model.OutboxEventMessage;
 import com.cinema.inventory.event.InventoryEventContract;
@@ -74,8 +75,8 @@ public class DefaultSeatReservationRequestedMessageValidator
 
     private void requireUuidV7(
             UUID value,
-            com.cinema.common.exception.code.ErrorCode missingError,
-            com.cinema.common.exception.code.ErrorCode invalidError) {
+            ErrorCode missingError,
+            ErrorCode invalidError) {
 
         if (value == null) {
             throw new ValidationException(missingError);

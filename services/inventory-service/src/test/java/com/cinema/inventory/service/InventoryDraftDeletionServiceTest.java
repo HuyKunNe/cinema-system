@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -185,7 +186,7 @@ class InventoryDraftDeletionServiceTest {
         assertThrows(ValidationException.class,
                 () -> service.deletePricingPolicyDraft(
                         cinema.getId(), UUID.randomUUID(), UUID.randomUUID(), -1L));
-        org.mockito.Mockito.verifyNoInteractions(layouts, policies, versions, showtimes);
+        Mockito.verifyNoInteractions(layouts, policies, versions, showtimes);
     }
 
     private RoomLayout layout() {

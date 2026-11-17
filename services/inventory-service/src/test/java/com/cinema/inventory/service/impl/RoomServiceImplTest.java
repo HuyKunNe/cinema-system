@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Clock;
@@ -228,7 +229,7 @@ class RoomServiceImplTest {
 
     @Test
     void updateShouldNormalizeUpdateAndDeactivateRoom() {
-        Cinema cinema = org.mockito.Mockito.mock(Cinema.class);
+        Cinema cinema = Mockito.mock(Cinema.class);
 
         when(cinema.getId()).thenReturn(CINEMA_ID);
 
@@ -263,7 +264,7 @@ class RoomServiceImplTest {
 
     @Test
     void updateShouldActivateRoomWhenRequested() {
-        Cinema cinema = org.mockito.Mockito.mock(Cinema.class);
+        Cinema cinema = Mockito.mock(Cinema.class);
 
         when(cinema.getId()).thenReturn(CINEMA_ID);
 
@@ -308,7 +309,7 @@ class RoomServiceImplTest {
 
     @Test
     void updateShouldThrowWhenAnotherRoomHasSameName() {
-        Cinema cinema = org.mockito.Mockito.mock(Cinema.class);
+        Cinema cinema = Mockito.mock(Cinema.class);
 
         when(cinema.getId()).thenReturn(CINEMA_ID);
 
@@ -334,7 +335,7 @@ class RoomServiceImplTest {
 
     @Test
     void updateShouldRejectTypeChangeWhenNonCancelledShowtimeExists() {
-        Cinema cinema = org.mockito.Mockito.mock(Cinema.class);
+        Cinema cinema = Mockito.mock(Cinema.class);
 
         when(cinema.getId()).thenReturn(CINEMA_ID);
 
@@ -363,7 +364,7 @@ class RoomServiceImplTest {
 
     @Test
     void updateShouldRejectDeactivationUsingCinemaLocalDay() {
-        Cinema cinema = org.mockito.Mockito.mock(Cinema.class);
+        Cinema cinema = Mockito.mock(Cinema.class);
 
         when(cinema.getId()).thenReturn(CINEMA_ID);
         when(cinema.getTimeZone()).thenReturn("Asia/Ho_Chi_Minh");

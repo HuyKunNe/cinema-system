@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.persistence.EntityManager;
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -135,7 +136,7 @@ class ReservationResultRaceIntegrationTest extends AbstractMySqlIntegrationTest 
                 seatReservationRejectedConsumerService.handle(
                         context.bookingId().toString(), rejectedMessage);
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(
+        Assertions.assertThatThrownBy(
                         () ->
                                 seatReservedConsumerService.handle(
                                         context.bookingId().toString(), delayedReservedMessage))
@@ -174,7 +175,7 @@ class ReservationResultRaceIntegrationTest extends AbstractMySqlIntegrationTest 
         SeatReservedConsumerService.Result reservationResult =
                 seatReservedConsumerService.handle(context.bookingId().toString(), reservedMessage);
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(
+        Assertions.assertThatThrownBy(
                         () ->
                                 seatReservationRejectedConsumerService.handle(
                                         context.bookingId().toString(), delayedRejectedMessage))
@@ -218,7 +219,7 @@ class ReservationResultRaceIntegrationTest extends AbstractMySqlIntegrationTest 
 
         for (int attempt = 0; attempt < 2; attempt++) {
 
-            org.assertj.core.api.Assertions.assertThatThrownBy(
+            Assertions.assertThatThrownBy(
                             () ->
                                     seatReservedConsumerService.handle(
                                             context.bookingId().toString(), reservedMessage))
@@ -253,7 +254,7 @@ class ReservationResultRaceIntegrationTest extends AbstractMySqlIntegrationTest 
 
         for (int attempt = 0; attempt < 2; attempt++) {
 
-            org.assertj.core.api.Assertions.assertThatThrownBy(
+            Assertions.assertThatThrownBy(
                             () ->
                                     seatReservationRejectedConsumerService.handle(
                                             context.bookingId().toString(), rejectedMessage))

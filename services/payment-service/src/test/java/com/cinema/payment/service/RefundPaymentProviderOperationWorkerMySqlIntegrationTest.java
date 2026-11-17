@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 class RefundPaymentProviderOperationWorkerMySqlIntegrationTest
         extends AbstractMySqlIntegrationTest {
@@ -112,7 +113,7 @@ class RefundPaymentProviderOperationWorkerMySqlIntegrationTest
                         FinancialAuditAction.REFUND_SUCCEEDED);
     }
 
-    private PaymentTransaction findRefundTransaction(java.util.UUID paymentId) {
+    private PaymentTransaction findRefundTransaction(UUID paymentId) {
 
         return transactionRepository.findAllByPaymentIdOrderByAttemptNumberAsc(paymentId).stream()
                 .filter(

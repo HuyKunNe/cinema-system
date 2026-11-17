@@ -5,16 +5,17 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
+import com.cinema.user.oauth2.OAuth2AuthorizationQueryRepository;
+import com.cinema.user.oauth2.audit.RevocationAuditRecorder;
+import com.cinema.user.oauth2.audit.RevocationAuditTargetType;
+import com.cinema.user.oauth2.audit.RevocationReason;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -26,11 +27,11 @@ import org.springframework.security.oauth2.server.authorization.OAuth2Authorizat
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 
-import com.cinema.user.oauth2.AuthorizationSessionRevocationService;
-import com.cinema.user.oauth2.OAuth2AuthorizationQueryRepository;
-import com.cinema.user.oauth2.audit.RevocationAuditRecorder;
-import com.cinema.user.oauth2.audit.RevocationAuditTargetType;
-import com.cinema.user.oauth2.audit.RevocationReason;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @ExtendWith(MockitoExtension.class)
 class AuthorizationSessionRevocationServiceImplTest {
@@ -161,7 +162,7 @@ class AuthorizationSessionRevocationServiceImplTest {
                 RevocationReason.PASSWORD_CHANGED);
 
         verify(authorizationService)
-                .save(org.mockito.ArgumentMatchers.any(OAuth2Authorization.class));
+                .save(ArgumentMatchers.any(OAuth2Authorization.class));
 
         verify(auditRecorder)
                 .record(
@@ -186,7 +187,7 @@ class AuthorizationSessionRevocationServiceImplTest {
                 RevocationReason.ACCOUNT_DISABLED);
 
         verify(authorizationService, never())
-                .save(org.mockito.ArgumentMatchers.any());
+                .save(ArgumentMatchers.any());
 
         verify(auditRecorder)
                 .record(
@@ -215,7 +216,7 @@ class AuthorizationSessionRevocationServiceImplTest {
                 RevocationReason.PASSWORD_RESET);
 
         verify(authorizationService, never())
-                .save(org.mockito.ArgumentMatchers.any());
+                .save(ArgumentMatchers.any());
 
         verify(auditRecorder)
                 .record(
@@ -235,10 +236,10 @@ class AuthorizationSessionRevocationServiceImplTest {
                 RevocationReason.ADMIN_USER_REVOCATION);
 
         verify(authorizationService, never())
-                .findById(org.mockito.ArgumentMatchers.anyString());
+                .findById(ArgumentMatchers.anyString());
 
         verify(authorizationService, never())
-                .save(org.mockito.ArgumentMatchers.any());
+                .save(ArgumentMatchers.any());
 
         verify(auditRecorder)
                 .record(

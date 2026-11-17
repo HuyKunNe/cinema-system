@@ -1,10 +1,27 @@
 package com.cinema.user.config;
 
+import com.cinema.user.oauth2.token.RefreshTokenReuseService;
+import com.cinema.user.oauth2.token.RefreshTokenTrackingService;
+import com.cinema.user.oauth2.token.TrackingOAuth2AuthorizationService;
+import com.cinema.user.security.CinemaUserDetails;
+import com.cinema.user.security.CinemaUserDetailsMixin;
+import com.cinema.user.security.jwt.JwtSigningKeyLoader;
+import com.cinema.user.security.jwt.RsaSigningKeyPair;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.KeyUse;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.SecurityContext;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcOperations;
+import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
@@ -13,25 +30,9 @@ import org.springframework.security.oauth2.server.authorization.JdbcOAuth2Author
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
-import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
-import org.springframework.security.jackson2.SecurityJackson2Modules;
+import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.oauth2.server.authorization.jackson2.OAuth2AuthorizationServerJackson2Module;
-
-import com.cinema.user.oauth2.token.RefreshTokenReuseService;
-import com.cinema.user.oauth2.token.RefreshTokenTrackingService;
-import com.cinema.user.oauth2.token.TrackingOAuth2AuthorizationService;
-import com.cinema.user.security.CinemaUserDetails;
-import com.cinema.user.security.CinemaUserDetailsMixin;
-import com.cinema.user.security.jwt.JwtSigningKeyLoader;
-import com.cinema.user.security.jwt.RsaSigningKeyPair;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.jwk.KeyUse;
-import com.nimbusds.jose.jwk.RSAKey;
-import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
-import com.nimbusds.jose.jwk.source.JWKSource;
-import com.nimbusds.jose.proc.SecurityContext;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties({
@@ -81,7 +82,7 @@ public class AuthorizationServerConfiguration {
     JwtDecoder jwtDecoder(
             JWKSource<SecurityContext> jwkSource) {
 
-        return org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration
+        return OAuth2AuthorizationServerConfiguration
                 .jwtDecoder(jwkSource);
     }
 

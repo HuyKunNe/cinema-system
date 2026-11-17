@@ -6,31 +6,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import org.springframework.jdbc.core.JdbcOperations;
-import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
-import org.springframework.security.oauth2.jwt.JwsHeader;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtClaimsSet;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
-import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
-import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
-
 import com.cinema.user.oauth2.token.RefreshTokenReuseService;
 import com.cinema.user.oauth2.token.RefreshTokenTrackingService;
 import com.cinema.user.oauth2.token.TrackingOAuth2AuthorizationService;
@@ -44,6 +19,32 @@ import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.jdbc.core.JdbcOperations;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
+
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 class AuthorizationServerConfigurationTest {
 
@@ -119,7 +120,7 @@ class AuthorizationServerConfigurationTest {
     @Test
     void shouldRegisterJwkSourceWhenSigningIsEnabled() {
         JwtSigningKeyLoader keyLoader = mock(JwtSigningKeyLoader.class);
-        when(keyLoader.load(org.mockito.ArgumentMatchers.any(
+        when(keyLoader.load(ArgumentMatchers.any(
                 JwtSigningKeyProperties.class)))
                 .thenReturn(signingKeyPair);
 
@@ -134,7 +135,7 @@ class AuthorizationServerConfigurationTest {
     @Test
     void shouldConfigureRsaJwkWithApprovedMetadata() {
         JwtSigningKeyLoader keyLoader = mock(JwtSigningKeyLoader.class);
-        when(keyLoader.load(org.mockito.ArgumentMatchers.any(
+        when(keyLoader.load(ArgumentMatchers.any(
                 JwtSigningKeyProperties.class)))
                 .thenReturn(signingKeyPair);
 
@@ -156,7 +157,7 @@ class AuthorizationServerConfigurationTest {
     @Test
     void publicJwkShouldNotExposePrivateKeyMaterial() {
         JwtSigningKeyLoader keyLoader = mock(JwtSigningKeyLoader.class);
-        when(keyLoader.load(org.mockito.ArgumentMatchers.any(
+        when(keyLoader.load(ArgumentMatchers.any(
                 JwtSigningKeyProperties.class)))
                 .thenReturn(signingKeyPair);
 
@@ -176,7 +177,7 @@ class AuthorizationServerConfigurationTest {
     void shouldRegisterJwtEncoderAndDecoderWhenSigningIsEnabled() {
         JwtSigningKeyLoader keyLoader = mock(JwtSigningKeyLoader.class);
 
-        when(keyLoader.load(org.mockito.ArgumentMatchers.any(
+        when(keyLoader.load(ArgumentMatchers.any(
                 JwtSigningKeyProperties.class)))
                 .thenReturn(signingKeyPair);
 
@@ -191,7 +192,7 @@ class AuthorizationServerConfigurationTest {
     void shouldEncodeAndDecodeJwtUsingConfiguredRsaKeyPair() {
         JwtSigningKeyLoader keyLoader = mock(JwtSigningKeyLoader.class);
 
-        when(keyLoader.load(org.mockito.ArgumentMatchers.any(
+        when(keyLoader.load(ArgumentMatchers.any(
                 JwtSigningKeyProperties.class)))
                 .thenReturn(signingKeyPair);
 

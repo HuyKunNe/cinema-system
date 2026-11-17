@@ -18,6 +18,7 @@ import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.service.ShowtimeService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -419,7 +420,7 @@ class ShowtimeControllerTest {
 
     @Test
     void createShouldRejectLegacyBasePrice() throws Exception {
-        com.fasterxml.jackson.databind.node.ObjectNode body =
+        ObjectNode body =
                 objectMapper.valueToTree(
                         createRequest(UUID.randomUUID(), UUID.randomUUID(), STARTS_AT, ENDS_AT));
 

@@ -1,14 +1,20 @@
 package com.cinema.booking.entity;
 
+import com.cinema.booking.exception.BookingErrorCode;
+import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.jpa.entity.BaseEntity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.security.SecureRandom;
+import java.time.OffsetDateTime;
 import java.util.Base64;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -50,6 +56,36 @@ public class BookingTicket extends BaseEntity {
     @JdbcTypeCode(SqlTypes.BINARY)
     @Column(name = "issued_by", updatable = false, columnDefinition = "BINARY(16)")
     private UUID issuedBy;
+
+    @Column(name = "checked_in_at")
+    private OffsetDateTime checkedInAt;
+
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(name = "checked_in_by", columnDefinition = "BINARY(16)")
+    private UUID checkedInBy;
+
+    @Column(name = "check_in_showtime_starts_at")
+    private OffsetDateTime checkInShowtimeStartsAt;
+
+    public OffsetDateTime getCheckedInAt() {
+        return checkedInAt;
+    }
+
+    public void checkIn(
+            OffsetDateTime now, UUID actor, OffsetDateTime startsAt) {
+        if (!"ISSUED".equals(status)) throw new IllegalStateException("Ticket is not issued");
+        Objects.requireNonNull(now);
+        Objects.requireNonNull(actor);
+        Objects.requireNonNull(startsAt);
+        if (now.isBefore(startsAt.minusMinutes(30)) || now.isAfter(startsAt.plusMinutes(15))) {
+            throw new ConflictException(
+                    BookingErrorCode.TICKET_CHECK_IN_WINDOW_CLOSED);
+        }
+        status = "USED";
+        checkedInAt = now;
+        checkedInBy = actor;
+        checkInShowtimeStartsAt = startsAt;
+    }
 
     protected BookingTicket() {}
 

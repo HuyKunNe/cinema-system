@@ -9,17 +9,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.io.ByteArrayInputStream;
-import java.time.Duration;
-import java.util.Map;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import com.cinema.common.storage.exception.StorageException;
 import com.cinema.common.storage.model.StorageUploadRequest;
 import com.cinema.common.storage.model.StorageUploadResult;
 import com.cinema.common.storage.properties.StorageProperties;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
@@ -27,13 +23,18 @@ import io.minio.ObjectWriteResponse;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import io.minio.StatObjectArgs;
-import io.minio.messages.ErrorResponse;
+import io.minio.StatObjectResponse;
 import io.minio.errors.ErrorResponseException;
+import io.minio.messages.ErrorResponse;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.Protocol;
 import okhttp3.Request;
 import okhttp3.Response;
+
+import java.io.ByteArrayInputStream;
+import java.time.Duration;
+import java.util.Map;
 
 class MinioStorageServiceTest {
 
@@ -136,7 +137,7 @@ class MinioStorageServiceTest {
                         any(StatObjectArgs.class)))
                 .thenReturn(
                         mock(
-                                io.minio.StatObjectResponse.class));
+                                StatObjectResponse.class));
 
         assertTrue(
                 storageService.exists(

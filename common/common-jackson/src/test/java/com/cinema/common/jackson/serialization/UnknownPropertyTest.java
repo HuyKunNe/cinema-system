@@ -1,10 +1,10 @@
 package com.cinema.common.jackson.serialization;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.cinema.common.jackson.util.JsonUtils;
+
+import org.junit.jupiter.api.Test;
 
 class UnknownPropertyTest {
 

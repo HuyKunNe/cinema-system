@@ -9,9 +9,11 @@ import com.cinema.inventory.entity.ShowSeat;
 import com.cinema.inventory.event.payload.ReservedSeatPayload;
 import com.cinema.inventory.event.payload.SeatReservedPayload;
 import com.cinema.inventory.exception.InventoryErrorCode;
+import com.cinema.inventory.repository.ShowtimeRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -28,12 +30,12 @@ public class DefaultSeatReservedOutboxFactory implements SeatReservedOutboxFacto
 
     private final ObjectMapper objectMapper;
 
-    private final com.cinema.inventory.repository.ShowtimeRepository showtimeRepository;
+    private final ShowtimeRepository showtimeRepository;
 
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     public DefaultSeatReservedOutboxFactory(
             ObjectMapper objectMapper,
-            com.cinema.inventory.repository.ShowtimeRepository showtimeRepository) {
+            ShowtimeRepository showtimeRepository) {
         this.objectMapper = objectMapper;
         this.showtimeRepository = showtimeRepository;
     }

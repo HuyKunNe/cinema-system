@@ -42,6 +42,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -51,6 +52,7 @@ import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.UUID;
 
 @IntegrationTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
@@ -237,7 +239,7 @@ class PaymentProviderWebhookHttpIntegrationTest extends AbstractMySqlIntegration
         assertPendingAggregate(aggregate);
     }
 
-    private org.springframework.test.web.servlet.ResultActions performWebhook(
+    private ResultActions performWebhook(
             String provider, String signature, byte[] requestBody) throws Exception {
 
         return mockMvc.perform(
@@ -318,7 +320,7 @@ class PaymentProviderWebhookHttpIntegrationTest extends AbstractMySqlIntegration
         return json.getBytes(StandardCharsets.UTF_8);
     }
 
-    private record TestAggregate(java.util.UUID paymentId, java.util.UUID transactionId) {}
+    private record TestAggregate(UUID paymentId, UUID transactionId) {}
 
     @TestConfiguration(proxyBeanMethods = false)
     static class WebhookTestConfiguration {

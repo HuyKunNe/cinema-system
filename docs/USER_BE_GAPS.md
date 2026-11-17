@@ -63,6 +63,12 @@ giả ở FE. Các mức ưu tiên dưới đây là đề xuất, cần thống
 
 ### BE-U04 — Phát hành vé điện tử, QR và trạng thái sử dụng
 
+**Check-in đã chốt/triển khai source:** ADMIN nhận vé một lần cho cả capacity
+(ghế đôi hai người), từ 30 phút trước đến hết 15 phút sau startsAt hiện tại
+từ API Inventory. V11 lưu USED và audit; scan lại trả ALREADY_USED. Không mở
+quyền Staff/UI Staff; chưa chạy migration, ghi check-in hoặc verify runtime.
+Contract mới nhất nằm đầu [tài liệu vé](29_BOOKING_TICKETS.md).
+
 **Triển khai source ngày 2026-11-17:** một vé mỗi booking-seat, COUPLE một vé
 capacity=2. V9 thêm bảng vé; consumer booking-confirmed phát hành bất đồng bộ
 và chống trùng theo seat. API owner đọc QR opaque đã lưu. Chi tiết tại

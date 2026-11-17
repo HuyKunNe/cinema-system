@@ -9,9 +9,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.Set;
-import java.util.UUID;
+import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
+import com.cinema.user.oauth2.model.PublicClientRegistration;
+import com.cinema.user.oauth2.model.ServiceClientRegistration;
 
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,9 +22,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.cinema.common.test.container.AbstractMySqlIntegrationTest;
-import com.cinema.user.oauth2.model.PublicClientRegistration;
-import com.cinema.user.oauth2.model.ServiceClientRegistration;
+import java.util.Set;
+import java.util.UUID;
 
 @SpringBootTest(
         properties = {
@@ -121,12 +122,12 @@ class OAuth2ProtocolPolicyIntegrationTest extends AbstractMySqlIntegrationTest {
                 .andExpect(
                         content()
                                 .string(
-                                        org.hamcrest.Matchers.allOf(
-                                                org.hamcrest.Matchers.containsString(
+                                        Matchers.allOf(
+                                                Matchers.containsString(
                                                         "Consent required"),
-                                                org.hamcrest.Matchers.containsString(
+                                                Matchers.containsString(
                                                         publicClientId),
-                                                org.hamcrest.Matchers.containsString(
+                                                Matchers.containsString(
                                                         "booking:read"))));
     }
 

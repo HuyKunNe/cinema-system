@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Objects;
@@ -149,7 +150,7 @@ public class RefreshTokenTrackingServiceImpl implements RefreshTokenTrackingServ
         return authorization.getRefreshToken().getToken();
     }
 
-    private static OffsetDateTime toOffsetDateTime(java.time.Instant instant) {
+    private static OffsetDateTime toOffsetDateTime(Instant instant) {
 
         if (instant == null) {
             throw new InternalServerException(UserErrorCode.OAUTH2_REFRESH_TOKEN_HISTORY_INVALID);

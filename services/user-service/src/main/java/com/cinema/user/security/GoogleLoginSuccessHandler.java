@@ -1,6 +1,7 @@
 package com.cinema.user.security;
 
 import com.cinema.user.security.audit.impl.SecurityAuditAuthenticationFailureHandler;
+import com.cinema.user.security.audit.impl.SecurityAuditAuthenticationSuccessHandler;
 import com.cinema.user.service.GoogleIdentityService;
 import com.cinema.user.service.GoogleIdentityService.GoogleAccount;
 import com.cinema.user.service.UserAccountLifecycleService;
@@ -41,7 +42,7 @@ public class GoogleLoginSuccessHandler implements AuthenticationSuccessHandler {
             GoogleIdentityService googleIdentityService,
             UserDetailsService userDetailsService,
             UserAccountLifecycleService accountLifecycleService,
-            com.cinema.user.security.audit.impl.SecurityAuditAuthenticationSuccessHandler
+            SecurityAuditAuthenticationSuccessHandler
                     auditSuccessHandler,
             SecurityAuditAuthenticationFailureHandler auditFailureHandler) {
         this.googleIdentityService = googleIdentityService;

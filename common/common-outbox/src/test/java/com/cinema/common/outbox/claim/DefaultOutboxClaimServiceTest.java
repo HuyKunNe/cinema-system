@@ -13,7 +13,9 @@ import com.cinema.common.outbox.repository.OutboxRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.time.Clock;
@@ -112,7 +114,7 @@ class DefaultOutboxClaimServiceTest {
         verify(repository)
                 .findClaimableEvents(now, properties.maximumAttempts(), properties.batchSize());
 
-        verify(repository, org.mockito.Mockito.never()).saveAll(org.mockito.ArgumentMatchers.any());
+        verify(repository, Mockito.never()).saveAll(ArgumentMatchers.any());
     }
 
     private OutboxEventEntity event() {

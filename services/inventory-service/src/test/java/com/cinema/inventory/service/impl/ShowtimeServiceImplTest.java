@@ -24,6 +24,7 @@ import com.cinema.inventory.entity.Cinema;
 import com.cinema.inventory.entity.Room;
 import com.cinema.inventory.entity.Showtime;
 import com.cinema.inventory.enums.ShowtimeStatus;
+import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.mapper.ShowtimeMapper;
 import com.cinema.inventory.repository.CinemaRepository;
 import com.cinema.inventory.repository.RoomRepository;
@@ -35,6 +36,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Clock;
@@ -108,7 +110,7 @@ class ShowtimeServiceImplTest {
         CreateShowtimeRequest request = createRequest(STARTS_AT, ENDS_AT);
         ConflictException failure =
                 new ConflictException(
-                        com.cinema.inventory.exception.InventoryErrorCode.SHOWTIME_OVERLAP);
+                        InventoryErrorCode.SHOWTIME_OVERLAP);
 
         when(showtimeCreationService.create(request)).thenThrow(failure);
 
@@ -409,7 +411,7 @@ class ShowtimeServiceImplTest {
         assertThat(result).isSameAs(expectedResponse);
 
         var order =
-                org.mockito.Mockito.inOrder(showtimeRepository, roomRepository, cinemaRepository);
+                Mockito.inOrder(showtimeRepository, roomRepository, cinemaRepository);
 
         order.verify(showtimeRepository).findRoomIdForScheduleChange(SHOWTIME_ID);
 

@@ -1,8 +1,8 @@
 package com.cinema.booking.service.impl;
 
 import com.cinema.booking.entity.Booking;
-import com.cinema.booking.enums.BookingStatus;
 import com.cinema.booking.entity.BookingSeat;
+import com.cinema.booking.enums.BookingStatus;
 import com.cinema.booking.event.BookingEventContract;
 import com.cinema.booking.event.PaymentRequestedOutboxFactory;
 import com.cinema.booking.event.payload.ReservedSeatPayload;
@@ -36,6 +36,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerService {
@@ -257,7 +258,7 @@ public class SeatReservedConsumerServiceImpl implements SeatReservedConsumerServ
                 bookingSeats.stream()
                         .map(BookingSeat::getSeatNumber)
                         .map(this::normalizeSeatNumber)
-                        .collect(java.util.stream.Collectors.toSet());
+                        .collect(Collectors.toSet());
 
         if (!requestedSeatNumbers.equals(reservedSeats.keySet())) {
 

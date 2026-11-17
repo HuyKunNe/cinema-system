@@ -35,6 +35,14 @@ generated User functions alone are not proof of usable SPA authentication.
 
 ## Evidence and limits
 
+Ticket read continuation (2026-11-17): owner GET
+`/api/v1/bookings/{bookingId}/tickets` and ADMIN POST
+`/api/v1/bookings/management/tickets/lookup` add nullable `checkedInAt`.
+ISSUED returns null; USED returns its original committed check-in instant.
+This is display data, not a second admission authorization. QR is still exposed
+only in the owner ticket JSON, never echoed by lookup. Check-in actor remains
+internal. FE clients were not regenerated; runtime was not verified here.
+
 Latest source contract (2026-11-16): `GET /api/v1/bookings` now accepts optional
 `period=UPCOMING|PAST`. Example: `/api/v1/bookings?period=PAST&page=0&size=10`.
 Both periods require CONFIRMED and non-null showtimeEndsAt. UPCOMING uses end >

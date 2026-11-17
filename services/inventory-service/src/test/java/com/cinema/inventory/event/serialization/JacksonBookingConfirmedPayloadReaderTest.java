@@ -1,13 +1,7 @@
 package com.cinema.inventory.event.serialization;
 
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.UUID;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import org.junit.jupiter.api.Test;
 
 import com.cinema.common.core.id.UuidGenerator;
 import com.cinema.common.exception.exception.ValidationException;
@@ -16,9 +10,17 @@ import com.cinema.common.outbox.model.OutboxEventMessage;
 import com.cinema.inventory.event.InventoryEventContract;
 import com.cinema.inventory.event.payload.BookingConfirmedPayload;
 import com.cinema.inventory.event.payload.ConfirmedSeatPayload;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
 
 class JacksonBookingConfirmedPayloadReaderTest {
 
@@ -150,7 +152,7 @@ class JacksonBookingConfirmedPayloadReaderTest {
     }
 
     private OutboxEventMessage message(
-            UUID bookingId, com.fasterxml.jackson.databind.JsonNode payload) {
+            UUID bookingId, JsonNode payload) {
 
         return new OutboxEventMessage(
                 UuidGenerator.next(),

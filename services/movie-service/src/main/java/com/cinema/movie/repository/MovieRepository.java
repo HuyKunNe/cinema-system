@@ -11,9 +11,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -22,7 +24,7 @@ import java.util.UUID;
 
 public interface MovieRepository extends JpaRepository<Movie, UUID> {
 
-    @org.springframework.data.jpa.repository.Modifying(
+    @Modifying(
             clearAutomatically = true,
             flushAutomatically = true)
     @Query(
@@ -32,7 +34,7 @@ public interface MovieRepository extends JpaRepository<Movie, UUID> {
     int promoteReleasedMovies(
             @Param("source") MovieStatus source,
             @Param("target") MovieStatus target,
-            @Param("today") java.time.LocalDate today,
+            @Param("today") LocalDate today,
             @Param("updatedAt") OffsetDateTime updatedAt);
 
     boolean existsByTitleIgnoreCase(String title);

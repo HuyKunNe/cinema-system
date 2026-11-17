@@ -27,6 +27,7 @@ import com.cinema.common.outbox.service.OutboxService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -147,7 +148,7 @@ class BookingCancellationServiceImplTest {
 
         verify(bookingRepository).findByIdAndUserIdForUpdate(bookingId, userId);
 
-        verify(bookingRepository, never()).saveAndFlush(org.mockito.ArgumentMatchers.any());
+        verify(bookingRepository, never()).saveAndFlush(ArgumentMatchers.any());
 
         verifyNoInteractions(outboxFactory, outboxService, bookingSeatRepository, bookingMapper);
     }
@@ -174,7 +175,7 @@ class BookingCancellationServiceImplTest {
 
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.PENDING);
 
-        verify(bookingRepository, never()).saveAndFlush(org.mockito.ArgumentMatchers.any());
+        verify(bookingRepository, never()).saveAndFlush(ArgumentMatchers.any());
 
         verifyNoInteractions(outboxFactory, outboxService, bookingSeatRepository, bookingMapper);
     }

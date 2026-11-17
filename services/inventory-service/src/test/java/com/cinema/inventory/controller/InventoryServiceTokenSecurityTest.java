@@ -16,6 +16,7 @@ import com.cinema.inventory.dto.request.ShowSeatBookingRequest;
 import com.cinema.inventory.service.ShowSeatService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -96,7 +97,7 @@ class InventoryServiceTokenSecurityTest {
 
         verify(showSeatService).book(eq(showSeatId), requestCaptor.capture());
 
-        org.assertj.core.api.Assertions.assertThat(requestCaptor.getValue().bookingId())
+        Assertions.assertThat(requestCaptor.getValue().bookingId())
                 .isEqualTo(bookingId);
     }
 

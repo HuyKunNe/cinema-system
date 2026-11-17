@@ -1,9 +1,7 @@
 package com.cinema.common.security.context;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.cinema.common.exception.exception.UnauthorizedException;
 import com.cinema.common.security.authentication.AuthenticationUser;
@@ -13,13 +11,16 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import java.time.Instant;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 class SecurityContextUtilsTest {
 
@@ -206,7 +207,7 @@ class SecurityContextUtilsTest {
     }
 
     private void setAuthentication(
-            org.springframework.security.core.Authentication authentication) {
+            Authentication authentication) {
 
         SecurityContextHolder
                 .getContext()

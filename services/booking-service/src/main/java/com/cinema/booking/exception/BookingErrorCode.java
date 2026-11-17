@@ -4,6 +4,13 @@ import com.cinema.common.exception.code.ErrorCategory;
 import com.cinema.common.exception.code.ErrorCode;
 
 public final class BookingErrorCode implements ErrorCode {
+    public static final BookingErrorCode TICKET_CHECK_IN_NOT_ALLOWED = new BookingErrorCode(
+            ErrorCategory.BUSINESS, "BOOKING_TICKET_CHECK_IN_NOT_ALLOWED", "Ticket check-in is not allowed for this showtime");
+    public static final BookingErrorCode TICKET_CHECK_IN_WINDOW_CLOSED = new BookingErrorCode(
+            ErrorCategory.BUSINESS, "BOOKING_TICKET_CHECK_IN_WINDOW_CLOSED", "Ticket check-in window is closed");
+    public static final BookingErrorCode TICKET_SCHEDULE_UNAVAILABLE = new BookingErrorCode(
+            ErrorCategory.SYSTEM, "BOOKING_TICKET_SCHEDULE_UNAVAILABLE", "Showtime schedule could not be verified");
+
 
     public static final BookingErrorCode TICKET_NOT_FOUND =
             new BookingErrorCode(

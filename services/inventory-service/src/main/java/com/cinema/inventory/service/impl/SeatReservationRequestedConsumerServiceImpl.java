@@ -1,5 +1,6 @@
 package com.cinema.inventory.service.impl;
 
+import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.outbox.entity.OutboxEventEntity;
 import com.cinema.common.outbox.model.OutboxEventMessage;
 import com.cinema.common.outbox.service.OutboxService;
@@ -16,6 +17,7 @@ import com.cinema.inventory.event.payload.ReservedSeatPayload;
 import com.cinema.inventory.event.payload.SeatReservationRequestedPayload;
 import com.cinema.inventory.event.serialization.SeatReservationRequestedPayloadReader;
 import com.cinema.inventory.event.validation.SeatReservationRequestedMessageValidator;
+import com.cinema.inventory.exception.InventoryErrorCode;
 import com.cinema.inventory.repository.ShowSeatRepository;
 import com.cinema.inventory.repository.ShowtimeRepository;
 import com.cinema.inventory.service.ProcessedEventRegistrationService;
@@ -310,16 +312,16 @@ public class SeatReservationRequestedConsumerServiceImpl
                 || payload.showtimeId() == null
                 || !payload.bookingId().equals(message.aggregateId())) {
 
-            throw new com.cinema.common.exception.exception.ValidationException(
-                    com.cinema.inventory.exception.InventoryErrorCode.EVENT_PAYLOAD_INVALID);
+            throw new ValidationException(
+                    InventoryErrorCode.EVENT_PAYLOAD_INVALID);
         }
 
         if (payload.bookingId().version() != 7
                 || payload.userId().version() != 7
                 || !UuidVersions.isV5OrV7(payload.showtimeId())) {
 
-            throw new com.cinema.common.exception.exception.ValidationException(
-                    com.cinema.inventory.exception.InventoryErrorCode.EVENT_PAYLOAD_INVALID);
+            throw new ValidationException(
+                    InventoryErrorCode.EVENT_PAYLOAD_INVALID);
         }
     }
 

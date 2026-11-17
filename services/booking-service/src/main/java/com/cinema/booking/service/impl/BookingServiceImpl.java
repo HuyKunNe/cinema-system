@@ -22,6 +22,8 @@ import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.response.model.PageResponse;
 
+import jakarta.persistence.criteria.Predicate;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -37,6 +39,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -225,7 +228,7 @@ public class BookingServiceImpl implements BookingService {
                     (root, query, builder) -> {
                         var end = root.<OffsetDateTime>get("showtimeEndsAt");
                         var predicates =
-                                new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+                                new ArrayList<Predicate>();
                         predicates.add(builder.equal(root.get("userId"), userId));
                         predicates.add(builder.equal(root.get("status"), BookingStatus.CONFIRMED));
                         predicates.add(builder.isNotNull(end));
@@ -237,7 +240,7 @@ public class BookingServiceImpl implements BookingService {
                             predicates.add(root.get("status").in(statuses));
                         }
                         return builder.and(
-                                predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+                                predicates.toArray(Predicate[]::new));
                     };
             bookings = bookingRepository.findAll(filter, pageRequest);
         } else {

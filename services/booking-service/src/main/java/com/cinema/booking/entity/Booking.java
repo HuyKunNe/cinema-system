@@ -18,6 +18,7 @@ import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -87,9 +88,9 @@ public class Booking extends BaseEntity {
 
     public boolean backfillShowtimeEnd(OffsetDateTime value, OffsetDateTime now, UUID actor) {
         if (showtimeEndsAt != null) return false;
-        java.util.Objects.requireNonNull(value);
-        java.util.Objects.requireNonNull(now);
-        java.util.Objects.requireNonNull(actor);
+        Objects.requireNonNull(value);
+        Objects.requireNonNull(now);
+        Objects.requireNonNull(actor);
         showtimeEndsAt = value;
         showtimeEndSource = "CURRENT_SCHEDULE_BACKFILL";
         showtimeEndRecordedAt = now;

@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -121,7 +122,7 @@ class BookingLifecycleOutboxFactoryTest {
     @Test
     void cancelledFactoryShouldTranslateSerializationFailure() throws Exception {
 
-        ObjectMapper failingObjectMapper = org.mockito.Mockito.mock(ObjectMapper.class);
+        ObjectMapper failingObjectMapper = Mockito.mock(ObjectMapper.class);
 
         JsonProcessingException cause = new JsonProcessingException("serialization failed") {};
 
@@ -152,7 +153,7 @@ class BookingLifecycleOutboxFactoryTest {
     @Test
     void expiredFactoryShouldTranslateSerializationFailure() throws Exception {
 
-        ObjectMapper failingObjectMapper = org.mockito.Mockito.mock(ObjectMapper.class);
+        ObjectMapper failingObjectMapper = Mockito.mock(ObjectMapper.class);
 
         JsonProcessingException cause = new JsonProcessingException("serialization failed") {};
 

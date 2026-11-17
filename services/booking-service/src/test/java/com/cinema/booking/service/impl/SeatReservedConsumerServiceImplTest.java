@@ -36,6 +36,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -99,7 +100,7 @@ class SeatReservedConsumerServiceImplTest {
 
         prepareSuccessfulProcessing(context);
 
-        OutboxEventEntity paymentRequestedEvent = org.mockito.Mockito.mock(OutboxEventEntity.class);
+        OutboxEventEntity paymentRequestedEvent = Mockito.mock(OutboxEventEntity.class);
 
         when(bookingRepository.save(context.booking())).thenReturn(context.booking());
 
@@ -268,7 +269,7 @@ class SeatReservedConsumerServiceImplTest {
                         EXPIRES_AT.withOffsetSameInstant(ZoneOffset.ofHours(offsetHours)));
 
         prepareProcessing(context, payload);
-        OutboxEventEntity paymentRequestedEvent = org.mockito.Mockito.mock(OutboxEventEntity.class);
+        OutboxEventEntity paymentRequestedEvent = Mockito.mock(OutboxEventEntity.class);
         when(bookingRepository.save(context.booking())).thenReturn(context.booking());
         when(paymentRequestedOutboxFactory.create(
                         context.booking(), context.message(), REQUESTED_AT))
@@ -573,7 +574,7 @@ class SeatReservedConsumerServiceImplTest {
 
         prepareSuccessfulProcessing(context);
 
-        OutboxEventEntity paymentRequestedEvent = org.mockito.Mockito.mock(OutboxEventEntity.class);
+        OutboxEventEntity paymentRequestedEvent = Mockito.mock(OutboxEventEntity.class);
 
         when(bookingRepository.save(context.booking())).thenReturn(context.booking());
 

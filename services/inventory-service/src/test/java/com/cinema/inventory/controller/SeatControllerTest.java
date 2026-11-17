@@ -30,6 +30,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 @ExtendWith(MockitoExtension.class)
 class SeatControllerTest {
@@ -224,7 +225,7 @@ class SeatControllerTest {
         CreateSeatRangeRequest request = new CreateSeatRangeRequest("A", 1, 10, SeatType.STANDARD);
 
         List<SeatResponse> responses =
-                java.util.stream.IntStream.rangeClosed(1, 10)
+                IntStream.rangeClosed(1, 10)
                         .mapToObj(
                                 number ->
                                         new SeatResponse(

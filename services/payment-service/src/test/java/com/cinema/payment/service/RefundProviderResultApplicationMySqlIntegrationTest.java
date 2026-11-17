@@ -30,6 +30,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 class RefundProviderResultApplicationMySqlIntegrationTest extends AbstractMySqlIntegrationTest {
 
@@ -348,8 +349,8 @@ class RefundProviderResultApplicationMySqlIntegrationTest extends AbstractMySqlI
     }
 
     private record Fixture(
-            java.util.UUID paymentId,
-            java.util.UUID transactionId,
+            UUID paymentId,
+            UUID transactionId,
             String chargeProviderReference,
             ClaimedProviderRefundOperation operation) {}
 }

@@ -31,6 +31,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -298,7 +299,7 @@ class ShowSeatSecurityTest {
         verifyNoInteractions(showSeatService);
     }
 
-    private org.springframework.test.web.servlet.ResultActions performGenerate() throws Exception {
+    private ResultActions performGenerate() throws Exception {
 
         return mockMvc.perform(
                 post("/api/v1/show-seats")
@@ -307,7 +308,7 @@ class ShowSeatSecurityTest {
                         .content(objectMapper.writeValueAsString("{\\\"defaultPrice\\\":100000}")));
     }
 
-    private org.springframework.test.web.servlet.ResultActions performGenerateWithUserRole()
+    private ResultActions performGenerateWithUserRole()
             throws Exception {
 
         return mockMvc.perform(
@@ -318,7 +319,7 @@ class ShowSeatSecurityTest {
                         .content(objectMapper.writeValueAsString("{\\\"defaultPrice\\\":100000}")));
     }
 
-    private org.springframework.test.web.servlet.ResultActions performHold(
+    private ResultActions performHold(
             UUID showSeatId, HoldShowSeatRequest request) throws Exception {
 
         return mockMvc.perform(

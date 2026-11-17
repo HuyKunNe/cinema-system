@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -79,7 +80,7 @@ class KafkaOutboxPublisherTest {
         when(producer.send(
                         eq("seat-reservation-requested"),
                         eq(bookingId.toString()),
-                        org.mockito.ArgumentMatchers.any(OutboxEventMessage.class)))
+                        ArgumentMatchers.any(OutboxEventMessage.class)))
                 .thenReturn(CompletableFuture.completedFuture(null));
 
         publisher.publish(event).join();

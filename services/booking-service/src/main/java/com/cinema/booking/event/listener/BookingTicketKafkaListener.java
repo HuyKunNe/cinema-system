@@ -2,6 +2,7 @@ package com.cinema.booking.event.listener;
 
 import com.cinema.booking.service.BookingTicketService;
 import com.cinema.common.outbox.model.OutboxEventMessage;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -26,7 +27,7 @@ public class BookingTicketKafkaListener {
             groupId =
                     "${cinema.booking.kafka.consumer-groups.ticket-issuance:booking-ticket-issuance}")
     public void consume(@Header(KafkaHeaders.RECEIVED_KEY) String key, String serialized)
-            throws com.fasterxml.jackson.core.JsonProcessingException {
+            throws JsonProcessingException {
         service.issue(key, mapper.readValue(serialized, OutboxEventMessage.class));
     }
 }

@@ -13,10 +13,12 @@ import com.cinema.payment.service.PaymentProviderWebhookHandlingService;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -48,11 +50,11 @@ class PaymentProviderWebhookControllerTest {
 
         ProviderWebhookAcknowledgement acknowledgement =
                 new ProviderWebhookAcknowledgement(
-                        org.springframework.http.HttpStatus.OK,
+                        HttpStatus.OK,
                         MediaType.APPLICATION_JSON,
                         acknowledgementBody);
 
-        when(handlingService.handle(eq("MOMO"), org.mockito.ArgumentMatchers.anyMap(), eq(rawBody)))
+        when(handlingService.handle(eq("MOMO"), ArgumentMatchers.anyMap(), eq(rawBody)))
                 .thenReturn(acknowledgement);
 
         mockMvc.perform(

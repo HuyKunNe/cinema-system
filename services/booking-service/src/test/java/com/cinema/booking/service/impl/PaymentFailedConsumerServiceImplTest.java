@@ -18,6 +18,7 @@ import com.cinema.booking.event.payload.PaymentFailedPayload;
 import com.cinema.booking.event.serialization.PaymentFailedPayloadReader;
 import com.cinema.booking.event.validation.PaymentResultMessageValidator;
 import com.cinema.booking.event.validation.PaymentResultPayloadValidator;
+import com.cinema.booking.exception.BookingErrorCode;
 import com.cinema.booking.repository.BookingRepository;
 import com.cinema.booking.repository.BookingSeatRepository;
 import com.cinema.booking.service.PaymentFailedConsumerService;
@@ -199,7 +200,7 @@ class PaymentFailedConsumerServiceImplTest {
 
         ValidationException failure =
                 new ValidationException(
-                        com.cinema.booking.exception.BookingErrorCode.EVENT_PAYLOAD_INVALID);
+                        BookingErrorCode.EVENT_PAYLOAD_INVALID);
 
         when(payloadReader.read(context.message())).thenReturn(context.payload());
 
