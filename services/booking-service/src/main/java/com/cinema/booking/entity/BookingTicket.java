@@ -44,23 +44,39 @@ public class BookingTicket extends BaseEntity {
     @Column(nullable = false, length = 20)
     private String status = "ISSUED";
 
+    @Column(name = "issuance_source", length = 30, updatable = false)
+    private String issuanceSource;
+
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(name = "issued_by", updatable = false, columnDefinition = "BINARY(16)")
+    private UUID issuedBy;
+
     protected BookingTicket() {}
 
     public BookingTicket(BookingSeat seat) {
+        this(seat, null);
+    }
+
+    public BookingTicket(BookingSeat seat, UUID actor) {
+        issuanceSource = actor == null ? "BOOKING_CONFIRMED_EVENT" : "ADMIN_RECOVERY";
+        issuedBy = actor;
         if (!seat.hasCompletedSnapshot())
             throw new IllegalArgumentException("Ticket requires completed seat snapshot");
         bookingId = seat.getBookingId();
         bookingSeatId = seat.getId();
         seatNumber = seat.getSeatNumber();
-        capacity =
-                switch (seat.getSeatType()) {
-                    case "COUPLE" -> 2;
-                    case "STANDARD", "VIP", "ACCESSIBLE" -> 1;
-                    default -> throw new IllegalArgumentException("Unsupported ticket seat type");
-                };
+        capacity = capacityFor(seat);
         byte[] bytes = new byte[32];
         RANDOM.nextBytes(bytes);
         qrToken = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    public static int capacityFor(BookingSeat seat) {
+        return switch (seat.getSeatType()) {
+            case "COUPLE" -> 2;
+            case "STANDARD", "VIP", "ACCESSIBLE" -> 1;
+            default -> throw new IllegalArgumentException("Unsupported ticket seat type");
+        };
     }
 
     public UUID getBookingId() {

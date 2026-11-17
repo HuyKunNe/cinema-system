@@ -5,6 +5,16 @@ import com.cinema.common.exception.code.ErrorCode;
 
 public final class BookingErrorCode implements ErrorCode {
 
+    public static final BookingErrorCode TICKET_NOT_FOUND =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS, "BOOKING_TICKET_NOT_FOUND", "Ticket not found");
+
+    public static final BookingErrorCode TICKET_QR_INVALID =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_TICKET_QR_INVALID",
+                    "Ticket QR payload is invalid");
+
     public static final BookingErrorCode BOOKING_NOT_FOUND =
             new BookingErrorCode(ErrorCategory.RESOURCE, "BOOKING_NOT_FOUND", "Booking not found");
 

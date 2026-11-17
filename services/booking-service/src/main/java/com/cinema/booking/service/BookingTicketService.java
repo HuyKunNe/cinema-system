@@ -79,9 +79,55 @@ public class BookingTicketService {
         var bookingSeats = seats.findAllByBookingIdOrderBySeatNumberAsc(booking.getId());
         if (bookingSeats.isEmpty())
             throw new ValidationException(BookingErrorCode.SEAT_NUMBERS_REQUIRED);
+        com.cinema.booking.event.validation.BookingTicketSnapshotValidator.validate(
+                booking, bookingSeats, event);
         for (var seat : bookingSeats)
             if (!ids.contains(seat.getId())) tickets.save(new BookingTicket(seat));
     }
+
+    @Transactional
+    public RecoveryResult recover(UUID bookingId, UUID actor, boolean dryRun) {
+        Objects.requireNonNull(actor);
+        var booking =
+                bookings.findByIdForUpdate(bookingId)
+                        .orElseThrow(
+                                () -> new NotFoundException(BookingErrorCode.BOOKING_NOT_FOUND));
+        if (booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new ConflictException(BookingErrorCode.BOOKING_NOT_CONFIRMED);
+        }
+        var bookingSeats = seats.findAllByBookingIdOrderBySeatNumberAsc(bookingId);
+        if (bookingSeats.isEmpty())
+            throw new ValidationException(BookingErrorCode.SEAT_NUMBERS_REQUIRED);
+        var existing = tickets.findAllByBookingIdOrderBySeatNumberAsc(bookingId);
+        Set<UUID> issued = new HashSet<>();
+        existing.forEach(ticket -> issued.add(ticket.getBookingSeatId()));
+        int missing = 0;
+        for (var seat : bookingSeats) {
+            if (!seat.hasCompletedSnapshot()) {
+                throw new ConflictException(BookingErrorCode.RESERVATION_RESULT_MISMATCH);
+            }
+            if (!issued.contains(seat.getId())) {
+                BookingTicket.capacityFor(seat);
+                missing++;
+                if (!dryRun) tickets.save(new BookingTicket(seat, actor));
+            }
+        }
+        return new RecoveryResult(
+                bookingId,
+                dryRun,
+                bookingSeats.size(),
+                existing.size(),
+                dryRun ? 0 : missing,
+                dryRun ? missing : 0);
+    }
+
+    public record RecoveryResult(
+            UUID bookingId,
+            boolean dryRun,
+            int expectedTickets,
+            int existingTickets,
+            int createdTickets,
+            int wouldCreateTickets) {}
 
     @Transactional(readOnly = true)
     public List<TicketResponse> read(UUID owner, UUID bookingId) {
@@ -99,6 +145,34 @@ public class BookingTicketService {
                                 t.getQrPayload()))
                 .toList();
     }
+
+    @Transactional(readOnly = true)
+    public LookupResponse lookup(String qrPayload) {
+        String prefix = "cinema-ticket:v1:";
+        if (qrPayload == null || !qrPayload.matches("^cinema-ticket:v1:[A-Za-z0-9_-]{43}$")) {
+            throw new ValidationException(BookingErrorCode.TICKET_QR_INVALID);
+        }
+        String token = qrPayload.substring(prefix.length());
+        try {
+            byte[] decoded = Base64.getUrlDecoder().decode(token);
+            if (decoded.length != 32 || !Base64.getUrlEncoder().withoutPadding().encodeToString(decoded).equals(token)) {
+                throw new ValidationException(BookingErrorCode.TICKET_QR_INVALID);
+            }
+        } catch (IllegalArgumentException failure) {
+            throw new ValidationException(BookingErrorCode.TICKET_QR_INVALID);
+        }
+        var ticket = tickets.findByQrToken(token)
+                .orElseThrow(() -> new NotFoundException(BookingErrorCode.TICKET_NOT_FOUND));
+        var booking = bookings.findById(ticket.getBookingId())
+                .orElseThrow(() -> new NotFoundException(BookingErrorCode.BOOKING_NOT_FOUND));
+        return new LookupResponse(ticket.getId(), ticket.getBookingId(), booking.getShowtimeId(),
+                ticket.getSeatNumber(), ticket.getCapacity(), ticket.getStatus(),
+                booking.getStatus(), booking.getShowtimeEndsAt());
+    }
+
+    public record LookupResponse(UUID ticketId, UUID bookingId, UUID showtimeId,
+            String seatNumber, int capacity, String ticketStatus, BookingStatus bookingStatus,
+            java.time.OffsetDateTime showtimeEndsAt) {}
 
     public record TicketResponse(
             UUID id,
