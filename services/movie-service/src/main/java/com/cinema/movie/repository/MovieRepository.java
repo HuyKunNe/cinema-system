@@ -22,6 +22,19 @@ import java.util.UUID;
 
 public interface MovieRepository extends JpaRepository<Movie, UUID> {
 
+    @org.springframework.data.jpa.repository.Modifying(
+            clearAutomatically = true,
+            flushAutomatically = true)
+    @Query(
+            "UPDATE Movie m SET m.status = :target, m.updatedAt = :updatedAt, "
+                    + "m.version = m.version + 1 WHERE m.status = :source "
+                    + "AND m.releaseDate IS NOT NULL AND m.releaseDate <= :today")
+    int promoteReleasedMovies(
+            @Param("source") MovieStatus source,
+            @Param("target") MovieStatus target,
+            @Param("today") java.time.LocalDate today,
+            @Param("updatedAt") OffsetDateTime updatedAt);
+
     boolean existsByTitleIgnoreCase(String title);
 
     boolean existsByTitleIgnoreCaseAndIdNot(String title, UUID id);

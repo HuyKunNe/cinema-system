@@ -91,6 +91,10 @@ cinema:
       audience: ${CINEMA_AUTH_AUDIENCE:cinema-api}
 
   movie:
+    release-lifecycle:
+      enabled: ${MOVIE_RELEASE_LIFECYCLE_ENABLED:true}
+      synchronize-on-startup: ${MOVIE_RELEASE_SYNCHRONIZE_ON_STARTUP:true}
+      zone: ${MOVIE_RELEASE_LIFECYCLE_ZONE:Asia/Ho_Chi_Minh}
     catalog:
       default-size: ${MOVIE_CATALOG_DEFAULT_SIZE:8}
       max-size: ${MOVIE_CATALOG_MAX_SIZE:100}

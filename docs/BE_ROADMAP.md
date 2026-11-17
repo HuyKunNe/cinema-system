@@ -6,6 +6,19 @@
 
 ## Cách đọc trạng thái
 
+**Bổ sung ngày 2026-11-17 — DONE IN SOURCE:** Movie Service chạy cron
+`0 0 0 * * *` theo `Asia/Ho_Chi_Minh`, chuyển UPCOMING có releaseDate không null
+và <= ngày chạy sang NOW_SHOWING. `MOVIE_RELEASE_LIFECYCLE_ENABLED` mặc định
+true; `MOVIE_RELEASE_LIFECYCLE_ZONE` đổi múi giờ nếu cần. Cập nhật có điều kiện
+trong một transaction, ghi updatedAt và tăng version, chạy lại không chuyển
+phim đã NOW_SHOWING/ENDED/INACTIVE. Không thay API, Kafka hoặc migration MySQL.
+Nếu service tắt lúc nửa đêm, lần chạy nửa đêm tiếp theo lấy cả phim quá ngày;
+bổ sung rà bù ở ApplicationReadyEvent (mặc định bật qua
+`MOVIE_RELEASE_SYNCHRONIZE_ON_STARTUP=true`). Dùng cùng điều kiện và múi giờ
+với cron; lỗi rà bù được ghi log, không đánh sập service, lần cron tiếp theo
+vẫn chạy. Tắt release-lifecycle sẽ tắt cả cron và rà bù. Chưa xác minh cron/DB
+runtime, không chạy test.
+
 - **DONE IN SOURCE:** code hoặc thay đổi đã có trong repository; chưa tự khẳng định đã qua kiểm chứng runtime.
 - **VERIFY:** cần đối chiếu source, migration, OpenAPI và các kiểm tra được duyệt trước khi đóng.
 - **IN PROGRESS:** đang có trong trạng thái dự án.

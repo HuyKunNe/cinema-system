@@ -1,5 +1,18 @@
 # Changelog
 
+2026-11-17 continuation: Movie Service catches up eligible UPCOMING movies on
+ApplicationReadyEvent using the same timezone and conditional transition as the
+midnight job. MOVIE_RELEASE_SYNCHRONIZE_ON_STARTUP defaults to true; disabling
+the lifecycle disables both paths. A failed startup synchronization is logged
+and does not abort the application; the daily schedule remains active.
+
+2026-11-17: added a midnight Movie release lifecycle scheduler (default
+Asia/Ho_Chi_Minh). Only UPCOMING movies with a known releaseDate on or before
+the current local day move to NOW_SHOWING. The conditional bulk update also
+updates audit time and increments optimistic-lock version. Enabled by default
+via MOVIE_RELEASE_LIFECYCLE_ENABLED; zone via MOVIE_RELEASE_LIFECYCLE_ZONE.
+No database migration or API/event contract change; no automated tests run.
+
 **Version:** 0.9
 **Current baseline:** R1–R27 historically completed; post-R27 changes tracked below
 **Current checkpoint:** Inventory lifecycle-release lock hardening (P0.2), in progress
