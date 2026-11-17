@@ -1,0 +1,20 @@
+CREATE TABLE booking_tickets (
+    id BINARY(16) NOT NULL,
+    booking_id BINARY(16) NOT NULL,
+    booking_seat_id BINARY(16) NOT NULL,
+    seat_number VARCHAR(20) NOT NULL,
+    capacity INT NOT NULL,
+    qr_token VARCHAR(43) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_booking_tickets_seat (booking_seat_id),
+    UNIQUE KEY uk_booking_tickets_qr (qr_token),
+    KEY idx_booking_tickets_booking (booking_id),
+    CONSTRAINT fk_booking_tickets_booking FOREIGN KEY (booking_id) REFERENCES bookings(id),
+    CONSTRAINT fk_booking_tickets_seat FOREIGN KEY (booking_seat_id) REFERENCES booking_seats(id),
+    CONSTRAINT chk_booking_tickets_capacity CHECK (capacity IN (1, 2)),
+    CONSTRAINT chk_booking_tickets_status CHECK (status = 'ISSUED')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

@@ -63,6 +63,12 @@ giả ở FE. Các mức ưu tiên dưới đây là đề xuất, cần thống
 
 ### BE-U04 — Phát hành vé điện tử, QR và trạng thái sử dụng
 
+**Triển khai source ngày 2026-11-17:** một vé mỗi booking-seat, COUPLE một vé
+capacity=2. V9 thêm bảng vé; consumer booking-confirmed phát hành bất đồng bộ
+và chống trùng theo seat. API owner đọc QR opaque đã lưu. Chi tiết tại
+[contract vé](29_BOOKING_TICKETS.md). Chưa có check-in, gửi vé, expiry/void
+workflow hoặc backfill bảo đảm mọi booking lịch sử; chưa đóng U04.
+
 - **Màn hình:** result thành công, vé điện tử, in vé và Vé của tôi.
 - **Hiện tại:** booking CONFIRMED đã có ghế/giá, nhưng public response chưa có
   mã vé/QR hay trạng thái sử dụng. FE đang hiển thị mã đơn, không giả QR.

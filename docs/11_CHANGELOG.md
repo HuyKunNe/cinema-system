@@ -1,5 +1,14 @@
 # Changelog
 
+2026-11-17 verification: Movie Service and required reactor modules compiled
+successfully with `mvn -o -e -Dmaven.repo.local=C:/Users/Administrator/.m2/repository
+-pl services/movie-service -am -DskipTests compile`. The cached eureka-client
+2.0.6 JAR was readable and passed ZIP integrity inspection; no cache repair,
+dependency version or repository configuration changes were made. The earlier
+intermittent compiler failures were not reproduced in this run and their root
+cause remains unconfirmed. No automated tests, startup or midnight DB writes
+were executed; compilation does not verify scheduler runtime behavior.
+
 2026-11-17 continuation: Movie Service catches up eligible UPCOMING movies on
 ApplicationReadyEvent using the same timezone and conditional transition as the
 midnight job. MOVIE_RELEASE_SYNCHRONIZE_ON_STARTUP defaults to true; disabling
@@ -46,16 +55,16 @@ the roadmap.
 
 Current status:
 
-| R1-R24              | Completed |
-| ------------------- | --------- |
-| R25.1–R25.15        | Completed |
-| R25 User Service    | completed |
-| R26.1–R26.13        | Completed |
-| R26 Booking         | Completed |
-| R27.1–R27.13        | Completed |
-| R27 Payment Service | completed |
+| R1-R24                                | Completed   |
+| ------------------------------------- | ----------- |
+| R25.1–R25.15                          | Completed   |
+| R25 User Service                      | completed   |
+| R26.1–R26.13                          | Completed   |
+| R26 Booking                           | Completed   |
+| R27.1–R27.13                          | Completed   |
+| R27 Payment Service                   | completed   |
 | Inventory lifecycle-release hardening | In progress |
-| R28                 | Deferred  |
+| R28                                   | Deferred    |
 
 ---
 

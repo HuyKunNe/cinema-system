@@ -6,6 +6,18 @@
 
 ## Cách đọc trạng thái
 
+**Quan sát local chỉ đọc ngày 2026-11-17:** Movie health trả UP; GET catalog
+status UPCOMING có totalElements=0, NOW_SHOWING có totalElements=13. Không có
+UPCOMING quá ngày trong kết quả tại thời điểm đọc. Đây không chứng minh cron
+hoặc startup job đã thực thi (không đối chiếu log scheduler hay tạo dữ liệu
+kiểm chứng). Không sửa phim/DB và không chạy test. Giữ tiêu chí xác minh 00:00
+runtime mở; không tự đánh dấu lifecycle hoàn tất.
+
+**Kiểm tra ngày 2026-11-17:** compile Movie Service cùng các module phụ thuộc
+đã thành công với Maven offline `-DskipTests`. Không đổi dependency hoặc sửa
+cache. Tác vụ release lifecycle vẫn ở DONE IN SOURCE; chưa khởi động service,
+chưa xác minh chuyển status trên DB lúc startup/00:00 và không chạy test.
+
 **Bổ sung ngày 2026-11-17 — DONE IN SOURCE:** Movie Service chạy cron
 `0 0 0 * * *` theo `Asia/Ho_Chi_Minh`, chuyển UPCOMING có releaseDate không null
 và <= ngày chạy sang NOW_SHOWING. `MOVIE_RELEASE_LIFECYCLE_ENABLED` mặc định
