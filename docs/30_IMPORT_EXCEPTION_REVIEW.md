@@ -2,6 +2,14 @@
 
 Ngày: 2026-11-17. Phạm vi: main/test Java trong common, services và infrastructure; bỏ build/generated.
 
+## Tiếp tục ngày 2026-11-20
+
+- Git status sạch khi bắt đầu. Đọc lại hướng dẫn exception, constructor của common-exception và GlobalExceptionHandler trước khi sửa.
+- TicketCheckInService: khi RestClientException xảy ra trong bước đọc lịch chiếu, truyền nguyên nhân gốc vào constructor InternalServerException(ErrorCode, Throwable) sẵn có. Tuân theo quy tắc giữ cause tại boundary; không thêm exception hoặc error code.
+- Giữ HTTP 500, code BOOKING_TICKET_SCHEDULE_UNAVAILABLE, message và category SYSTEM. Handler tạo response từ ErrorCode, không đưa cause vào ErrorBody.
+- Ba guard BookingTicket và các ứng viên generic bên dưới vẫn chưa đổi: chưa có mapping được duyệt đáp ứng yêu cầu giữ nguyên contract. Không coi phần exception đã hoàn tất.
+- Kiểm tra: `mvn -o "-Dmaven.repo.local=C:/Users/Administrator/.m2/repository" -pl services/booking-service -am -DskipTests compile`. Lần đầu lỗi compiler khi truy cập JAR eureka-client trong cache; chạy lại ngoài sandbox BUILD SUCCESS cho 17 module. Chưa xác định chắc nguyên nhân lỗi lần đầu. Không chạy test, API hoặc ghi DB. `git diff --check` không có lỗi whitespace.
+
 ## Căn cứ và lượt rà soát tiếp theo
 
 - AGENTS.md: giữ thay đổi hiện có, không đổi nghiệp vụ/contract, không chạy test mặc định.
