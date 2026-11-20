@@ -5,6 +5,32 @@ import com.cinema.common.exception.code.ErrorCode;
 
 public final class UserErrorCode implements ErrorCode {
 
+    public static final UserErrorCode STAFF_ACCOUNT_ALREADY_EXISTS =
+            new UserErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "USER_STAFF_ACCOUNT_ALREADY_EXISTS",
+                    "Email or username is already in use");
+
+    public static final UserErrorCode STAFF_ASSIGNMENT_NOT_FOUND =
+            new UserErrorCode(
+                    ErrorCategory.RESOURCE,
+                    "USER_STAFF_ASSIGNMENT_NOT_FOUND",
+                    "Staff cinema assignment not found");
+
+    public static final UserErrorCode STAFF_CINEMA_NOT_FOUND =
+            new UserErrorCode(
+                    ErrorCategory.RESOURCE, "USER_STAFF_CINEMA_NOT_FOUND", "Cinema not found");
+
+    public static final UserErrorCode STAFF_CINEMA_UNAVAILABLE =
+            new UserErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "USER_STAFF_CINEMA_UNAVAILABLE",
+                    "Cinema could not be verified");
+
+    public static final UserErrorCode STAFF_CINEMA_INACTIVE =
+            new UserErrorCode(
+                    ErrorCategory.BUSINESS, "USER_STAFF_CINEMA_INACTIVE", "Cinema is inactive");
+
     public static final UserErrorCode USER_NOT_FOUND =
             new UserErrorCode(ErrorCategory.RESOURCE, "USER_NOT_FOUND", "User not found");
 

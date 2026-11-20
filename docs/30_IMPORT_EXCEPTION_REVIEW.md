@@ -4,6 +4,10 @@ Ngày: 2026-11-17. Phạm vi: main/test Java trong common, services và infrastr
 
 ## Tiếp tục ngày 2026-11-20
 
+- Lượt tiếp theo, Git status sạch: BookingTicketService giữ cause của lỗi giải mã Base64 bằng ValidationException(ErrorCode, Throwable) có sẵn. Giữ HTTP 400, BOOKING_TICKET_QR_INVALID, message và category hiện tại; không trả cause trong ErrorBody.
+- Rà các catch trực tiếp ném shared exception với một ErrorCode trong services: còn hai catch URISyntaxException ở MovieServiceImpl. Giữ nguyên vì thông điệp nguyên nhân có thể chứa URL đầu vào; quy tắc giữ cause chỉ áp dụng khi an toàn và hữu ích.
+- Kiểm tra lượt QR: Maven offline `-pl services/booking-service -am -DskipTests compile` BUILD SUCCESS cho 17 module. Không chạy test hoặc ghi DB; git diff --check không có lỗi whitespace.
+
 - Git status sạch khi bắt đầu. Đọc lại hướng dẫn exception, constructor của common-exception và GlobalExceptionHandler trước khi sửa.
 - TicketCheckInService: khi RestClientException xảy ra trong bước đọc lịch chiếu, truyền nguyên nhân gốc vào constructor InternalServerException(ErrorCode, Throwable) sẵn có. Tuân theo quy tắc giữ cause tại boundary; không thêm exception hoặc error code.
 - Giữ HTTP 500, code BOOKING_TICKET_SCHEDULE_UNAVAILABLE, message và category SYSTEM. Handler tạo response từ ErrorCode, không đưa cause vào ErrorBody.

@@ -24,8 +24,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
-
-
 @Service
 public class BookingTicketService {
     private final BookingRepository bookings;
@@ -91,8 +89,7 @@ public class BookingTicketService {
         var bookingSeats = seats.findAllByBookingIdOrderBySeatNumberAsc(booking.getId());
         if (bookingSeats.isEmpty())
             throw new ValidationException(BookingErrorCode.SEAT_NUMBERS_REQUIRED);
-        BookingTicketSnapshotValidator.validate(
-                booking, bookingSeats, event);
+        BookingTicketSnapshotValidator.validate(booking, bookingSeats, event);
         for (var seat : bookingSeats)
             if (!ids.contains(seat.getId())) tickets.save(new BookingTicket(seat));
     }
@@ -154,7 +151,8 @@ public class BookingTicketService {
                                 t.getSeatNumber(),
                                 t.getCapacity(),
                                 t.getStatus(),
-                                t.getQrPayload(), t.getCheckedInAt()))
+                                t.getQrPayload(),
+                                t.getCheckedInAt()))
                 .toList();
     }
 
@@ -167,31 +165,65 @@ public class BookingTicketService {
         String token = qrPayload.substring(prefix.length());
         try {
             byte[] decoded = Base64.getUrlDecoder().decode(token);
-            if (decoded.length != 32 || !Base64.getUrlEncoder().withoutPadding().encodeToString(decoded).equals(token)) {
+            if (decoded.length != 32
+                    || !Base64.getUrlEncoder()
+                            .withoutPadding()
+                            .encodeToString(decoded)
+                            .equals(token)) {
                 throw new ValidationException(BookingErrorCode.TICKET_QR_INVALID);
             }
         } catch (IllegalArgumentException failure) {
-            throw new ValidationException(BookingErrorCode.TICKET_QR_INVALID);
+            throw new ValidationException(BookingErrorCode.TICKET_QR_INVALID, failure);
         }
-        var ticket = tickets.findByQrToken(token)
-                .orElseThrow(() -> new NotFoundException(BookingErrorCode.TICKET_NOT_FOUND));
-        var booking = bookings.findById(ticket.getBookingId())
-                .orElseThrow(() -> new NotFoundException(BookingErrorCode.BOOKING_NOT_FOUND));
-        return new LookupResponse(ticket.getId(), ticket.getBookingId(), booking.getShowtimeId(),
-                ticket.getSeatNumber(), ticket.getCapacity(), ticket.getStatus(),
-                booking.getStatus(), booking.getShowtimeEndsAt(), ticket.getCheckedInAt());
+        var ticket =
+                tickets.findByQrToken(token)
+                        .orElseThrow(
+                                () -> new NotFoundException(BookingErrorCode.TICKET_NOT_FOUND));
+        var booking =
+                bookings.findById(ticket.getBookingId())
+                        .orElseThrow(
+                                () -> new NotFoundException(BookingErrorCode.BOOKING_NOT_FOUND));
+        return new LookupResponse(
+                ticket.getId(),
+                ticket.getBookingId(),
+                booking.getShowtimeId(),
+                ticket.getSeatNumber(),
+                ticket.getCapacity(),
+                ticket.getStatus(),
+                booking.getStatus(),
+                booking.getShowtimeEndsAt(),
+                ticket.getCheckedInAt());
     }
 
-    public record LookupResponse(UUID ticketId, UUID bookingId, UUID showtimeId,
-            String seatNumber, int capacity, String ticketStatus, BookingStatus bookingStatus,
+    public record LookupResponse(
+            UUID ticketId,
+            UUID bookingId,
+            UUID showtimeId,
+            String seatNumber,
+            int capacity,
+            String ticketStatus,
+            BookingStatus bookingStatus,
             OffsetDateTime showtimeEndsAt,
-            @JsonInclude(JsonInclude.Include.ALWAYS)
-            OffsetDateTime checkedInAt) {
-        public LookupResponse(UUID ticketId, UUID bookingId, UUID showtimeId,
-                String seatNumber, int capacity, String ticketStatus, BookingStatus bookingStatus,
+            @JsonInclude(JsonInclude.Include.ALWAYS) OffsetDateTime checkedInAt) {
+        public LookupResponse(
+                UUID ticketId,
+                UUID bookingId,
+                UUID showtimeId,
+                String seatNumber,
+                int capacity,
+                String ticketStatus,
+                BookingStatus bookingStatus,
                 OffsetDateTime showtimeEndsAt) {
-            this(ticketId, bookingId, showtimeId, seatNumber, capacity, ticketStatus,
-                    bookingStatus, showtimeEndsAt, null);
+            this(
+                    ticketId,
+                    bookingId,
+                    showtimeId,
+                    seatNumber,
+                    capacity,
+                    ticketStatus,
+                    bookingStatus,
+                    showtimeEndsAt,
+                    null);
         }
     }
 
@@ -203,10 +235,15 @@ public class BookingTicketService {
             int capacity,
             String status,
             String qrPayload,
-            @JsonInclude(JsonInclude.Include.ALWAYS)
-            OffsetDateTime checkedInAt) {
-        public TicketResponse(UUID id, UUID bookingId, UUID bookingSeatId, String seatNumber,
-                int capacity, String status, String qrPayload) {
+            @JsonInclude(JsonInclude.Include.ALWAYS) OffsetDateTime checkedInAt) {
+        public TicketResponse(
+                UUID id,
+                UUID bookingId,
+                UUID bookingSeatId,
+                String seatNumber,
+                int capacity,
+                String status,
+                String qrPayload) {
             this(id, bookingId, bookingSeatId, seatNumber, capacity, status, qrPayload, null);
         }
 

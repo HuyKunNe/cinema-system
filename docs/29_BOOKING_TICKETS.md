@@ -1,5 +1,53 @@
 # Vé theo đơn vị ghế — BE-U04
 
+## QR booking và Staff/POS — quyết định ngày 2026-11-20
+
+Đây là workflow mới, tách khỏi QR từng vé và check-in bên dưới. Quyết định đã chốt:
+
+- Nhân viên thuộc đúng một rạp, tài khoản do ADMIN cấp; ADMIN được thao tác mọi rạp. Chỉ làm BE và contract trong đợt này, chưa sửa trang Admin hoặc User FE.
+- Display code là 6 ký tự cuối UUID booking, viết hoa. Vẫn dùng UUID đầy đủ cho DB/API/route; suffix có thể trùng, không phải credential hoặc khóa tìm duy nhất.
+- QR booking hết hạn tại startsAt + 15 phút; lookup không đánh dấu USED. Chỉ chủ booking CONFIRMED và đã đủ toàn bộ vé được nhận QR. Ghế COUPLE là một đơn vị vé, capacity 2.
+- Print job bị chặn nếu đã có lần in hoặc bất kỳ vé nào USED. Không in một phần booking; không tự coi tạo job là in vật lý thành công. Quét/bấm lặp phải dùng idempotency và kiểm tra lại phạm vi rạp phía server.
+
+**Đã có source ở bước nền tảng:** API quản lý tài khoản nhân viên và gán rạp trong User Service, mô tả bên dưới. **Chưa có:** pickup-pass, lookup QR booking, print job, API xác nhận máy in, quyền Staff theo rạp trong Booking, suffix search, trang FE và generated client mới. Không gọi các endpoint đề xuất trong hội thoại như thể đã tồn tại. Không mở quyền STAFF cho các route quản lý Booking hiện tại.
+
+### API Admin quản lý nhân viên
+
+Yêu cầu đồng thời role ADMIN và permission user:manage từ access token do User Service cấp. STAFF/USER hoặc client credential chỉ có user:manage không được gọi. Các route nằm dưới /api/v1/users nên Gateway route hiện có chuyển tiếp tới User Service. User Service kiểm tra cả filter và method security; giữ phân quyền quản trị hiện tại của các endpoint khác.
+
+| Method | Path                                               | Kết quả                                                                                   |
+| ------ | -------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| POST   | /api/v1/users/staff                                | 201, tạo user/credential/profile/role STAFF và một assignment trong cùng transaction      |
+| GET    | /api/v1/users/staff?cinemaId={uuid}&page=0&size=20 | 200, PageResponse với content và page theo common-response; cinemaId tùy chọn, size 1–100 |
+| GET    | /api/v1/users/staff/{userId}                       | 200, tài khoản và rạp được gán; thiếu assignment trả 404                                  |
+| PUT    | /api/v1/users/staff/{userId}/cinema                | 200, đổi rạp dưới khóa ghi; gửi lại cùng rạp giữ nguyên assignment/audit                  |
+
+POST nhận email, username, password, firstName, lastName, phoneNumber, cinemaId. email đúng định dạng, tối đa 320 ký tự; username 3–100 ký tự ASCII gồm chữ/số/dấu chấm/gạch dưới/gạch ngang. Password do ADMIN đặt, tối thiểu 12 ký tự và tối đa 72 byte UTF-8 theo credential service hiện có. Tên tối đa 100, điện thoại tối đa 32 ký tự; các trường profile tùy chọn. cinemaId bắt buộc là UUIDv7. PUT chỉ nhận cinemaId.
+
+Response từng tài khoản: userId, username, email, status, cinemaId, assignedBy, createdAt, updatedAt. createdAt/updatedAt là thời điểm của assignment. Không trả password/hash. Response thành công dùng DTO trực tiếp như các API User hiện có; lỗi dùng common-api. List dùng PageResponse, không serialize Spring Page làm contract. Các response đều Cache-Control: no-store.
+
+Tài khoản cấp bởi ADMIN được ACTIVE để đăng nhập bằng credential đã cấp; admin_provisioned ghi nguồn cấp, không giả lập email_verified_at. Tắt/mở lại tài khoản loại này giữ ACTIVE mà không giả nhận đã xác minh email. Tài khoản đăng ký công khai/Google và quy tắc xác minh cũ không đổi. Đổi mật khẩu qua endpoint owner hiện có; chưa thêm cơ chế bắt buộc đổi mật khẩu lần đầu hoặc gửi credential bằng email. ADMIN chuyển credential qua kênh nội bộ; không đưa credential vào URL/log. Request DTO che toàn bộ toString; audit chỉ chứa actor/target/rạp.
+
+V2 seed STAFF có các permission quản lý catalog toàn cục. Vì chưa có guard theo rạp ở các API đó, JpaUserDetailsService giới hạn account admin_provisioned không có role ADMIN: giữ role và chỉ giữ permission booking:read (đọc booking owner theo contract hiện có). Không tự cấp movie:manage, inventory:manage, showtime:manage hoặc quyền quản trị toàn cục cho nhân viên mới. Áp dụng chung principal cho password và Google login; không đổi quyền STAFF legacy hoặc ADMIN. Các API nghiệp vụ Staff/POS tiếp theo phải bổ sung kiểm tra scope dữ liệu phía BE trước khi cấp thêm permission. Có assignment không đồng nghĩa đã có quyền gọi Booking management.
+
+Trước khi tạo/đổi rạp, User Service đọc GET /api/v1/cinemas/{id} của Inventory, timeout connect 1s/read 2s, không theo redirect. Rạp không tồn tại: 404 USER_STAFF_CINEMA_NOT_FOUND; không active: 409 USER_STAFF_CINEMA_INACTIVE; không xác minh được: 503 USER_STAFF_CINEMA_UNAVAILABLE. Không truy cập DB Inventory và không thêm secret/service credential cho API catalog công khai này. Property cinema.user.inventory-base-url mặc định http://localhost:8083; có thể cấu hình bằng CINEMA_USER_INVENTORY_BASE_URL khi port/deployment khác.
+
+Email/username đã có: 409 USER_STAFF_ACCOUNT_ALREADY_EXISTS, không tự chuyển khách thành STAFF. Chỉ tạo STAFF, không nhận role từ body. Audit STAFF_ACCOUNT_CREATED, USER_ROLE_ASSIGNED và STAFF_CINEMA_CHANGED theo cơ chế security audit hiện có. Nhân viên đã tồn tại từ trước nhưng chưa có assignment không được tự gán rạp hoặc quyền toàn cục; API mới chưa tự di chuyển dữ liệu này. List hiển thị các account có assignment, không suy ra assignment từ role STAFF.
+
+### MySQL, OpenAPI và kiểm chứng bước nền tảng
+
+V4\_\_staff_cinema_assignments.sql là migration mới của User DB: thêm users.admin_provisioned mặc định false cho dữ liệu cũ; bảng staff_cinema_assignments có unique user_id (một user chỉ có một rạp), FK tới users cho user và actor, index theo rạp/thời điểm và theo thời điểm. cinema_id không có FK liên DB. Đổi rạp cập nhật một row, audit giữ rạp cũ/mới; optimistic version và pessimistic lock bảo vệ cập nhật đồng thời.
+
+Không tự tạo assignment cho STAFF cũ. Rạp có thể bị đổi trạng thái sau lần đọc API: đây là snapshot kiểm tra lúc gán, không phải khóa phân tán; API pickup/print tương lai phải xác minh lại rạp, trạng thái account/role và assignment hiện hành phía BE, không chỉ dùng claim cũ. Chưa thêm cinemaId vào JWT hoặc mở quyền bán/in của STAFF trong bước này.
+
+Rollback cần dừng code mới, xuất/giữ assignment và audit trước khi bỏ bảng/cột mới; không xóa user/credential/profile/role đã tạo, không sửa V1–V3 hoặc reset các tài khoản nhân viên. Code cũ khi enable user chưa xác minh email có thể đưa về PENDING_VERIFICATION nên cần kế hoạch tương thích trước rollback. Chưa thực thi migration/rollback trên DB.
+
+Controller/DTO mới được springdoc đọc qua cơ chế common-openapi sẵn có, không thêm Operation/ApiResponse/Schema annotation. Chưa khởi động service hoặc xuất /v3/api-docs; cần kiểm tra schema runtime sau triển khai V4 rồi mới generate client từ endpoint thật. Chưa generate client hay sửa FE.
+
+Kiểm tra thủ công cần làm sau khi triển khai: ADMIN tạo STAFF ở rạp active và đăng nhập; USER/STAFF bị 403; trùng email/username bị 409; rạp sai/inactive/Inventory mất kết nối không tạo account; đổi rạp đồng thời vẫn chỉ một assignment và audit đúng; disable/enable rồi đăng nhập lại; list phân trang đúng scope lọc và không có credential. Không chạy test hoặc ghi DB trong lượt triển khai source này.
+
+Kiểm tra source ngày 2026-11-20: `mvn -o "-Dmaven.repo.local=C:/Users/Administrator/.m2/repository" -pl services/user-service -am -DskipTests test-compile` BUILD SUCCESS cho 15 module (main và test source, không thực thi test). `git diff --check` không có lỗi whitespace. Chưa xác minh integration, migration, scope/permission hoặc schema OpenAPI ở runtime; các tiêu chí thủ công trên vẫn mở.
+
 **Đọc kết quả sử dụng:** API owner đọc tickets và ADMIN lookup cùng trả thêm
 checkedInAt, luôn hiện null nếu chưa dùng. Với USED, field chứa thời điểm nhận
 vé gốc đã lưu, không cập nhật khi lookup/retry. Không trả actor nội bộ cho chủ

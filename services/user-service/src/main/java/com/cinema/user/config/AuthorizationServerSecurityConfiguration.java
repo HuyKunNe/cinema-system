@@ -124,6 +124,8 @@ public class AuthorizationServerSecurityConfiguration {
                                 .permitAll()
                                 .requestMatchers("/api/v1/users/me", "/api/v1/users/me/**")
                                 .authenticated()
+                                .requestMatchers("/api/v1/users/staff", "/api/v1/users/staff/**")
+                                .hasRole("ADMIN")
                                 .requestMatchers(
                                         HttpMethod.PATCH,
                                         "/api/v1/users/*/lock",

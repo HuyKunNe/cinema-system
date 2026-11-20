@@ -1,5 +1,20 @@
 # Changelog
 
+2026-11-20 staff provisioning foundation: added ADMIN + user:manage APIs to
+create/list/read staff accounts and change their single cinema assignment.
+User migration V4 adds admin provisioning provenance and staff assignments
+with a unique user FK, actor FK, and indexes. Cinema existence/active status is
+verified through the existing public Inventory API. Credentials, STAFF role,
+profile, assignment and audit are created atomically. No FE changes or
+staff access to Booking management routes. Newly provisioned non-admin
+principals keep only the existing owner booking:read permission until
+cinema-scoped operational endpoints exist; legacy STAFF permissions and
+ADMIN access are unchanged. Booking pickup/printing rules
+are approved but their APIs are not implemented in this foundation step;
+see docs/29_BOOKING_TICKETS.md. No migration or tests executed.
+Offline `-pl services/user-service -am -DskipTests test-compile` succeeded
+for 15 reactor modules. Runtime OpenAPI and integration remain unverified.
+
 2026-11-17 verification: Movie Service and required reactor modules compiled
 successfully with `mvn -o -e -Dmaven.repo.local=C:/Users/Administrator/.m2/repository
 -pl services/movie-service -am -DskipTests compile`. The cached eureka-client

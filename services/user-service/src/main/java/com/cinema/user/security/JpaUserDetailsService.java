@@ -1,22 +1,5 @@
 package com.cinema.user.security;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.Set;
-import java.util.TreeSet;
-
-import java.util.stream.Collectors;
-
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.cinema.user.entity.Role;
 import com.cinema.user.entity.User;
 import com.cinema.user.entity.UserCredential;
@@ -27,6 +10,22 @@ import com.cinema.user.repository.UserCredentialRepository;
 import com.cinema.user.repository.UserRepository;
 import com.cinema.user.repository.UserRoleRepository;
 
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
+
 @Service
 @Transactional(readOnly = true)
 public class JpaUserDetailsService implements UserDetailsService {
@@ -36,7 +35,8 @@ public class JpaUserDetailsService implements UserDetailsService {
     private final UserRoleRepository userRoleRepository;
     private final RolePermissionRepository rolePermissionRepository;
 
-    public JpaUserDetailsService(UserRepository userRepository,
+    public JpaUserDetailsService(
+            UserRepository userRepository,
             UserCredentialRepository userCredentialRepository,
             UserRoleRepository userRoleRepository,
             RolePermissionRepository rolePermissionRepository) {
@@ -47,48 +47,48 @@ public class JpaUserDetailsService implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String identifier)
-            throws UsernameNotFoundException {
+    public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
 
         String normalizedIdentifier = normalizeIdentifier(identifier);
 
-        User user = userRepository
-                .findByNormalizedEmailOrNormalizedUsername(
-                        normalizedIdentifier,
-                        normalizedIdentifier)
-                .orElseThrow(
-                        JpaUserDetailsService::invalidCredentials);
+        User user =
+                userRepository
+                        .findByNormalizedEmailOrNormalizedUsername(
+                                normalizedIdentifier, normalizedIdentifier)
+                        .orElseThrow(JpaUserDetailsService::invalidCredentials);
 
-        UserCredential credential = userCredentialRepository
-                .findByUser_Id(user.getId())
-                .orElseThrow(
-                        JpaUserDetailsService::invalidCredentials);
+        UserCredential credential =
+                userCredentialRepository
+                        .findByUser_Id(user.getId())
+                        .orElseThrow(JpaUserDetailsService::invalidCredentials);
 
         Set<String> authorityValues = new TreeSet<>();
 
-        userRoleRepository
-                .findAllByUser_Id(user.getId())
-                .stream()
+        userRoleRepository.findAllByUser_Id(user.getId()).stream()
                 .map(UserRole::getRole)
                 .map(Role::getName)
                 .map(RoleName::name)
                 .map(role -> "ROLE_" + role)
                 .forEach(authorityValues::add);
 
-        rolePermissionRepository
-                .findEffectivePermissionCodesByUserId(
-                        user.getId())
-                .stream()
+        rolePermissionRepository.findEffectivePermissionCodesByUserId(user.getId()).stream()
                 .filter(Objects::nonNull)
                 .map(String::trim)
                 .filter(permission -> !permission.isBlank())
                 .forEach(authorityValues::add);
 
-        List<GrantedAuthority> authorities = authorityValues.stream()
-                .map(SimpleGrantedAuthority::new)
-                .map(GrantedAuthority.class::cast)
-                .collect(Collectors.toCollection(
-                        ArrayList::new));
+        // Legacy STAFF permissions allow global catalog management. Newly provisioned
+        // staff must wait for server-side cinema checks on the corresponding APIs.
+        if (user.isAdminProvisioned() && !authorityValues.contains("ROLE_ADMIN")) {
+            authorityValues.removeIf(authority ->
+                    !authority.startsWith("ROLE_") && !"booking:read".equals(authority));
+        }
+
+        List<GrantedAuthority> authorities =
+                authorityValues.stream()
+                        .map(SimpleGrantedAuthority::new)
+                        .map(GrantedAuthority.class::cast)
+                        .collect(Collectors.toCollection(ArrayList::new));
 
         return new CinemaUserDetails(
                 user.getId(),
@@ -98,21 +98,17 @@ public class JpaUserDetailsService implements UserDetailsService {
                 authorities);
     }
 
-    private static String normalizeIdentifier(
-            String identifier) {
+    private static String normalizeIdentifier(String identifier) {
 
         if (identifier == null || identifier.isBlank()) {
             throw invalidCredentials();
         }
 
-        return identifier
-                .trim()
-                .toLowerCase(Locale.ROOT);
+        return identifier.trim().toLowerCase(Locale.ROOT);
     }
 
     private static UsernameNotFoundException invalidCredentials() {
 
-        return new UsernameNotFoundException(
-                "Invalid credentials");
+        return new UsernameNotFoundException("Invalid credentials");
     }
 }

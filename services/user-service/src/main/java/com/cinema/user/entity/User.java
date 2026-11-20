@@ -1,9 +1,10 @@
 package com.cinema.user.entity;
 
-import java.time.OffsetDateTime;
-
+import com.cinema.common.exception.exception.ConflictException;
+import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.common.jpa.entity.BaseEntity;
 import com.cinema.user.enums.AccountStatus;
+import com.cinema.user.exception.UserErrorCode;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -12,17 +13,19 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import com.cinema.common.exception.exception.ConflictException;
-import com.cinema.common.exception.exception.ValidationException;
-import com.cinema.user.exception.UserErrorCode;
+
+import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "users", indexes = {
-        @Index(name = "idx_users_status", columnList = "status")
-}, uniqueConstraints = {
-        @UniqueConstraint(name = "uk_users_normalized_email", columnNames = "normalized_email"),
-        @UniqueConstraint(name = "uk_users_normalized_username", columnNames = "normalized_username")
-})
+@Table(
+        name = "users",
+        indexes = {@Index(name = "idx_users_status", columnList = "status")},
+        uniqueConstraints = {
+            @UniqueConstraint(name = "uk_users_normalized_email", columnNames = "normalized_email"),
+            @UniqueConstraint(
+                    name = "uk_users_normalized_username",
+                    columnNames = "normalized_username")
+        })
 public class User extends BaseEntity {
 
     @Column(name = "email", nullable = false, length = 320)
@@ -41,6 +44,9 @@ public class User extends BaseEntity {
     @Column(name = "status", nullable = false, length = 50)
     private AccountStatus status = AccountStatus.PENDING_VERIFICATION;
 
+    @Column(name = "admin_provisioned", nullable = false, updatable = false)
+    private boolean adminProvisioned;
+
     @Column(name = "email_verified_at")
     private OffsetDateTime emailVerifiedAt;
 
@@ -53,14 +59,17 @@ public class User extends BaseEntity {
     @Column(name = "last_login_at")
     private OffsetDateTime lastLoginAt;
 
-    protected User() {
+    protected User() {}
+
+    public static User provisionStaff(
+            String email, String normalizedEmail, String username, String normalizedUsername) {
+        User user = new User(email, normalizedEmail, username, normalizedUsername);
+        user.adminProvisioned = true;
+        user.status = AccountStatus.ACTIVE;
+        return user;
     }
 
-    public User(
-            String email,
-            String normalizedEmail,
-            String username,
-            String normalizedUsername) {
+    public User(String email, String normalizedEmail, String username, String normalizedUsername) {
 
         this.email = email;
         this.normalizedEmail = normalizedEmail;
@@ -69,8 +78,7 @@ public class User extends BaseEntity {
         this.status = AccountStatus.PENDING_VERIFICATION;
     }
 
-    public void verifyEmail(
-            OffsetDateTime verifiedAt) {
+    public void verifyEmail(OffsetDateTime verifiedAt) {
 
         requireTimestamp(verifiedAt);
 
@@ -94,8 +102,7 @@ public class User extends BaseEntity {
         this.lockedAt = null;
     }
 
-    public void disable(
-            OffsetDateTime disabledAt) {
+    public void disable(OffsetDateTime disabledAt) {
 
         requireTimestamp(disabledAt);
 
@@ -112,16 +119,16 @@ public class User extends BaseEntity {
             throw invalidTransition();
         }
 
-        this.status = emailVerifiedAt == null
-                ? AccountStatus.PENDING_VERIFICATION
-                : AccountStatus.ACTIVE;
+        this.status =
+                emailVerifiedAt == null && !adminProvisioned
+                        ? AccountStatus.PENDING_VERIFICATION
+                        : AccountStatus.ACTIVE;
 
         this.disabledAt = null;
         this.lockedAt = null;
     }
 
-    public void lock(
-            OffsetDateTime lockedAt) {
+    public void lock(OffsetDateTime lockedAt) {
 
         requireTimestamp(lockedAt);
 
@@ -133,8 +140,7 @@ public class User extends BaseEntity {
         this.lockedAt = lockedAt;
     }
 
-    public void recordSuccessfulLogin(
-            OffsetDateTime loggedInAt) {
+    public void recordSuccessfulLogin(OffsetDateTime loggedInAt) {
 
         requireTimestamp(loggedInAt);
 
@@ -145,19 +151,16 @@ public class User extends BaseEntity {
         this.lastLoginAt = loggedInAt;
     }
 
-    private static void requireTimestamp(
-            OffsetDateTime timestamp) {
+    private static void requireTimestamp(OffsetDateTime timestamp) {
 
         if (timestamp == null) {
-            throw new ValidationException(
-                    UserErrorCode.ACCOUNT_TIMESTAMP_REQUIRED);
+            throw new ValidationException(UserErrorCode.ACCOUNT_TIMESTAMP_REQUIRED);
         }
     }
 
     private static ConflictException invalidTransition() {
 
-        return new ConflictException(
-                UserErrorCode.ACCOUNT_STATE_TRANSITION_NOT_ALLOWED);
+        return new ConflictException(UserErrorCode.ACCOUNT_STATE_TRANSITION_NOT_ALLOWED);
     }
 
     public String getEmail() {
@@ -178,6 +181,10 @@ public class User extends BaseEntity {
 
     public AccountStatus getStatus() {
         return status;
+    }
+
+    public boolean isAdminProvisioned() {
+        return adminProvisioned;
     }
 
     public OffsetDateTime getEmailVerifiedAt() {
