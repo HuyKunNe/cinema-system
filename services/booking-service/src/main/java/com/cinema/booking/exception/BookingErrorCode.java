@@ -5,6 +5,42 @@ import com.cinema.common.exception.code.ErrorCode;
 
 public final class BookingErrorCode implements ErrorCode {
 
+    public static final BookingErrorCode PICKUP_QR_INVALID =
+            new BookingErrorCode(
+                    ErrorCategory.VALIDATION,
+                    "BOOKING_PICKUP_QR_INVALID",
+                    "Booking pickup QR is invalid");
+    public static final BookingErrorCode PICKUP_PASS_NOT_FOUND =
+            new BookingErrorCode(
+                    ErrorCategory.RESOURCE,
+                    "BOOKING_PICKUP_PASS_NOT_FOUND",
+                    "Booking pickup pass not found");
+    public static final BookingErrorCode PICKUP_ACCESS_DENIED =
+            new BookingErrorCode(
+                    ErrorCategory.SECURITY,
+                    "BOOKING_PICKUP_ACCESS_DENIED",
+                    "Booking pickup access is not allowed");
+    public static final BookingErrorCode PICKUP_PASS_EXPIRED =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_PICKUP_PASS_EXPIRED",
+                    "Booking pickup pass has expired");
+    public static final BookingErrorCode PICKUP_NOT_AVAILABLE =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_PICKUP_NOT_AVAILABLE",
+                    "Booking pickup is not available");
+    public static final BookingErrorCode PICKUP_CONTEXT_UNAVAILABLE =
+            new BookingErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "BOOKING_PICKUP_CONTEXT_UNAVAILABLE",
+                    "Booking pickup context could not be verified");
+    public static final BookingErrorCode PICKUP_PASS_ISSUE_FAILED =
+            new BookingErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "BOOKING_PICKUP_PASS_ISSUE_FAILED",
+                    "Booking pickup pass could not be issued");
+
     public static final BookingErrorCode PRINT_NOT_ALLOWED =
             new BookingErrorCode(
                     ErrorCategory.BUSINESS,
@@ -70,7 +106,7 @@ public final class BookingErrorCode implements ErrorCode {
                     ErrorCategory.BUSINESS,
                     "BOOKING_TICKET_CHECK_IN_WINDOW_CLOSED",
                     "Ticket check-in window is closed");
-                    
+
     public static final BookingErrorCode TICKET_SCHEDULE_UNAVAILABLE =
             new BookingErrorCode(
                     ErrorCategory.SYSTEM,

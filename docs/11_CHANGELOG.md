@@ -1,5 +1,20 @@
 # Changelog
 
+2026-11-20 booking pickup pass: added owner-only pickup-pass reads and scoped
+Staff/Admin booking QR lookup. V13 adds a separate stable random credential
+per booking, lazily issued only for CONFIRMED bookings with a complete unused
+ticket set. Effective expiry is the earlier of original issuance deadline
+and current startsAt + 15 minutes. Lookup returns the whole issued ticket
+set/showtime and explicit printing capabilities, without checking in,
+printing or exposing ticket QR tokens. Reuses current User scope checks and
+Inventory clients, plus shared full ticket-set validation for simulation.
+No FE edits, client generation, DB migrations, API calls or tests executed.
+See docs/29_BOOKING_TICKETS.md and docs/19_FE_API_CONTRACT.md for the contract
+and remaining runtime/cross-service verification.
+Offline `-pl services/booking-service -am -DskipTests test-compile` succeeded
+for 17 modules; no test cases executed. Runtime OpenAPI and integration
+verification remain open.
+
 2026-11-20 print simulation: added an opt-in Booking print-simulations API,
 default disabled, with simulated success/failure, one simulation per booking,
 actor-scoped idempotency keys, full seat/ticket validation and persisted

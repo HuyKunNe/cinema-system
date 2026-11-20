@@ -73,6 +73,14 @@ public class PrintSimulationAccessClient {
     }
 
     public Schedule schedule(UUID showtimeId) {
+        return readSchedule(showtimeId, true).schedule();
+    }
+
+    public PickupSchedule pickupSchedule(UUID showtimeId) {
+        return readSchedule(showtimeId, false);
+    }
+
+    private PickupSchedule readSchedule(UUID showtimeId, boolean requirePrinting) {
         Schedule schedule;
         try {
             schedule =
@@ -93,7 +101,8 @@ public class PrintSimulationAccessClient {
                 || schedule.status() == null) {
             throw new ServiceUnavailableException(BookingErrorCode.PRINT_DEPENDENCY_UNAVAILABLE);
         }
-        if (!Set.of("SCHEDULED", "OPEN_FOR_BOOKING", "CLOSED").contains(schedule.status())) {
+        if (requirePrinting
+                && !Set.of("SCHEDULED", "OPEN_FOR_BOOKING", "CLOSED").contains(schedule.status())) {
             throw new ConflictException(BookingErrorCode.PRINT_NOT_ALLOWED);
         }
         Cinema cinema;
@@ -110,10 +119,10 @@ public class PrintSimulationAccessClient {
         if (cinema == null || !schedule.cinemaId().equals(cinema.id()) || cinema.active() == null) {
             throw new ServiceUnavailableException(BookingErrorCode.PRINT_DEPENDENCY_UNAVAILABLE);
         }
-        if (!cinema.active()) {
+        if (requirePrinting && !cinema.active()) {
             throw new ConflictException(BookingErrorCode.PRINT_NOT_ALLOWED);
         }
-        return schedule;
+        return new PickupSchedule(schedule, cinema.active());
     }
 
     public record Access(UUID userId, Boolean administrator, UUID cinemaId) {
@@ -129,7 +138,23 @@ public class PrintSimulationAccessClient {
             UUID cinemaId,
             OffsetDateTime startsAt,
             OffsetDateTime endsAt,
-            String status) {}
+            String status,
+            UUID movieId,
+            UUID roomId,
+            String roomName,
+            String cinemaName) {
+
+        public Schedule(
+                UUID id,
+                UUID cinemaId,
+                OffsetDateTime startsAt,
+                OffsetDateTime endsAt,
+                String status) {
+            this(id, cinemaId, startsAt, endsAt, status, null, null, null, null);
+        }
+    }
+
+    public record PickupSchedule(Schedule schedule, boolean cinemaActive) {}
 
     private record Cinema(UUID id, Boolean active) {}
 }

@@ -47,6 +47,8 @@ public class BookingSecurityConfig {
                                         "/api/v1/bookings/management",
                                         "/api/v1/bookings/management/**")
                                 .hasRole("ADMIN")
+                                .requestMatchers("/api/v1/bookings/pickups/lookup")
+                                .hasAnyRole("ADMIN", "STAFF")
                                 .requestMatchers("/api/v1/bookings/*/print-simulations")
                                 .hasAnyRole("ADMIN", "STAFF")
                                 .requestMatchers(BOOKING_ENDPOINTS)

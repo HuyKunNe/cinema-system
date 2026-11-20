@@ -5,13 +5,13 @@ import com.cinema.booking.client.PrintSimulationAccessClient.Schedule;
 import com.cinema.booking.dto.request.PrintSimulationRequest;
 import com.cinema.booking.dto.response.PrintSimulationResponse;
 import com.cinema.booking.entity.BookingPrintSimulation;
-import com.cinema.booking.entity.BookingTicket;
 import com.cinema.booking.enums.BookingStatus;
 import com.cinema.booking.exception.BookingErrorCode;
 import com.cinema.booking.repository.BookingPrintSimulationRepository;
 import com.cinema.booking.repository.BookingRepository;
 import com.cinema.booking.repository.BookingSeatRepository;
 import com.cinema.booking.repository.BookingTicketRepository;
+import com.cinema.booking.validation.BookingTicketSetValidator;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.InternalServerException;
 import com.cinema.common.exception.exception.NotFoundException;
@@ -25,9 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
-import java.util.HashSet;
 import java.util.Locale;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -97,29 +95,13 @@ public class PrintSimulationTransactionService {
         if (bookingSeats.isEmpty() || issued.size() != bookingSeats.size()) {
             throw new ConflictException(BookingErrorCode.PRINT_TICKETS_NOT_READY);
         }
-        Set<UUID> matched = new HashSet<>();
         for (var ticket : issued) {
             if (!"ISSUED".equals(ticket.getStatus())) {
                 throw new ConflictException(BookingErrorCode.PRINT_TICKET_NOT_ISSUED);
             }
-            var seat =
-                    bookingSeats.stream()
-                            .filter(s -> s.getId().equals(ticket.getBookingSeatId()))
-                            .findFirst()
-                            .orElseThrow(() ->
-                                    new ConflictException(
-                                            BookingErrorCode.PRINT_TICKETS_NOT_READY));
-            if (!seat.hasCompletedSnapshot()
-                    || !bookingId.equals(seat.getBookingId())
-                    || !bookingId.equals(ticket.getBookingId())
-                    || !ticket.getSeatNumber().equals(seat.getSeatNumber())
-                    || !matched.add(seat.getId())) {
-                throw new ConflictException(BookingErrorCode.PRINT_TICKETS_NOT_READY);
-            }
-            if (!Set.of("COUPLE", "STANDARD", "VIP", "ACCESSIBLE").contains(seat.getSeatType())
-                    || BookingTicket.capacityFor(seat) != ticket.getCapacity()) {
-                throw new ConflictException(BookingErrorCode.PRINT_TICKETS_NOT_READY);
-            }
+        }
+        if (!BookingTicketSetValidator.isComplete(booking, bookingSeats, issued)) {
+            throw new ConflictException(BookingErrorCode.PRINT_TICKETS_NOT_READY);
         }
         var job =
                 new BookingPrintSimulation(

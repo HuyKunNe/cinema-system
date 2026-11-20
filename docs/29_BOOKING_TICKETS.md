@@ -1,5 +1,69 @@
 # Vé theo đơn vị ghế — BE-U04
 
+## QR nhận vé cấp booking — source ngày 2026-11-20
+
+Phần này bổ sung vào luồng giả lập in bên dưới. Đã có hai endpoint mới trong Booking Service, tách biệt QR/check-in từng vé, không sửa FE. Những ghi chú “chưa có pickup-pass/lookup QR booking” trong các mốc cũ bên dưới được thay thế bởi phần này. Vẫn chưa có print-jobs vật lý, printer callback, suffix search, trang User/Admin/Staff mới hoặc generated client cho API mới.
+
+### Chủ booking lấy QR
+
+`GET /api/v1/bookings/{bookingId}/pickup-pass`
+
+Chỉ chủ booking được đọc, kể cả ADMIN cũng không được bỏ qua ownership tại API User này; booking không thuộc caller trả 404 BOOKING_NOT_FOUND. UUIDv7 đầy đủ tiếp tục dùng trong path, FK và response. Response HTTP 200 theo ApiResponse, Cache-Control no-store, data gồm bookingId, displayCode, bookingStatus, status, expectedTickets, issuedTickets, expiresAt, qrPayload. displayCode là 6 ký tự cuối UUID viết hoa, có thể trùng; không phải credential và không thay bookingId.
+
+| status | Ý nghĩa | qrPayload |
+| --- | --- | --- |
+| NOT_CONFIRMED | Booking chưa CONFIRMED; đọc bookingStatus để phân biệt đang xử lý với CANCELLED/EXPIRED/REJECTED/PAYMENT_FAILED, không mặc định tất cả là chờ | null |
+| WAITING_FOR_TICKETS | CONFIRMED nhưng còn thiếu đơn vị vé | null |
+| READY | Đủ toàn bộ vé hợp lệ, tất cả ISSUED, lịch/rạp còn phục vụ pickup và chưa quá hạn | QR booking |
+| EXPIRED | Đã quá hạn nhận vé theo quy tắc phía dưới | null |
+| TICKETS_USED | Bộ vé đầy đủ nhưng có vé USED | null |
+| UNAVAILABLE | Snapshot/tập vé không nhất quán, lịch/rạp không nhận pickup, hoặc trạng thái vừa đổi khiến cần đọc lại context | null |
+
+qrPayload/expiresAt luôn xuất hiện, kể cả null; FE phải xóa QR đang hiển thị khi response mới không còn READY. READY chỉ nói QR dùng để tra cứu bộ vé đã phát hành; không khẳng định máy in sẵn sàng hoặc đã in. Không tự phát hành vé/recover vé trong GET. Đơn không CONFIRMED không cần gọi Inventory. Inventory lỗi/không xác minh được context trả 503 BOOKING_PICKUP_CONTEXT_UNAVAILABLE; không thay bằng trạng thái chờ giả.
+
+GET đầu tiên đủ điều kiện lưu một pickup pass riêng trong transaction dưới khóa booking; các GET tiếp theo trả cùng QR. Đây là cấp credential theo yêu cầu đọc, chỉ ghi metadata pickup, không đổi booking/payment/seat hold hoặc phát event. Khóa booking dùng chung với issuance, recovery, check-in và simulation; hai request GET đồng thời không tạo hai pass. Chỉ cấp khi tập booking_seats/tickets khớp theo ID, booking/showtime, seat number, snapshot và capacity, không chỉ so sánh số lượng. Ghế COUPLE vẫn một vé/capacity 2.
+
+### Định dạng, hạn và thu hồi
+
+QR có dạng `cinema-booking:v1:<opaque-token>`; token là 32 byte SecureRandom, Base64 URL-safe không padding (43 ký tự). Không encode UUID/displayCode thành credential. Tách hoàn toàn prefix và bảng khỏi cinema-ticket:v1. Không đưa token vào path/query, log, event hoặc snapshot mô phỏng. Request/response/entity toString che credential. V13 lưu token như credential ngẫu nhiên theo mẫu bảng vé hiện có để owner có thể lấy lại cùng QR; chưa dùng hashing một chiều hoặc yêu cầu secret mã hóa mới. Token thật chỉ đi qua response owner và body lookup, không đưa vào tài liệu/Git.
+
+Khi cấp, lưu hạn ban đầu startsAt hiện hành + 15 phút. Mỗi GET/lookup tính hạn hiệu lực = min(hạn ban đầu đã lưu, startsAt hiện hành + 15 phút). Đúng mốc hết hạn vẫn được xét, sau mốc bị chặn theo giờ server. Đổi lịch sớm có thể rút ngắn hạn; đổi muộn không kéo dài vượt hạn ban đầu. Đây là min của hạn ban đầu và lịch đang đọc, không lưu toàn bộ lịch sử đổi lịch; không cam kết ghi nhớ một hạn ngắn hơn từng được áp dụng ở lịch trung gian. expiresAt trong response là hạn hiệu lực để FE dùng, không tự tính lại từ local clock/lịch FE.
+
+Chưa có endpoint cấp lại/rotate token: refresh không đổi QR, hết hạn không tự cấp token mới và không gia hạn pass đã cấp. Booking không còn CONFIRMED thì cached QR bị chặn ở lookup; rạp inactive hoặc suất CANCELLED/COMPLETED/trạng thái không nhận diện cũng không lookup được. Khi có vé USED, owner không còn được trả QR mới nhưng QR đã lưu vẫn có thể dùng để STAFF xem tình trạng cả bộ vé trước hạn; khả năng in/giả lập bị chặn. Lookup không phải hành động sử dụng credential một lần và không đánh dấu vé USED.
+
+### Staff/POS tra cứu cả bộ vé
+
+`POST /api/v1/bookings/pickups/lookup`
+
+Body chỉ có qrPayload. Dùng /bookings/pickups để tận dụng route Booking hiện có của Gateway, không tạo route /booking-pickups trùng chức năng. Không dùng endpoint quản lý QR từng vé để xử lý QR booking.
+
+Booking filter yêu cầu ADMIN/STAFF; sau đó dùng lại client me/staff-context để xác minh account ACTIVE, role và assignment hiện tại từ User DB. Không tin cinemaId hoặc role do FE gửi. STAFF chỉ đúng rạp, ADMIN mọi rạp. Kiểm tra lại booking CONFIRMED, pass/expiry, lịch và rạp trong bước lookup; nếu không xác minh được phụ thuộc thì fail closed. Tra cứu lại pass dưới khóa booking, không cấp credential mới và không tự gọi print/check-in.
+
+HTTP 200 theo ApiResponse, no-store. data:
+
+- bookingId đầy đủ, displayCode, bookingStatus, expiresAt.
+- showtime: showtimeId, movieId, cinemaId, cinemaName, roomId, roomName, startsAt, endsAt, status. Nguồn là API Inventory, không truy cập DB service khác; thiếu metadata bắt buộc không trả kết quả giả.
+- expectedTickets, issuedTickets, ticketsReady; ticketsReady nghĩa tập vé khớp đầy đủ, không đồng nghĩa được in. totalGuests là tổng capacity khi đủ bộ vé, null khi tập vé không đầy đủ/không nhất quán.
+- tickets: toàn bộ vé đã phát hành hiện có, gồm ticketId, bookingSeatId, seatNumber, capacity, status, checkedInAt (null khi chưa dùng). Không trả QR từng vé hoặc QR booking cho STAFF trong response lookup. Nếu dữ liệu hiện tại thiếu vé thì ticketsReady=false; không hiển thị số vé hiện có như một bộ sẵn sàng in.
+- printing.canPrint luôn false, printBlockReason luôn PHYSICAL_PRINTING_NOT_SUPPORTED: API in thật chưa có.
+- printing.simulationEnabled theo flag Booking; canSimulatePrint chỉ true khi bật simulator, bộ vé đầy đủ/tất cả ISSUED và chưa có simulation. simulationBlockReason là SIMULATION_DISABLED, TICKETS_NOT_READY, TICKET_NOT_ISSUED, SIMULATION_ALREADY_EXISTS hoặc null khi được mô phỏng. Vé USED vẫn được trả để đối chiếu, nhưng không mở khả năng mô phỏng lại.
+
+Khi canSimulatePrint=true, Staff có thể gọi endpoint print-simulations theo bookingId trả về và Idempotency-Key riêng. Lookup không tạo job. Endpoint simulation vẫn tự xác minh lại quyền/rạp/lịch/bộ vé và idempotency; không tin canSimulatePrint từ client hoặc một lần lookup trước đó. Giả lập thành công không tiêu thụ QR và không làm vé USED.
+
+Lỗi mới: 400 BOOKING_PICKUP_QR_INVALID (prefix/format/Base64 không canonical); 404 BOOKING_PICKUP_PASS_NOT_FOUND; 403 BOOKING_PICKUP_ACCESS_DENIED; 409 BOOKING_PICKUP_PASS_EXPIRED, BOOKING_PICKUP_NOT_AVAILABLE hoặc BOOKING_NOT_CONFIRMED; 503 BOOKING_PICKUP_CONTEXT_UNAVAILABLE; 500 BOOKING_PICKUP_PASS_ISSUE_FAILED. Body validation giữ mapping common-api. Đầu vào QR sai không được ghi vào error message hoặc cause SQL. Prefix QR từng vé và suffix 6 ký tự không được chấp nhận ở lookup này.
+
+### Persistence, tương thích và kiểm tra
+
+V13__booking_pickup_passes.sql thêm bảng MySQL booking_pickup_passes: FK booking trong cùng DB, unique booking_id, unique token phân biệt hoa/thường, expires_at, version/audit và index expiry. Không sửa V1–V12, driver/dialect hoặc User DB. Không backfill token cho booking cũ; owner GET đủ điều kiện sẽ cấp lười. Triển khai User context API/V4 và Booking V12/V13 trước code mới; chưa chạy migration trong lượt source này. Rollback cần dừng writer, lưu/bảo vệ credential và audit trước khi bỏ bảng mới; không xóa booking/vé hoặc đổi trạng thái vé. Giữ dữ liệu V12 của simulator.
+
+Dùng lại client User/Inventory, thêm cách đọc lịch cho pickup để API có thể phân biệt EXPIRED/UNAVAILABLE, giữ rule status/active của simulator. Schedule record bổ sung metadata, có overload constructor cũ để giữ tương thích source nội bộ. BookingTicketSetValidator dùng chung cho pickup và simulator; bổ sung đối chiếu showtimeId của đơn vị ghế để không nhận nhầm snapshot. API QR từng vé và Kafka/payment contract không đổi. Không thêm Swagger annotation; controller/DTO mới được springdoc suy ra khi service chạy.
+
+Ownership được kiểm tra trước khi gọi Inventory và kiểm tra lại dưới khóa booking. Lookup vẫn có giới hạn snapshot liên service như simulator: User assignment/role hoặc lịch có thể đổi giữa đọc API và commit; không có khóa phân tán. Chưa có rate limiter riêng cho lookup, manual revoke/reissue, cơ chế đồng bộ lịch sử thay đổi lịch hoặc adapter máy in vật lý. Không coi source/biên dịch là xác nhận race hay scope runtime đã đạt.
+
+Kiểm tra thủ công cần làm sau triển khai: owner đúng/sai; PENDING/RESERVED không QR; CONFIRMED thiếu/đủ vé; ghế COUPLE; GET lặp/đồng thời cùng QR; QR ticket/suffix/random/sai Base64 bị chặn; STAFF sai rạp, account bị khóa/revoke role/đổi rạp với JWT cũ; ADMIN tra cứu mọi rạp; thời điểm đúng/sau +15 phút; đổi lịch sớm/muộn theo quy tắc min; booking hủy/suất hủy/rạp inactive; USED trả trạng thái và chặn mô phỏng; lookup không thêm simulation hoặc đổi vé; gọi simulation phải kiểm tra lại trạng thái; response/toString không lộ token ngoài owner QR. Chưa thực hiện các thao tác ghi này, chưa sửa FE hoặc generate client. Sau khi deploy, xuất /v3/api-docs thật rồi đối chiếu required/nullable và generate client mới.
+
+Kiểm tra source lượt pickup: Maven offline `-pl services/booking-service -am -DskipTests test-compile` BUILD SUCCESS cho 17 module. Chỉ biên dịch main/test source, không thực thi test. Quét source pickup không thấy wildcard import, import không dùng theo kiểm tra tên hoặc throw generic Java mới. `git diff --check` không có lỗi whitespace. Chưa chạy migration, gọi API, khởi động service, xác minh race hoặc xuất schema runtime.
+
 ## Máy in giả lập — source ngày 2026-11-20
 
 Đã thêm luồng giả lập in theo UUID booking, dành cho ADMIN hoặc STAFF đúng rạp. Đây là endpoint riêng để thử nghiệp vụ trước khi nối máy in thật; chưa triển khai pickup-pass, lookup QR booking hay print-jobs vật lý. Không đổi QR từng vé/check-in hoặc tạo vé giả. Các ghi chú “chưa có quyền Staff theo rạp trong Booking” bên dưới mô tả bước nền tảng; chỉ endpoint giả lập mới được mở cho STAFF sau kiểm tra scope, các route management cũ vẫn ADMIN.

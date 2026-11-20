@@ -1,5 +1,15 @@
 # FE API contract — P0.3 source review
 
+**2026-11-20 pickup source addition:** Booking now defines owner
+`GET /api/v1/bookings/{bookingId}/pickup-pass` and scoped Staff/Admin
+`POST /api/v1/bookings/pickups/lookup`. These use a distinct booking QR,
+full UUID references, explicit issuance readiness/expiry, and separate
+simulation versus physical printing capabilities. Owner pass GET lazily
+persists a credential only when eligible; lookup does not check in or print.
+See docs/29_BOOKING_TICKETS.md for statuses, fields, migration V13 and policy.
+No FE edits or generated-client update were made. Runtime OpenAPI has not
+been exported; compare the actual schema before generating or consuming it.
+
 **2026-11-10 update:** Swagger/OpenAPI annotations have been removed from BE
 controllers at the owner's request. Explicit operation IDs, response descriptions,
 tags and security metadata listed below are historical source-review evidence.
