@@ -1,0 +1,20 @@
+CREATE TABLE booking_print_simulations (
+    id BINARY(16) NOT NULL,
+    booking_id BINARY(16) NOT NULL,
+    actor_id BINARY(16) NOT NULL,
+    cinema_id BINARY(16) NOT NULL,
+    idempotency_key VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    device_id VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    status VARCHAR(30) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    response_json LONGTEXT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_print_simulation_booking UNIQUE (booking_id),
+    CONSTRAINT uk_print_simulation_actor_key UNIQUE (actor_id, idempotency_key),
+    CONSTRAINT fk_print_simulation_booking FOREIGN KEY (booking_id) REFERENCES bookings (id),
+    CONSTRAINT chk_print_simulation_status CHECK (status IN ('SIMULATED_SUCCEEDED', 'SIMULATED_FAILED')),
+    CONSTRAINT chk_print_simulation_response CHECK (JSON_VALID(response_json)),
+    INDEX idx_print_simulation_cinema_created (cinema_id, created_at, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

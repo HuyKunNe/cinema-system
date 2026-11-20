@@ -35,36 +35,34 @@ public class BookingSecurityConfig {
         http.csrf(csrf -> csrf.disable())
                 .sessionManagement(
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(
-                        authorize ->
-                                authorize
-                                        .requestMatchers(HttpMethod.OPTIONS, "/**")
-                                        .permitAll()
-                                        .requestMatchers(SWAGGER_ENDPOINTS)
-                                        .permitAll()
-                                        .requestMatchers("/actuator/health", "/actuator/info")
-                                        .permitAll()
-                                        .requestMatchers(
-                                                "/api/v1/bookings/management",
-                                                "/api/v1/bookings/management/**")
-                                        .hasRole("ADMIN")
-                                        .requestMatchers(BOOKING_ENDPOINTS)
-                                        .authenticated()
-                                        .anyRequest()
-                                        .denyAll())
-                .exceptionHandling(
-                        exceptions ->
-                                exceptions
-                                        .authenticationEntryPoint(authenticationEntryPoint)
-                                        .accessDeniedHandler(accessDeniedHandler))
-                .oauth2ResourceServer(
-                        oauth2 ->
-                                oauth2.authenticationEntryPoint(authenticationEntryPoint)
-                                        .accessDeniedHandler(accessDeniedHandler)
-                                        .jwt(
-                                                jwt ->
-                                                        jwt.jwtAuthenticationConverter(
-                                                                jwtAuthenticationConverter)));
+                .authorizeHttpRequests(authorize ->
+                        authorize
+                                .requestMatchers(HttpMethod.OPTIONS, "/**")
+                                .permitAll()
+                                .requestMatchers(SWAGGER_ENDPOINTS)
+                                .permitAll()
+                                .requestMatchers("/actuator/health", "/actuator/info")
+                                .permitAll()
+                                .requestMatchers(
+                                        "/api/v1/bookings/management",
+                                        "/api/v1/bookings/management/**")
+                                .hasRole("ADMIN")
+                                .requestMatchers("/api/v1/bookings/*/print-simulations")
+                                .hasAnyRole("ADMIN", "STAFF")
+                                .requestMatchers(BOOKING_ENDPOINTS)
+                                .authenticated()
+                                .anyRequest()
+                                .denyAll())
+                .exceptionHandling(exceptions ->
+                        exceptions
+                                .authenticationEntryPoint(authenticationEntryPoint)
+                                .accessDeniedHandler(accessDeniedHandler))
+                .oauth2ResourceServer(oauth2 ->
+                        oauth2.authenticationEntryPoint(authenticationEntryPoint)
+                                .accessDeniedHandler(accessDeniedHandler)
+                                .jwt(jwt ->
+                                        jwt.jwtAuthenticationConverter(
+                                                jwtAuthenticationConverter)));
 
         return http.build();
     }

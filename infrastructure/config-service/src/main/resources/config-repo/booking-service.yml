@@ -3,5 +3,8 @@ server:
 
 cinema:
   booking:
+    user-base-url: ${BOOKING_USER_BASE_URL:http://localhost:8082}
+    print-simulator:
+      enabled: ${BOOKING_PRINT_SIMULATOR_ENABLED:false}
     reservation-expiration: ${BOOKING_RESERVATION_EXPIRATION:10m}
     max-seats-per-booking: ${BOOKING_MAX_SEATS_PER_BOOKING:10}

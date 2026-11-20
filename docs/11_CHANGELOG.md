@@ -1,5 +1,19 @@
 # Changelog
 
+2026-11-20 print simulation: added an opt-in Booking print-simulations API,
+default disabled, with simulated success/failure, one simulation per booking,
+actor-scoped idempotency keys, full seat/ticket validation and persisted
+result snapshots. Uses the booking lock shared with issuance/check-in.
+User me/staff-context verifies current account, role and cinema assignment;
+Booking checks cinema scope through APIs, including on replay. Booking V12
+adds simulation records only; no physical printer job, QR pickup pass, ticket
+status/payment mutation, FE changes or new dependency. Read the contract and
+cross-service snapshot limitations in docs/29_BOOKING_TICKETS.md. No test,
+migration or service/API execution performed.
+Offline `-pl services/booking-service,services/user-service -am -DskipTests
+test-compile` succeeded for 18 modules. Runtime/API, scope races and printer
+integration remain unverified; this is simulation only.
+
 2026-11-20 staff provisioning foundation: added ADMIN + user:manage APIs to
 create/list/read staff accounts and change their single cinema assignment.
 User migration V4 adds admin provisioning provenance and staff assignments

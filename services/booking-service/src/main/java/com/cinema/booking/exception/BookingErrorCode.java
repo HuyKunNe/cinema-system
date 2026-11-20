@@ -4,13 +4,78 @@ import com.cinema.common.exception.code.ErrorCategory;
 import com.cinema.common.exception.code.ErrorCode;
 
 public final class BookingErrorCode implements ErrorCode {
-    public static final BookingErrorCode TICKET_CHECK_IN_NOT_ALLOWED = new BookingErrorCode(
-            ErrorCategory.BUSINESS, "BOOKING_TICKET_CHECK_IN_NOT_ALLOWED", "Ticket check-in is not allowed for this showtime");
-    public static final BookingErrorCode TICKET_CHECK_IN_WINDOW_CLOSED = new BookingErrorCode(
-            ErrorCategory.BUSINESS, "BOOKING_TICKET_CHECK_IN_WINDOW_CLOSED", "Ticket check-in window is closed");
-    public static final BookingErrorCode TICKET_SCHEDULE_UNAVAILABLE = new BookingErrorCode(
-            ErrorCategory.SYSTEM, "BOOKING_TICKET_SCHEDULE_UNAVAILABLE", "Showtime schedule could not be verified");
 
+    public static final BookingErrorCode PRINT_NOT_ALLOWED =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_PRINT_NOT_ALLOWED",
+                    "Printing is not allowed for this cinema or showtime");
+
+    public static final BookingErrorCode PRINT_ACCESS_DENIED =
+            new BookingErrorCode(
+                    ErrorCategory.SECURITY,
+                    "BOOKING_PRINT_ACCESS_DENIED",
+                    "Printing access is not allowed");
+
+    public static final BookingErrorCode PRINT_DEPENDENCY_UNAVAILABLE =
+            new BookingErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "BOOKING_PRINT_DEPENDENCY_UNAVAILABLE",
+                    "Printing context could not be verified");
+
+    public static final BookingErrorCode PRINT_SIMULATION_ALREADY_EXISTS =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_PRINT_SIMULATION_ALREADY_EXISTS",
+                    "A print simulation already exists for this booking");
+
+    public static final BookingErrorCode PRINT_IDEMPOTENCY_CONFLICT =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_PRINT_IDEMPOTENCY_CONFLICT",
+                    "Print idempotency key conflicts with an existing request");
+
+    public static final BookingErrorCode PRINT_WINDOW_CLOSED =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_PRINT_WINDOW_CLOSED",
+                    "Printing window is closed");
+
+    public static final BookingErrorCode PRINT_TICKETS_NOT_READY =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_PRINT_TICKETS_NOT_READY",
+                    "The complete ticket set is not ready");
+
+    public static final BookingErrorCode PRINT_TICKET_NOT_ISSUED =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_PRINT_TICKET_NOT_ISSUED",
+                    "All tickets must be unused before printing");
+
+    public static final BookingErrorCode PRINT_SIMULATION_STORAGE_FAILED =
+            new BookingErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "BOOKING_PRINT_SIMULATION_STORAGE_FAILED",
+                    "Print simulation could not be stored or read");
+
+    public static final BookingErrorCode TICKET_CHECK_IN_NOT_ALLOWED =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_TICKET_CHECK_IN_NOT_ALLOWED",
+                    "Ticket check-in is not allowed for this showtime");
+
+    public static final BookingErrorCode TICKET_CHECK_IN_WINDOW_CLOSED =
+            new BookingErrorCode(
+                    ErrorCategory.BUSINESS,
+                    "BOOKING_TICKET_CHECK_IN_WINDOW_CLOSED",
+                    "Ticket check-in window is closed");
+                    
+    public static final BookingErrorCode TICKET_SCHEDULE_UNAVAILABLE =
+            new BookingErrorCode(
+                    ErrorCategory.SYSTEM,
+                    "BOOKING_TICKET_SCHEDULE_UNAVAILABLE",
+                    "Showtime schedule could not be verified");
 
     public static final BookingErrorCode TICKET_NOT_FOUND =
             new BookingErrorCode(

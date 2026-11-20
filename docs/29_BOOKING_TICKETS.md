@@ -1,5 +1,56 @@
 # Vé theo đơn vị ghế — BE-U04
 
+## Máy in giả lập — source ngày 2026-11-20
+
+Đã thêm luồng giả lập in theo UUID booking, dành cho ADMIN hoặc STAFF đúng rạp. Đây là endpoint riêng để thử nghiệp vụ trước khi nối máy in thật; chưa triển khai pickup-pass, lookup QR booking hay print-jobs vật lý. Không đổi QR từng vé/check-in hoặc tạo vé giả. Các ghi chú “chưa có quyền Staff theo rạp trong Booking” bên dưới mô tả bước nền tảng; chỉ endpoint giả lập mới được mở cho STAFF sau kiểm tra scope, các route management cũ vẫn ADMIN.
+
+### Bật và gọi API
+
+Booking Service mặc định tắt controller. Bật bằng `BOOKING_PRINT_SIMULATOR_ENABLED=true` khi cần giả lập. `BOOKING_USER_BASE_URL` mặc định http://localhost:8082; `BOOKING_INVENTORY_BASE_URL` là cấu hình Inventory hiện có. Cả application.yml và config-repo/booking-service.yml có binding flag; không đổi cấu hình MySQL hoặc thêm credential. Cần User migration V4 và Booking migration V12 trước khi chạy code mới; lượt triển khai này chưa tự chạy migration.
+
+`POST /api/v1/bookings/{bookingId}/print-simulations`
+
+- Access token của ADMIN/STAFF, UUID booking đầy đủ và header Idempotency-Key bắt buộc, 1–100 ký tự ASCII chữ/số/chấm/gạch ngang/gạch dưới.
+- Body gồm deviceId (cùng tập ký tự, 1–100) và outcome. deviceId là nhãn thiết bị do client khai báo phục vụ audit, chưa phải danh tính POS đã đăng ký/chứng thực.
+- outcome chỉ nhận SIMULATED_SUCCEEDED hoặc SIMULATED_FAILED. Client chọn kết quả để thử luồng; chỉ endpoint giả lập cho phép điều này, không được dùng contract này làm callback máy in thật.
+
+Ví dụ body, không chứa secret:
+
+```json
+{
+  "deviceId": "POS-LOCAL-01",
+  "outcome": "SIMULATED_SUCCEEDED"
+}
+```
+
+HTTP 200 theo ApiResponse, Cache-Control no-store. data gồm printJobId, bookingId, displayCode (6 ký tự cuối UUID viết hoa), mode luôn SIMULATION, status, actorId, deviceId, cinemaId, showtimeId, completedAt, tickets và totalGuests. Mỗi ticket gồm ticketId, bookingSeatId, seatNumber, capacity; một ghế COUPLE là một vé/capacity 2. Trả toàn bộ bộ vé và tổng số khách, không trả/lưu QR trong snapshot mô phỏng. completedAt là lúc hoàn thành mô phỏng phía server, không phải xác nhận máy in vật lý.
+
+### Kiểm tra quyền và nghiệp vụ
+
+Booking gửi bearer hiện hành tới `GET /api/v1/users/me/staff-context`; endpoint này không nhận userId từ FE. User Service đọc account ACTIVE, role và assignment trực tiếp trong User DB: ADMIN trả administrator=true; STAFF phải có đúng một assignment và trả cinemaId hiện tại; USER, account bị khóa/tắt, STAFF thiếu assignment bị 403. Quyền không chỉ dựa vào claim JWT cũ. Booking kiểm tra userId trong response trùng actor đang gọi; User lỗi/response sai không cho in. Không ghi bearer vào log/cause; tắt redirect khi gọi User/Inventory, timeout connect 1s/read 2s.
+
+Đọc showtime/cinema qua API Inventory: rạp phải active, lịch có startsAt/endsAt hợp lệ và trạng thái SCHEDULED/OPEN_FOR_BOOKING/CLOSED. CANCELLED/COMPLETED/trạng thái khác bị chặn. STAFF chỉ được đúng rạp, ADMIN tất cả rạp. Sau đó khóa booking trong transaction, kiểm tra CONFIRMED, showtimeId vẫn đúng và giờ server không sau startsAt + 15 phút (mốc +15 phút vẫn được xét). Không đặt cửa sổ mở in sớm hơn vì chưa có yêu cầu; booking CONFIRMED trước giờ chiếu được mô phỏng.
+
+Bộ vé phải khớp toàn bộ booking_seats theo ID, không chỉ đếm số lượng: không thiếu/trùng đơn vị ghế, snapshot đã hoàn tất, seat number/bookingId và capacity khớp rule BookingTicket. Tất cả vé phải ISSUED; bất kỳ USED hoặc trạng thái khác chặn toàn bộ. Không sửa status/checkedInAt của vé, trạng thái booking, payment, reservation hoặc Kafka. Dùng cùng khóa booking mà issuance/recovery/check-in đang dùng để tuần tự hóa những thao tác này trong Booking DB.
+
+### Idempotency, audit và giới hạn mô phỏng
+
+Mỗi booking tối đa một row booking_print_simulations. Cùng key/actor/device/outcome trả snapshot kết quả cũ; không thực hiện mô phỏng lần nữa, kể cả vé đã USED sau lần đầu. Vẫn kiểm tra lại quyền/rạp, trạng thái CONFIRMED, lịch/rạp hợp lệ trước khi trả snapshot. Kết quả replay là lịch sử, không phải quyền in hiện tại. Replay không kiểm tra lại thời hạn tạo job nên có thể đọc kết quả cũ sau +15 phút nếu các điều kiện quyền/lịch còn hợp lệ.
+
+Key khác cho cùng booking bị 409 BOOKING_PRINT_SIMULATION_ALREADY_EXISTS. Cùng key nhưng khác actor/device/outcome, hoặc cùng actor tái sử dụng key cho booking khác, bị 409 BOOKING_PRINT_IDEMPOTENCY_CONFLICT. Unique booking_id và unique actor_id/idempotency_key bảo vệ cả concurrency; khóa booking chặn hai key đồng thời tạo hai row. Lỗi mô phỏng cũng lưu kết quả terminal và không tự tạo lần thử mới bằng key khác; retry cùng key chỉ trả lỗi mô phỏng đã ghi.
+
+Actor, thiết bị, rạp, thời điểm và kết quả được lưu trong row/snapshot của job. SIMULATED_SUCCEEDED/SIMULATED_FAILED đều không chứng minh in giấy; không tạo bản ghi đã in thật và không tiêu thụ quyền in vật lý trong workflow tương lai. Chưa có printer transport, spooler, tài nguyên PDF, callback thiết bị, retry vật lý hoặc in lại. Không thêm nút in vào User FE; không sửa Staff/POS FE hoặc generate client.
+
+V12\_\_booking_print_simulations.sql thêm bảng MySQL, FK booking trong cùng DB, index rạp/thời điểm, unique constraints, CHECK status và JSON_VALID cho snapshot. Actor/rạp không có FK liên DB. Rollback: tắt simulator, dừng writer, xuất/giữ audit rồi rollback code; chỉ bỏ bảng mới sau khi lưu dữ liệu, không xóa booking/vé hay sửa V1–V11. Bảng mô phỏng tách khỏi dữ liệu in vật lý tương lai.
+
+Các mã mới: 403 BOOKING_PRINT_ACCESS_DENIED; 503 BOOKING_PRINT_DEPENDENCY_UNAVAILABLE; 409 BOOKING_PRINT_NOT_ALLOWED, BOOKING_PRINT_WINDOW_CLOSED, BOOKING_PRINT_TICKETS_NOT_READY, BOOKING_PRINT_TICKET_NOT_ISSUED và các lỗi idempotency trên; 500 BOOKING_PRINT_SIMULATION_STORAGE_FAILED. Thiếu/sai header hoặc body trả validation 400 theo common-api. User endpoint có 403 USER_STAFF_ACCESS_DENIED. Không đổi contract endpoint cũ.
+
+Giới hạn: context User và lịch Inventory là snapshot trước transaction Booking, không có khóa phân tán ngăn đổi rạp/role/lịch trong khoảng đọc đến commit. Kiểm tra lại mỗi request giảm rủi ro token cũ nhưng không thay thế cơ chế nhất quán liên service. Nhãn deviceId không phải thiết bị được xác thực. Runtime scope, race và OpenAPI chưa được xác minh chỉ bằng biên dịch; cần rà tiếp trước khi dùng làm nền tảng in thật.
+
+Kiểm tra thủ công sau triển khai (chưa thực hiện ở lượt source này): flag tắt không có endpoint; USER/STAFF sai rạp bị chặn; ADMIN đúng role DB được mọi rạp; tắt account/đổi rạp/revoke role rồi dùng token cũ phải bị chặn theo context mới; vé thiếu/USED/đơn không CONFIRMED không tạo row; mô phỏng hai outcome trên hai booking khác nhau; retry cùng key giữ jobId/snapshot và không thêm row; key khác hoặc cùng key payload khác bị 409; check-in cạnh tranh không tạo job mới sau USED; kiểm tra +15 phút, Inventory/User lỗi, body/header sai. Không bật service hoặc ghi DB tự động chỉ để xác minh.
+
+Kiểm tra biên dịch cuối: Maven offline `-pl services/booking-service,services/user-service -am -DskipTests test-compile` BUILD SUCCESS cho 18 module, gồm main/test source và không thực thi test case. `git diff --check` không có lỗi whitespace. Chưa gọi API, chạy migration, khởi động service hoặc xác minh OpenAPI runtime/thiết bị. Khi bật simulator và triển khai schema, cần đọc /v3/api-docs thật trước khi generate client.
+
 ## QR booking và Staff/POS — quyết định ngày 2026-11-20
 
 Đây là workflow mới, tách khỏi QR từng vé và check-in bên dưới. Quyết định đã chốt:

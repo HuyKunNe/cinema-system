@@ -5,6 +5,12 @@ import com.cinema.common.exception.code.ErrorCode;
 
 public final class UserErrorCode implements ErrorCode {
 
+    public static final UserErrorCode STAFF_ACCESS_DENIED =
+            new UserErrorCode(
+                    ErrorCategory.SECURITY,
+                    "USER_STAFF_ACCESS_DENIED",
+                    "Staff access is not allowed");
+
     public static final UserErrorCode STAFF_ACCOUNT_ALREADY_EXISTS =
             new UserErrorCode(
                     ErrorCategory.BUSINESS,
