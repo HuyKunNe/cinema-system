@@ -1,5 +1,22 @@
 # Changelog
 
+2026-11-20 User credential contract: added service-local OpenAPI password/
+writeOnly metadata for account request credentials and redacted email
+verification request toString. Existing password-change/staff redaction and
+all validation, input serialization, authorization and MySQL are unchanged.
+Offline User compile with -DskipTests succeeded (15 modules). Runtime spec
+still showed old metadata after compilation; service reload verification is
+pending. No tests, migration, API writes, FE edits or client generation.
+
+2026-11-20 P0.3 contract continuation: corrected Booking pickup OpenAPI
+required/nullability metadata using the existing Inventory customizer pattern.
+Fresh runtime spec reads confirmed null branches for the five documented
+nullable response fields. Observed operation IDs were present/unique within
+each of the five service specs; Inventory batch minItems is now 1. Offline
+Booking reactor compile with -DskipTests succeeded (17 modules). No tests,
+migrations, API writes, FE edits or client generation. P0.2 and broader P0.3
+verification remain open; see docs/26_RUNTIME_CONTRACT_REVIEW.md.
+
 2026-11-20 booking pickup pass: added owner-only pickup-pass reads and scoped
 Staff/Admin booking QR lookup. V13 adds a separate stable random credential
 per booking, lazily issued only for CONFIRMED bookings with a complete unused

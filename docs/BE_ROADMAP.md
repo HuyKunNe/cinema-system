@@ -87,6 +87,26 @@ các cổng concurrency, rollback và runtime còn mở.
 
 ### P0.3 — Chốt contract dùng chung cho FE
 
+**Tiếp tục schema User ngày 2026-11-20 — DONE IN SOURCE / VERIFY:** thêm
+customizer cho metadata password/writeOnly trên request tạo nhân viên, xác minh
+email và đổi mật khẩu; che toString của ConfirmEmailVerificationRequest.
+Giữ nguyên JSON đầu vào, validation, quyền và nghiệp vụ. User reactor compile
+-DskipTests thành công (15 module), không chạy test. GET spec sau compile vẫn
+là metadata cũ, chờ User nạp lại; không tự restart service hoặc sửa file
+UserServiceApplication đang có thay đổi. Chưa đóng P0.3; chi tiết tại
+docs/26_RUNTIME_CONTRACT_REVIEW.md.
+
+**Tiếp tục ngày 2026-11-20 — source và schema runtime:** đọc OpenAPI năm service,
+không thấy operationId thiếu/trùng trong từng spec; Inventory batch đã có
+minItems=1. Booking pickup đang mô tả sai các field có thể null. Bổ sung
+BookingPickupOpenApiConfiguration theo mẫu customizer có sẵn của Inventory,
+không thêm annotation Swagger vào controller/DTO. GET spec sau biên dịch đã
+thấy expiresAt/qrPayload/totalGuests/checkedInAt/simulationBlockReason bắt buộc
+và cho phép null đúng contract JSON. Maven -DskipTests compile cho Booking và
+phụ thuộc thành công (17 module); không chạy test, migration hoặc API ghi.
+Chưa xác minh workflow xác thực, concurrency hoặc đồng bộ client FE; không đóng
+P0.2/P0.3. Bằng chứng chi tiết tại docs/26_RUNTIME_CONTRACT_REVIEW.md.
+
 **Đối chiếu runtime ngày 2026-11-11 từ `15fd453`:** đọc /v3/api-docs của năm
 service (Movie/User/Inventory/Booking/Payment), từng spec không có operationId
 thiếu/trùng. Inventory đã phát enum RETIRED nhưng batch vẫn khai báo minItems=0

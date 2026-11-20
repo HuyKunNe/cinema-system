@@ -1,5 +1,23 @@
 # FE API contract — P0.3 source review
 
+**2026-11-20 User credentials — source correction, reload pending:** four
+password properties in staff creation, email confirmation and password change
+now receive OpenAPI format=password/writeOnly=true through a service customizer.
+Email confirmation token receives writeOnly=true. Runtime User spec still had
+the old metadata after compilation; verify after its normal restart before
+client generation. Required fields, bounds, JSON input serialization and HTTP
+behavior remain unchanged. Do not interpret writeOnly metadata as password
+policy or as permission to include credential values in logs/examples.
+
+**2026-11-20 runtime nullability correction:** the running Booking OpenAPI 3.1
+now marks pickup-pass expiresAt/qrPayload, lookup totalGuests, nested ticket
+checkedInAt, and printing simulationBlockReason required and nullable, matching
+the existing JsonInclude.ALWAYS responses. Uses a service OpenApiCustomizer,
+following Inventory's existing pattern; no Swagger annotations or JSON behavior
+changed. Regenerated client types should preserve null separately from omitted
+properties. No FE/client files were modified. Runtime evidence and remaining
+verification limits are in docs/26_RUNTIME_CONTRACT_REVIEW.md.
+
 **2026-11-20 pickup source addition:** Booking now defines owner
 `GET /api/v1/bookings/{bookingId}/pickup-pass` and scoped Staff/Admin
 `POST /api/v1/bookings/pickups/lookup`. These use a distinct booking QR,

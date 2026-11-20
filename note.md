@@ -166,12 +166,8 @@ Mở PowerShell chạy:
 
 docker run -d --name cinema-kafka -p 9092:9092 apache/kafka:4.4.0
 
-Đây là lệnh chạy Kafka bằng Docker theo hướng dẫn chính thức; port 9092 khớp với KAFKA_BOOTSTRAP_SERVERS=localhost:9092 trong các task service.Apache Kafka Docker quickstart (https://kafka.apache.org/44/getting-started/docker/)
-
 Kiểm tra container và broker:
 
 docker ps --filter "name=cinema-kafka"
 docker logs cinema-kafka
 Test-NetConnection localhost -Port 9092
-
-Khi cổng 9092 kết nối được, chạy lại Inventory và Booking Service. Task hiện tại trong .vscode/tasks.json đã đặt INVENTORY_KAFKA_ENABLED=true, BOOKING_KAFKA_ENABLED=true và địa chỉ broker localhost:9092. Nếu container đã tồn tại, dùng docker start cinema-kafka; để dừng Kafka dùng docker stop cinema-kafka.
