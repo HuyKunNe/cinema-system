@@ -82,7 +82,16 @@ public class BookingPickupTransactionService {
                     null,
                     null);
         }
-        if (context == null || !booking.getShowtimeId().equals(context.schedule().id())) {
+        if (context == null) {
+            // Local issuance state is known even when the schedule cannot be read.
+            // No expiry or credential may be inferred without a verified context.
+            BookingPickupStatus state =
+                    !bookingSeats.isEmpty() && issued.size() < bookingSeats.size()
+                            ? BookingPickupStatus.WAITING_FOR_TICKETS
+                            : BookingPickupStatus.UNAVAILABLE;
+            return response(booking, state, bookingSeats.size(), issued.size(), null, null);
+        }
+        if (!booking.getShowtimeId().equals(context.schedule().id())) {
             return response(
                     booking,
                     BookingPickupStatus.UNAVAILABLE,

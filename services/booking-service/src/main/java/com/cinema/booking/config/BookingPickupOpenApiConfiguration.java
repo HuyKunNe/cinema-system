@@ -41,6 +41,24 @@ public class BookingPickupOpenApiConfiguration {
                     resolve(openApi, property(lookup, "printing")),
                     Set.of("simulationBlockReason"),
                     openApi31);
+
+            configureNullableFields(
+                    schemas.get("BookingResponse"),
+                    Set.of("showtimeEndsAt", "seatCount", "capacity"),
+                    openApi31);
+            configureNullableFields(
+                    schemas.get("BookingSeatResponse"),
+                    Set.of(
+                            "requestedTicketGroupId",
+                            "ticketGroupId",
+                            "ticketGroupName",
+                            "capacity",
+                            "unit"),
+                    openApi31);
+            configureNullableFields(
+                    schemas.get("TicketResponse"), Set.of("checkedInAt"), openApi31);
+            configureNullableFields(
+                    schemas.get("LookupResponse"), Set.of("checkedInAt"), openApi31);
         };
     }
 
@@ -48,13 +66,30 @@ public class BookingPickupOpenApiConfiguration {
         if (schema == null || schema.getProperties() == null) {
             return;
         }
+        // Pickup records include every property through JsonInclude.ALWAYS.
+        configure(schema, schema.getProperties().keySet(), nullableFields, openApi31);
+    }
+
+    private static void configureNullableFields(
+            Schema<?> schema, Set<String> fields, boolean openApi31) {
+        // Other responses only force inclusion on specific components/getters.
+        configure(schema, fields, fields, openApi31);
+    }
+
+    private static void configure(
+            Schema<?> schema,
+            Set<String> requiredFields,
+            Set<String> nullableFields,
+            boolean openApi31) {
+        if (schema == null || schema.getProperties() == null) {
+            return;
+        }
         var required =
                 schema.getRequired() == null
                         ? new ArrayList<String>()
                         : new ArrayList<>(schema.getRequired());
-        // These response records use JsonInclude.ALWAYS, including nullable fields.
         for (String field : schema.getProperties().keySet()) {
-            if (!required.contains(field)) {
+            if (requiredFields.contains(field) && !required.contains(field)) {
                 required.add(field);
             }
         }

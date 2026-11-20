@@ -76,7 +76,7 @@ public class AdministrativeStaffService {
         User user = User.provisionStaff(email, normalize(email), username, normalize(username));
 
         try {
-            users.saveAndFlush(user);
+            user = users.saveAndFlush(user);
         } catch (DataIntegrityViolationException failure) {
             throw new ConflictException(UserErrorCode.STAFF_ACCOUNT_ALREADY_EXISTS);
         }

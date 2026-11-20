@@ -87,6 +87,31 @@ các cổng concurrency, rollback và runtime còn mở.
 
 ### P0.3 — Chốt contract dùng chung cho FE
 
+**Đọc lại simulation — DONE IN SOURCE / VERIFY:** bổ sung GET trên cùng resource
+print-simulations có sẵn, dùng lại response và kiểm tra quyền/context/khóa booking
+của POST. Trả snapshot cũ, không chạy lại mô phỏng hoặc sửa vé; chưa có job trả
+404 BOOKING_PRINT_SIMULATION_NOT_FOUND. Thêm năm unit test source và biên dịch
+-DskipTests test-compile thành công (17 module), không thực thi test. Controller
+vẫn phụ thuộc flag simulator; chưa bật để xác minh OpenAPI/HTTP runtime, không
+sửa FE hoặc MySQL. Giữ các cổng xác minh P0.2/P0.3 còn mở.
+
+**Owner pickup khi phụ thuộc lỗi — DONE IN SOURCE / VERIFY:** Booking đọc lại
+trạng thái và số vé dưới khóa khi Inventory không khả dụng. CONFIRMED còn thiếu
+vé trả WAITING_FOR_TICKETS với QR/hạn null; trạng thái đã đổi trả NOT_CONFIRMED;
+số lượng bằng/vượt hoặc không chứng minh được thiếu vẫn giữ 503. Không suy ra
+READY hoặc cấp pass khi chưa xác minh context. Thêm nguồn kiểm thử ba tình
+huống, biên dịch với -DskipTests test-compile thành công (17 module), chưa chạy
+test hay API ghi. Luồng lookup Staff/simulator và MySQL không đổi; các cổng
+runtime/concurrency P0.2/P0.3 vẫn mở.
+
+**Schema đọc booking/vé ngày 2026-11-20 — DONE IN SOURCE / VERIFY:** dùng lại
+Booking customizer để khai báo required + nullable cho 10 field có
+JsonInclude.ALWAYS trong BookingResponse, BookingSeatResponse, TicketResponse
+và LookupResponse. Không ép các field tùy chọn còn lại thành bắt buộc, không
+đổi JSON hoặc nghiệp vụ. Booking reactor -DskipTests compile thành công
+(17 module); GET spec sau compile vẫn metadata cũ, chờ Booking nạp lại.
+Không chạy test, migration, API ghi hoặc sửa FE; P0.2/P0.3 chưa đóng.
+
 **Tiếp tục schema User ngày 2026-11-20 — DONE IN SOURCE / VERIFY:** thêm
 customizer cho metadata password/writeOnly trên request tạo nhân viên, xác minh
 email và đổi mật khẩu; che toString của ConfirmEmailVerificationRequest.

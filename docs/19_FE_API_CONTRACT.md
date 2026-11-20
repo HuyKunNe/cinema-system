@@ -1,5 +1,33 @@
 # FE API contract — P0.3 source review
 
+**2026-11-20 stored simulation read — source addition:** when the simulator is
+enabled, `GET /api/v1/bookings/{bookingId}/print-simulations` returns the existing
+PrintSimulationResponse envelope without an Idempotency-Key or new job. Uses
+current account/cinema checks and requires CONFIRMED booking plus a usable
+showtime/cinema, matching existing replay policy. Missing job returns 404
+BOOKING_PRINT_SIMULATION_NOT_FOUND. Staff in the same permitted cinema may
+read the original creator/device/result snapshot. This is stored SIMULATION
+output, not current print eligibility or physical print confirmation. Both
+GET/POST remain conditional on BOOKING_PRINT_SIMULATOR_ENABLED. No FE/client
+files were changed; verify enabled runtime OpenAPI before client generation.
+
+**2026-11-20 owner pickup availability:** during Inventory unavailability,
+owner pickup-pass can return the existing WAITING_FOR_TICKETS state when
+Booking proves local issuance is incomplete. expiresAt and qrPayload are null;
+do not infer a valid pass or deadline. A status change found under lock returns
+NOT_CONFIRMED with current bookingStatus. Matching counts/ambiguous state still
+return 503, and no READY response is allowed without live context. Request/DTO
+shape, staff lookup, simulator guards and schema enums are unchanged.
+
+**2026-11-20 Booking read schemas — source correction, reload pending:** the
+existing Booking customizer now describes ten explicitly ALWAYS-included
+nullable fields on BookingResponse, BookingSeatResponse, TicketResponse and
+LookupResponse. They are required properties accepting null; other fields
+remain unchanged, including optional payment details on pending orders.
+The post-compile running spec still had the old metadata. Verify after Booking
+reload before client generation; no FE or generated client files were edited.
+The exact field list and evidence are in docs/26_RUNTIME_CONTRACT_REVIEW.md.
+
 **2026-11-20 User credentials — source correction, reload pending:** four
 password properties in staff creation, email confirmation and password change
 now receive OpenAPI format=password/writeOnly=true through a service customizer.

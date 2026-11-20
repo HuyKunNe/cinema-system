@@ -4,6 +4,7 @@ import com.cinema.booking.client.PrintSimulationAccessClient.Access;
 import com.cinema.booking.client.PrintSimulationAccessClient.Schedule;
 import com.cinema.booking.dto.request.PrintSimulationRequest;
 import com.cinema.booking.dto.response.PrintSimulationResponse;
+import com.cinema.booking.entity.Booking;
 import com.cinema.booking.entity.BookingPrintSimulation;
 import com.cinema.booking.enums.BookingStatus;
 import com.cinema.booking.exception.BookingErrorCode;
@@ -60,15 +61,7 @@ public class PrintSimulationTransactionService {
             PrintSimulationRequest request,
             Access access,
             Schedule schedule) {
-        var booking =
-                bookings.findByIdForUpdate(bookingId)
-                        .orElseThrow(
-                                () -> new NotFoundException(BookingErrorCode.BOOKING_NOT_FOUND));
-        access.requireCinema(schedule.cinemaId());
-        if (!booking.getShowtimeId().equals(schedule.id())
-                || booking.getStatus() != BookingStatus.CONFIRMED) {
-            throw new ConflictException(BookingErrorCode.BOOKING_NOT_CONFIRMED);
-        }
+        var booking = lockedBooking(bookingId, access, schedule);
         var existing = simulations.findByBookingId(bookingId);
         if (existing.isPresent()) {
             var job = existing.get();
@@ -145,6 +138,31 @@ public class PrintSimulationTransactionService {
             throw new ConflictException(BookingErrorCode.PRINT_IDEMPOTENCY_CONFLICT);
         }
         return response;
+    }
+
+    @Transactional
+    public PrintSimulationResponse get(UUID bookingId, Access access, Schedule schedule) {
+        var booking = lockedBooking(bookingId, access, schedule);
+        var job =
+                simulations
+                        .findByBookingId(booking.getId())
+                        .orElseThrow(() ->
+                                new NotFoundException(BookingErrorCode.PRINT_SIMULATION_NOT_FOUND));
+        access.requireCinema(job.getCinemaId());
+        return read(job);
+    }
+
+    private Booking lockedBooking(UUID bookingId, Access access, Schedule schedule) {
+        var booking =
+                bookings.findByIdForUpdate(bookingId)
+                        .orElseThrow(
+                                () -> new NotFoundException(BookingErrorCode.BOOKING_NOT_FOUND));
+        access.requireCinema(schedule.cinemaId());
+        if (!booking.getShowtimeId().equals(schedule.id())
+                || booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new ConflictException(BookingErrorCode.BOOKING_NOT_CONFIRMED);
+        }
+        return booking;
     }
 
     private PrintSimulationResponse read(BookingPrintSimulation job) {

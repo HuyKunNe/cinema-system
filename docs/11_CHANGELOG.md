@@ -1,5 +1,49 @@
 # Changelog
 
+2026-11-20 stored print simulation read: added GET on the existing conditional
+print-simulations resource so scoped Staff/Admin can recover a stored result
+without replaying a create request or retaining its idempotency key. Reuses
+the response DTO, current scope checks, booking lock/CONFIRMED checks and
+recorded cinema checks. Returns the original snapshot without touching live
+tickets or creating jobs; missing job has a service-owned 404 code. POST
+idempotency/creation guards and MySQL are unchanged. Added five read regression
+test sources, not executed. No physical printing, migration, API writes or FE
+changes.
+
+The stored simulation GET increment compiled with offline
+`-pl services/booking-service -am -DskipTests test-compile` (17 modules).
+Five regression cases were compiled, not executed. Simulator-enabled runtime
+OpenAPI/HTTP verification and FE client generation remain pending.
+
+2026-11-20 staff persistence consistency: AdministrativeStaffService now retains
+the User returned by saveAndFlush and uses it for profile/cinema-assignment
+references, matching the registration and Google provisioning flows. Added
+regression test source for a merge result with the same ID and a different
+entity instance. No endpoint, DTO, authorization, transaction or MySQL change.
+No account creation API or migration command was executed; tests remain unrun.
+Offline `-pl services/user-service -am -DskipTests test-compile` succeeded
+for 15 modules. Runtime Hibernate/API behavior remains unverified.
+
+2026-11-20 pickup availability: owner pickup reads now preserve a truthful
+WAITING_FOR_TICKETS response during Inventory unavailability when a locked
+Booking read proves issuance is incomplete. Both QR and expiry remain null.
+Cancellation/status changes are re-read under the same booking lock; equal
+ticket/seat counts or ambiguous local data still propagate the dependency
+503. No fallback can issue credentials. Staff lookup and print simulation
+remain dependent on verified remote context. Added source-only regression
+coverage for missing tickets, matching counts and cancellation during lookup;
+tests are not executed. No migration, FE or endpoint/DTO changes.
+Offline `-pl services/booking-service -am -DskipTests test-compile` succeeded
+for 17 modules; no test cases or runtime outage scenarios were executed.
+
+2026-11-20 Booking read contract: extended the existing OpenAPI customizer
+to mark ten selected JsonInclude.ALWAYS fields required and nullable across
+booking/order, seat and individual-ticket responses. Other optional fields,
+runtime JSON, check-in/printing behavior and MySQL are unchanged. Booking
+offline compile with -DskipTests succeeded for 17 modules. Post-compile runtime
+schema still had old metadata; reload verification remains pending. No tests,
+API writes, migration, frontend edits or generated-client changes.
+
 2026-11-20 User credential contract: added service-local OpenAPI password/
 writeOnly metadata for account request credentials and redacted email
 verification request toString. Existing password-change/staff redaction and

@@ -5,6 +5,12 @@ import com.cinema.common.exception.code.ErrorCode;
 
 public final class BookingErrorCode implements ErrorCode {
 
+    public static final BookingErrorCode PRINT_SIMULATION_NOT_FOUND =
+            new BookingErrorCode(
+                    ErrorCategory.RESOURCE,
+                    "BOOKING_PRINT_SIMULATION_NOT_FOUND",
+                    "Print simulation not found");
+
     public static final BookingErrorCode PICKUP_QR_INVALID =
             new BookingErrorCode(
                     ErrorCategory.VALIDATION,

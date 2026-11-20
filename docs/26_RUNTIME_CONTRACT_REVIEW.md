@@ -1,5 +1,92 @@
 # Runtime contract review — 2026-11-11
 
+## 2026-11-20 — Read persisted print simulation
+
+Source had only POST on print-simulations, requiring the original idempotency
+key to recover its result. Added GET on the same existing resource, returning
+the existing response DTO and snapshot without a key or another simulation.
+The service shares current account/cinema context resolution with POST; the
+transaction shares the existing booking lock/status validation and additionally
+checks the recorded cinema. Staff in the same permitted cinema can read another
+staff member's result without changing original actor/device/completedAt.
+Missing job returns the new service-owned 404 PRINT_SIMULATION_NOT_FOUND code.
+Existing POST replay/creation policy, feature flag and database are unchanged.
+
+PrintSimulationReadTest adds five source cases for original snapshot retrieval
+after the creation window, missing job, recorded/current cinema restrictions
+and cancelled booking. These use real transaction-service/JSON logic with
+repository mocks and do not certify MySQL locks or HTTP authorization.
+
+Offline `-pl services/booking-service -am -DskipTests test-compile` completed
+BUILD SUCCESS for 17 modules; no test execution. git diff --check passed.
+Read-only review of the FE generated Booking client found no existing simulator
+call; no FE files were edited. No simulator flag was enabled, runtime job
+API called, new migration created or database command executed. Enabled runtime
+OpenAPI and authenticated scope verification remain open. This is stored
+SIMULATION output retrieval, not physical printing or permission to print again.
+
+## 2026-11-20 — Owner pickup issuance-state fallback
+
+Source review identified that owner GET pickup-pass fetched Inventory before
+checking local ticket issuance, returning 503 even when Booking could already
+prove tickets were still missing. The confirmed-incomplete state now remains
+readable during a dependency outage. BookingPickupService catches only the
+existing ServiceUnavailableException and asks BookingPickupTransactionService
+to re-read ownership/status/seat and ticket counts under its booking lock.
+If status changed, the existing NOT_CONFIRMED response reflects current state;
+if confirmed with a non-empty seat set and fewer issued tickets, it returns
+WAITING_FOR_TICKETS with both expiry and QR null. Equal/excess/ambiguous counts
+still rethrow 503. No fallback may issue a credential or infer a deadline.
+
+Added BookingPickupAvailabilityTest source with three cases using the real
+service/transaction logic and mocked repositories/client: missing issuance,
+matching counts without live context, and cancellation during failed lookup.
+They also check that pass repository/token generation/simulation storage are
+not touched. These are unit-level regression sources, not MySQL lock/race
+evidence, and they have not been executed.
+
+Offline `-pl services/booking-service -am -DskipTests test-compile` completed
+BUILD SUCCESS for 17 modules, including the new test source. git diff --check
+reported no whitespace errors. No test case, migration or API write executed;
+no FE files changed. Existing unrelated changes were preserved. Staff lookup
+and simulation continue requiring current scope/schedule context, and the
+successful Inventory path keeps all expiry/readiness rules. Source DTO shapes,
+endpoints, error codes, JSON fields, MySQL and Kafka contracts are unchanged;
+the documented owner response behavior during dependency failure is expanded.
+Runtime outage/issuance scenarios remain unverified.
+
+## 2026-11-20 — Booking read/ticket response nullability
+
+Backend-only continuation. Reviewed the existing booking/order and individual
+ticket responses in source and the running Booking OpenAPI. The following
+fields use JsonInclude.ALWAYS but the observed schema still omitted required
+and nullability metadata:
+
+| Model | Always-present nullable fields |
+| --- | --- |
+| BookingResponse | showtimeEndsAt, seatCount, capacity |
+| BookingSeatResponse | requestedTicketGroupId, ticketGroupId, ticketGroupName, capacity, unit |
+| BookingTicketService.TicketResponse | checkedInAt |
+| BookingTicketService.LookupResponse | checkedInAt |
+
+Extended the existing BookingPickupOpenApiConfiguration to configure these
+ten fields. Unlike whole pickup records annotated with JsonInclude.ALWAYS,
+these models only force inclusion of selected record components/getters.
+The customizer therefore marks only those fields required and nullable;
+other fields retain their existing omission/required behavior. In particular,
+this does not require totalAmount/payment data while a booking is pending.
+Check-in Result.checkedInAt was not made nullable: normal success/replay
+uses the persisted non-null check-in timestamp. No DTO JSON, lifecycle,
+authorization, error code, database, event or frontend change was made.
+
+Offline `-pl services/booking-service -am -DskipTests compile` completed BUILD
+SUCCESS for 17 modules. A fresh GET after compilation still showed all ten
+fields not required and without null support; the change is DONE IN SOURCE,
+pending Booking reload and runtime schema verification. No process restart,
+test execution, migration or API write was performed. Verify the table above
+after reload and also check that optional non-ALWAYS fields remain optional
+before generating clients. P0.2 and broader P0.3 workflow/race gates stay open.
+
 ## 2026-11-20 — User credential request metadata
 
 Reviewed the staff provisioning and password/email-verification request schemas.

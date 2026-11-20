@@ -19,7 +19,7 @@ Chỉ chủ booking được đọc, kể cả ADMIN cũng không được bỏ 
 | TICKETS_USED | Bộ vé đầy đủ nhưng có vé USED | null |
 | UNAVAILABLE | Snapshot/tập vé không nhất quán, lịch/rạp không nhận pickup, hoặc trạng thái vừa đổi khiến cần đọc lại context | null |
 
-qrPayload/expiresAt luôn xuất hiện, kể cả null; FE phải xóa QR đang hiển thị khi response mới không còn READY. READY chỉ nói QR dùng để tra cứu bộ vé đã phát hành; không khẳng định máy in sẵn sàng hoặc đã in. Không tự phát hành vé/recover vé trong GET. Đơn không CONFIRMED không cần gọi Inventory. Inventory lỗi/không xác minh được context trả 503 BOOKING_PICKUP_CONTEXT_UNAVAILABLE; không thay bằng trạng thái chờ giả.
+qrPayload/expiresAt luôn xuất hiện, kể cả null; FE phải xóa QR đang hiển thị khi response mới không còn READY. READY chỉ nói QR dùng để tra cứu bộ vé đã phát hành; không khẳng định máy in sẵn sàng hoặc đã in. Không tự phát hành vé/recover vé trong GET. Đơn không CONFIRMED không cần gọi Inventory. Khi Inventory lỗi, owner GET kiểm tra lại booking và số đơn vị vé dưới khóa Booking: nếu trạng thái đã đổi thì trả NOT_CONFIRMED theo dữ liệu mới; nếu CONFIRMED, có đơn vị ghế nhưng còn thiếu vé thì trả WAITING_FOR_TICKETS với qrPayload/expiresAt đều null. Đây chỉ là trạng thái phát hành cục bộ, chưa xác minh được hạn/lịch; không coi là pass hợp lệ. Nếu số lượng vé bằng/vượt số đơn vị ghế hoặc dữ liệu không đủ để chứng minh đang thiếu, giữ 503 BOOKING_PICKUP_CONTEXT_UNAVAILABLE. Không tạo hoặc trả credential mới khi thiếu context. Nhánh có Inventory hoạt động giữ nguyên quy tắc hạn và kiểm tra bộ vé đầy đủ.
 
 GET đầu tiên đủ điều kiện lưu một pickup pass riêng trong transaction dưới khóa booking; các GET tiếp theo trả cùng QR. Đây là cấp credential theo yêu cầu đọc, chỉ ghi metadata pickup, không đổi booking/payment/seat hold hoặc phát event. Khóa booking dùng chung với issuance, recovery, check-in và simulation; hai request GET đồng thời không tạo hai pass. Chỉ cấp khi tập booking_seats/tickets khớp theo ID, booking/showtime, seat number, snapshot và capacity, không chỉ so sánh số lượng. Ghế COUPLE vẫn một vé/capacity 2.
 
@@ -99,6 +99,40 @@ Bộ vé phải khớp toàn bộ booking_seats theo ID, không chỉ đếm s�
 
 ### Idempotency, audit và giới hạn mô phỏng
 
+**Đọc lại kết quả đã lưu:** `GET /api/v1/bookings/{bookingId}/print-simulations`
+trả cùng PrintSimulationResponse trong ApiResponse, Cache-Control no-store.
+Không có body hoặc Idempotency-Key; chỉ cần UUID booking đầy đủ và access token
+ADMIN/STAFF. Cả GET/POST cùng bị tắt khi BOOKING_PRINT_SIMULATOR_ENABLED=false.
+Khi bật, GET là operation getBookingPrintSimulation; không tạo endpoint in thật
+hoặc DTO thay thế. Chưa có job: 404 BOOKING_PRINT_SIMULATION_NOT_FOUND.
+
+GET dùng lại User me/staff-context và Inventory context hiện tại, sau đó khóa
+booking, kiểm tra CONFIRMED/showtimeId và kiểm tra quyền đối với cả rạp hiện tại
+của suất lẫn rạp đã ghi trong snapshot job. ADMIN được mọi rạp, STAFF chỉ rạp
+được gán; nhân viên khác cùng rạp có thể đọc kết quả nhưng không đổi actor/device
+gốc. Booking hủy, suất không còn trạng thái phục vụ, rạp inactive hoặc không xác
+minh được phụ thuộc vẫn bị chặn như chính sách replay POST hiện hành.
+
+GET chỉ đọc snapshot đã lưu, không đọc lại/đổi các vé, không tạo job, không
+mô phỏng lần nữa và không thay completedAt. Không áp cửa sổ *tạo* job +15 phút
+cho việc đọc kết quả cũ; vẫn phải qua các điều kiện quyền/trạng thái vừa nêu.
+Vé USED sau lần mô phỏng không làm mất lịch sử snapshot, nhưng kết quả đọc này
+không phải quyền in hoặc quyền tạo lại job. POST và các kiểm tra chống in lại/
+idempotency vẫn giữ nguyên. Khi lookup báo simulationEnabled=true và đã có
+simulation, Staff có thể GET để đọc kết quả thay vì tạo key mới.
+
+Nguồn PrintSimulationReadTest bổ sung năm tình huống: đọc snapshot sau cửa sổ
+tạo job và giữ actor gốc, chưa có job, sai rạp snapshot, sai rạp hiện tại và
+booking bị hủy. Đây là unit source với repository mock/JSON mapper thật; không
+phải bằng chứng MySQL concurrency hoặc phân quyền HTTP runtime. Chưa chạy test.
+
+Kiểm tra nguồn GET: Maven offline
+`-pl services/booking-service -am -DskipTests test-compile` BUILD SUCCESS cho
+17 module. Không thực thi năm test case, bật simulator hoặc gọi API ghi/đọc
+job thực tế. git diff --check không có lỗi whitespace. Cần đối chiếu OpenAPI
+khi flag được bật và kiểm tra scope/replay trên môi trường được duyệt trước
+khi dùng ở Staff/POS. Generated client FE hiện chưa có lệnh gọi simulator này.
+
 Mỗi booking tối đa một row booking_print_simulations. Cùng key/actor/device/outcome trả snapshot kết quả cũ; không thực hiện mô phỏng lần nữa, kể cả vé đã USED sau lần đầu. Vẫn kiểm tra lại quyền/rạp, trạng thái CONFIRMED, lịch/rạp hợp lệ trước khi trả snapshot. Kết quả replay là lịch sử, không phải quyền in hiện tại. Replay không kiểm tra lại thời hạn tạo job nên có thể đọc kết quả cũ sau +15 phút nếu các điều kiện quyền/lịch còn hợp lệ.
 
 Key khác cho cùng booking bị 409 BOOKING_PRINT_SIMULATION_ALREADY_EXISTS. Cùng key nhưng khác actor/device/outcome, hoặc cùng actor tái sử dụng key cho booking khác, bị 409 BOOKING_PRINT_IDEMPOTENCY_CONFLICT. Unique booking_id và unique actor_id/idempotency_key bảo vệ cả concurrency; khóa booking chặn hai key đồng thời tạo hai row. Lỗi mô phỏng cũng lưu kết quả terminal và không tự tạo lần thử mới bằng key khác; retry cùng key chỉ trả lỗi mô phỏng đã ghi.
@@ -127,6 +161,21 @@ Kiểm tra biên dịch cuối: Maven offline `-pl services/booking-service,serv
 **Đã có source ở bước nền tảng:** API quản lý tài khoản nhân viên và gán rạp trong User Service, mô tả bên dưới. **Chưa có:** pickup-pass, lookup QR booking, print job, API xác nhận máy in, quyền Staff theo rạp trong Booking, suffix search, trang FE và generated client mới. Không gọi các endpoint đề xuất trong hội thoại như thể đã tồn tại. Không mở quyền STAFF cho các route quản lý Booking hiện tại.
 
 ### API Admin quản lý nhân viên
+
+**Hardening persistence ngày 2026-11-20:** AdministrativeStaffService dùng lại
+User trả về từ users.saveAndFlush trước khi tạo credential/profile/assignment
+và gán role. Đây là cùng mẫu đang dùng trong GoogleIdentityServiceImpl và
+PendingRegistrationConfirmationServiceImpl. BaseEntity cấp sẵn UUID và version;
+khi repository dùng merge, instance trả về có thể khác object ban đầu dù cùng
+ID. Không giữ object ban đầu làm tham chiếu cho profile và assignment. Bổ sung
+nguồn kiểm thử AdministrativeStaffPersistenceTest cho trường hợp này; chưa chạy
+test hoặc tạo tài khoản thật qua API. Không đổi contract, quyền, mật khẩu,
+trạng thái account, transaction boundary hoặc migration MySQL.
+
+Kiểm tra nguồn hardening này: Maven offline
+`-pl services/user-service -am -DskipTests test-compile` BUILD SUCCESS cho
+15 module; chỉ biên dịch mã main/test, không thực thi test case. git diff
+--check không có lỗi whitespace. Chưa xác minh persistence qua API/MySQL.
 
 Yêu cầu đồng thời role ADMIN và permission user:manage từ access token do User Service cấp. STAFF/USER hoặc client credential chỉ có user:manage không được gọi. Các route nằm dưới /api/v1/users nên Gateway route hiện có chuyển tiếp tới User Service. User Service kiểm tra cả filter và method security; giữ phân quyền quản trị hiện tại của các endpoint khác.
 

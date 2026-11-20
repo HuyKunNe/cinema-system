@@ -5,6 +5,7 @@ import com.cinema.booking.client.PrintSimulationAccessClient.Access;
 import com.cinema.booking.client.PrintSimulationAccessClient.PickupSchedule;
 import com.cinema.booking.dto.response.BookingPickupLookupResponse;
 import com.cinema.booking.dto.response.BookingPickupPassResponse;
+import com.cinema.booking.enums.BookingPickupStatus;
 import com.cinema.booking.enums.BookingStatus;
 import com.cinema.booking.exception.BookingErrorCode;
 import com.cinema.booking.repository.BookingPickupPassRepository;
@@ -44,10 +45,19 @@ public class BookingPickupService {
                 bookings.findByIdAndUserId(bookingId, owner)
                         .orElseThrow(
                                 () -> new NotFoundException(BookingErrorCode.BOOKING_NOT_FOUND));
-        PickupSchedule schedule =
-                booking.getStatus() == BookingStatus.CONFIRMED
-                        ? schedule(booking.getShowtimeId())
-                        : null;
+        PickupSchedule schedule = null;
+        if (booking.getStatus() == BookingStatus.CONFIRMED) {
+            try {
+                schedule = schedule(booking.getShowtimeId());
+            } catch (ServiceUnavailableException failure) {
+                var pending = transaction.owner(owner, bookingId, null);
+                if (pending.status() == BookingPickupStatus.WAITING_FOR_TICKETS
+                        || pending.status() == BookingPickupStatus.NOT_CONFIRMED) {
+                    return pending;
+                }
+                throw failure;
+            }
+        }
         return transaction.owner(owner, bookingId, schedule);
     }
 
