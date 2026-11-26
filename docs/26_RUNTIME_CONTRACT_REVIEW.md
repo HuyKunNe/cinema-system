@@ -1,5 +1,96 @@
 # Runtime contract review — 2026-11-11
 
+## 2026-11-26 — Showtime ticket-price metadata
+
+ShowtimeTicketPricesService.toFare returns applicable=false with price=null
+for NOT_APPLICABLE cells, and rejects inconsistent/non-priced data instead of
+inventing a price. TicketGroupPrices receives the optional eligibilityDescription
+from the pricing group; the default group requires this description to be null.
+Both nested response records use JsonInclude.ALWAYS. Their generated FE models
+currently mark every field optional and omit null unions for these two fields.
+
+Extended the existing ShowtimeResponseOpenApiConfiguration to follow the actual
+ticketGroups array/item reference and nested fares array/item reference. All
+properties of those two ALWAYS records become required, with only
+eligibilityDescription and price respectively nullable. Existing schema names,
+types, enums, formats and array references remain unchanged. No pricing resolver,
+DTO, controller, authorization, MySQL, Kafka or FE change; no client generation.
+
+GET Inventory /v3/api-docs was unavailable in this turn. Runtime schema/reload
+verification remains open. A separate source/client review finding remains:
+ShowtimeSeatQuoteResponse.SeatQuote has five fields while
+ShowtimeGroupedSeatQuoteResponse.SeatQuote has nine; both generated FE parent
+models currently reference the same SeatQuote model. This increment deliberately
+does not mark that shared schema required or change quote behavior. Distinct
+quote schema identity and runtime verification need a separate focused change.
+
+Verification: offline `-pl services/inventory-service -am -DskipTests compile`
+completed BUILD SUCCESS across 17 reactor projects. `git diff --check` passed.
+No tests, migration, service startup or API write was executed. Existing
+uncommitted changes were retained.
+
+## 2026-11-26 — Inventory showtime snapshot metadata
+
+Source review of ShowtimeResponse, ShowtimeMapper, the optional pricing-policy
+association and nullable snapshot columns confirms four always-present nullable
+properties: screeningVersion, scheduling, pricingPolicyId and
+pricingPolicyVersionId. Existing constructors and migrations retain support for
+old showtimes without these snapshots. The screening-version response includes
+all seven properties through JsonInclude.ALWAYS; subtitleLanguage is null for
+DUBBED/NO_SUBTITLES snapshots, while projectionTechnology has a STANDARD fallback.
+
+Added ShowtimeResponseOpenApiConfiguration following the existing service
+customizers. It marks the four parent properties required/nullable and all
+screening-version properties required, with subtitleLanguage nullable. OpenAPI
+3.0 reference properties use an allOf wrapper with nullable instead of a nullable
+sibling on $ref; 3.1 uses anyOf with a null branch. Existing types, enums, formats
+and references are retained. Optional roomLayoutId and other response fields are
+outside this increment. No DTO/controller annotation, JSON behavior, validation,
+authorization, persistence or migration changed.
+
+Read-only review of the generated FE ShowtimeResponse and screening-version
+models found optional properties without null unions. No FE edits or client
+generation were performed. GET Inventory /v3/api-docs on port 8083 was unavailable
+in this turn, so no current runtime-schema mismatch or successful reload is
+claimed. Runtime OpenAPI/client verification and P0.2/P0.3 gates remain open.
+
+Verification: offline `-pl services/inventory-service -am -DskipTests compile`
+completed BUILD SUCCESS for 17 reactor projects outside the sandbox. The first
+sandboxed attempt failed when the compiler accessed cached eureka-client 2.0.6;
+no dependency or cache changes were made. `git diff --check` passed. No test,
+migration, service startup or API write was executed.
+
+## 2026-11-26 — Movie response nullability
+
+Read-only GET of the running Movie `/v3/api-docs` (OpenAPI 3.0.1) showed no
+required/nullable metadata for MovieResponse.backdropUrl/ageRating,
+MovieHeroConfigurationResponse.heroStartsAt/heroEndsAt and
+MovieScreeningVersionResponse.subtitleLanguage. The corresponding DTOs force
+JSON inclusion, while entity/service mapping permits null. In particular,
+MovieScreeningVersion.getSubtitleLanguage returns null for the stored empty
+subtitle of DUBBED/NO_SUBTITLES versions; the non-null database column does not
+make the response non-null.
+
+Added MovieResponseOpenApiConfiguration following the existing Inventory and
+Booking customizer pattern, supporting OpenAPI 3.0 nullable and 3.1 anyOf-null.
+These five fields are required and nullable. The screening-version record has
+class-level JsonInclude.ALWAYS, so all its fields are required; only its subtitle
+is nullable. Other Movie fields, including the deliberately optional nested
+screeningVersions list, retain their existing metadata. Enum values, formats,
+DTOs, controller mappings, validation, security and MySQL are unchanged.
+
+Read-only FE generated model review confirmed the five fields currently have
+optional types without null unions. No FE file was edited or client generated.
+Runtime spec observed after the initial build attempt still had the old schema;
+no service restart, authenticated workflow, test, migration or API write ran.
+Runtime reload and FE generation remain open; P0.2/P0.3 are not closed.
+
+Verification: offline `-pl services/movie-service -am -DskipTests compile`
+succeeded for 15 reactor projects on retry outside the sandbox. The initial
+sandboxed invocation failed while the compiler accessed cached eureka-client
+2.0.6; no dependency version or cache content was changed. `git diff --check`
+passed. Tests were not executed.
+
 ## 2026-11-20 — Read persisted print simulation
 
 Source had only POST on print-simulations, requiring the original idempotency

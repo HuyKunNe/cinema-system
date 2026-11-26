@@ -47,6 +47,8 @@
 
     <properties>
         <java.version>21</java.version>
+        <cinema.build.revision>unknown</cinema.build.revision>
+        <cinema.build.source-state>unknown</cinema.build.source-state>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring.boot.version>3.5.16</spring.boot.version>
@@ -155,6 +157,21 @@
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
                     <version>${spring.boot.maven.plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>cinema-build-info</id>
+                            <phase>generate-resources</phase>
+                            <goals>
+                                <goal>build-info</goal>
+                            </goals>
+                            <configuration>
+                                <additionalProperties>
+                                    <revision>${cinema.build.revision}</revision>
+                                    <sourceState>${cinema.build.source-state}</sourceState>
+                                </additionalProperties>
+                            </configuration>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
 

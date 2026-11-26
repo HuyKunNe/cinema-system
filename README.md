@@ -43,6 +43,42 @@ implemented.
 
 # Current Status
 
+Source review on 2026-11-26 (capabilities below are not an end-to-end runtime certification):
+
+| Service   | Current source capabilities                                                                                                      | Remaining limitations                                                                              |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| User      | OIDC issuer, Google identity provisioning, email verification, profile/account lifecycle, Admin-managed Staff cinema assignments | Password recovery and related delivery policies remain open                                        |
+| Movie     | Catalog, nested screening versions, scheduled release lifecycle                                                                  | Midnight/startup lifecycle runtime verification remains open                                       |
+| Inventory | Cinema/room/layout/pricing versions, showtime batches, sales lifecycle, quotes and seat holds                                    | Lifecycle-release locking and real MySQL concurrency verification remain open                      |
+| Booking   | Saga/outbox, owner bookings, per-seat tickets/check-in, booking pickup QR and scoped print simulation                            | Physical printing is not implemented; simulation is opt-in                                         |
+| Payment   | Payment state machine, event publication and provider registry                                                                   | Only MOCK has a concrete provider adapter; VNPAY/MOMO selection is not a real provider integration |
+
+Config, Discovery and Gateway support these services; shared libraries provide
+technical contracts. Notification R28 remains deferred. The historical milestones
+below do not supersede current source limitations or pending verification gates.
+
+### Build identity for runtime review
+
+The existing Spring Boot Maven plugin generates `META-INF/build-info.properties`
+for the eight runnable applications during `generate-resources`. After the
+application loads those resources, its existing `/actuator/info` exposes build
+artifact, version, time, revision and sourceState. No new endpoint or dependency
+is introduced. Revision and sourceState default to `unknown`; they are explicit
+build inputs, not an automatic Git inspection or a proof of deployment parity.
+
+For a locally stamped build, run from the repository root in PowerShell:
+
+```powershell
+$buildRevision = (git rev-parse HEAD).Trim()
+$buildSourceState = if (git status --porcelain) { 'dirty' } else { 'clean' }
+mvn "-Dcinema.build.revision=$buildRevision" "-Dcinema.build.source-state=$buildSourceState" -DskipTests compile
+```
+
+Read `build.revision` together with `build.sourceState`: `dirty` means the commit
+does not describe all compiled changes. IDE runs must include the generated
+resource on their classpath. An already running process must reload the new
+build before its metadata can be used; this change does not restart services.
+
 | Scope                                                           | Status      |
 | --------------------------------------------------------------- | ----------- |
 | R1-R24                                                          | Completed   |
@@ -578,25 +614,25 @@ startup model and required environment variables.
 
 # Documentation
 
-| Document                        | Purpose                                            |
-| ------------------------------- | -------------------------------------------------- |
-| `docs/00_PROJECT_CONTEXT.md`    | Project state and current checkpoint               |
-| `docs/01_AI_CONTEXT.md`         | Continuation context and implementation guardrails |
-| `docs/02_ARCHITECTURE.md`       | System architecture and ownership                  |
-| `docs/03_TECHNOLOGY_STACK.md`   | Versioned technology baseline                      |
-| `docs/04_MODULES.md`            | Module responsibilities                            |
-| `docs/05_CODING_CONVENTIONS.md` | Coding conventions                                 |
-| `docs/06_DATABASE_DESIGN.md`    | Database ownership and design                      |
-| `docs/07_EVENT_CATALOG.md`      | Event contracts and evolution                      |
-| `docs/08_SECURITY.md`           | Security architecture and rules                    |
-| `docs/09_OUTBOX.md`             | Transactional Outbox rules                         |
-| `docs/10_ROADMAP.md`            | Authoritative implementation sequence              |
-| `docs/11_CHANGELOG.md`          | Completed historical changes                       |
-| `docs/12_DEPENDENCY_RULES.md`   | Compile-time and runtime boundaries                |
-| `docs/13_SEQUENCE_DIAGRAMS.md`  | Approved interaction flows                         |
-| `docs/14_DEPLOYMENT.md`         | Local and deployment guidance                      |
+| Document                        | Purpose                                                           |
+| ------------------------------- | ----------------------------------------------------------------- |
+| `docs/00_PROJECT_CONTEXT.md`    | Project state and current checkpoint                              |
+| `docs/01_AI_CONTEXT.md`         | Continuation context and implementation guardrails                |
+| `docs/02_ARCHITECTURE.md`       | System architecture and ownership                                 |
+| `docs/03_TECHNOLOGY_STACK.md`   | Versioned technology baseline                                     |
+| `docs/04_MODULES.md`            | Module responsibilities                                           |
+| `docs/05_CODING_CONVENTIONS.md` | Coding conventions                                                |
+| `docs/06_DATABASE_DESIGN.md`    | Database ownership and design                                     |
+| `docs/07_EVENT_CATALOG.md`      | Event contracts and evolution                                     |
+| `docs/08_SECURITY.md`           | Security architecture and rules                                   |
+| `docs/09_OUTBOX.md`             | Transactional Outbox rules                                        |
+| `docs/10_ROADMAP.md`            | Authoritative implementation sequence                             |
+| `docs/11_CHANGELOG.md`          | Completed historical changes                                      |
+| `docs/12_DEPENDENCY_RULES.md`   | Compile-time and runtime boundaries                               |
+| `docs/13_SEQUENCE_DIAGRAMS.md`  | Approved interaction flows                                        |
+| `docs/14_DEPLOYMENT.md`         | Local and deployment guidance                                     |
 | `docs/19_FE_API_CONTRACT.md`    | Source-reviewed FE contracts, examples and remaining runtime gaps |
-| `docs/decisions/`               | Architecture Decision Records                      |
+| `docs/decisions/`               | Architecture Decision Records                                     |
 
 The roadmap defines completion. The changelog records history. Accepted ADRs
 resolve durable architectural decisions.

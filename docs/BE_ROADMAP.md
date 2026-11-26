@@ -6,6 +6,17 @@
 
 ## Cách đọc trạng thái
 
+**Rà soát ngày 2026-11-26:** User/Movie/Inventory/Booking/Payment có code runtime;
+Notification vẫn Deferred. Payment hiện chỉ có adapter MOCK; enum lựa chọn
+VNPAY/MOMO không đồng nghĩa đã tích hợp hai provider thật. In vé hiện chỉ có
+simulator bật theo cấu hình, chưa có adapter máy in vật lý.
+
+**P0.3 — DONE IN SOURCE, VERIFY runtime:** plugin Spring Boot hiện có sinh
+build-info cho tám ứng dụng khi generate-resources; `/actuator/info` có thể trả
+revision/sourceState sau khi load bản build mới. Hai giá trị mặc định unknown,
+chỉ được đóng dấu qua Maven properties; xem README. Không tự khởi động lại
+service, không đóng cổng xác minh contract hoặc P0.2 chỉ nhờ build metadata.
+
 **Quan sát local chỉ đọc ngày 2026-11-17:** Movie health trả UP; GET catalog
 status UPCOMING có totalElements=0, NOW_SHOWING có totalElements=13. Không có
 UPCOMING quá ngày trong kết quả tại thời điểm đọc. Đây không chứng minh cron
@@ -86,6 +97,30 @@ các cổng concurrency, rollback và runtime còn mở.
 **Phụ thuộc:** xác nhận phạm vi hiện tại trong README và code; không tự mở rộng sang R28.
 
 ### P0.3 — Chốt contract dùng chung cho FE
+
+**Bảng giá vé suất chiếu ngày 2026-11-26 — DONE IN SOURCE / VERIFY:** mở rộng
+customizer Showtime đang có cho hai record ALWAYS TicketGroupPrices và SeatFare,
+khai báo đủ field required; eligibilityDescription và price cho phép null đúng
+service hiện tại. Đi theo reference từ response thay vì đoán tên schema con.
+Không đổi tính giá, JSON, MySQL hoặc FE; Inventory OpenAPI chưa truy cập được.
+Rà soát còn thấy hai DTO quote cùng tên SeatQuote và client đang dùng chung model;
+cần xử lý định danh schema riêng trong lượt tiếp theo. P0.2/P0.3 vẫn mở.
+
+**Inventory suất chiếu ngày 2026-11-26 — DONE IN SOURCE / VERIFY:** đối chiếu
+DTO/mapper và migration hiện có, khai báo required + nullable cho screeningVersion,
+scheduling, pricingPolicyId, pricingPolicyVersionId; snapshot phiên bản chiếu
+ALWAYS có đủ bảy field, subtitleLanguage cho phép null. Thêm customizer theo mẫu
+Inventory hiện có, không đổi JSON, dữ liệu MySQL, controller hoặc FE. GET OpenAPI
+Inventory không truy cập được trong lượt này; chưa xác minh runtime hoặc generate
+client. Không đóng P0.2/P0.3; chi tiết ở docs/26_RUNTIME_CONTRACT_REVIEW.md.
+
+**Movie response ngày 2026-11-26 — DONE IN SOURCE / VERIFY:** GET OpenAPI hiện
+hành và FE client chỉ đọc đều chưa phản ánh null cho backdropUrl/ageRating,
+heroStartsAt/heroEndsAt và subtitleLanguage. Thêm customizer theo mẫu đang có,
+khai báo năm field required + nullable; screening-version ALWAYS khai báo đủ
+field bắt buộc. Không sửa DTO/controller, nghiệp vụ, MySQL hoặc FE. Giữ
+screeningVersions tùy chọn trong response phim. Chi tiết và trạng thái kiểm
+tra tại docs/26_RUNTIME_CONTRACT_REVIEW.md; chưa đóng P0.2/P0.3.
 
 **Đọc lại simulation — DONE IN SOURCE / VERIFY:** bổ sung GET trên cùng resource
 print-simulations có sẵn, dùng lại response và kiểm tra quyền/context/khóa booking

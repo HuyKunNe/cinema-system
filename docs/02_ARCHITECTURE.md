@@ -1,8 +1,8 @@
 # System Architecture
 
 **Version:** R27.6
-**Status:** Payment webhooks implemented; Payment result publication is the active target
-**Last updated:** 2026-09-10
+**Status:** Inventory lifecycle-release hardening and runtime contract verification remain open; Notification R28 deferred
+**Last updated:** 2026-11-26
 
 This document defines the authoritative architecture of Cinema Booking System.
 

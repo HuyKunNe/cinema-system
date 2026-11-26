@@ -1,5 +1,55 @@
 # Changelog
 
+2026-11-26 ticket-price response metadata: extended the existing Showtime
+customizer to resolve ticket-group and fare item schemas through their parent
+references. ALWAYS record properties are required; optional group eligibility
+and non-applicable fare price are nullable. Preserves pricing rules, schema
+names, DTOs, JSON, security, MySQL, Kafka and FE. Runtime Inventory OpenAPI was
+unavailable. Separate legacy/grouped SeatQuote schema identity issue is recorded
+for follow-up; no shared quote schema was changed in this increment.
+Offline Inventory compile with -DskipTests passed for 17 reactor projects;
+git diff --check passed. No tests, migrations, service startup or API writes ran.
+
+2026-11-26 Inventory showtime response metadata: added a customizer for four
+always-present nullable snapshot/pricing references and the nullable subtitle
+inside the always-included screening-version snapshot. Preserves the existing
+legacy-showtime representation, projection fallback, schema references, enums
+and formats. OpenAPI 3.0 wraps nullable references in allOf; 3.1 uses anyOf-null.
+No DTO/controller annotation, JSON, security, MySQL or FE change. Inventory
+runtime OpenAPI was unavailable; client generation and verification gates remain
+open. Existing uncommitted build-provenance and Movie changes were preserved.
+Offline Inventory reactor compile with -DskipTests passed for 17 projects after
+retry outside the sandbox for cached eureka-client access. git diff --check
+passed. No tests, migrations, service startup or API writes were executed.
+
+2026-11-26 Movie OpenAPI response parity: added a service configuration customizer
+for always-present nullable backdrop/age-rating, hero timing and subtitle fields.
+The ALWAYS screening-version record now declares every property required, with
+only subtitle nullable. Supports the existing OpenAPI 3.0/3.1 pattern, preserves
+enum values and formats, and keeps screeningVersions optional. Running spec and
+read-only FE model review confirmed the mismatch before modification. No Swagger
+annotations were added to controllers/DTOs; no JSON, security, MySQL or FE change.
+Offline Movie reactor compile with -DskipTests succeeded for 15 projects after
+retry outside the sandbox for cached eureka-client access. Tests were not run;
+runtime reload/client generation and P0.2/P0.3 verification remain pending.
+
+2026-11-26 build provenance and source overview: the existing managed Spring
+Boot Maven plugin now generates build-info during generate-resources for the
+eight applications that declare it. Revision/sourceState are explicit Maven
+inputs with unknown defaults; no Git/environment secrets are collected.
+README documents local stamping and current service capabilities, including
+MOCK-only payment adapters and simulation-only printing. Runtime reload and
+Inventory verification gates remain open. No dependency, API business contract,
+MySQL migration, FE or Notification scope change.
+
+Verification: offline root Maven compile with `-DskipTests` and an explicitly
+selected local Maven repository succeeded across all 29 reactor projects.
+Generated metadata was checked in all eight applications: revision matches the
+supplied commit, sourceState is dirty, and only the seven expected build keys
+are present. `git diff --check` passed. Tests, runtime reload/HTTP verification
+and database commands were not run. The initial invocation failed to select
+the intended Maven repository; quoting that property corrected the invocation.
+
 2026-11-20 stored print simulation read: added GET on the existing conditional
 print-simulations resource so scoped Staff/Admin can recover a stored result
 without replaying a create request or retaining its idempotency key. Reuses
