@@ -6,7 +6,7 @@ import com.cinema.common.exception.exception.ValidationException;
 import com.cinema.inventory.dto.request.QuoteShowtimeSeatsRequest;
 import com.cinema.inventory.dto.response.FareMatrixResponse.CellResponse;
 import com.cinema.inventory.dto.response.ShowtimeGroupedSeatQuoteResponse;
-import com.cinema.inventory.dto.response.ShowtimeGroupedSeatQuoteResponse.SeatQuote;
+import com.cinema.inventory.dto.response.ShowtimeGroupedSeatQuoteResponse.GroupedSeatQuote;
 import com.cinema.inventory.enums.SeatType;
 import com.cinema.inventory.enums.ShowtimeStatus;
 import com.cinema.inventory.exception.InventoryErrorCode;
@@ -102,7 +102,7 @@ public class ShowtimeGroupedSeatQuoteService {
         var format = screening.getContentFormat();
 
         Map<FareKey, CellResponse> resolvedFares = new HashMap<>();
-        List<SeatQuote> lines = new ArrayList<>();
+        List<GroupedSeatQuote> lines = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
 
         for (var seat : availableSeats.seats()) {
@@ -134,7 +134,7 @@ public class ShowtimeGroupedSeatQuoteService {
                             .orElseThrow(ShowtimeGroupedSeatQuoteService::inconsistent);
 
             lines.add(
-                    new SeatQuote(
+                    new GroupedSeatQuote(
                             seat.showSeatId(),
                             seat.seatNumber(),
                             seat.seatType(),
@@ -220,4 +220,3 @@ public class ShowtimeGroupedSeatQuoteService {
 
     private record FareKey(SeatType seatType, UUID ticketGroupId) {}
 }
-

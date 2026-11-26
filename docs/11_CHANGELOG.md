@@ -1,5 +1,31 @@
 # Changelog
 
+2026-11-26 fare matrix response metadata: added a service customizer for the
+always-included ticket-group, cell and validation-issue records. Declares their
+properties required and accurately allows null eligibility descriptions, cell
+amounts and global issue scope/cell references. Resolves schemas through parent
+array references and follows existing OpenAPI 3.0/3.1 handling. No DTO/controller
+annotation, JSON, pricing/publish rule, permissions, MySQL, Kafka or FE change.
+Existing uncommitted grouped-quote work was preserved; verification gates remain
+open.
+Offline Inventory reactor compile with -DskipTests passed for 17 projects;
+git diff --check passed. No tests, migration, service startup or API writes ran.
+Read-only runtime OpenAPI became available (3.1.0), but still lacks the matrix
+nullability changes and still shares SeatQuote for both quote responses. Runtime
+reload remains pending; source/runtime parity is not asserted.
+
+2026-11-26 distinct quote schema identity: renamed the grouped response's nested
+SeatQuote record to GroupedSeatQuote and updated its service references. The
+legacy GET retains SeatQuote; the grouped POST now has a distinct Java/schema
+name. No endpoint, JSON field/type/order, calculation, authorization, MySQL or
+Kafka change. Existing Showtime customizer marks the grouped ALWAYS record's
+nine properties required and eligibilityDescription nullable without touching
+the legacy line schema. FE generated client remains unchanged; runtime spec was
+unavailable, so reload and client generation remain pending.
+Offline Inventory reactor -DskipTests test-compile passed for 17 projects,
+including existing test sources. No tests executed; git diff --check passed.
+No migration, database command, service startup or API write was performed.
+
 2026-11-26 ticket-price response metadata: extended the existing Showtime
 customizer to resolve ticket-group and fare item schemas through their parent
 references. ALWAYS record properties are required; optional group eligibility

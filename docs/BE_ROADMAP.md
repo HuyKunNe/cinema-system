@@ -98,6 +98,21 @@ các cổng concurrency, rollback và runtime còn mở.
 
 ### P0.3 — Chốt contract dùng chung cho FE
 
+**Ma trận giá ngày 2026-11-26 — DONE IN SOURCE / VERIFY:** thêm customizer theo
+mẫu hiện có cho các record ALWAYS TicketGroupResponse, CellResponse và Issue;
+đủ field required, cho phép null ở eligibilityDescription, amount, scope, cell
+đúng luồng render/validate. Không đổi JSON, tính giá, điều kiện publish, MySQL,
+quyền hoặc FE. Không thấy thêm tên DTO public trùng trong Inventory sau đổi tên
+quote nhóm. Source không thay thế xác minh OpenAPI runtime/client; P0.2/P0.3 mở.
+
+**Tách schema quote ngày 2026-11-26 — DONE IN SOURCE / VERIFY:** đổi tên record
+con của response quote nhóm thành GroupedSeatQuote; GET vẫn dùng SeatQuote năm
+field, POST dùng GroupedSeatQuote chín field. Cập nhật tham chiếu Java của service
+và metadata required/nullable cho record nhóm ALWAYS. Không thêm DTO song song,
+annotation Swagger, endpoint hoặc thay JSON/tính giá/quyền/MySQL. Điểm trùng tên
+ghi ở lượt trước đã xử lý trong source; runtime Inventory chưa truy cập được,
+chưa generate client FE nên P0.2/P0.3 vẫn mở.
+
 **Bảng giá vé suất chiếu ngày 2026-11-26 — DONE IN SOURCE / VERIFY:** mở rộng
 customizer Showtime đang có cho hai record ALWAYS TicketGroupPrices và SeatFare,
 khai báo đủ field required; eligibilityDescription và price cho phép null đúng

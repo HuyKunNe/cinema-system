@@ -1,5 +1,63 @@
 # Runtime contract review — 2026-11-11
 
+## 2026-11-26 — Fare matrix and validation nullability
+
+Inventory DTO declaration review found no further duplicate public type names
+after the grouped quote rename. FareMatrixResponse.TicketGroupResponse and
+CellResponse, plus FareMatrixValidationResponse.Issue, use JsonInclude.ALWAYS.
+FareMatrixService.render returns amount=null for missing/UNCONFIGURED values;
+FareMatrixCell.Value also requires null amounts for NOT_APPLICABLE. Group
+eligibility descriptions are optional. DraftFareMatrixValidationService.global
+and uniform-fare validation emit issues with scope=null and cell=null.
+
+Added FareMatrixOpenApiConfiguration following the existing service customizer
+pattern. Resolves nested records through their parent array references, marks
+all their properties required and permits null for eligibilityDescription,
+amount, scope and cell respectively. Preserves other properties, types, enum
+values, formats and references. OpenAPI 3.0 nullable object references use an
+allOf wrapper; 3.1 uses anyOf-null. The parent response and other matrix records
+retain existing metadata. No controller/DTO Swagger annotation, pricing,
+validation/publish rule, JSON, permission, MySQL or Kafka change.
+
+Read-only FE generated CellResponse, Issue and TicketGroupResponse review found
+optional properties without the relevant null unions. No FE edits or client
+generation were performed. Existing uncommitted quote changes are preserved.
+Runtime Inventory OpenAPI availability and verification are reported separately;
+this source increment does not close P0.2/P0.3 or certify FE generation.
+
+Verification: offline `-pl services/inventory-service -am -DskipTests compile`
+completed BUILD SUCCESS for 17 reactor projects. `git diff --check` passed.
+No tests, migrations, service startup, database command or API writes ran.
+Read-only runtime GET became available during this turn: OpenAPI 3.1.0 still
+shows the four fields without required/null metadata, and both quote responses
+still point to SeatQuote. Thus the observed running spec does not yet reflect
+either this increment or the preceding grouped-schema rename. No restart was
+performed and current source/runtime parity is not claimed.
+
+## 2026-11-26 — Distinct seat-quote schemas
+
+The source/client identity finding below is addressed in source by renaming only
+the grouped response's nested record to GroupedSeatQuote. The legacy GET keeps
+SeatQuote (five fields); POST uses GroupedSeatQuote (nine fields). Updated the
+grouped service's import/list/construction references; field order, types, JSON
+names and calculation remain unchanged. No new DTO or Swagger annotation was
+added. Existing controller return types, operation names and authorization stay
+unchanged. No other source reference to the old nested grouped name was found.
+
+Extended the existing Showtime response customizer through the grouped parent
+seats item reference. Its ALWAYS record requires all nine properties and permits
+null only for eligibilityDescription. The legacy five-field schema is untouched.
+The FE generated parents still reference one SeatQuote model; FE was read only.
+After Inventory reload, verify GET seats.items references SeatQuote and POST
+seats.items references GroupedSeatQuote, then regenerate the FE client. Do not
+manually patch generated files. Inventory port 8083 OpenAPI was unavailable in
+this turn; runtime resolution/client generation and P0.2/P0.3 remain unverified.
+
+Verification: offline `-pl services/inventory-service -am -DskipTests
+test-compile` succeeded for 17 reactor projects, including 82 Inventory test
+source files. No test was executed. `git diff --check` passed. No migration,
+database command, service startup or API write was performed.
+
 ## 2026-11-26 — Showtime ticket-price metadata
 
 ShowtimeTicketPricesService.toFare returns applicable=false with price=null

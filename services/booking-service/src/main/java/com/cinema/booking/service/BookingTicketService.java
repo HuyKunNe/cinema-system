@@ -7,6 +7,7 @@ import com.cinema.booking.exception.BookingErrorCode;
 import com.cinema.booking.repository.BookingRepository;
 import com.cinema.booking.repository.BookingSeatRepository;
 import com.cinema.booking.repository.BookingTicketRepository;
+import com.cinema.booking.validation.BookingTicketSetValidator;
 import com.cinema.common.exception.exception.ConflictException;
 import com.cinema.common.exception.exception.NotFoundException;
 import com.cinema.common.exception.exception.ValidationException;
@@ -90,6 +91,9 @@ public class BookingTicketService {
         if (bookingSeats.isEmpty())
             throw new ValidationException(BookingErrorCode.SEAT_NUMBERS_REQUIRED);
         BookingTicketSnapshotValidator.validate(booking, bookingSeats, event);
+        if (!BookingTicketSetValidator.isConsistentSubset(booking, bookingSeats, existing)) {
+            throw new ConflictException(BookingErrorCode.RESERVATION_RESULT_MISMATCH);
+        }
         for (var seat : bookingSeats)
             if (!ids.contains(seat.getId())) tickets.save(new BookingTicket(seat));
     }
@@ -108,15 +112,14 @@ public class BookingTicketService {
         if (bookingSeats.isEmpty())
             throw new ValidationException(BookingErrorCode.SEAT_NUMBERS_REQUIRED);
         var existing = tickets.findAllByBookingIdOrderBySeatNumberAsc(bookingId);
+        if (!BookingTicketSetValidator.isConsistentSubset(booking, bookingSeats, existing)) {
+            throw new ConflictException(BookingErrorCode.RESERVATION_RESULT_MISMATCH);
+        }
         Set<UUID> issued = new HashSet<>();
         existing.forEach(ticket -> issued.add(ticket.getBookingSeatId()));
         int missing = 0;
         for (var seat : bookingSeats) {
-            if (!seat.hasCompletedSnapshot()) {
-                throw new ConflictException(BookingErrorCode.RESERVATION_RESULT_MISMATCH);
-            }
             if (!issued.contains(seat.getId())) {
-                BookingTicket.capacityFor(seat);
                 missing++;
                 if (!dryRun) tickets.save(new BookingTicket(seat, actor));
             }

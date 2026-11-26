@@ -213,6 +213,15 @@ were not regenerated and runtime behavior was not verified.
 
 ## Response and authorization boundaries
 
+Fare matrix source metadata update (2026-11-26): nested TicketGroupResponse,
+CellResponse and validation Issue always include their properties. The group
+eligibilityDescription may be null; amount is null for UNCONFIGURED or
+NOT_APPLICABLE cells. Global validation issues include scope=null and cell=null.
+Do not treat null amount as zero/free or expect every issue to target a cell.
+The customizer now describes these required/nullable fields. The observed
+runtime OpenAPI still has old metadata; reload verification and FE client
+generation remain pending. Response JSON and pricing rules are unchanged.
+
 P3.3 continuation from `1744372`: the existing PricingFareResolver now enforces
 non-null/nonnegative PRICED amounts and the seat-type fare unit for pricing quotes,
 grouped showtime quotes, generated default prices and reservation snapshots.
@@ -446,6 +455,16 @@ pricing/readiness guards. Unknown legacy price properties are rejected by
 `CreateShowtimeRequest`, not silently accepted.
 
 ### Customer: quote then create a booking
+
+Quote line schema identities (source update 2026-11-26): GET uses `SeatQuote`
+with showSeatId, seatNumber, seatType, capacity and price. POST uses
+`GroupedSeatQuote`, adding ticketGroupId, ticketGroupName,
+eligibilityDescription and unit. All nine grouped fields are always present;
+eligibilityDescription may be null. This corrects the former shared OpenAPI
+name without changing response JSON or pricing. After Inventory loads the new
+build, verify the distinct seats item references before regenerating clients.
+The currently checked-in FE generated model still shares SeatQuote and has not
+been changed by this backend task.
 
 For the legacy/default-group path, use
 `GET /api/v1/showtimes/{showtimeId}/seat-quote?seatNumbers=H7&seatNumbers=H8`.

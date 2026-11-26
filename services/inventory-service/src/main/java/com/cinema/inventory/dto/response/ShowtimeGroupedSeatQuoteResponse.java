@@ -18,10 +18,10 @@ public record ShowtimeGroupedSeatQuoteResponse(
         int seatCount,
         int capacity,
         BigDecimal totalAmount,
-        List<SeatQuote> seats) {
+        List<GroupedSeatQuote> seats) {
 
     @JsonInclude(JsonInclude.Include.ALWAYS)
-    public record SeatQuote(
+    public record GroupedSeatQuote(
             UUID showSeatId,
             String seatNumber,
             SeatType seatType,

@@ -51,6 +51,11 @@ public class ShowtimeResponseOpenApiConfiguration {
             Schema<?> fares = property(ticketGroup, "fares");
             Schema<?> seatFare = resolve(openApi, fares == null ? null : fares.getItems());
             configureAlwaysIncluded(seatFare, Set.of("price"), openApi31);
+
+            Schema<?> groupedQuote = schemas.get("ShowtimeGroupedSeatQuoteResponse");
+            Schema<?> seats = property(groupedQuote, "seats");
+            Schema<?> groupedSeat = resolve(openApi, seats == null ? null : seats.getItems());
+            configureAlwaysIncluded(groupedSeat, Set.of("eligibilityDescription"), openApi31);
         };
     }
 
@@ -66,7 +71,9 @@ public class ShowtimeResponseOpenApiConfiguration {
         }
         String prefix = "#/components/schemas/";
         return schema.get$ref().startsWith(prefix)
-                ? openApi.getComponents().getSchemas().get(schema.get$ref().substring(prefix.length()))
+                ? openApi.getComponents()
+                        .getSchemas()
+                        .get(schema.get$ref().substring(prefix.length()))
                 : null;
     }
 
